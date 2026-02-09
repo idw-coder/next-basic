@@ -44,9 +44,10 @@ async function getQuizzes(categoryId: number): Promise<Quiz[]> {
 export async function generateMetadata({
   params,
 }: {
-  params: { category: string };
+  params: Promise<{ category: string }>;
 }): Promise<Metadata> {
-  const category = await getCategory(params.category);
+  const { category: categorySlug } = await params;
+  const category = await getCategory(categorySlug);
   
   if (!category) {
     return {
@@ -65,9 +66,10 @@ export async function generateMetadata({
 export default async function CategoryQuizPage({
   params,
 }: {
-  params: { category: string };
+  params: Promise<{ category: string }>;
 }) {
-  const category = await getCategory(params.category);
+  const { category: categorySlug } = await params;
+  const category = await getCategory(categorySlug);
   
   if (!category) {
     return (
@@ -105,7 +107,7 @@ export default async function CategoryQuizPage({
             {quizzes.map((quiz, index) => (
               <Link
                 key={quiz.id}
-                href={`/quiz/${params.category}/${quiz.id}`}
+                href={`/quiz/${categorySlug}/${quiz.id}`}
                 className="block border border-gray-200 rounded p-6 hover:border-blue-400 hover:bg-blue-50 transition"
               >
                 <div className="flex items-start gap-4">

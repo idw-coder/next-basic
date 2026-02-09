@@ -32,14 +32,15 @@ async function getQuiz(quizId: string): Promise<QuizDetail | null> {
 export default async function QuizDetailPage({
   params,
 }: {
-  params: { category: string; quizId: string };
+  params: Promise<{ category: string; quizId: string }>;
 }) {
-  const quiz = await getQuiz(params.quizId);
+  const { category, quizId } = await params;
+  const quiz = await getQuiz(quizId);
 
   return (
-    <QuizClient 
-      quiz={quiz} 
-      categorySlug={params.category} 
+    <QuizClient
+      quiz={quiz}
+      categorySlug={category}
     />
   );
 }
@@ -47,9 +48,10 @@ export default async function QuizDetailPage({
 export async function generateMetadata({
   params,
 }: {
-  params: { category: string; quizId: string };
+  params: Promise<{ category: string; quizId: string }>;
 }) {
-  const quiz = await getQuiz(params.quizId);
+  const { quizId } = await params;
+  const quiz = await getQuiz(quizId);
   
   if (!quiz) {
     return {
