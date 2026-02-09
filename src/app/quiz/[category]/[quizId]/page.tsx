@@ -7,6 +7,8 @@ interface Choice {
   display_order?: number;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
+
 interface QuizDetail {
   id: number;
   slug: string;
@@ -18,7 +20,7 @@ interface QuizDetail {
 
 async function getQuiz(quizId: string): Promise<QuizDetail | null> {
   try {
-    const res = await fetch(`http://localhost:8888/api/quiz/${quizId}`, {
+    const res = await fetch(`${API_BASE_URL}/api/quiz/${quizId}`, {
       cache: 'no-store',
     });
     if (!res.ok) return null;

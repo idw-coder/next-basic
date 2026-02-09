@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
+
 interface Quiz {
   id: number;
   slug: string;
@@ -16,7 +18,7 @@ interface Category {
 
 async function getCategory(categorySlug: string): Promise<Category | null> {
   try {
-    const res = await fetch('http://localhost:8888/api/quiz/categories', {
+    const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
       cache: 'no-store',
     });
     if (!res.ok) return null;
@@ -30,7 +32,7 @@ async function getCategory(categorySlug: string): Promise<Category | null> {
 
 async function getQuizzes(categoryId: number): Promise<Quiz[]> {
   try {
-    const res = await fetch(`http://localhost:8888/api/quiz/category/${categoryId}/quizzes`, {
+    const res = await fetch(`${API_BASE_URL}/api/quiz/category/${categoryId}/quizzes`, {
       cache: 'no-store',
     });
     if (!res.ok) return [];
