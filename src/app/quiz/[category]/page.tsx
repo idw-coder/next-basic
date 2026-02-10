@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Metadata } from "next";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -115,12 +116,25 @@ export default async function CategoryQuizPage({
             トップページに戻る
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold text-foreground mb-2 md:text-3xl">
-          {category.category_name} 問題集
-        </h1>
-        {category.description && (
-          <p className="text-muted-foreground">{category.description}</p>
-        )}
+        <section className="flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-6">
+          <div className="flex justify-center sm:justify-start">
+            <Image
+              src="/inpiration_man_color.png"
+              alt="クイズにチャレンジするイメージイラスト"
+              width={588}
+              height={761}
+              className="w-full max-w-[160px] md:max-w-[200px] h-auto -scale-x-100"
+            />
+          </div>
+          <div className="sm:flex-1 sm:max-w-xl">
+            <h1 className="text-2xl font-bold text-foreground mb-2 md:text-3xl">
+              {category.category_name} 問題集
+            </h1>
+            {category.description && (
+              <p className="text-muted-foreground">{category.description}</p>
+            )}
+          </div>
+        </section>
       </div>
 
       {quizzes.length === 0 ? (

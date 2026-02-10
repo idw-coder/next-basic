@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -59,24 +60,40 @@ export default async function Home() {
   const counts = await getQuizCountsBySlugs([...CATEGORY_SLUGS]);
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
-      {/* ヒーロー */}
-      <section className="text-center mb-12 md:mb-16">
-        <h2 className="text-3xl font-bold text-foreground mb-4 md:text-4xl">
-          ウェブ開発を問題で学ぶ
-        </h2>
-        <p className="text-md text-muted-foreground mb-6 md:text-xl md:mb-8">
-          HTML、CSS、JavaScript、React
-          を4択クイズで習得できる無料学習プラットフォーム
-        </p>
+      {/* ヒーロー（メインビジュアル） */}
+      <section className="mb-12 md:mb-16">
+        <div className="flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-6">
+          <div className="flex justify-center sm:justify-start">
+            <Image
+              src="/inpiration_man_color.png"
+              alt="ひらめきを得て学習している人のイラスト"
+              width={588}
+              height={761}
+              priority
+              className="w-full max-w-[180px] md:max-w-[220px] h-auto -scale-x-100"
+            />
+          </div>
+          <div className="text-center sm:text-left sm:flex-1 sm:max-w-xl">
+            <h2 className="text-3xl font-bold text-foreground mb-4 md:text-4xl">
+              ウェブ知識をスキマ時間で学習
+            </h2>
+            <p className="text-md text-muted-foreground mb-6 md:text-xl md:mb-8">
+              HTML、CSS、JavaScript、React
+              を4択クイズで習得できる無料学習プラットフォーム
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* アラート（お知らせの強調） */}
+      <div className="mb-8 md:mb-10">
         <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current max-w-md mx-auto">
-          <AlertTitle className="font-semibold">
-            順次コンテンツ追加中
-          </AlertTitle>
+          <AlertTitle className="font-semibold text-center">順次コンテンツ追加中</AlertTitle>
           <AlertDescription className="justify-center">
             現在html css javascript react クイズから公開開始しています
           </AlertDescription>
         </Alert>
-      </section>
+      </div>
 
       {/* サイトの特徴 */}
       <section className="mb-12 md:mb-16">
