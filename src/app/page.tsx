@@ -9,7 +9,54 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export default function Home() {
+const API_BASE_URL =
+  process.env.INTERNAL_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "http://localhost:8888";
+
+/** カテゴリslugごとの問題数を取得（SSR用・既存APIのみ使用） */
+async function getQuizCountsBySlugs(
+  slugs: string[]
+): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  try {
+    const categoriesRes = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
+      cache: "no-store",
+    });
+    if (!categoriesRes.ok) return Object.fromEntries(slugs.map((s) => [s, 0]));
+    const categories: { id: number; slug: string }[] =
+      await categoriesRes.json();
+
+    const counts = await Promise.all(
+      slugs.map(async (slug) => {
+        const cat = categories.find((c) => c.slug === slug);
+        if (!cat) return { slug, count: 0 };
+        const res = await fetch(
+          `${API_BASE_URL}/api/quiz/category/${cat.id}/quizzes`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return { slug, count: 0 };
+        const quizzes: unknown[] = await res.json();
+        return { slug, count: quizzes.length };
+      })
+    );
+    counts.forEach(({ slug, count }) => (out[slug] = count));
+  } catch (error) {
+    console.error("Failed to fetch quiz counts:", error);
+    slugs.forEach((s) => (out[s] = 0));
+  }
+  return out;
+}
+
+const CATEGORY_SLUGS = [
+  "html-basic",
+  "css-basic",
+  "javascript-basic",
+  "react-basic",
+] as const;
+
+export default async function Home() {
+  const counts = await getQuizCountsBySlugs([...CATEGORY_SLUGS]);
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
       {/* ヒーロー */}
@@ -17,14 +64,16 @@ export default function Home() {
         <h2 className="text-3xl font-bold text-foreground mb-4 md:text-4xl">
           ウェブ開発を問題で学ぶ
         </h2>
-        <p className="text-lg text-muted-foreground mb-6 md:text-xl md:mb-8">
-          HTML/CSS/JavaScript/React/Node.js
+        <p className="text-md text-muted-foreground mb-6 md:text-xl md:mb-8">
+          HTML、CSS、JavaScript、React
           を4択クイズで習得できる無料学習プラットフォーム
         </p>
         <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current max-w-md mx-auto">
-          <AlertTitle className="font-semibold">順次コンテンツ追加中</AlertTitle>
-          <AlertDescription>
-            現在Reactクイズから公開開始しています
+          <AlertTitle className="font-semibold">
+            順次コンテンツ追加中
+          </AlertTitle>
+          <AlertDescription className="justify-center">
+            現在html css javascript react クイズから公開開始しています
           </AlertDescription>
         </Alert>
       </section>
@@ -37,31 +86,37 @@ export default function Home() {
         <div className="grid gap-6 md:grid-cols-3">
           <Card>
             <CardHeader>
-              <CardTitle>実践的な問題</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                実務で使える知識を4択クイズ形式で出題。基礎から応用まで段階的に学習できます。
-              </CardDescription>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>幅広い技術カバー</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                HTML/CSSの基礎からReact、Node.jsまで、モダンなウェブ開発に必要な技術を網羅。
-              </CardDescription>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
               <CardTitle>完全無料</CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>
                 すべての問題を無料で利用可能。会員登録なしでも学習を始められます。
+              </CardDescription>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>スキマ時間で学べる</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                スキマ時間でも学べるように、問題を短時間で解けるようになっています。
+                <br />
+                <br />
+                <span className="text-primary">ランダム連続解答機能は現在準備中です。</span>
+              </CardDescription>
+            </CardContent>
+          </Card>
+          <Card className="bg-primary/8">
+            <CardHeader>
+              <CardTitle>間違えた問題を復習ができる</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                問題の解答履歴を保存し、間違えた問題を復習できるようになっています。
+                <br />
+                <br />
+                <span className="text-primary">こちら現在準備中です。</span>
               </CardDescription>
             </CardContent>
           </Card>
@@ -74,45 +129,70 @@ export default function Home() {
           学習カテゴリ
         </h3>
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="hover:border-muted-foreground/30 transition-colors">
-            <CardHeader className="flex flex-row items-start justify-between gap-3">
-              <CardTitle>HTML/CSS</CardTitle>
-              <Badge variant="secondary">準備中</Badge>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <CardDescription>
-                ウェブページの構造を作るHTMLと、デザインを制御するCSSの基礎から実践的なテクニックまで学習できます。セマンティックHTML、Flexbox、Grid、レスポンシブデザインなどを問題形式で習得。
-              </CardDescription>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• HTMLタグの使い分け</li>
-                <li>• CSSセレクタとプロパティ</li>
-                <li>• レイアウト手法（Flexbox/Grid）</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:border-muted-foreground/30 transition-colors">
-            <CardHeader className="flex flex-row items-start justify-between gap-3">
-              <CardTitle>JavaScript</CardTitle>
-              <Badge variant="secondary">準備中</Badge>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <CardDescription>
-                ウェブサイトに動きをつけるJavaScriptの基本文法から、非同期処理、DOM操作、ES6+の新機能まで幅広くカバー。実務で必要な知識を体系的に学習できます。
-              </CardDescription>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• 変数、関数、オブジェクト</li>
-                <li>• Promise、async/await</li>
-                <li>• DOM操作とイベント処理</li>
-              </ul>
-            </CardContent>
-          </Card>
+          <Link href="/quiz/html-basic" className="block">
+            <Card className="border-primary/40 bg-primary/2 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <CardTitle>HTML</CardTitle>
+                <Badge>問題数: {counts["html-basic"] ?? 0}</Badge>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <CardDescription>
+                  ウェブページの構造を作るHTMLと、デザインを制御するCSSの基礎から実践的なテクニックまで学習できます。セマンティックHTML、Flexbox、Grid、レスポンシブデザインなどを問題形式で習得。
+                </CardDescription>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• HTMLタグの使い分け</li>
+                  <li>• CSSセレクタとプロパティ</li>
+                  <li>• レイアウト手法（Flexbox/Grid）</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/quiz/css-basic" className="block">
+            <Card className="border-primary/40 bg-primary/2 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <CardTitle>CSS</CardTitle>
+                <Badge>問題数: {counts["css-basic"] ?? 0}</Badge>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <CardDescription>
+                  ウェブページの構造を作るHTMLと、デザインを制御するCSSの基礎から実践的なテクニックまで学習できます。セマンティックHTML、Flexbox、Grid、レスポンシブデザインなどを問題形式で習得。
+                </CardDescription>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• HTMLタグの使い分け</li>
+                  <li>• CSSセレクタとプロパティ</li>
+                  <li>• レイアウト手法（Flexbox/Grid）</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/quiz/javascript-basic" className="block">
+            <Card className="border-primary/40 bg-primary/2 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <CardTitle>JavaScript</CardTitle>
+                {counts["javascript-basic"] > 0 ? (
+                  <Badge>問題数: {counts["javascript-basic"]}</Badge>
+                ) : (
+                  <Badge variant="secondary">準備中</Badge>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <CardDescription>
+                  ウェブサイトに動きをつけるJavaScriptの基本文法から、非同期処理、DOM操作、ES6+の新機能まで幅広くカバー。実務で必要な知識を体系的に学習できます。
+                </CardDescription>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• 変数、関数、オブジェクト</li>
+                  <li>• Promise、async/await</li>
+                  <li>• DOM操作とイベント処理</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </Link>
 
           <Link href="/quiz/react-basic" className="block">
-            <Card className="border-primary/40 bg-primary/5 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
+            <Card className="border-primary/40 bg-primary/2 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
               <CardHeader className="flex flex-row items-start justify-between gap-3">
                 <CardTitle>React</CardTitle>
-                <Badge>問題数: 20</Badge>
+                <Badge>問題数: {counts["react-basic"] ?? 0}</Badge>
               </CardHeader>
               <CardContent className="space-y-4">
                 <CardDescription>
@@ -152,20 +232,22 @@ export default function Home() {
           お知らせ
         </h3>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="space-y-3">
               <div className="pb-3 border-b border-border last:border-0">
                 <p className="text-sm text-muted-foreground">2026/02/08</p>
-                <p className="text-foreground">Reactクイズ20問を公開しました</p>
+                <p className="text-foreground">
+                  ウェブエンジニア問題集を開設しました
+                </p>
               </div>
               <div className="pb-3 border-b border-border last:border-0">
                 <p className="text-sm text-muted-foreground">2026/02/08</p>
-                <p className="text-foreground">ウェブエンジニア問題集を開設しました</p>
+                <p className="text-foreground">HTML、CSS、JavaScript、Reactクイズを公開しました</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">今後の予定</p>
                 <p className="text-foreground">
-                  HTML/CSS、JavaScript、Node.jsのクイズを順次追加予定です
+                  Node.js、Git、Docker、AWSのクイズを順次追加予定です
                 </p>
               </div>
             </div>
@@ -184,7 +266,9 @@ export default function Home() {
               <li className="flex gap-3">
                 <span className="font-bold text-primary shrink-0">1.</span>
                 <div>
-                  <p className="font-semibold text-foreground mb-1">基礎から始める</p>
+                  <p className="font-semibold text-foreground mb-1">
+                    基礎から始める
+                  </p>
                   <p className="text-muted-foreground text-sm">
                     HTML/CSSの基礎を固めてから、JavaScriptに進むことをおすすめします。
                   </p>
@@ -193,7 +277,9 @@ export default function Home() {
               <li className="flex gap-3">
                 <span className="font-bold text-primary shrink-0">2.</span>
                 <div>
-                  <p className="font-semibold text-foreground mb-1">繰り返し解く</p>
+                  <p className="font-semibold text-foreground mb-1">
+                    繰り返し解く
+                  </p>
                   <p className="text-muted-foreground text-sm">
                     間違えた問題は復習し、理解が定着するまで何度も解き直しましょう。
                   </p>
@@ -202,7 +288,9 @@ export default function Home() {
               <li className="flex gap-3">
                 <span className="font-bold text-primary shrink-0">3.</span>
                 <div>
-                  <p className="font-semibold text-foreground mb-1">実際にコードを書く</p>
+                  <p className="font-semibold text-foreground mb-1">
+                    実際にコードを書く
+                  </p>
                   <p className="text-muted-foreground text-sm">
                     問題で学んだ知識は、実際に手を動かしてコードを書くことで定着します。
                   </p>

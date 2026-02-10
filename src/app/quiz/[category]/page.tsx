@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -92,7 +93,10 @@ export default async function CategoryQuizPage({
           </CardHeader>
           <CardContent>
             <Button asChild variant="link" className="px-0">
-              <Link href="/">トップページに戻る</Link>
+              <Link href="/" className="inline-flex items-center gap-2">
+                <ArrowLeft className="size-4 shrink-0" />
+                トップページに戻る
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -106,7 +110,10 @@ export default async function CategoryQuizPage({
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
       <div className="mb-8">
         <Button asChild variant="link" className="px-0 mb-4 -ml-2">
-          <Link href="/">← トップページに戻る</Link>
+          <Link href="/" className="inline-flex items-center gap-2">
+            <ArrowLeft className="size-4 shrink-0" />
+            トップページに戻る
+          </Link>
         </Button>
         <h1 className="text-2xl font-bold text-foreground mb-2 md:text-3xl">
           {category.category_name} 問題集
@@ -135,20 +142,17 @@ export default async function CategoryQuizPage({
                 className="block"
               >
                 <Card className="transition-colors hover:border-primary/50 hover:bg-primary/5">
-                  <CardContent className="flex items-start gap-4 py-6">
+                  <CardContent className="flex items-center gap-4">
                     <Badge
                       variant="default"
-                      className="size-12 shrink-0 rounded-lg p-0 flex items-center justify-center text-base font-bold"
+                      className="size-8 shrink-0 rounded-lg p-0 flex items-center justify-center text-base font-bold"
                     >
                       {index + 1}
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground mb-1">
-                        問題 {index + 1}
-                      </h3>
                       <p className="text-muted-foreground">{quiz.question}</p>
                     </div>
-                    <span className="text-primary shrink-0">→</span>
+                    <ChevronRight className="size-5 shrink-0 text-primary" />
                   </CardContent>
                 </Card>
               </Link>

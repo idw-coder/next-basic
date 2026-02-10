@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,10 @@ export default function QuizClient({
           </CardHeader>
           <CardContent>
             <Button asChild variant="link" className="px-0">
-              <Link href={`/quiz/${categorySlug}`}>問題一覧に戻る</Link>
+              <Link href={`/quiz/${categorySlug}`} className="inline-flex items-center gap-2">
+                <ArrowLeft className="size-4 shrink-0" />
+                問題一覧に戻る
+              </Link>
             </Button>
           </CardContent>
         </Card>
@@ -64,7 +68,10 @@ export default function QuizClient({
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
       <div className="mb-6">
         <Button asChild variant="link" className="px-0 -ml-2">
-          <Link href={`/quiz/${categorySlug}`}>← 問題一覧に戻る</Link>
+          <Link href={`/quiz/${categorySlug}`} className="inline-flex items-center gap-2">
+            <ArrowLeft className="size-4 shrink-0" />
+            問題一覧に戻る
+          </Link>
         </Button>
       </div>
 
@@ -167,7 +174,10 @@ export default function QuizClient({
               )}
 
               <Button asChild className="w-full" variant="secondary" size="lg">
-                <Link href={`/quiz/${categorySlug}`}>問題一覧に戻る</Link>
+                <Link href={`/quiz/${categorySlug}`} className="inline-flex items-center justify-center gap-2">
+                  <ArrowLeft className="size-4 shrink-0" />
+                  問題一覧に戻る
+                </Link>
               </Button>
             </div>
           )}
