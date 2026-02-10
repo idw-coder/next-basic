@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import "./globals.css";
+import GoogleAdSense from "@/components/GoogleAdSense";
 
 export const metadata: Metadata = {
   title: "ウェブエンジニア問題集 | HTML/CSS/React/Node.js 無料学習サイト",
@@ -24,8 +26,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const clientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
+  const adSlot = process.env.NEXT_PUBLIC_ADSENSE_SLOT;
+  const isDevelopment = process.env.NODE_ENV === "development";
+
   return (
     <html lang="ja">
+      <head>
+        {clientId && !isDevelopment && (
+          <Script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientId}`}
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+          />
+        )}
+      </head>
       <body>
         <header className="bg-white border-b border-gray-200 p-4">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -46,8 +62,13 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="bg-gray-50 border-t border-gray-200 p-8 mt-16">
-          <div className="max-w-6xl mx-auto text-center text-gray-600 text-sm">
-            <p>&copy; 2026 ウェブエンジニア問題集. All rights reserved.</p>
+          <div className="max-w-6xl mx-auto">
+            <div className="flex justify-center min-h-[100px] mb-6">
+              <GoogleAdSense adSlot={adSlot} />
+            </div>
+            <div className="text-center text-gray-600 text-sm">
+              <p>&copy; 2026 ウェブエンジニア問題集. All rights reserved.</p>
+            </div>
           </div>
         </footer>
       </body>
