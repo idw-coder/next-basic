@@ -31,7 +31,7 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          source: ".next/*,package.json,package-lock.json,src/*"
+          source: ".next/*,package.json,package-lock.json,src/*,public/*"
           target: "/var/www/app/next-basic"
           strip_components: 0
       
