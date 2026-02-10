@@ -24,10 +24,6 @@ export default function GoogleAdSense({
   style,
   className,
 }: GoogleAdSenseProps) {
-  if (process.env.NODE_ENV === 'development') {
-    return null;
-  }
-
   useEffect(() => {
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
@@ -35,6 +31,10 @@ export default function GoogleAdSense({
       console.error('Adsense error ', err);
     }
   }, []);
+
+  if (process.env.NODE_ENV === 'development') {
+    return null;
+  }
 
   return (
     <ins
