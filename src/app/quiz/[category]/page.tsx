@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
+// サーバーサイド(SSR)なら内部URL、なければ公開URL、最後はローカル開発用
+const API_BASE_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
 
 interface Quiz {
   id: number;
