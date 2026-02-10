@@ -40,7 +40,7 @@ export default function ExplanationView({ explanation }: ExplanationViewProps) {
   }
 
   return (
-    <p className="text-gray-700 whitespace-pre-wrap">{explanation}</p>
+    <p className="text-muted-foreground whitespace-pre-wrap">{explanation}</p>
   );
 }
 

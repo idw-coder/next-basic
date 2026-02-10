@@ -9,9 +9,6 @@ interface GoogleAdSenseProps {
   className?: string;
 }
 
-/**
- * グローバルな空間に拡張、既存のWindowオブジェクトに「adsbygoogle」という配列を追加
- */
 declare global {
   interface Window {
     adsbygoogle: unknown[];
@@ -41,6 +38,8 @@ export default function GoogleAdSense({
       className={`adsbygoogle ${className || ""}`}
       style={{
         display: "block",
+        minWidth: "320px",    // ← 追加
+        minHeight: "100px",   // ← 追加
         ...style,
       }}
       data-ad-client={process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}
