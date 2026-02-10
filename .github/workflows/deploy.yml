@@ -31,7 +31,7 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          source: ".next/*,package.json,package-lock.json"
+          source: ".next/*,package.json,package-lock.json,src/*"
           target: "/var/www/app/next-basic"
           strip_components: 0
       
@@ -42,7 +42,7 @@ jobs:
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
-            script: |
             cd /var/www/app
-            docker-compose -f docker-compose.prod.yml up -d --build nextjs
+            docker-compose -f docker-compose.prod.yml build --no-cache nextjs
+            docker-compose -f docker-compose.prod.yml up -d nextjs
             docker image prune -f
