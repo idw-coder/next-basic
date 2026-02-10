@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Script from "next/script";
 import "./globals.css";
-import GoogleAdSense from "@/components/GoogleAdSense";
+import GoogleAdSense from "@/app/_components/GoogleAdSense";
 
 export const metadata: Metadata = {
   title: "ウェブエンジニア問題集 | HTML/CSS/React/Node.js 無料学習サイト",
