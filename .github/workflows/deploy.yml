@@ -39,5 +39,7 @@ jobs:
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
+            script: |
             cd /var/www/app
-            docker-compose -f docker-compose.prod.yml restart nextjs
+            docker-compose -f docker-compose.prod.yml up -d --build nextjs
+            docker image prune -f
