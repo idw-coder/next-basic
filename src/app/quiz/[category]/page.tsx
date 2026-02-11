@@ -1,21 +1,27 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import QuizListClient from "./QuizListClient";
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   "http://localhost:8888";
 
-interface Quiz {
+export interface Tag {
+  id: number;
+  slug: string;
+  name: string;
+}
+
+export interface Quiz {
   id: number;
   slug: string;
   question: string;
+  tags: Tag[];
 }
 
 interface Category {
@@ -25,6 +31,9 @@ interface Category {
   description?: string;
 }
 
+/**
+ * カテゴリ情報の取得
+ */
 async function getCategory(categorySlug: string): Promise<Category | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
@@ -39,16 +48,44 @@ async function getCategory(categorySlug: string): Promise<Category | null> {
   }
 }
 
-async function getQuizzes(categoryId: number): Promise<Quiz[]> {
+/**
+ * クイズ一覧の取得（検索条件対応）
+ */
+async function getQuizzes(
+  categoryId: number,
+  q?: string,
+  tagSlug?: string
+): Promise<Quiz[]> {
   try {
+    const params = new URLSearchParams();
+    if (q) params.append("q", q);
+    if (tagSlug) params.append("tagSlug", tagSlug);
+
     const res = await fetch(
-      `${API_BASE_URL}/api/quiz/category/${categoryId}/quizzes`,
+      `${API_BASE_URL}/api/quiz/category/${categoryId}/quizzes?${params.toString()}`,
       { cache: "no-store" }
     );
     if (!res.ok) return [];
     return await res.json();
   } catch (error) {
     console.error("Failed to fetch quizzes:", error);
+    return [];
+  }
+}
+
+/**
+ * このカテゴリに関連するタグ一覧のみを取得（バックエンドに追加したAPIを使用）
+ */
+async function getTagsByCategory(categoryId: number): Promise<Tag[]> {
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/quiz/category/${categoryId}/tags`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (error) {
+    console.error("Failed to fetch tags:", error);
     return [];
   }
 }
@@ -62,27 +99,25 @@ export async function generateMetadata({
   const category = await getCategory(categorySlug);
 
   if (!category) {
-    return {
-      title: "カテゴリが見つかりません | ウェブエンジニア問題集",
-    };
+    return { title: "カテゴリが見つかりません" };
   }
 
-  const quizzes = await getQuizzes(category.id);
-
   return {
-    title: `${category.category_name} 問題集（全${quizzes.length}問） | ウェブエンジニア問題集`,
-    description:
-      category.description ||
-      `${category.category_name}に関する問題を${quizzes.length}問掲載。4択クイズ形式で実践的なスキルを習得できます。`,
+    title: `${category.category_name} 問題集 | ウェブエンジニア問題集`,
+    description: category.description,
   };
 }
 
 export default async function CategoryQuizPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string }>;
+  searchParams: Promise<{ q?: string; tagSlug?: string }>;
 }) {
   const { category: categorySlug } = await params;
+  const { q, tagSlug } = await searchParams;
+
   const category = await getCategory(categorySlug);
 
   if (!category) {
@@ -105,7 +140,11 @@ export default async function CategoryQuizPage({
     );
   }
 
-  const quizzes = await getQuizzes(category.id);
+  // クイズ一覧とフィルタ用タグ一覧を並列で取得
+  const [quizzes, tags] = await Promise.all([
+    getQuizzes(category.id, q, tagSlug),
+    getTagsByCategory(category.id),
+  ]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
@@ -120,7 +159,7 @@ export default async function CategoryQuizPage({
           <div className="flex justify-center sm:justify-start">
             <Image
               src="/inpiration_man_color.png"
-              alt="クイズにチャレンジするイメージイラスト"
+              alt="Quiz Image"
               width={588}
               height={761}
               className="w-full max-w-[160px] md:max-w-[200px] h-auto -scale-x-100"
@@ -137,43 +176,14 @@ export default async function CategoryQuizPage({
         </section>
       </div>
 
-      {quizzes.length === 0 ? (
-        <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current">
-          <AlertDescription>
-            現在、このカテゴリには問題がありません。
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <div>
-          <p className="text-muted-foreground mb-6">
-            全 <Badge variant="secondary">{quizzes.length}</Badge> 問
-          </p>
-          <div className="space-y-4">
-            {quizzes.map((quiz, index) => (
-              <Link
-                key={quiz.id}
-                href={`/quiz/${categorySlug}/${quiz.id}`}
-                className="block"
-              >
-                <Card className="transition-colors hover:border-primary/50 hover:bg-primary/5">
-                  <CardContent className="flex items-center gap-4">
-                    <Badge
-                      variant="default"
-                      className="size-8 shrink-0 rounded-lg p-0 flex items-center justify-center text-base font-bold"
-                    >
-                      {index + 1}
-                    </Badge>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-muted-foreground">{quiz.question}</p>
-                    </div>
-                    <ChevronRight className="size-5 shrink-0 text-primary" />
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* UIとURL操作をClient Componentに委譲 */}
+      <QuizListClient
+        initialQuizzes={quizzes}
+        tags={tags}
+        categorySlug={categorySlug}
+        currentQuery={q}
+        currentTagSlug={tagSlug}
+      />
     </div>
   );
 }
