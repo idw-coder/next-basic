@@ -77,7 +77,7 @@ export default function QuizClient({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl md:text-2xl">{quiz.question}</CardTitle>
+          <CardTitle className="text-md sm:text-lg">{quiz.question}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
@@ -94,7 +94,7 @@ export default function QuizClient({
                   onClick={() => !isAnswered && setSelectedChoice(choice.id)}
                   disabled={isAnswered}
                   className={cn(
-                    "w-full text-left p-4 rounded-lg border-2 transition-colors",
+                    "w-full text-left p-2 sm:p-4 rounded-lg border-2 transition-colors",
                     isAnswered && "cursor-not-allowed",
                     !isAnswered && "cursor-pointer hover:border-primary/50",
                     isSelected &&
@@ -109,7 +109,7 @@ export default function QuizClient({
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
-                        "size-6 shrink-0 rounded-full border-2 flex items-center justify-center",
+                        "size-4 sm:size-6 shrink-0 rounded-full border-2 flex items-center justify-center",
                         isSelected &&
                           !isAnswered &&
                           "border-primary bg-primary",
@@ -122,10 +122,10 @@ export default function QuizClient({
                       )}
                     >
                       {(isSelected || showCorrect || showWrong) && (
-                        <span className="text-white text-sm">✓</span>
+                        <span className="text-white text-xs sm:text-sm">✓</span>
                       )}
                     </div>
-                    <span className="text-foreground">
+                    <span className="text-foreground text-xs sm:text-base">
                       {choice.choice_text}
                     </span>
                   </div>
@@ -153,7 +153,7 @@ export default function QuizClient({
                     "border-green-500 bg-green-500/10 text-green-800 dark:text-green-200 [&_div]:text-current"
                 )}
               >
-                <AlertTitle className="font-bold">
+                <AlertTitle className="font-bold text-center">
                   {isCorrect ? "正解です" : "不正解です"}
                 </AlertTitle>
                 {!isCorrect && correctChoice && (
@@ -165,7 +165,7 @@ export default function QuizClient({
 
               {quiz.explanation && (
                 <div className="">
-                  <div className="font-bold">解説</div>
+                  <div className="font-bold text-center mb-2">解説</div>
                     <ExplanationView explanation={quiz.explanation} />
                   </div>
               )}

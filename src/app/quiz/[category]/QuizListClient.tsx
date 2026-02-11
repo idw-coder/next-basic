@@ -111,23 +111,19 @@ export default function QuizListClient({
         {initialQuizzes.length > 0 ? (
           initialQuizzes.map((quiz, index) => (
             <Link key={quiz.id} href={`/quiz/${categorySlug}/${quiz.id}`} className="block">
-              <Card
-                className={cn(
-                  "transition-colors hover:border-blue-500/40 hover:bg-blue-400/10 py-0"
-                )}
-              >
-                <CardContent className="flex items-center gap-4 p-4">
+              <Card className={"transition-colors hover:border-blue-500/40 hover:bg-blue-400/10 py-0"}>
+                <CardContent className="flex items-center gap-4 p-2 sm:p-4">
                   <Badge
                     variant="outline"
                     className={cn(
-                      "size-8 shrink-0 rounded-lg p-0 flex items-center justify-center text-base font-bold border-0 text-white",
+                      "size-6 sm:size-8 shrink-0 rounded-md p-0 flex items-center justif-center sfont-bold border-0 text-white",
                       index % 2 === 0 ? "bg-blue-600" : "bg-blue-500"
                     )}
                   >
                     {index + 1}
                   </Badge>
                   <div className="flex-1 min-w-0">
-                    <p className="text-foreground font-medium mb-1 line-clamp-2">{quiz.question}</p>
+                    <p className="text-foreground font-medium mb-1 line-clamp-2 text-sm sm:text-bases">{quiz.question}</p>
                     <div className="flex flex-wrap gap-1">
                       {quiz.tags.map((t) => (
                         <span key={t.id} className="text-xs text-blue-700/80 dark:text-blue-300/80">#{t.name}</span>

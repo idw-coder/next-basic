@@ -1,6 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import { PlayCircle, Clock } from "lucide-react";
+import {
+  Megaphone,
+  Sparkles,
+  BadgeCheck,
+  Clock,
+  RotateCcw,
+  PlayCircle,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -91,24 +98,31 @@ export default async function Home() {
       {/* アラート（お知らせの強調） */}
       <div className="mb-8 md:mb-10">
         <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current max-w-md mx-auto">
-          <AlertTitle className="font-semibold text-center">
+          <AlertTitle className="font-semibold text-center inline-flex items-center justify-center gap-2">
+            <Megaphone className="size-4 shrink-0" />
             順次コンテンツ追加中
           </AlertTitle>
           <AlertDescription className="justify-center">
             現在html css javascript react クイズから公開開始しています
+            <br />
+            Docker、AWS、Node.js、Gitのクイズを順次追加予定です
           </AlertDescription>
         </Alert>
       </div>
 
       {/* サイトの特徴 */}
       <section className="mb-12 md:mb-16">
-        <h3 className="text-xl font-bold text-foreground mb-6 md:text-2xl">
+        <h3 className="text-xl font-bold text-foreground mb-6 md:text-2xl flex items-center gap-2">
+          <Sparkles className="size-5 text-primary" />
           このサイトの特徴
         </h3>
         <div className="grid gap-6 md:grid-cols-3">
           <Card>
             <CardHeader>
-              <CardTitle>完全無料</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <BadgeCheck className="size-4 text-primary" />
+                完全無料
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>
@@ -118,7 +132,10 @@ export default async function Home() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>スキマ時間で学べる</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="size-4 text-primary" />
+                スキマ時間で学べる
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>
@@ -133,7 +150,10 @@ export default async function Home() {
           </Card>
           <Card className="bg-primary/8">
             <CardHeader>
-              <CardTitle>間違えた問題を復習ができる</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <RotateCcw className="size-4 text-primary" />
+                間違えた問題を復習ができる
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>

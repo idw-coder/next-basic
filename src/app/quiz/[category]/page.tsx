@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Megaphone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import QuizListClient from "./QuizListClient";
@@ -180,7 +180,7 @@ export default async function CategoryQuizPage({
       {/* アラート（お知らせの強調） */}
       <div className="mb-8 md:mb-10">
         <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current max-w-md mx-auto">
-          <AlertTitle className="font-semibold text-center">
+          <AlertTitle className="font-semibold text-center inline-flex items-center justify-center gap-2">
             順次機能追加中...
           </AlertTitle>
           <AlertDescription className="justify-center">
