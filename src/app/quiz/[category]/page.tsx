@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import QuizListClient from "./QuizListClient";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
@@ -174,6 +175,18 @@ export default async function CategoryQuizPage({
             )}
           </div>
         </section>
+      </div>
+
+      {/* アラート（お知らせの強調） */}
+      <div className="mb-8 md:mb-10">
+        <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current max-w-md mx-auto">
+          <AlertTitle className="font-semibold text-center">
+            順次機能追加中...
+          </AlertTitle>
+          <AlertDescription className="justify-center">
+            解答履歴機能、ランダム連続解答機能を準備中です
+          </AlertDescription>
+        </Alert>
       </div>
 
       {/* UIとURL操作をClient Componentに委譲 */}
