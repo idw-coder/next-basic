@@ -38,8 +38,8 @@ export default function GoogleAdSense({
       className={`adsbygoogle ${className || ""}`}
       style={{
         display: "block",
-        minWidth: "320px",    // ← 追加
-        minHeight: "100px",   // ← 追加
+        // minWidth: "320px",
+        minHeight: "100px",
         ...style,
       }}
       data-ad-client={process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}

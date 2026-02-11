@@ -146,48 +146,70 @@ export default async function Home() {
           学習カテゴリ
         </h3>
         <div className="grid gap-6 md:grid-cols-2">
-          <Link href="/quiz/html-basic" className="block">
-            <Card className="border-primary/40 bg-primary/2 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
+          <Link
+            href="/quiz/html-basic"
+            className="group block bg-orange-500/5 hover:bg-orange-500/10 transition-colors rounded-lg"
+          >
+            <Card className="border-0 bg-transparent shadow-none h-full cursor-pointer">
               <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <CardTitle>HTML</CardTitle>
-                <Badge>問題数: {counts["html-basic"] ?? 0}</Badge>
+                <CardTitle className="text-orange-700 dark:text-orange-400 group-hover:underline">
+                  HTML
+                </CardTitle>
+                <Badge className="bg-orange-500/20 text-orange-800 dark:text-orange-200">
+                  問題数<span className="font-bold">{counts["html-basic"] ?? 0}</span>
+                </Badge>
               </CardHeader>
               <CardContent className="space-y-4">
                 <CardDescription>
-                  ウェブページの構造を作るHTMLと、デザインを制御するCSSの基礎から実践的なテクニックまで学習できます。セマンティックHTML、Flexbox、Grid、レスポンシブデザインなどを問題形式で習得。
+                  HTMLとは、ウェブページの構造を作るための言語です。HTMLタグを使ってウェブページの構造を作ります。
                 </CardDescription>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• HTMLタグの使い分け</li>
-                  <li>• CSSセレクタとプロパティ</li>
-                  <li>• レイアウト手法（Flexbox/Grid）</li>
+                  <li>• HTMLの基本構文</li>
+                  <li>• HTMLタグ、属性、要素の使い方</li>
                 </ul>
               </CardContent>
             </Card>
           </Link>
-          <Link href="/quiz/css-basic" className="block">
-            <Card className="border-primary/40 bg-primary/2 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
+
+          <Link
+            href="/quiz/css-basic"
+            className="group block bg-blue-500/5 hover:bg-blue-500/10 transition-colors rounded-lg"
+          >
+            <Card className="border-0 bg-transparent shadow-none h-full cursor-pointer">
               <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <CardTitle>CSS</CardTitle>
-                <Badge>問題数: {counts["css-basic"] ?? 0}</Badge>
+                <CardTitle className="text-blue-700 dark:text-blue-400 group-hover:underline">
+                  CSS
+                </CardTitle>
+                <Badge className="bg-blue-500/20 text-blue-800 dark:text-blue-200">
+                  問題数<span className="font-bold">{counts["css-basic"] ?? 0}</span>
+                </Badge>
               </CardHeader>
               <CardContent className="space-y-4">
                 <CardDescription>
-                  ウェブページの構造を作るHTMLと、デザインを制御するCSSの基礎から実践的なテクニックまで学習できます。セマンティックHTML、Flexbox、Grid、レスポンシブデザインなどを問題形式で習得。
+                  ウェブページのデザインを制御するCSSの基礎から実践的なテクニックまで学習できます。セマンティックCSS、Flexbox、Grid、レスポンシブデザインなどを問題形式で習得。
                 </CardDescription>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• HTMLタグの使い分け</li>
                   <li>• CSSセレクタとプロパティ</li>
                   <li>• レイアウト手法（Flexbox/Grid）</li>
+                  <li>• レスポンシブデザイン</li>
                 </ul>
               </CardContent>
             </Card>
           </Link>
-          <Link href="/quiz/javascript-basic" className="block">
-            <Card className="border-primary/40 bg-primary/2 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
+
+          <Link
+            href="/quiz/javascript-basic"
+            className="group block bg-amber-500/5 hover:bg-amber-500/10 transition-colors rounded-lg"
+          >
+            <Card className="border-0 bg-transparent shadow-none h-full cursor-pointer">
               <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <CardTitle>JavaScript</CardTitle>
+                <CardTitle className="text-amber-700 dark:text-amber-400 group-hover:underline">
+                  JavaScript
+                </CardTitle>
                 {counts["javascript-basic"] > 0 ? (
-                  <Badge>問題数: {counts["javascript-basic"]}</Badge>
+                  <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-200">
+                    問題数<span className="font-bold">{counts["javascript-basic"]}</span>
+                  </Badge>
                 ) : (
                   <Badge variant="secondary">準備中</Badge>
                 )}
@@ -205,11 +227,18 @@ export default async function Home() {
             </Card>
           </Link>
 
-          <Link href="/quiz/react-basic" className="block">
-            <Card className="border-primary/40 bg-primary/2 hover:border-primary/60 hover:bg-primary/10 transition-colors cursor-pointer h-full">
+          <Link
+            href="/quiz/react-basic"
+            className="group block bg-cyan-500/5 hover:bg-cyan-500/10 transition-colors rounded-lg"
+          >
+            <Card className="border-0 bg-transparent shadow-none h-full cursor-pointer">
               <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <CardTitle>React</CardTitle>
-                <Badge>問題数: {counts["react-basic"] ?? 0}</Badge>
+                <CardTitle className="text-cyan-700 dark:text-cyan-400 group-hover:underline">
+                  React
+                </CardTitle>
+                <Badge className="bg-cyan-500/20 text-cyan-800 dark:text-cyan-200">
+                  問題数<span className="font-bold">{counts["react-basic"] ?? 0}</span>
+                </Badge>
               </CardHeader>
               <CardContent className="space-y-4">
                 <CardDescription>
@@ -224,7 +253,7 @@ export default async function Home() {
             </Card>
           </Link>
 
-          <Card className="hover:border-muted-foreground/30 transition-colors">
+          <Card className="bg-muted/30 transition-colors">
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <CardTitle>Node.js</CardTitle>
               <Badge variant="secondary">準備中</Badge>
@@ -284,10 +313,10 @@ export default async function Home() {
                 <span className="font-bold text-primary shrink-0">1.</span>
                 <div>
                   <p className="font-semibold text-foreground mb-1">
-                    基礎から始める
+                    スキマ時間でコツコツと学習
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    HTML/CSSの基礎を固めてから、JavaScriptに進むことをおすすめします。
+                    スキマ時間でも学習できるように、問題を短時間で解けるようになっています。
                   </p>
                 </div>
               </li>
@@ -295,10 +324,10 @@ export default async function Home() {
                 <span className="font-bold text-primary shrink-0">2.</span>
                 <div>
                   <p className="font-semibold text-foreground mb-1">
-                    繰り返し解く
+                    間違えた問題は復習し、理解が定着するまで何度も解き直しましょう。
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    間違えた問題は復習し、理解が定着するまで何度も解き直しましょう。
+                    復習機能は現在準備中です。解説、参考記事についても順次追加予定です。
                   </p>
                 </div>
               </li>
@@ -306,10 +335,10 @@ export default async function Home() {
                 <span className="font-bold text-primary shrink-0">3.</span>
                 <div>
                   <p className="font-semibold text-foreground mb-1">
-                    実際にコードを書く
+                    実際にコードを書いて、理解を深めましょう。
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    問題で学んだ知識は、実際に手を動かしてコードを書くことで定着します。
+                    問題で学んだ知識は、実際に手を動かしてコードを書いて理解を深めましょう。
                   </p>
                 </div>
               </li>
