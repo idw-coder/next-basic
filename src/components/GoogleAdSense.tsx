@@ -38,7 +38,7 @@ export default function GoogleAdSense({
       className={`adsbygoogle ${className || ""}`}
       style={{
         display: "block",
-        // minWidth: "320px",
+        minWidth: "280px",
         minHeight: "100px",
         ...style,
       }}
