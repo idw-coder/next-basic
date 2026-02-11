@@ -1,12 +1,15 @@
 import Link from "next/link";
 import Image from "next/image";
+import { PlayCircle, Clock } from "lucide-react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -17,7 +20,7 @@ const API_BASE_URL =
 
 /** カテゴリslugごとの問題数を取得（SSR用・既存APIのみ使用） */
 async function getQuizCountsBySlugs(
-  slugs: string[]
+  slugs: string[],
 ): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
   try {
@@ -34,12 +37,12 @@ async function getQuizCountsBySlugs(
         if (!cat) return { slug, count: 0 };
         const res = await fetch(
           `${API_BASE_URL}/api/quiz/category/${cat.id}/quizzes`,
-          { cache: "no-store" }
+          { cache: "no-store" },
         );
         if (!res.ok) return { slug, count: 0 };
         const quizzes: unknown[] = await res.json();
         return { slug, count: quizzes.length };
-      })
+      }),
     );
     counts.forEach(({ slug, count }) => (out[slug] = count));
   } catch (error) {
@@ -78,8 +81,8 @@ export default async function Home() {
               ウェブ知識をスキマ時間で学習
             </h2>
             <p className="text-md text-muted-foreground mb-6 md:text-xl md:mb-8">
-              HTML、CSS、JavaScript、React
-              を4択クイズで習得できる無料学習プラットフォーム
+              HTML、CSS、JavaScript、Reactを<br />
+              4択クイズで習得できる無料学習プラットフォーム
             </p>
           </div>
         </div>
@@ -88,7 +91,9 @@ export default async function Home() {
       {/* アラート（お知らせの強調） */}
       <div className="mb-8 md:mb-10">
         <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current max-w-md mx-auto">
-          <AlertTitle className="font-semibold text-center">順次コンテンツ追加中</AlertTitle>
+          <AlertTitle className="font-semibold text-center">
+            順次コンテンツ追加中
+          </AlertTitle>
           <AlertDescription className="justify-center">
             現在html css javascript react クイズから公開開始しています
           </AlertDescription>
@@ -120,7 +125,9 @@ export default async function Home() {
                 スキマ時間でも学べるように、問題を短時間で解けるようになっています。
                 <br />
                 <br />
-                <span className="text-primary">ランダム連続解答機能は現在準備中です。</span>
+                <span className="text-primary">
+                  ランダム連続解答機能は現在準備中です。
+                </span>
               </CardDescription>
             </CardContent>
           </Card>
@@ -146,119 +153,149 @@ export default async function Home() {
           学習カテゴリ
         </h3>
         <div className="grid gap-6 md:grid-cols-2">
-          <Link
-            href="/quiz/html-basic"
-            className="group block bg-orange-500/5 hover:bg-orange-500/10 transition-colors rounded-lg"
-          >
-            <Card className="border-0 bg-transparent shadow-none h-full cursor-pointer">
-              <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <CardTitle className="text-orange-700 dark:text-orange-400 group-hover:underline">
-                  HTML
-                </CardTitle>
-                <Badge className="bg-orange-500/20 text-orange-800 dark:text-orange-200">
-                  問題数<span className="font-bold">{counts["html-basic"] ?? 0}</span>
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <CardDescription>
-                  HTMLとは、ウェブページの構造を作るための言語です。HTMLタグを使ってウェブページの構造を作ります。
-                </CardDescription>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• HTMLの基本構文</li>
-                  <li>• HTMLタグ、属性、要素の使い方</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </Link>
+          <Card className="bg-orange-500/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-orange-700 dark:text-orange-400 group-hover:underline">
+                HTML
+              </CardTitle>
+              <Badge className="bg-orange-500/20 text-orange-800 dark:text-orange-200">
+                問題数
+                <span className="font-bold">{counts["html-basic"] ?? 0}</span>
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                HTMLとは、ウェブページの構造を作るための言語です。HTMLタグを使ってウェブページの構造を作ります。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• HTMLの基本構文</li>
+                <li>• HTMLタグ、属性、要素の使い方</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button className="bg-orange-500 hover:bg-orange-600 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/html-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
 
-          <Link
-            href="/quiz/css-basic"
-            className="group block bg-blue-500/5 hover:bg-blue-500/10 transition-colors rounded-lg"
-          >
-            <Card className="border-0 bg-transparent shadow-none h-full cursor-pointer">
-              <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <CardTitle className="text-blue-700 dark:text-blue-400 group-hover:underline">
-                  CSS
-                </CardTitle>
-                <Badge className="bg-blue-500/20 text-blue-800 dark:text-blue-200">
-                  問題数<span className="font-bold">{counts["css-basic"] ?? 0}</span>
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <CardDescription>
-                  ウェブページのデザインを制御するCSSの基礎から実践的なテクニックまで学習できます。セマンティックCSS、Flexbox、Grid、レスポンシブデザインなどを問題形式で習得。
-                </CardDescription>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• CSSセレクタとプロパティ</li>
-                  <li>• レイアウト手法（Flexbox/Grid）</li>
-                  <li>• レスポンシブデザイン</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </Link>
+          <Card className="bg-blue-500/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-blue-700 dark:text-blue-400 group-hover:underline">
+                CSS
+              </CardTitle>
+              <Badge className="bg-blue-500/20 text-blue-800 dark:text-blue-200">
+                問題数
+                <span className="font-bold">{counts["css-basic"] ?? 0}</span>
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                ウェブページのデザインを制御するCSSの基礎から実践的なテクニックまで学習できます。セマンティックCSS、Flexbox、Grid、レスポンシブデザインなどを問題形式で習得。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• CSSセレクタとプロパティ</li>
+                <li>• レイアウト手法（Flexbox/Grid）</li>
+                <li>• レスポンシブデザイン</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button className="bg-blue-500 hover:bg-blue-600 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/css-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
 
-          <Link
-            href="/quiz/javascript-basic"
-            className="group block bg-amber-500/5 hover:bg-amber-500/10 transition-colors rounded-lg"
-          >
-            <Card className="border-0 bg-transparent shadow-none h-full cursor-pointer">
-              <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <CardTitle className="text-amber-700 dark:text-amber-400 group-hover:underline">
-                  JavaScript
-                </CardTitle>
-                {counts["javascript-basic"] > 0 ? (
-                  <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-200">
-                    問題数<span className="font-bold">{counts["javascript-basic"]}</span>
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">準備中</Badge>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <CardDescription>
-                  ウェブサイトに動きをつけるJavaScriptの基本文法から、非同期処理、DOM操作、ES6+の新機能まで幅広くカバー。実務で必要な知識を体系的に学習できます。
-                </CardDescription>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• 変数、関数、オブジェクト</li>
-                  <li>• Promise、async/await</li>
-                  <li>• DOM操作とイベント処理</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link
-            href="/quiz/react-basic"
-            className="group block bg-cyan-500/5 hover:bg-cyan-500/10 transition-colors rounded-lg"
-          >
-            <Card className="border-0 bg-transparent shadow-none h-full cursor-pointer">
-              <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <CardTitle className="text-cyan-700 dark:text-cyan-400 group-hover:underline">
-                  React
-                </CardTitle>
-                <Badge className="bg-cyan-500/20 text-cyan-800 dark:text-cyan-200">
-                  問題数<span className="font-bold">{counts["react-basic"] ?? 0}</span>
+          <Card className="bg-amber-500/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-amber-700 dark:text-amber-400 group-hover:underline">
+                JavaScript
+              </CardTitle>
+              {counts["javascript-basic"] > 0 ? (
+                <Badge className="bg-amber-500/20 text-amber-800 dark:text-amber-200">
+                  問題数
+                  <span className="font-bold">
+                    {counts["javascript-basic"]}
+                  </span>
                 </Badge>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <CardDescription>
-                  モダンなフロントエンド開発に欠かせないReactライブラリ。コンポーネント設計、Hooks、状態管理など、実践的な問題で理解を深められます。初学者にもわかりやすい解説付き。
-                </CardDescription>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• コンポーネントとProps</li>
-                  <li>• useState、useEffect等のHooks</li>
-                  <li>• イベントハンドリングと状態管理</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </Link>
+              ) : (
+                <Badge variant="secondary">準備中</Badge>
+              )}
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                ウェブサイトに動きをつけるJavaScriptの基本文法から、非同期処理、DOM操作、ES6+の新機能まで幅広くカバー。実務で必要な知識を体系的に学習できます。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• 変数、関数、オブジェクト</li>
+                <li>• Promise、async/await</li>
+                <li>• DOM操作とイベント処理</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button className="bg-amber-500 hover:bg-amber-600 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/javascript-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="bg-cyan-500/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-cyan-700 dark:text-cyan-400 group-hover:underline">
+                React
+              </CardTitle>
+              <Badge className="bg-cyan-500/20 text-cyan-800 dark:text-cyan-200">
+                問題数
+                <span className="font-bold">{counts["react-basic"] ?? 0}</span>
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                モダンなフロントエンド開発に欠かせないReactライブラリ。コンポーネント設計、Hooks、状態管理など、実践的な問題で理解を深められます。初学者にもわかりやすい解説付き。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• コンポーネントとProps</li>
+                <li>• useState、useEffect等のHooks</li>
+                <li>• イベントハンドリングと状態管理</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button className="bg-cyan-500 hover:bg-cyan-600 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/react-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
 
           <Card className="bg-muted/30 transition-colors">
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <CardTitle>Node.js</CardTitle>
               <Badge variant="secondary">準備中</Badge>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
               <CardDescription>
                 サーバーサイドJavaScriptの実行環境Node.js。Express.jsを使ったAPI開発、ファイル操作、モジュールシステムなど、バックエンド開発の基礎を問題で習得できます。
               </CardDescription>
@@ -268,6 +305,81 @@ export default async function Home() {
                 <li>• 非同期処理とストリーム</li>
               </ul>
             </CardContent>
+            <CardFooter className="mt-auto">
+              <Button
+                disabled
+                className="bg-gray-500 hover:bg-gray-600 cursor-not-allowed rounded-full w-full"
+              >
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Clock className="size-5 shrink-0" />
+                  準備中
+                </span>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="bg-blue-500/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-blue-700 dark:text-blue-400">
+                Docker
+              </CardTitle>
+              <Badge className="bg-blue-500/20 text-blue-800 dark:text-blue-200">
+                準備中
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                コンテナ仮想化の事実上の標準であるDocker。イメージのビルド、コンテナの起動・管理、Docker Composeによるマルチコンテナ構成など、実務で必要な知識を問題形式で習得できます。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• イメージとコンテナの基本</li>
+                <li>• Dockerfile、docker-compose</li>
+                <li>• ネットワークとボリューム</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button
+                disabled
+                className="bg-blue-500/50 hover:bg-blue-500/50 cursor-not-allowed rounded-full w-full opacity-80"
+              >
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Clock className="size-5 shrink-0" />
+                  準備中
+                </span>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="bg-amber-600/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-amber-800 dark:text-amber-400">
+                AWS
+              </CardTitle>
+              <Badge className="bg-amber-600/20 text-amber-900 dark:text-amber-200">
+                準備中
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                Amazon Web Servicesの代表的なサービスを問題で学べます。EC2、S3、Lambda、RDSなど、インフラとアプリケーション開発に必要な知識を習得できます。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• EC2、S3、VPCの基本</li>
+                <li>• Lambda、API Gateway</li>
+                <li>• RDS、CloudFront</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button
+                disabled
+                className="bg-amber-600/50 hover:bg-amber-600/50 cursor-not-allowed rounded-full w-full opacity-80"
+              >
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Clock className="size-5 shrink-0" />
+                  準備中
+                </span>
+              </Button>
+            </CardFooter>
           </Card>
         </div>
       </section>
@@ -288,7 +400,9 @@ export default async function Home() {
               </div>
               <div className="pb-3 border-b border-border last:border-0">
                 <p className="text-sm text-muted-foreground">2026/02/08</p>
-                <p className="text-foreground">HTML、CSS、JavaScript、Reactクイズを公開しました</p>
+                <p className="text-foreground">
+                  HTML、CSS、JavaScript、Reactクイズを公開しました
+                </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">今後の予定</p>

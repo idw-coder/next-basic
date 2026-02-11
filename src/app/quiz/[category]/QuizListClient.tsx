@@ -96,27 +96,45 @@ export default function QuizListClient({
 
       {/* 結果表示 */}
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">
-          {isPending ? "読み込み中..." : `該当件数: ${initialQuizzes.length} 件`}
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          {isPending ? (
+            "読み込み中..."
+          ) : (
+            <>
+              該当件数
+              <Badge variant="secondary">{initialQuizzes.length}</Badge>
+              件
+            </>
+          )}
         </p>
         
         {initialQuizzes.length > 0 ? (
           initialQuizzes.map((quiz, index) => (
             <Link key={quiz.id} href={`/quiz/${categorySlug}/${quiz.id}`} className="block">
-              <Card className="transition-colors hover:border-primary/50 hover:bg-primary/5">
+              <Card
+                className={cn(
+                  "transition-colors hover:border-blue-500/40 hover:bg-blue-400/10 py-0"
+                )}
+              >
                 <CardContent className="flex items-center gap-4 p-4">
-                  <Badge variant="default" className="size-8 shrink-0 rounded-lg p-0 flex items-center justify-center text-base font-bold">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "size-8 shrink-0 rounded-lg p-0 flex items-center justify-center text-base font-bold border-0 text-white",
+                      index % 2 === 0 ? "bg-blue-600" : "bg-blue-500"
+                    )}
+                  >
                     {index + 1}
                   </Badge>
                   <div className="flex-1 min-w-0">
                     <p className="text-foreground font-medium mb-1 line-clamp-2">{quiz.question}</p>
                     <div className="flex flex-wrap gap-1">
                       {quiz.tags.map((t) => (
-                        <span key={t.id} className="text-xs text-muted-foreground">#{t.name}</span>
+                        <span key={t.id} className="text-xs text-blue-700/80 dark:text-blue-300/80">#{t.name}</span>
                       ))}
                     </div>
                   </div>
-                  <ChevronRight className="size-5 shrink-0 text-primary" />
+                  <ChevronRight className="size-5 shrink-0 text-blue-600 dark:text-blue-400" />
                 </CardContent>
               </Card>
             </Link>

@@ -148,6 +148,7 @@ export default function QuizClient({
               <Alert
                 variant={isCorrect ? "default" : "destructive"}
                 className={cn(
+                  "mb-6",
                   isCorrect &&
                     "border-green-500 bg-green-500/10 text-green-800 dark:text-green-200 [&_div]:text-current"
                 )}
@@ -163,14 +164,10 @@ export default function QuizClient({
               </Alert>
 
               {quiz.explanation && (
-                <Card className="bg-muted/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">解説</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
+                <div className="">
+                  <div className="font-bold">解説</div>
                     <ExplanationView explanation={quiz.explanation} />
-                  </CardContent>
-                </Card>
+                  </div>
               )}
 
               <Button asChild className="w-full" variant="secondary" size="lg">
