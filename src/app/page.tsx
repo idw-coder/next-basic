@@ -66,6 +66,8 @@ const CATEGORY_SLUGS = [
   "react-basic",
   "vue-basic",
   "nodejs-basic",
+  "aws-basic",
+  "git-basic",
 ] as const;
 
 export default async function Home() {
@@ -86,13 +88,23 @@ export default async function Home() {
             />
           </div>
           <div className="text-center sm:text-left sm:flex-1 sm:max-w-xl">
-            <h2 className="text-3xl font-bold text-foreground mb-4 md:text-4xl">
-              ウェブ知識をスキマ時間で学習
-            </h2>
-            <p className="text-md text-muted-foreground mb-6 md:text-xl md:mb-8">
-              HTML、CSS、JavaScript、React、Vue、Node.jsを<br />
-              4択クイズで習得できる無料学習プラットフォーム
-            </p>
+            <div className="relative border-[3px] border-primary/55 bg-background/95 rounded-[60px] px-5 py-5 md:px-10 md:py-6 shadow-sm">
+              <span
+                aria-hidden="true"
+                className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b-[3px] border-r-[3px] border-primary/55 bg-background/95 sm:hidden"
+              />
+              <span
+                aria-hidden="true"
+                className="absolute -left-2 top-1/2 hidden h-4 w-4 -translate-y-1/2 rotate-45 border-b-[3px] border-l-[3px] border-primary/55 bg-background/95 sm:block"
+              />
+              <h2 className="text-2xl font-bold text-foreground mb-4 md:text-3xl">
+                ウェブ知識を<br className="block sm:hidden" />スキマ時間で学習
+              </h2>
+              <p className="text-md text-muted-foreground md:text-xl">
+                HTML、CSS、JavaScript、React、Vue、Node.js、AWS、Gitを<br />
+                4択クイズで習得できる無料学習プラットフォーム
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -105,9 +117,9 @@ export default async function Home() {
             順次コンテンツ追加中
           </AlertTitle>
           <AlertDescription className="justify-center">
-            現在html css javascript react vue nodejs クイズから公開開始しています
+            現在html css javascript react vue nodejs aws git クイズから公開開始しています
             <br />
-            Docker、AWS、Gitのクイズを順次追加予定です
+            Dockerのクイズを順次追加予定です
           </AlertDescription>
         </Alert>
       </div>
@@ -378,6 +390,72 @@ export default async function Home() {
             </CardFooter>
           </Card>
 
+          <Card className="bg-rose-600/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-rose-700 dark:text-rose-400 group-hover:underline">
+                Git
+              </CardTitle>
+              <Badge className="bg-rose-600/20 text-rose-800 dark:text-rose-200">
+                問題数
+                <span className="font-bold">{counts["git-basic"] ?? 0}</span>
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                バージョン管理システムGitの基本コマンドから、現場で頻発するエラーの解決方法までを網羅したクイズです。実務で役立つ知識を習得できます。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• 基本コマンド（init、clone、commit、status）</li>
+                <li>• ブランチ・マージ・リベース</li>
+                <li>• よくあるエラーと解決方法</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button className="bg-rose-600 hover:bg-rose-700 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/git-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="bg-amber-600/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-amber-800 dark:text-amber-400 group-hover:underline">
+                AWS
+              </CardTitle>
+              <Badge className="bg-amber-600/20 text-amber-900 dark:text-amber-200">
+                問題数
+                <span className="font-bold">{counts["aws-basic"] ?? 0}</span>
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                Amazon Web Servicesの代表的なサービスを問題で学べます。EC2、S3、Lambda、RDSなど、インフラとアプリケーション開発に必要な知識を習得できます。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• EC2、S3、VPCの基本</li>
+                <li>• Lambda、API Gateway</li>
+                <li>• RDS、CloudFront</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button className="bg-amber-600 hover:bg-amber-700 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/aws-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
           <Card className="bg-blue-500/5 border-none rounded-lg h-full">
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <CardTitle className="text-blue-700 dark:text-blue-400">
@@ -401,38 +479,6 @@ export default async function Home() {
               <Button
                 disabled
                 className="bg-blue-500/50 hover:bg-blue-500/50 cursor-not-allowed rounded-full w-full opacity-80"
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Clock className="size-5 shrink-0" />
-                  準備中
-                </span>
-              </Button>
-            </CardFooter>
-          </Card>
-
-          <Card className="bg-amber-600/5 border-none rounded-lg h-full">
-            <CardHeader className="flex flex-row items-start justify-between gap-3">
-              <CardTitle className="text-amber-800 dark:text-amber-400">
-                AWS
-              </CardTitle>
-              <Badge className="bg-amber-600/20 text-amber-900 dark:text-amber-200">
-                準備中
-              </Badge>
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
-              <CardDescription>
-                Amazon Web Servicesの代表的なサービスを問題で学べます。EC2、S3、Lambda、RDSなど、インフラとアプリケーション開発に必要な知識を習得できます。
-              </CardDescription>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• EC2、S3、VPCの基本</li>
-                <li>• Lambda、API Gateway</li>
-                <li>• RDS、CloudFront</li>
-              </ul>
-            </CardContent>
-            <CardFooter className="mt-auto">
-              <Button
-                disabled
-                className="bg-amber-600/50 hover:bg-amber-600/50 cursor-not-allowed rounded-full w-full opacity-80"
               >
                 <span className="inline-flex items-center justify-center gap-2">
                   <Clock className="size-5 shrink-0" />
@@ -470,10 +516,16 @@ export default async function Home() {
                   Vue、Node.jsクイズを公開しました
                 </p>
               </div>
+              <div className="pb-3 border-b border-border last:border-0">
+                <p className="text-sm text-muted-foreground">2026/02/15</p>
+                <p className="text-foreground">
+                  AWS、Gitクイズを公開しました
+                </p>
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">今後の予定</p>
                 <p className="text-foreground">
-                  Git、Docker、AWSのクイズを順次追加予定です
+                  Dockerのクイズを順次追加予定です
                 </p>
               </div>
             </div>
