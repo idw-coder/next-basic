@@ -10,7 +10,7 @@ interface Choice {
   is_correct: boolean;
   display_order?: number;
 }
-  
+
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -89,7 +89,17 @@ export default async function QuizDetailPage({
         </CardHeader>
         <CardContent>
           {/* インタラクション部分をClient Componentに委譲 */}
-          <QuizInteraction quiz={quiz} categorySlug={category} />
+          <QuizInteraction quiz={quiz} categorySlug={category}>
+            {/* 解説をSSRで出力（SEO対策） */}
+            {quiz.explanation && (
+              <div className="explanation-content">
+                <div className="font-bold text-center mb-2">解説</div>
+                <div className="text-muted-foreground whitespace-pre-wrap">
+                  {quiz.explanation}
+                </div>
+              </div>
+            )}
+          </QuizInteraction>
         </CardContent>
       </Card>
     </div>

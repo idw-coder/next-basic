@@ -6,7 +6,6 @@ import { ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import ExplanationView from "./ExplanationView";
 
 interface Choice {
   id: number;
@@ -27,11 +26,13 @@ interface QuizDetail {
 interface QuizInteractionProps {
   quiz: QuizDetail;
   categorySlug: string;
+  children?: React.ReactNode; // SSRで渡された解説コンテンツ
 }
 
 export default function QuizInteraction({
   quiz,
   categorySlug,
+  children,
 }: QuizInteractionProps) {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -125,12 +126,8 @@ export default function QuizInteraction({
             )}
           </Alert>
 
-          {quiz.explanation && (
-            <div className="">
-              <div className="font-bold text-center mb-2">解説</div>
-              <ExplanationView explanation={quiz.explanation} />
-            </div>
-          )}
+          {/* SSRで渡された解説を表示 */}
+          {children && <div className="">{children}</div>}
 
           <Button asChild className="w-full" variant="secondary" size="lg">
             <Link
