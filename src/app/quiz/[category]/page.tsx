@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
-import { ArrowLeft, Megaphone } from "lucide-react";
+import { M_PLUS_Rounded_1c } from "next/font/google";
+import { ArrowLeft, Megaphone, BookOpenCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import QuizListClient from "./QuizListClient";
@@ -11,6 +12,12 @@ const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   "http://localhost:8888";
+
+const popHeadingFont = M_PLUS_Rounded_1c({
+  weight: ["700", "800"],
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export interface Tag {
   id: number;
@@ -167,12 +174,25 @@ export default async function CategoryQuizPage({
             />
           </div>
           <div className="sm:flex-1 sm:max-w-xl">
-            <h1 className="text-2xl font-bold text-foreground mb-2 md:text-3xl">
-              {category.category_name} 問題集
-            </h1>
-            {category.description && (
-              <p className="text-muted-foreground">{category.description}</p>
-            )}
+            <div className="relative rounded-[44px] border-[3px] border-primary/55 bg-background/95 px-5 py-5 md:px-8 md:py-6 shadow-sm">
+              <span
+                aria-hidden="true"
+                className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b-[3px] border-r-[3px] border-primary/55 bg-background/95 sm:hidden"
+              />
+              <span
+                aria-hidden="true"
+                className="absolute -left-2 top-1/2 hidden h-4 w-4 -translate-y-1/2 rotate-45 border-b-[3px] border-l-[3px] border-primary/55 bg-background/95 sm:block"
+              />
+              <h1
+                className={`${popHeadingFont.className} text-2xl font-extrabold text-foreground mb-2 md:text-3xl inline-flex items-center gap-2`}
+              >
+                <BookOpenCheck className="size-6 shrink-0 text-primary" />
+                {category.category_name} 問題集
+              </h1>
+              {category.description && (
+                <p className="text-muted-foreground">{category.description}</p>
+              )}
+            </div>
           </div>
         </section>
       </div>
@@ -181,6 +201,7 @@ export default async function CategoryQuizPage({
       <div className="mb-8 md:mb-10">
         <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current max-w-md mx-auto">
           <AlertTitle className="font-semibold text-center inline-flex items-center justify-center gap-2">
+            <Megaphone className="size-4 shrink-0" />
             順次機能追加中...
           </AlertTitle>
           <AlertDescription className="justify-center">
