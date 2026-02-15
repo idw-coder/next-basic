@@ -65,6 +65,7 @@ const CATEGORY_SLUGS = [
   "javascript-basic",
   "react-basic",
   "vue-basic",
+  "nodejs-basic",
 ] as const;
 
 export default async function Home() {
@@ -89,7 +90,7 @@ export default async function Home() {
               ウェブ知識をスキマ時間で学習
             </h2>
             <p className="text-md text-muted-foreground mb-6 md:text-xl md:mb-8">
-              HTML、CSS、JavaScript、React、Vueを<br />
+              HTML、CSS、JavaScript、React、Vue、Node.jsを<br />
               4択クイズで習得できる無料学習プラットフォーム
             </p>
           </div>
@@ -104,9 +105,9 @@ export default async function Home() {
             順次コンテンツ追加中
           </AlertTitle>
           <AlertDescription className="justify-center">
-            現在html css javascript react vue クイズから公開開始しています
+            現在html css javascript react vue nodejs クイズから公開開始しています
             <br />
-            Docker、AWS、Node.js、Gitのクイズを順次追加予定です
+            Docker、AWS、Gitのクイズを順次追加予定です
           </AlertDescription>
         </Alert>
       </div>
@@ -344,10 +345,15 @@ export default async function Home() {
             </CardFooter>
           </Card>
 
-          <Card className="bg-muted/30 transition-colors">
+          <Card className="bg-green-500/5 border-none rounded-lg h-full">
             <CardHeader className="flex flex-row items-start justify-between gap-3">
-              <CardTitle>Node.js</CardTitle>
-              <Badge variant="secondary">準備中</Badge>
+              <CardTitle className="text-green-700 dark:text-green-400 group-hover:underline">
+                Node.js
+              </CardTitle>
+              <Badge className="bg-green-500/20 text-green-800 dark:text-green-200">
+                問題数
+                <span className="font-bold">{counts["nodejs-basic"] ?? 0}</span>
+              </Badge>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
               <CardDescription>
@@ -360,14 +366,14 @@ export default async function Home() {
               </ul>
             </CardContent>
             <CardFooter className="mt-auto">
-              <Button
-                disabled
-                className="bg-gray-500 hover:bg-gray-600 cursor-not-allowed rounded-full w-full"
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Clock className="size-5 shrink-0" />
-                  準備中
-                </span>
+              <Button className="bg-green-500 hover:bg-green-600 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/nodejs-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
               </Button>
             </CardFooter>
           </Card>
@@ -458,10 +464,16 @@ export default async function Home() {
                   HTML、CSS、JavaScript、Reactクイズを公開しました
                 </p>
               </div>
+              <div className="pb-3 border-b border-border last:border-0">
+                <p className="text-sm text-muted-foreground">2026/02/14</p>
+                <p className="text-foreground">
+                  Vue、Node.jsクイズを公開しました
+                </p>
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">今後の予定</p>
                 <p className="text-foreground">
-                  Node.js、Git、Docker、AWSのクイズを順次追加予定です
+                  Git、Docker、AWSのクイズを順次追加予定です
                 </p>
               </div>
             </div>
