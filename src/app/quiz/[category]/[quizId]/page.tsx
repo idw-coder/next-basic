@@ -59,6 +59,35 @@ function isBlockNoteFormat(explanation: string): boolean {
   }
 }
 
+/**
+ * BlockNote形式のJSONからプレーンテキストを抽出（SEO用）
+ */
+function extractTextFromBlockNote(explanation: string): string {
+  try {
+    const blocks = JSON.parse(explanation);
+    if (!Array.isArray(blocks)) return "";
+
+    const texts: string[] = [];
+    
+    for (const block of blocks) {
+      if (!block || typeof block !== "object") continue;
+      
+      // content配列からテキストを抽出
+      if ("content" in block && Array.isArray(block.content)) {
+        for (const item of block.content) {
+          if (item && typeof item === "object" && "text" in item && typeof item.text === "string") {
+            texts.push(item.text);
+          }
+        }
+      }
+    }
+    
+    return texts.join("");
+  } catch {
+    return "";
+  }
+}
+
 export default async function QuizDetailPage({
   params,
 }: {
@@ -111,10 +140,12 @@ export default async function QuizDetailPage({
         <CardContent>
           {/* インタラクション部分をClient Componentに委譲 */}
           <QuizInteraction quiz={quiz} categorySlug={category}>
-            {/* プレーンテキストの解説のみSSRで出力（SEO対策） */}
-            {quiz.explanation && !isBlockNoteFormat(quiz.explanation) && (
+            {/* 解説テキストをSSRで出力（SEO対策） */}
+            {quiz.explanation && (
               <div className="text-muted-foreground whitespace-pre-wrap">
-                {quiz.explanation}
+                {isBlockNoteFormat(quiz.explanation)
+                  ? extractTextFromBlockNote(quiz.explanation)
+                  : quiz.explanation}
               </div>
             )}
           </QuizInteraction>
@@ -140,6 +171,6 @@ export async function generateMetadata({
 
   return {
     title: `${quiz.question} | ウェブエンジニア問題集`,
-    description: quiz.explanation?.slice(0, 150) || quiz.question,
+    description: quiz.question,
   };
 }
