@@ -68,6 +68,7 @@ const CATEGORY_SLUGS = [
   "nodejs-basic",
   "aws-basic",
   "git-basic",
+  "nginx-basic",
 ] as const;
 
 export default async function Home() {
@@ -101,7 +102,8 @@ export default async function Home() {
                 ウェブ知識を<br className="block sm:hidden" />スキマ時間で学習
               </h2>
               <p className="text-md text-muted-foreground md:text-xl">
-                HTML、CSS、JavaScript、React、Vue、Node.js、AWS、Gitを<br />
+                HTML、CSS、JavaScript、React、Vue、Node.js、Nginx、AWS、Gitを
+                <br />
                 4択クイズで習得できる無料学習プラットフォーム
               </p>
             </div>
@@ -117,7 +119,8 @@ export default async function Home() {
             順次コンテンツ追加中
           </AlertTitle>
           <AlertDescription className="justify-center">
-            現在html css javascript react vue nodejs aws git クイズから公開開始しています
+            現在html css javascript react vue nodejs nginx aws git
+            クイズから公開開始しています
             <br />
             Dockerのクイズを順次追加予定です
           </AlertDescription>
@@ -456,6 +459,39 @@ export default async function Home() {
             </CardFooter>
           </Card>
 
+          <Card className="bg-teal-500/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-teal-700 dark:text-teal-400 group-hover:underline">
+                Nginx
+              </CardTitle>
+              <Badge className="bg-teal-500/20 text-teal-800 dark:text-teal-200">
+                問題数
+                <span className="font-bold">{counts["nginx-basic"] ?? 0}</span>
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                Webサーバー・リバースプロキシとして広く使われるNginxの基礎を学べます。設定ファイルの読み方、リバースプロキシ、静的ファイル配信、HTTPS対応など実務に直結する知識を習得できます。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• location、server、upstreamの基本</li>
+                <li>• リバースプロキシとロードバランシング</li>
+                <li>• SSL/TLS、リダイレクト、キャッシュ設定</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button className="bg-teal-500 hover:bg-teal-600 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/nginx-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
           <Card className="bg-blue-500/5 border-none rounded-lg h-full">
             <CardHeader className="flex flex-row items-start justify-between gap-3">
               <CardTitle className="text-blue-700 dark:text-blue-400">
@@ -519,7 +555,7 @@ export default async function Home() {
               <div className="pb-3 border-b border-border last:border-0">
                 <p className="text-sm text-muted-foreground">2026/02/15</p>
                 <p className="text-foreground">
-                  AWS、Gitクイズを公開しました
+                  AWS、Git、Nginxクイズを公開しました
                 </p>
               </div>
               <div>
