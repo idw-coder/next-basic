@@ -38,6 +38,27 @@ async function getQuiz(quizId: string): Promise<QuizDetail | null> {
   }
 }
 
+/**
+ * BlockNote形式のJSONかどうかを簡易判定
+ */
+function isBlockNoteFormat(explanation: string): boolean {
+  const trimmed = explanation.trim();
+  if (!trimmed.startsWith("[")) return false;
+  try {
+    const parsed = JSON.parse(explanation);
+    if (!Array.isArray(parsed)) return false;
+    return parsed.every(
+      (b) =>
+        b !== null &&
+        typeof b === "object" &&
+        "type" in b &&
+        typeof b.type === "string"
+    );
+  } catch {
+    return false;
+  }
+}
+
 export default async function QuizDetailPage({
   params,
 }: {
@@ -90,13 +111,10 @@ export default async function QuizDetailPage({
         <CardContent>
           {/* インタラクション部分をClient Componentに委譲 */}
           <QuizInteraction quiz={quiz} categorySlug={category}>
-            {/* 解説をSSRで出力（SEO対策） */}
-            {quiz.explanation && (
-              <div className="explanation-content">
-                <div className="font-bold text-center mb-2">解説</div>
-                <div className="text-muted-foreground whitespace-pre-wrap">
-                  {quiz.explanation}
-                </div>
+            {/* プレーンテキストの解説のみSSRで出力（SEO対策） */}
+            {quiz.explanation && !isBlockNoteFormat(quiz.explanation) && (
+              <div className="text-muted-foreground whitespace-pre-wrap">
+                {quiz.explanation}
               </div>
             )}
           </QuizInteraction>

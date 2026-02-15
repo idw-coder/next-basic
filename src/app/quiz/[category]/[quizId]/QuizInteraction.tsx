@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import ExplanationView from "./ExplanationView";
 
 interface Choice {
   id: number;
@@ -26,7 +27,28 @@ interface QuizDetail {
 interface QuizInteractionProps {
   quiz: QuizDetail;
   categorySlug: string;
-  children?: React.ReactNode; // SSRで渡された解説コンテンツ
+  children?: React.ReactNode; // SSRで渡されたプレーンテキスト解説
+}
+
+/**
+ * BlockNote形式のJSONかどうかを簡易判定
+ */
+function isBlockNoteFormat(explanation: string): boolean {
+  const trimmed = explanation.trim();
+  if (!trimmed.startsWith("[")) return false;
+  try {
+    const parsed = JSON.parse(explanation);
+    if (!Array.isArray(parsed)) return false;
+    return parsed.every(
+      (b) =>
+        b !== null &&
+        typeof b === "object" &&
+        "type" in b &&
+        typeof b.type === "string"
+    );
+  } catch {
+    return false;
+  }
 }
 
 export default function QuizInteraction({
@@ -45,6 +67,10 @@ export default function QuizInteraction({
   const isCorrect =
     selectedChoice !== null &&
     quiz.choices.find((c) => c.id === selectedChoice)?.is_correct;
+
+  // BlockNote形式かどうか判定
+  const hasBlockNoteExplanation =
+    quiz.explanation && isBlockNoteFormat(quiz.explanation);
 
   return (
     <div className="space-y-6">
@@ -126,8 +152,19 @@ export default function QuizInteraction({
             )}
           </Alert>
 
-          {/* SSRで渡された解説を表示 */}
-          {children && <div className="">{children}</div>}
+          {/* 解説表示 */}
+          {quiz.explanation && (
+            <div className="">
+              <div className="font-bold text-center mb-2">解説</div>
+              {hasBlockNoteExplanation ? (
+                // BlockNote形式 → ExplanationViewを使用（装飾保持）
+                <ExplanationView explanation={quiz.explanation} />
+              ) : (
+                // プレーンテキスト → SSRで渡されたchildrenを表示
+                children
+              )}
+            </div>
+          )}
 
           <Button asChild className="w-full" variant="secondary" size="lg">
             <Link
