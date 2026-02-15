@@ -64,6 +64,7 @@ const CATEGORY_SLUGS = [
   "css-basic",
   "javascript-basic",
   "react-basic",
+  "vue-basic",
 ] as const;
 
 export default async function Home() {
@@ -88,7 +89,7 @@ export default async function Home() {
               ウェブ知識をスキマ時間で学習
             </h2>
             <p className="text-md text-muted-foreground mb-6 md:text-xl md:mb-8">
-              HTML、CSS、JavaScript、Reactを<br />
+              HTML、CSS、JavaScript、React、Vueを<br />
               4択クイズで習得できる無料学習プラットフォーム
             </p>
           </div>
@@ -103,7 +104,7 @@ export default async function Home() {
             順次コンテンツ追加中
           </AlertTitle>
           <AlertDescription className="justify-center">
-            現在html css javascript react クイズから公開開始しています
+            現在html css javascript react vue クイズから公開開始しています
             <br />
             Docker、AWS、Node.js、Gitのクイズを順次追加予定です
           </AlertDescription>
@@ -301,6 +302,39 @@ export default async function Home() {
               <Button className="bg-cyan-500 hover:bg-cyan-600 cursor-pointer rounded-full w-full">
                 <Link
                   href="/quiz/react-basic"
+                  className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                >
+                  <PlayCircle className="size-5 shrink-0" />
+                  問題を解く
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="bg-emerald-500/5 border-none rounded-lg h-full">
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <CardTitle className="text-emerald-700 dark:text-emerald-400 group-hover:underline">
+                Vue.js
+              </CardTitle>
+              <Badge className="bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
+                問題数
+                <span className="font-bold">{counts["vue-basic"] ?? 0}</span>
+              </Badge>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col space-y-4 min-h-0">
+              <CardDescription>
+                Vue 2/3の基本概念、Options/Composition API、ディレクティブ、ライフサイクルに関する問題です。段階的に学べる実践的なクイズで理解を深められます。
+              </CardDescription>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• ディレクティブ（v-if、v-for、v-model）</li>
+                <li>• Composition API（ref、reactive）</li>
+                <li>• ライフサイクル、Pinia、Vue Router</li>
+              </ul>
+            </CardContent>
+            <CardFooter className="mt-auto">
+              <Button className="bg-emerald-500 hover:bg-emerald-600 cursor-pointer rounded-full w-full">
+                <Link
+                  href="/quiz/vue-basic"
                   className="inline-flex w-full items-center justify-center gap-2 font-bold"
                 >
                   <PlayCircle className="size-5 shrink-0" />
