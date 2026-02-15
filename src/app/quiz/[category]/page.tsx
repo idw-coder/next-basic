@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
-import { M_PLUS_Rounded_1c } from "next/font/google";
 import { ArrowLeft, Megaphone, BookOpenCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,12 +11,6 @@ const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   "http://localhost:8888";
-
-const popHeadingFont = M_PLUS_Rounded_1c({
-  weight: ["700", "800"],
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export interface Tag {
   id: number;
@@ -183,9 +176,7 @@ export default async function CategoryQuizPage({
                 aria-hidden="true"
                 className="absolute -left-2 top-1/2 hidden h-4 w-4 -translate-y-1/2 rotate-45 border-b-[3px] border-l-[3px] border-primary/55 bg-background/95 sm:block"
               />
-              <h1
-                className={`${popHeadingFont.className} text-2xl font-extrabold text-foreground mb-2 md:text-3xl inline-flex items-center gap-2`}
-              >
+              <h1 className="text-2xl font-extrabold text-foreground mb-2 md:text-3xl inline-flex items-center gap-2">
                 <BookOpenCheck className="size-6 shrink-0 text-primary" />
                 {category.category_name} 問題集
               </h1>

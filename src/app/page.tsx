@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import { M_PLUS_Rounded_1c } from "next/font/google";
 import {
   Megaphone,
   Sparkles,
@@ -25,12 +24,6 @@ const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   "http://localhost:8888";
-
-const popHeadingFont = M_PLUS_Rounded_1c({
-  weight: ["700", "800"],
-  subsets: ["latin"],
-  display: "swap",
-});
 
 /** カテゴリslugごとの問題数を取得（SSR用・既存APIのみ使用） */
 async function getQuizCountsBySlugs(
@@ -104,9 +97,7 @@ export default async function Home() {
                 aria-hidden="true"
                 className="absolute -left-2 top-1/2 hidden h-4 w-4 -translate-y-1/2 rotate-45 border-b-[3px] border-l-[3px] border-primary/55 bg-background/95 sm:block"
               />
-              <h2
-                className={`${popHeadingFont.className} text-2xl font-extrabold text-foreground mb-4 md:text-3xl`}
-              >
+              <h2 className="text-2xl font-extrabold text-foreground mb-4 md:text-3xl">
                 ウェブ知識を<br className="block sm:hidden" />スキマ時間で学習
               </h2>
               <p className="text-md text-muted-foreground md:text-xl">
