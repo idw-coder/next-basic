@@ -135,7 +135,7 @@ export default async function QuizDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-md sm:text-lg">{quiz.question}</CardTitle>
+          <h1 className="font-semibold text-md sm:text-lg">{quiz.question}</h1>
         </CardHeader>
         <CardContent>
           {/* インタラクション部分をClient Componentに委譲 */}

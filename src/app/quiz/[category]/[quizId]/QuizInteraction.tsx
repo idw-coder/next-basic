@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -51,6 +51,18 @@ function isBlockNoteFormat(explanation: string): boolean {
   }
 }
 
+/**
+ * 配列をシャッフル（Fisher-Yatesアルゴリズム）
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export default function QuizInteraction({
   quiz,
   categorySlug,
@@ -58,6 +70,9 @@ export default function QuizInteraction({
 }: QuizInteractionProps) {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
+
+  // 選択肢をシャッフル（コンポーネントマウント時に1回だけ）
+  const shuffledChoices = useMemo(() => shuffleArray(quiz.choices), [quiz.choices]);
 
   const handleAnswer = () => {
     if (selectedChoice !== null) setIsAnswered(true);
@@ -75,7 +90,7 @@ export default function QuizInteraction({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        {quiz.choices.map((choice) => {
+        {shuffledChoices.map((choice) => {
           const isSelected = selectedChoice === choice.id;
           const showCorrect = isAnswered && choice.is_correct;
           const showWrong = isAnswered && isSelected && !choice.is_correct;
