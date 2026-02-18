@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useQuizHistory } from "@/hooks/useQuizHistory";
 import ExplanationView from "./ExplanationView";
 
 interface Choice {
@@ -70,18 +71,23 @@ export default function QuizInteraction({
 }: QuizInteractionProps) {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
+  const { addAnswer } = useQuizHistory();
 
   // 選択肢をシャッフル（コンポーネントマウント時に1回だけ）
   const shuffledChoices = useMemo(() => shuffleArray(quiz.choices), [quiz.choices]);
-
-  const handleAnswer = () => {
-    if (selectedChoice !== null) setIsAnswered(true);
-  };
 
   const correctChoice = quiz.choices.find((c) => c.is_correct);
   const isCorrect =
     selectedChoice !== null &&
     quiz.choices.find((c) => c.id === selectedChoice)?.is_correct;
+
+  const handleAnswer = () => {
+    if (selectedChoice === null) return;
+    setIsAnswered(true);
+    // localStorage に履歴を保存
+    const correct = quiz.choices.find((c) => c.id === selectedChoice)?.is_correct ?? false;
+    addAnswer(quiz.id, quiz.category_id, correct);
+  };
 
   // BlockNote形式かどうか判定
   const hasBlockNoteExplanation =

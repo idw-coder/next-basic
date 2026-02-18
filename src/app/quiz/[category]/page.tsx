@@ -103,9 +103,30 @@ export async function generateMetadata({
     return { title: "カテゴリが見つかりません" };
   }
 
+  const title = `${category.category_name} 問題集 | ウェブエンジニア問題集`;
+  const description =
+    category.description ||
+    `${category.category_name}に関するクイズ問題集です。`;
+
   return {
-    title: `${category.category_name} 問題集 | ウェブエンジニア問題集`,
-    description: category.description,
+    title,
+    description,
+    alternates: {
+      canonical: `/quiz/${categorySlug}`,
+    },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      locale: "ja_JP",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    // layout側のサイト共通keywordsを上書き
+    keywords: [category.category_name, "クイズ", "問題集", "ウェブ開発", "学習"],
   };
 }
 
@@ -205,6 +226,7 @@ export default async function CategoryQuizPage({
       <QuizListClient
         initialQuizzes={quizzes}
         tags={tags}
+        categoryId={category.id}
         categorySlug={categorySlug}
         currentQuery={q}
         currentTagSlug={tagSlug}
