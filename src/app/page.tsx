@@ -230,9 +230,9 @@ export default async function Home() {
       </section>
 
       {/* 特徴 */}
-      <section className="mb-16 md:mb-20">
-        <h2 className="text-xl font-bold text-foreground mb-8 md:text-2xl text-center">
-          <Sparkles className="size-5 text-primary inline-block mr-2 -mt-0.5" />
+      <section className="mb-16 md:mb-20 bg-muted/40 rounded-2xl px-5 py-10 md:px-8">
+        <h2 className="text-xl font-bold mb-8 md:text-2xl text-center text-foreground">
+          <Sparkles className="size-5 inline-block mr-2 -mt-0.5 text-primary" />
           このサイトの特徴
         </h2>
         <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
@@ -254,9 +254,9 @@ export default async function Home() {
       </section>
 
       {/* 会員登録CTA */}
-      <section className="mb-16 md:mb-20">
+      <section className="mb-16 md:mb-20 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl px-5 py-10 md:px-8">
         <div className="text-center mb-8">
-          <h2 className="text-xl font-bold text-foreground md:text-2xl mb-2">
+          <h2 className="text-xl font-bold md:text-2xl mb-2 text-foreground">
             無料会員登録で学習をもっと便利に
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -293,7 +293,7 @@ export default async function Home() {
 
       {/* 学習カテゴリ */}
       <section id="categories" className="mb-16 md:mb-20">
-        <h2 className="text-xl font-bold text-foreground mb-8 md:text-2xl text-center">
+        <h2 className="text-xl font-bold mb-8 md:text-2xl text-center text-foreground">
           学習カテゴリ
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -363,8 +363,8 @@ export default async function Home() {
       </section>
 
       {/* 学習のすすめ方 */}
-      <section className="mb-16 md:mb-20">
-        <h2 className="text-xl font-bold text-foreground mb-8 md:text-2xl text-center">
+      <section className="mb-16 md:mb-20 bg-muted/40 rounded-2xl px-5 py-10 md:px-8">
+        <h2 className="text-xl font-bold mb-8 md:text-2xl text-center text-foreground">
           学習のすすめ方
         </h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -387,28 +387,28 @@ export default async function Home() {
 
       {/* お知らせ */}
       <section id="news" className="mb-8">
-        <h2 className="text-xl font-bold text-foreground mb-6 md:text-2xl text-center">
+        <h2 className="text-xl font-bold mb-6 md:text-2xl text-center text-foreground">
           お知らせ
         </h2>
         <div className="max-w-2xl mx-auto divide-y divide-border">
           {NEWS.map((item, i) => (
-            <div key={i} className="flex items-start gap-3 py-3">
-              <span className="text-xs text-muted-foreground shrink-0 pt-0.5 tabular-nums w-20">
-                {item.date}
-              </span>
-              <p className="text-sm text-foreground flex-1">
+            <div key={i} className="py-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {item.date}
+                </span>
                 {item.isNew && (
-                  <Badge variant="destructive" className="mr-2 text-[10px] px-1.5 py-0 leading-4">
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 leading-4">
                     NEW
                   </Badge>
                 )}
-                {item.text}
-              </p>
+              </div>
+              <p className="text-sm text-foreground">{item.text}</p>
             </div>
           ))}
-          <div className="flex items-start gap-3 py-3">
-            <span className="text-xs text-muted-foreground shrink-0 pt-0.5 w-20">今後の予定</span>
-            <p className="text-sm text-foreground flex-1">Dockerクイズを順次追加予定</p>
+          <div className="py-3 space-y-1">
+            <span className="text-xs text-muted-foreground">今後の予定</span>
+            <p className="text-sm text-foreground">Dockerクイズを順次追加予定</p>
           </div>
         </div>
       </section>

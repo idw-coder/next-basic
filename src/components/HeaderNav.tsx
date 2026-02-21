@@ -4,25 +4,23 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, BookOpen, Bell, User as UserIcon, LogIn } from "lucide-react";
 import { createAvatar } from "@dicebear/core";
 import { identicon } from "@dicebear/collection";
-
-const item = "block px-4 py-2.5 sm:px-3 sm:py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 sm:rounded-md transition-colors whitespace-nowrap";
+import { Button } from "@/components/ui/button";
 
 export default function HeaderNav() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
+    setOpen(false);
     setIsLoggedIn(!!localStorage.getItem("token"));
-    setIsOpen(false);
     try {
       const stored = localStorage.getItem("user");
-      const parsed = stored ? JSON.parse(stored) : null;
-      setUserEmail(parsed?.email ?? null);
+      setUserEmail(stored ? JSON.parse(stored)?.email ?? null : null);
     } catch {
       setUserEmail(null);
     }
@@ -34,42 +32,64 @@ export default function HeaderNav() {
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }, [userEmail]);
 
-  return (
-    <div className="relative sm:static">
-      <button
-        onClick={() => setIsOpen((v) => !v)}
-        className="sm:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors"
-        aria-label="メニュー"
-      >
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
+  const linkClass =
+    "flex items-center gap-2.5 px-4 py-3 text-sm text-foreground hover:bg-muted sm:hover:bg-transparent sm:text-muted-foreground sm:hover:text-foreground sm:px-3 sm:py-2 sm:rounded-md transition-colors";
+  const iconClass = "size-4 text-muted-foreground shrink-0";
 
-      <nav className={`flex-col absolute right-0 top-full mt-1 w-44 bg-white border border-gray-100 rounded-sm shadow-lg py-1 z-50 sm:static sm:flex-row sm:items-center sm:gap-1 sm:w-auto sm:bg-transparent sm:border-0 sm:shadow-none sm:py-0 ${isOpen ? "flex" : "hidden sm:flex"}`}>
-        <Link href="/#categories" className={item}>カテゴリ</Link>
-        <Link href="/#news" className={item}>お知らせ</Link>
+  return (
+    <div className="sm:static">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="sm:hidden"
+        aria-label="メニュー"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? <X className="size-5" /> : <Menu className="size-5" />}
+      </Button>
+
+      <nav
+        className={`
+          fixed inset-x-0 top-14 border-b bg-background z-50
+          sm:static sm:flex sm:items-center sm:gap-1 sm:border-0 sm:bg-transparent
+          ${open ? "block" : "hidden sm:flex"}
+        `}
+      >
+        <Link href="/#categories" className={linkClass}>
+          <BookOpen className={iconClass} />
+          カテゴリ
+        </Link>
+        <Link href="/#news" className={linkClass}>
+          <Bell className={iconClass} />
+          お知らせ
+        </Link>
+
         {isLoggedIn ? (
-          <>
-            <Link
-              href="/profile"
-              className="block px-4 py-2.5 sm:px-2 sm:py-1 sm:rounded-md transition-opacity hover:opacity-70"
-              aria-label="プロフィール"
-            >
-              {avatarSvg ? (
-                <Image
-                  src={avatarSvg}
-                  alt="プロフィールアイコン"
-                  width={32}
-                  height={32}
-                  className="rounded-full border bg-muted"
-                  unoptimized
-                />
-              ) : (
-                <span className="text-sm text-gray-600">プロフィール</span>
-              )}
-            </Link>
-          </>
+          <Link href="/profile" className={`${linkClass} sm:ml-1`} aria-label="プロフィール">
+            {avatarSvg ? (
+              <Image
+                src={avatarSvg}
+                alt=""
+                width={16}
+                height={16}
+                className="rounded-full border bg-muted size-4 sm:size-7"
+                unoptimized
+              />
+            ) : (
+              <UserIcon className={iconClass} />
+            )}
+            <span className="sm:hidden">プロフィール</span>
+          </Link>
         ) : (
-          <Link href="/login" className={item}>ログイン</Link>
+          <>
+            <Link href="/login" className={`${linkClass} sm:hidden`}>
+              <LogIn className={iconClass} />
+              ログイン
+            </Link>
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex ml-1 rounded-full" asChild>
+              <Link href="/login">ログイン</Link>
+            </Button>
+          </>
         )}
       </nav>
     </div>

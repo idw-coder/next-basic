@@ -1,16 +1,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
-import { ArrowLeft, Megaphone, BookOpenCheck } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import QuizListClient from "./QuizListClient";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   "http://localhost:8888";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://web-mondai.com";
 
 export interface Tag {
   id: number;
@@ -32,9 +33,6 @@ interface Category {
   description?: string;
 }
 
-/**
- * カテゴリ情報の取得
- */
 async function getCategory(categorySlug: string): Promise<Category | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
@@ -49,9 +47,6 @@ async function getCategory(categorySlug: string): Promise<Category | null> {
   }
 }
 
-/**
- * クイズ一覧の取得（検索条件対応）
- */
 async function getQuizzes(
   categoryId: number,
   q?: string,
@@ -74,9 +69,6 @@ async function getQuizzes(
   }
 }
 
-/**
- * このカテゴリに関連するタグ一覧のみを取得（バックエンドに追加したAPIを使用）
- */
 async function getTagsByCategory(categoryId: number): Promise<Tag[]> {
   try {
     const res = await fetch(
@@ -105,8 +97,9 @@ export async function generateMetadata({
 
   const title = `${category.category_name} 問題集 | ウェブエンジニア問題集`;
   const description =
-    category.description ||
-    `${category.category_name}に関するクイズ問題集です。`;
+    category.description
+      ? `${category.category_name}の問題集。${category.description} 無料で学べる4択クイズ形式。`
+      : `${category.category_name}に関する4択クイズ問題集。基礎から実践まで無料で学べます。`;
 
   return {
     title,
@@ -119,15 +112,59 @@ export async function generateMetadata({
       description,
       type: "website",
       locale: "ja_JP",
+      url: `${SITE_URL}/quiz/${categorySlug}`,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
     },
-    // layout側のサイト共通keywordsを上書き
-    keywords: [category.category_name, "クイズ", "問題集", "ウェブ開発", "学習"],
+    keywords: [
+      category.category_name,
+      `${category.category_name} クイズ`,
+      `${category.category_name} 問題`,
+      "ウェブ開発",
+      "学習",
+      "無料",
+    ],
   };
+}
+
+function buildJsonLd(category: Category, quizzes: Quiz[], categorySlug: string) {
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "ホーム",
+        item: SITE_URL,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: `${category.category_name} 問題集`,
+        item: `${SITE_URL}/quiz/${categorySlug}`,
+      },
+    ],
+  };
+
+  const quizPage = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${category.category_name} 問題集`,
+    description: category.description || `${category.category_name}に関するクイズ問題集`,
+    url: `${SITE_URL}/quiz/${categorySlug}`,
+    numberOfItems: quizzes.length,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "ウェブエンジニア問題集",
+      url: SITE_URL,
+    },
+  };
+
+  return [breadcrumb, quizPage];
 }
 
 export default async function CategoryQuizPage({
@@ -162,75 +199,75 @@ export default async function CategoryQuizPage({
     );
   }
 
-  // クイズ一覧とフィルタ用タグ一覧を並列で取得
   const [quizzes, tags] = await Promise.all([
     getQuizzes(category.id, q, tagSlug),
     getTagsByCategory(category.id),
   ]);
 
+  const jsonLdList = buildJsonLd(category, quizzes, categorySlug);
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
-      <div className="mb-8">
-        <Button asChild variant="link" className="px-0 mb-4 -ml-2">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <ArrowLeft className="size-4 shrink-0" />
-            トップページに戻る
-          </Link>
-        </Button>
-        <section className="flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-6">
+      {/* 構造化データ */}
+      {jsonLdList.map((jsonLd, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      ))}
+
+      {/* パンくずリスト */}
+      <nav aria-label="パンくずリスト" className="mb-6 text-sm">
+        <ol className="flex items-center gap-1 text-muted-foreground">
+          <li>
+            <Link href="/" className="hover:text-foreground transition-colors">ホーム</Link>
+          </li>
+          <li><ChevronRight className="size-3.5" /></li>
+          <li className="text-foreground font-medium">{category.category_name} 問題集</li>
+        </ol>
+      </nav>
+
+      {/* ヘッダー */}
+      <section className="mb-10">
+        <div className="flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-6">
           <div className="flex justify-center sm:justify-start">
             <Image
               src="/inpiration_man_color.png"
-              alt="Quiz Image"
+              alt=""
               width={588}
               height={761}
-              className="w-full max-w-[160px] md:max-w-[200px] h-auto -scale-x-100"
+              className="w-full max-w-[120px] md:max-w-[160px] h-auto -scale-x-100"
             />
           </div>
-          <div className="sm:flex-1 sm:max-w-xl">
-            <div className="relative rounded-[44px] border-[3px] border-primary/55 bg-background/95 px-5 py-5 md:px-8 md:py-6 shadow-sm">
-              <span
-                aria-hidden="true"
-                className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b-[3px] border-r-[3px] border-primary/55 bg-background/95 sm:hidden"
-              />
-              <span
-                aria-hidden="true"
-                className="absolute -left-2 top-1/2 hidden h-4 w-4 -translate-y-1/2 rotate-45 border-b-[3px] border-l-[3px] border-primary/55 bg-background/95 sm:block"
-              />
-              <h1 className="text-2xl font-extrabold text-foreground mb-2 md:text-3xl inline-flex items-center gap-2">
-                <BookOpenCheck className="size-6 shrink-0 text-primary" />
-                {category.category_name} 問題集
-              </h1>
-              {category.description && (
-                <p className="text-muted-foreground">{category.description}</p>
-              )}
-            </div>
+          <div className="sm:flex-1">
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground mb-2 md:text-3xl flex items-center gap-2">
+              <BookOpenCheck className="size-6 shrink-0 text-primary" />
+              {category.category_name} 問題集
+            </h1>
+            {category.description && (
+              <p className="text-muted-foreground leading-relaxed">{category.description}</p>
+            )}
+            <p className="text-sm text-muted-foreground mt-2">
+              全 <span className="font-semibold text-foreground">{quizzes.length}</span> 問
+              {tags.length > 0 && ` ・ ${tags.length} タグ`}
+            </p>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      {/* アラート（お知らせの強調） */}
-      <div className="mb-8 md:mb-10">
-        <Alert className="border-amber-200 bg-amber-50 text-amber-900 [&_div]:text-current max-w-md mx-auto">
-          <AlertTitle className="font-semibold text-center inline-flex items-center justify-center gap-2">
-            <Megaphone className="size-4 shrink-0" />
-            順次機能追加中...
-          </AlertTitle>
-          <AlertDescription className="justify-center">
-            解答履歴機能、ランダム連続解答機能を準備中です
-          </AlertDescription>
-        </Alert>
-      </div>
-
-      {/* UIとURL操作をClient Componentに委譲 */}
-      <QuizListClient
-        initialQuizzes={quizzes}
-        tags={tags}
-        categoryId={category.id}
-        categorySlug={categorySlug}
-        currentQuery={q}
-        currentTagSlug={tagSlug}
-      />
+      {/* 問題一覧 */}
+      <section>
+        <h2 className="sr-only">{category.category_name}の問題一覧</h2>
+        <QuizListClient
+          initialQuizzes={quizzes}
+          tags={tags}
+          categoryId={category.id}
+          categorySlug={categorySlug}
+          currentQuery={q}
+          currentTagSlug={tagSlug}
+        />
+      </section>
     </div>
   );
 }
