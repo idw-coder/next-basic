@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import api from "@/lib/api";
 
 export interface QuizAnswer {
   quizId: number;
@@ -14,6 +15,11 @@ interface QuizHistoryData {
 }
 
 const STORAGE_KEY = "quiz_history";
+
+function isLoggedIn(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!localStorage.getItem("token");
+}
 
 function loadFromStorage(): QuizAnswer[] {
   if (typeof window === "undefined") return [];
@@ -38,10 +44,22 @@ function saveToStorage(answers: QuizAnswer[]): void {
   }
 }
 
+/** ログイン直後にlocalStorageの履歴をDBへ一括同期し、成功したらlocalStorageをクリア */
+export async function syncLocalHistoryToServer(): Promise<void> {
+  const local = loadFromStorage();
+  if (local.length === 0) return;
+
+  try {
+    await api.post("/api/quiz/history/sync", { answers: local });
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error("Failed to sync quiz history:", error);
+  }
+}
+
 export function useQuizHistory() {
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
 
-  // クライアントマウント時に localStorage から読み込む
   useEffect(() => {
     setAnswers(loadFromStorage());
   }, []);
@@ -54,11 +72,18 @@ export function useQuizHistory() {
         isCorrect,
         answeredAt: new Date().toISOString(),
       };
+
       setAnswers((prev) => {
         const updated = [...prev, newAnswer];
         saveToStorage(updated);
         return updated;
       });
+
+      if (isLoggedIn()) {
+        api
+          .post("/api/quiz/history", newAnswer)
+          .catch((err) => console.error("Failed to save answer to server:", err));
+      }
     },
     []
   );
@@ -86,7 +111,6 @@ export function useQuizHistory() {
       const categoryAnswers = answers.filter(
         (a) => a.categoryId === categoryId
       );
-      // クイズごとに最新の回答だけを取る
       const latestByQuiz = new Map<number, QuizAnswer>();
       categoryAnswers.forEach((a) => latestByQuiz.set(a.quizId, a));
 

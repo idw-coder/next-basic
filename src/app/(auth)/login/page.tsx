@@ -14,6 +14,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import api from "@/lib/api";
+import { syncLocalHistoryToServer } from "@/hooks/useQuizHistory";
 
 interface LoginForm {
   email: string;
@@ -35,6 +36,7 @@ export default function LoginPage() {
       const res = await api.post("/api/auth/login", data);
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
+      await syncLocalHistoryToServer();
       router.push("/");
     } catch (error: unknown) {
       const msg = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;

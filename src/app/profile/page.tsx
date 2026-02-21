@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 import { createAvatar } from "@dicebear/core";
 import { identicon } from "@dicebear/collection";
+import { Flame, Target, BookOpen, TrendingUp } from "lucide-react";
 
 interface User {
   id: string;
@@ -27,10 +28,95 @@ interface EditForm {
   confirmPassword: string;
 }
 
+interface QuizAnswerRecord {
+  quizId: number;
+  categoryId: number;
+  isCorrect: boolean;
+  answeredAt: string;
+}
+
+interface CategorySummary {
+  categoryId: number;
+  slug: string;
+  name: string;
+  total: number;
+  correct: number;
+}
+
+interface QuizStats {
+  totalAnswered: number;
+  totalCorrect: number;
+  correctRate: number;
+  streakDays: number;
+  categorySummary: CategorySummary[];
+}
+
 const ROLE_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
   admin: { label: "管理者", variant: "destructive" },
   user: { label: "一般ユーザー", variant: "secondary" },
 };
+
+const CATEGORY_META: Record<number, { slug: string; name: string; color: string }> = {
+  1: { slug: "html-basic", name: "HTML", color: "bg-orange-500" },
+  2: { slug: "css-basic", name: "CSS", color: "bg-blue-500" },
+  3: { slug: "javascript-basic", name: "JavaScript", color: "bg-amber-500" },
+  4: { slug: "react-basic", name: "React", color: "bg-cyan-500" },
+  5: { slug: "vue-basic", name: "Vue.js", color: "bg-emerald-500" },
+  6: { slug: "nodejs-basic", name: "Node.js", color: "bg-green-500" },
+  7: { slug: "aws-basic", name: "AWS", color: "bg-amber-600" },
+  8: { slug: "git-basic", name: "Git", color: "bg-rose-600" },
+  9: { slug: "nginx-basic", name: "Nginx", color: "bg-teal-500" },
+};
+
+function calcStreak(answers: QuizAnswerRecord[]): number {
+  if (answers.length === 0) return 0;
+  const dateSet = new Set(
+    answers.map((a) => new Date(a.answeredAt).toISOString().slice(0, 10))
+  );
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let streak = 0;
+  const d = new Date(today);
+  while (dateSet.has(d.toISOString().slice(0, 10))) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+function buildStats(answers: QuizAnswerRecord[]): QuizStats {
+  const totalAnswered = answers.length;
+  const totalCorrect = answers.filter((a) => a.isCorrect).length;
+
+  const summaryMap = new Map<number, { total: number; correct: number }>();
+  for (const a of answers) {
+    const entry = summaryMap.get(a.categoryId) ?? { total: 0, correct: 0 };
+    entry.total++;
+    if (a.isCorrect) entry.correct++;
+    summaryMap.set(a.categoryId, entry);
+  }
+
+  const categorySummary: CategorySummary[] = Array.from(summaryMap.entries()).map(
+    ([categoryId, s]) => {
+      const meta = CATEGORY_META[categoryId];
+      return {
+        categoryId,
+        slug: meta?.slug ?? "",
+        name: meta?.name ?? `カテゴリ ${categoryId}`,
+        total: s.total,
+        correct: s.correct,
+      };
+    }
+  );
+
+  return {
+    totalAnswered,
+    totalCorrect,
+    correctRate: totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 1000) / 10 : 0,
+    streakDays: calcStreak(answers),
+    categorySummary,
+  };
+}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -41,6 +127,9 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [answers, setAnswers] = useState<QuizAnswerRecord[] | null>(null);
+
+  const quizStats = useMemo(() => (answers ? buildStats(answers) : null), [answers]);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
@@ -61,10 +150,20 @@ export default function ProfilePage() {
       }
     };
 
+    const fetchAnswers = async () => {
+      try {
+        const res = await api.get("/api/quiz/history");
+        setAnswers(res.data);
+      } catch (error) {
+        console.error("Failed to fetch quiz history:", error);
+      }
+    };
+
     if (!localStorage.getItem("token")) {
       router.replace("/login");
     } else {
       fetchUser();
+      fetchAnswers();
     }
   }, [router, handleLogout]);
 
@@ -139,8 +238,9 @@ export default function ProfilePage() {
   const roleInfo = ROLE_LABELS[role] ?? { label: role, variant: "secondary" as const };
 
   return (
-    <div className="flex min-h-[50vh] items-center justify-center px-4 mt-8">
-      <Card className="w-full max-w-sm">
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      {/* プロフィールカード */}
+      <Card>
         <CardHeader className="items-center pb-2">
           <Image
             src={avatarSvg}
@@ -246,6 +346,90 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* クイズ履歴セクション */}
+      {quizStats && (
+        <>
+          {/* 概要カード群 */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Card>
+              <CardContent className="flex flex-col items-center pt-5 pb-4">
+                <BookOpen className="size-5 text-primary mb-1" />
+                <p className="text-2xl font-bold">{quizStats.totalAnswered}</p>
+                <p className="text-xs text-muted-foreground">回答数</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex flex-col items-center pt-5 pb-4">
+                <Target className="size-5 text-green-500 mb-1" />
+                <p className="text-2xl font-bold">{quizStats.correctRate}%</p>
+                <p className="text-xs text-muted-foreground">正答率</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex flex-col items-center pt-5 pb-4">
+                <TrendingUp className="size-5 text-blue-500 mb-1" />
+                <p className="text-2xl font-bold">{quizStats.totalCorrect}</p>
+                <p className="text-xs text-muted-foreground">正解数</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex flex-col items-center pt-5 pb-4">
+                <Flame className="size-5 text-orange-500 mb-1" />
+                <p className="text-2xl font-bold">{quizStats.streakDays}</p>
+                <p className="text-xs text-muted-foreground">連続学習日</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* カテゴリ別進捗 */}
+          {quizStats.categorySummary.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">カテゴリ別の学習進捗</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {quizStats.categorySummary.map((cat) => {
+                  const rate = cat.total > 0 ? Math.round((cat.correct / cat.total) * 100) : 0;
+                  const meta = CATEGORY_META[cat.categoryId];
+                  const barColor = meta?.color ?? "bg-primary";
+                  return (
+                    <div key={cat.categoryId} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{cat.name}</span>
+                        <span className="text-muted-foreground">
+                          {cat.correct}/{cat.total} 正解（{rate}%）
+                        </span>
+                      </div>
+                      <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${barColor}`}
+                          style={{ width: `${rate}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 学習が未開始の場合 */}
+          {quizStats.totalAnswered === 0 && (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <BookOpen className="size-10 text-muted-foreground/50 mx-auto mb-3" />
+                <p className="text-muted-foreground">
+                  まだクイズの回答履歴がありません
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  クイズに挑戦して学習を始めましょう！
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }
