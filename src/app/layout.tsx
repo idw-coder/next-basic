@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
 import GoogleAdSense from "@/components/GoogleAdSense";
+import HeaderNav from "@/components/HeaderNav";
 
 export const metadata: Metadata = {
   title: "ウェブエンジニア問題集 | HTML/CSS/React/Node.js 無料学習サイト",
@@ -45,20 +46,13 @@ export default function RootLayout({
             crossOrigin="anonymous"
           />
         )}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 md:px-6 md:py-4">
-          <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Link href="/" className="flex items-center gap-2 text-lg font-bold text-gray-900 hover:text-blue-600 transition sm:text-xl md:text-2xl shrink-0">
-              <Image src="/favicon.ico" alt="" width={48} height={48} className="shrink-0" />
-              ウェブエンジニア問題集
+        <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
+          <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 font-bold text-gray-900 hover:text-blue-600 transition-colors shrink-0">
+              <Image src="/favicon.ico" alt="" width={32} height={32} className="shrink-0" />
+              <span className="text-base md:text-lg">ウェブエンジニア問題集</span>
             </Link>
-            <nav className="flex flex-wrap gap-4 sm:gap-6 text-sm md:text-base">
-              <Link href="/#categories" className="text-gray-700 hover:text-blue-600 transition">
-                カテゴリ
-              </Link>
-              <Link href="/#news" className="text-gray-700 hover:text-blue-600 transition">
-                お知らせ
-              </Link>
-            </nav>
+            <HeaderNav />
           </div>
         </header>
         <main className="min-h-screen">

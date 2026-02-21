@@ -7,6 +7,7 @@ import {
   Clock,
   RotateCcw,
   PlayCircle,
+  Icon,
 } from "lucide-react";
 import {
   Card,
@@ -165,7 +166,7 @@ export default async function Home() {
               </CardDescription>
             </CardContent>
           </Card>
-          <Card className="bg-primary/8">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <RotateCcw className="size-4 text-primary" />
@@ -175,9 +176,6 @@ export default async function Home() {
             <CardContent>
               <CardDescription>
                 問題の解答履歴を保存し、間違えた問題を復習できるようになっています。
-                <br />
-                <br />
-                <span className="text-primary">こちら現在準備中です。</span>
               </CardDescription>
             </CardContent>
           </Card>
@@ -558,6 +556,12 @@ export default async function Home() {
                   AWS、Git、Nginxクイズを公開しました
                 </p>
               </div>
+              <div className="pb-3 border-b border-border last:border-0">
+                <p className="text-sm text-muted-foreground">2026/02/18</p>
+                <p className="text-foreground">
+                  解答履歴機能を公開しました、間違えた問題を復習できるようになりました
+                </p>
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">今後の予定</p>
                 <p className="text-foreground">
@@ -595,7 +599,7 @@ export default async function Home() {
                     間違えた問題は復習し、理解が定着するまで何度も解き直しましょう。
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    復習機能は現在準備中です。解説、参考記事についても順次追加予定です。
+                    解説、参考記事についても順次追加予定です。
                   </p>
                 </div>
               </li>
