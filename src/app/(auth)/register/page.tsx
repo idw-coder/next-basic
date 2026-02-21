@@ -2,26 +2,30 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "@/lib/api";
+
+interface RegisterForm {
+  name: string;
+  email: string;
+  password: string;
+}
 
 export default function RegisterPage() {
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm();
-  const router = useRouter();
+  } = useForm<RegisterForm>();
   const [errorMsg, setErrorMsg] = useState("");
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: RegisterForm) => {
     try {
       setErrorMsg("");
       await api.post("/api/users", {
@@ -37,9 +41,10 @@ export default function RegisterPage() {
 
       localStorage.setItem("token", loginRes.data.token);
       localStorage.setItem("user", JSON.stringify(loginRes.data.user));
-      window.location.href = "/"; // HeaderNavの状態を確実に更新するためフルリロード
-    } catch (error: any) {
-      setErrorMsg(error.response?.data?.error || "登録に失敗しました");
+      window.location.href = "/";
+    } catch (error: unknown) {
+      const msg = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setErrorMsg(msg || "登録に失敗しました");
     }
   };
 

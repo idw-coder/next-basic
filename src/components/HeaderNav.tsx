@@ -34,12 +34,6 @@ export default function HeaderNav() {
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }, [userEmail]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
-  };
-
   return (
     <div className="relative sm:static">
       <button
@@ -73,7 +67,6 @@ export default function HeaderNav() {
                 <span className="text-sm text-gray-600">プロフィール</span>
               )}
             </Link>
-            {/* <button onClick={handleLogout} className={`w-full text-left ${item}`}>ログアウト</button> */}
           </>
         ) : (
           <Link href="/login" className={item}>ログイン</Link>

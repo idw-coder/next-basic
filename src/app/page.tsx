@@ -7,7 +7,6 @@ import {
   Clock,
   RotateCcw,
   PlayCircle,
-  Icon,
 } from "lucide-react";
 import {
   Card,

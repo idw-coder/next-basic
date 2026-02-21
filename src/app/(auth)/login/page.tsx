@@ -15,24 +15,30 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import api from "@/lib/api";
 
+interface LoginForm {
+  email: string;
+  password: string;
+}
+
 export default function LoginPage() {
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm();
+  } = useForm<LoginForm>();
   const router = useRouter();
   const [errorMsg, setErrorMsg] = useState("");
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: LoginForm) => {
     try {
       setErrorMsg("");
       const res = await api.post("/api/auth/login", data);
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
       router.push("/");
-    } catch (error: any) {
-      setErrorMsg(error.response?.data?.error || "ログインに失敗しました");
+    } catch (error: unknown) {
+      const msg = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setErrorMsg(msg || "ログインに失敗しました");
     }
   };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,11 +42,11 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     router.push("/login");
-  };
+  }, [router]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -66,7 +66,7 @@ export default function ProfilePage() {
     } else {
       fetchUser();
     }
-  }, [router]);
+  }, [router, handleLogout]);
 
   const avatarSvg = useMemo(() => {
     if (!user) return null;
