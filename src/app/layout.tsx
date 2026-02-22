@@ -60,9 +60,9 @@ export default function RootLayout({
         </main>
         <footer className="bg-gray-50 border-t border-gray-200 px-4 py-6 mt-10 md:px-6 md:py-8 md:mt-16">
           <div className="max-w-6xl mx-auto">
-            <div className="flex justify-center w-full min-h-[80px] max-w-[280px] mb-4 md:min-h-[100px] md:mb-6 overflow-hidden">
+            {/* <div className="flex justify-center w-full min-h-[80px] max-w-[280px] mb-4 md:min-h-[100px] md:mb-6 overflow-hidden">
               <GoogleAdSense adSlot={adSlot} />
-            </div>
+            </div> */}
             <div className="text-center text-gray-600 text-xs md:text-sm">
               <p>&copy; 2026 ウェブエンジニア問題集. All rights reserved.</p>
             </div>
