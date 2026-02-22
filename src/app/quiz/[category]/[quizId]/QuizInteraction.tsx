@@ -73,7 +73,7 @@ export default function QuizInteraction({
   const [isAnswered, setIsAnswered] = useState(false);
   const { addAnswer } = useQuizHistory();
 
-  // 選択肢をシャッフル（コンポーネントマウント時に1回だけ）
+  // 選択肢をシャッフル
   const shuffledChoices = useMemo(() => shuffleArray(quiz.choices), [quiz.choices]);
 
   const correctChoice = quiz.choices.find((c) => c.is_correct);

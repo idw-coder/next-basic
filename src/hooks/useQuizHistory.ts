@@ -21,6 +21,9 @@ function isLoggedIn(): boolean {
   return !!localStorage.getItem("token");
 }
 
+/**
+ * localStorageから履歴を読み込み、QuizAnswer[]を返す
+ */
 function loadFromStorage(): QuizAnswer[] {
   if (typeof window === "undefined") return [];
   try {
@@ -34,6 +37,9 @@ function loadFromStorage(): QuizAnswer[] {
   }
 }
 
+/**
+ * localStorageに履歴を保存する
+ */
 function saveToStorage(answers: QuizAnswer[]): void {
   if (typeof window === "undefined") return;
   try {
@@ -44,22 +50,37 @@ function saveToStorage(answers: QuizAnswer[]): void {
   }
 }
 
-/** ログイン直後にlocalStorageの履歴をDBへ一括同期し、成功したらlocalStorageをクリア */
+/** 
+ * ログイン直後にlocalStorageの履歴をDBへ一括同期し、成功したらlocalStorageをクリア 
+ */
 export async function syncLocalHistoryToServer(): Promise<void> {
   const local = loadFromStorage();
   if (local.length === 0) return;
 
   try {
     await api.post("/api/quiz/history/sync", { answers: local });
+    // 同期が成功したらlocalStorageをクリア
     localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
     console.error("Failed to sync quiz history:", error);
   }
 }
 
+/**
+ * @returns 
+ * answers: QuizAnswer[]: クイズ回答履歴, 
+ * addAnswer: (quizId: number, categoryId: number, isCorrect: boolean) => void: クイズ回答を追加, 
+ * getLatestAnswer: (quizId: number) => QuizAnswer | null: 特定クイズの最新回答を取得, 
+ * getAnswerHistory: (quizId: number) => QuizAnswer[]: 特定クイズの全回答履歴を取得, 
+ * getCategoryStats: (categoryId: number) => { total: number, correct: number, incorrect: number }: 特定カテゴリの統計情報を取得, 
+ * clearHistory: () => void: ローカルストレージのクイズ回答履歴をすべてクリア
+ */
 export function useQuizHistory() {
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
 
+  /**
+   * クライアントマウント時に localStorage から読み込む
+   */
   useEffect(() => {
     setAnswers(loadFromStorage());
   }, []);
@@ -124,7 +145,7 @@ export function useQuizHistory() {
     [answers]
   );
 
-  /** 履歴をすべてクリア */
+  /** ローカルストレージのクイズ回答履歴をすべてクリア */
   const clearHistory = useCallback((): void => {
     setAnswers([]);
     if (typeof window !== "undefined") {
