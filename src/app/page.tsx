@@ -12,6 +12,7 @@ import {
   UserCircle,
   ArrowRight,
   ChevronRight,
+  Shuffle,
 } from "lucide-react";
 import {
   Card,
@@ -180,7 +181,8 @@ const CATEGORIES: CategoryDef[] = [
 ];
 
 const NEWS = [
-  { date: "2026/02/21", text: "学習記録・プロフィール機能を公開しました", isNew: true },
+  { date: "2026/02/25", text: "ランダムクイズ機能を公開しました", isNew: true },
+  { date: "2026/02/21", text: "学習記録・プロフィール機能を公開しました", isNew: false },
   { date: "2026/02/18", text: "解答履歴機能を公開しました", isNew: false },
   { date: "2026/02/15", text: "AWS、Git、Nginxクイズを公開しました", isNew: false },
   { date: "2026/02/14", text: "Vue、Node.jsクイズを公開しました", isNew: false },
@@ -289,6 +291,32 @@ export default async function Home() {
             </Link>
           </Button>
         </div>
+      </section>
+
+      {/* ランダムクイズCTA */}
+      <section className="mb-16 md:mb-20">
+        <Link href="/quiz/random" className="block group">
+          <div className="rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-6 sm:p-8 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
+            <div className="flex items-center gap-5 sm:gap-6">
+              <div className="flex size-14 sm:size-16 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/60 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors">
+                <Shuffle className="size-7 sm:size-8 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg sm:text-xl font-extrabold text-foreground mb-1">
+                  ランダムクイズに挑戦！
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  全カテゴリからランダムに出題。5問・10問など問題数を選んでサクッと力試し！
+                </p>
+              </div>
+              <div className="shrink-0 hidden sm:flex items-center gap-1 text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/60 rounded-full px-5 py-2.5 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors">
+                挑戦する
+                <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <ArrowRight className="size-5 text-blue-600 dark:text-blue-400 shrink-0 sm:hidden group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </Link>
       </section>
 
       {/* 学習カテゴリ */}

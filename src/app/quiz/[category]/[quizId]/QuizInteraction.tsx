@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, Trophy } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useQuizHistory } from "@/hooks/useQuizHistory";
+import {
+  getRandomSession,
+  saveRandomSession,
+  clearRandomSession,
+  type RandomQuizSession,
+} from "@/lib/randomQuizSession";
 import ExplanationView from "./ExplanationView";
 
 interface Choice {
@@ -28,12 +36,9 @@ interface QuizDetail {
 interface QuizInteractionProps {
   quiz: QuizDetail;
   categorySlug: string;
-  children?: React.ReactNode; // SSRで渡されたプレーンテキスト解説
+  children?: React.ReactNode;
 }
 
-/**
- * BlockNote形式のJSONかどうかを簡易判定
- */
 function isBlockNoteFormat(explanation: string): boolean {
   const trimmed = explanation.trim();
   if (!trimmed.startsWith("[")) return false;
@@ -52,9 +57,6 @@ function isBlockNoteFormat(explanation: string): boolean {
   }
 }
 
-/**
- * 配列をシャッフル（Fisher-Yatesアルゴリズム）
- */
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -71,10 +73,25 @@ export default function QuizInteraction({
 }: QuizInteractionProps) {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
+  const [randomSession, setRandomSession] =
+    useState<RandomQuizSession | null>(null);
   const { addAnswer } = useQuizHistory();
+  const router = useRouter();
 
-  // 選択肢をシャッフル
-  const shuffledChoices = useMemo(() => shuffleArray(quiz.choices), [quiz.choices]);
+  useEffect(() => {
+    const session = getRandomSession();
+    if (session) {
+      const current = session.quizzes[session.currentIndex];
+      if (current && current.id === quiz.id) {
+        setRandomSession(session);
+      }
+    }
+  }, [quiz.id]);
+
+  const shuffledChoices = useMemo(
+    () => shuffleArray(quiz.choices),
+    [quiz.choices],
+  );
 
   const correctChoice = quiz.choices.find((c) => c.is_correct);
   const isCorrect =
@@ -84,17 +101,92 @@ export default function QuizInteraction({
   const handleAnswer = () => {
     if (selectedChoice === null) return;
     setIsAnswered(true);
-    // localStorage に履歴を保存
-    const correct = quiz.choices.find((c) => c.id === selectedChoice)?.is_correct ?? false;
+    const correct =
+      quiz.choices.find((c) => c.id === selectedChoice)?.is_correct ?? false;
     addAnswer(quiz.id, quiz.category_id, correct);
+
+    if (randomSession) {
+      const updated: RandomQuizSession = {
+        ...randomSession,
+        answers: [
+          ...randomSession.answers,
+          { quizId: quiz.id, isCorrect: correct },
+        ],
+      };
+      saveRandomSession(updated);
+      setRandomSession(updated);
+    }
   };
 
-  // BlockNote形式かどうか判定
+  const handleNextRandomQuiz = () => {
+    if (!randomSession) return;
+    const nextIndex = randomSession.currentIndex + 1;
+
+    if (nextIndex >= randomSession.quizzes.length) {
+      router.push("/quiz/random?completed=1");
+    } else {
+      const updated = { ...randomSession, currentIndex: nextIndex };
+      saveRandomSession(updated);
+      const next = updated.quizzes[nextIndex];
+      router.push(`/quiz/${next.categorySlug}/${next.id}`);
+    }
+  };
+
+  const handleExitRandom = () => {
+    clearRandomSession();
+    setRandomSession(null);
+  };
+
+  const isLastRandomQuiz = randomSession
+    ? randomSession.currentIndex + 1 >= randomSession.quizzes.length
+    : false;
+
+  const randomProgress = randomSession
+    ? ((randomSession.currentIndex + (isAnswered ? 1 : 0)) /
+        randomSession.quizzes.length) *
+      100
+    : 0;
+
   const hasBlockNoteExplanation =
     quiz.explanation && isBlockNoteFormat(quiz.explanation);
 
   return (
     <div className="space-y-6">
+      {/* ランダムクイズ進捗バー */}
+      {randomSession && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              ランダムクイズ{" "}
+              <span className="font-bold text-foreground text-lg">
+                {randomSession.currentIndex + 1}
+              </span>
+              <span className="mx-1">/</span>
+              <span>{randomSession.quizzes.length}</span>
+            </span>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary">
+                {Math.round(randomProgress)}%
+              </Badge>
+              <button
+                type="button"
+                onClick={handleExitRandom}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              >
+                終了する
+              </button>
+            </div>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${randomProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 選択肢 */}
       <div className="space-y-3">
         {shuffledChoices.map((choice) => {
           const isSelected = selectedChoice === choice.id;
@@ -173,29 +265,52 @@ export default function QuizInteraction({
             )}
           </Alert>
 
-          {/* 解説表示 */}
           {quiz.explanation && (
             <div className="">
               <div className="font-bold text-center mb-2">解説</div>
               {hasBlockNoteExplanation ? (
-                // BlockNote形式 → ExplanationViewを使用（装飾保持）
                 <ExplanationView explanation={quiz.explanation} />
               ) : (
-                // プレーンテキスト → SSRで渡されたchildrenを表示
                 children
               )}
             </div>
           )}
 
-          <Button asChild className="w-full" variant="secondary" size="lg">
-            <Link
-              href={`/quiz/${categorySlug}`}
-              className="inline-flex items-center justify-center gap-2"
+          {/* ナビゲーション: ランダムモード or 通常モード */}
+          {randomSession ? (
+            <Button
+              onClick={handleNextRandomQuiz}
+              className="w-full"
+              size="lg"
             >
-              <ArrowLeft className="size-4 shrink-0" />
-              問題一覧に戻る
-            </Link>
-          </Button>
+              {isLastRandomQuiz ? (
+                <>
+                  結果を見る
+                  <Trophy className="size-4 ml-2" />
+                </>
+              ) : (
+                <>
+                  次の問題へ
+                  <ArrowRight className="size-4 ml-2" />
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className="w-full"
+              variant="secondary"
+              size="lg"
+            >
+              <Link
+                href={`/quiz/${categorySlug}`}
+                className="inline-flex items-center justify-center gap-2"
+              >
+                <ArrowLeft className="size-4 shrink-0" />
+                問題一覧に戻る
+              </Link>
+            </Button>
+          )}
         </div>
       )}
     </div>
