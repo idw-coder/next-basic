@@ -364,7 +364,7 @@ export default async function Home() {
           })}
 
           {/* Docker（準備中） */}
-          <Card className="bg-blue-50 dark:bg-blue-500/10 border-none h-full opacity-70">
+          <Card className="bg-blue-50 dark:bg-blue-500/10 gap-0 py-0 border-none h-full opacity-70">
             <CardHeader className="flex flex-row items-center justify-between gap-3 pb-0 px-4 pt-4 sm:px-6 sm:pt-6">
               <CardTitle className="text-blue-600 dark:text-blue-400 text-base sm:text-lg">Docker</CardTitle>
               <Badge variant="secondary" className="text-xs shrink-0">準備中</Badge>

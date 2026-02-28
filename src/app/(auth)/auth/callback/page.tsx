@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { syncLocalHistoryToServer } from "@/hooks/useQuizHistory";
 
-export default function AuthCallbackPage() {
+function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -15,7 +16,6 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    // JWTをデコードしてユーザー情報を取得
     const payload = JSON.parse(atob(token.split(".")[1]));
 
     localStorage.setItem("token", token);
@@ -37,5 +37,17 @@ export default function AuthCallbackPage() {
     <div className="flex min-h-screen items-center justify-center">
       <p className="text-gray-500">ログイン中...</p>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-gray-500">ログイン中...</p>
+      </div>
+    }>
+      <AuthCallbackInner />
+    </Suspense>
   );
 }
