@@ -181,7 +181,8 @@ const CATEGORIES: CategoryDef[] = [
 ];
 
 const NEWS = [
-  { date: "2026/02/25", text: "ランダムクイズ機能を公開しました", isNew: true },
+  { date: "2026/02/28", text: "Google認証を導入しました、サイトの利用をより便利に安心して行えます", isNew: true },
+  { date: "2026/02/25", text: "ランダムクイズ機能を公開しました", isNew: false },
   { date: "2026/02/21", text: "学習記録・プロフィール機能を公開しました", isNew: false },
   { date: "2026/02/18", text: "解答履歴機能を公開しました", isNew: false },
   { date: "2026/02/15", text: "AWS、Git、Nginxクイズを公開しました", isNew: false },
@@ -321,39 +322,39 @@ export default async function Home() {
 
       {/* 学習カテゴリ */}
       <section id="categories" className="mb-16 md:mb-20">
-        <h2 className="text-xl font-bold mb-8 md:text-2xl text-center text-foreground">
+        <h2 className="text-xl font-bold mb-6 md:mb-8 md:text-2xl text-center text-foreground">
           学習カテゴリ
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {CATEGORIES.map((cat) => {
             const count = counts[cat.slug] ?? 0;
             return (
-              <Card key={cat.slug} className={`${cat.bgColor} border-none h-full`}>
-                <CardHeader className="flex flex-row items-center justify-between gap-3 pb-0">
-                  <CardTitle className={`${cat.color} text-lg`}>{cat.name}</CardTitle>
-                  <Badge className={`${cat.badgeBg} ${cat.badgeText} text-xs`}>
+              <Card key={cat.slug} className={`${cat.bgColor} gap-0 py-0 border-none h-full`}>
+                <CardHeader className="flex flex-row items-center justify-between gap-3 pb-0 px-4 pt-4 sm:px-6 sm:pt-6">
+                  <CardTitle className={`${cat.color} text-base sm:text-lg`}>{cat.name}</CardTitle>
+                  <Badge className={`${cat.badgeBg} ${cat.badgeText} text-xs shrink-0`}>
                     {count > 0 ? `${count}問` : "準備中"}
                   </Badge>
                 </CardHeader>
-                <CardContent className="flex-1 space-y-3">
-                  <CardDescription className="leading-relaxed">
+                <CardContent className="flex-1 space-y-2 sm:space-y-3 px-4 sm:px-6 pt-2 sm:pt-3">
+                  <CardDescription className="leading-relaxed text-xs sm:text-sm">
                     {cat.description}
                   </CardDescription>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {cat.topics.map((t) => (
-                      <span key={t} className="text-[11px] text-muted-foreground bg-background/60 rounded-full px-2.5 py-0.5">
+                      <span key={t} className="text-[10px] sm:text-[11px] text-muted-foreground bg-background/60 rounded-full px-2 py-0.5">
                         {t}
                       </span>
                     ))}
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button className={`${cat.hoverColor} rounded-full w-full text-white`} asChild>
+                <CardFooter className="px-4 pb-4 sm:px-6 sm:pb-6 pt-2 sm:pt-3">
+                  <Button className={`${cat.hoverColor} rounded-full w-full text-white h-8 sm:h-10 text-xs sm:text-sm`} asChild>
                     <Link
                       href={`/quiz/${cat.slug}`}
                       className="inline-flex w-full items-center justify-center gap-2 font-bold"
                     >
-                      <PlayCircle className="size-4 shrink-0" />
+                      <PlayCircle className="size-3.5 sm:size-4 shrink-0" />
                       問題を解く
                     </Link>
                   </Button>
@@ -364,25 +365,25 @@ export default async function Home() {
 
           {/* Docker（準備中） */}
           <Card className="bg-blue-50 dark:bg-blue-500/10 border-none h-full opacity-70">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-0">
-              <CardTitle className="text-blue-600 dark:text-blue-400 text-lg">Docker</CardTitle>
-              <Badge variant="secondary" className="text-xs">準備中</Badge>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-0 px-4 pt-4 sm:px-6 sm:pt-6">
+              <CardTitle className="text-blue-600 dark:text-blue-400 text-base sm:text-lg">Docker</CardTitle>
+              <Badge variant="secondary" className="text-xs shrink-0">準備中</Badge>
             </CardHeader>
-            <CardContent className="flex-1 space-y-3">
-              <CardDescription className="leading-relaxed">
+            <CardContent className="flex-1 space-y-2 sm:space-y-3 px-4 sm:px-6 pt-2 sm:pt-3">
+              <CardDescription className="leading-relaxed text-xs sm:text-sm">
                 コンテナ仮想化のDocker。イメージのビルド、Docker Composeなどを問題形式で習得。
               </CardDescription>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1">
                 {["イメージ・コンテナ", "Dockerfile", "ネットワーク"].map((t) => (
-                  <span key={t} className="text-[11px] text-muted-foreground bg-background/60 rounded-full px-2.5 py-0.5">
+                  <span key={t} className="text-[10px] sm:text-[11px] text-muted-foreground bg-background/60 rounded-full px-2 py-0.5">
                     {t}
                   </span>
                 ))}
               </div>
             </CardContent>
-            <CardFooter>
-              <Button disabled className="rounded-full w-full opacity-50 cursor-not-allowed">
-                <Clock className="size-4 shrink-0 mr-2" />
+            <CardFooter className="px-4 pb-4 sm:px-6 sm:pb-6 pt-2 sm:pt-3">
+              <Button disabled className="rounded-full w-full opacity-50 cursor-not-allowed h-8 sm:h-10 text-xs sm:text-sm">
+                <Clock className="size-3.5 sm:size-4 shrink-0 mr-2" />
                 準備中
               </Button>
             </CardFooter>
@@ -436,7 +437,10 @@ export default async function Home() {
           ))}
           <div className="py-3 space-y-1">
             <span className="text-xs text-muted-foreground">今後の予定</span>
-            <p className="text-sm text-foreground">Dockerクイズを順次追加予定</p>
+            <p className="text-sm text-foreground">
+              Docker、セキュリティ、コンピューターサイエンス、データ構造アルゴリズム
+              間違っているコード2択クイズ、クイズを順次追加予定
+            </p>
           </div>
         </div>
       </section>

@@ -2,6 +2,7 @@
 
 import type { PartialBlock } from "@blocknote/core";
 import "@blocknote/core/fonts/inter.css";
+import "@blocknote/core/style.css";
 import "@blocknote/mantine/style.css";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
