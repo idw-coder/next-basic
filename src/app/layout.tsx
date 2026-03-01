@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
-import GoogleAdSense, { AdSenseScript } from "@/components/GoogleAdSense";
+import GoogleAdSense, { HideAdsForEntry } from "@/components/GoogleAdSense";
 import HeaderNav from "@/components/HeaderNav";
 
 export const metadata: Metadata = {
@@ -41,8 +41,13 @@ export default function RootLayout({
       </head>
       <body>
         {clientId && !isDevelopment && (
-          <AdSenseScript clientId={clientId} />
+          <script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientId}`}
+            crossOrigin="anonymous"
+          />
         )}
+        <HideAdsForEntry />
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
           <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 font-bold text-gray-900 hover:text-blue-600 transition-colors shrink-0">

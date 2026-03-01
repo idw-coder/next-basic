@@ -72,6 +72,7 @@ export default function HeaderNav() {
           <Bell className={iconClass} />
           お知らせ
         </Link>
+        {/* entryのURLのみ表示 */}
         {showTech && (
           <Link href="/about/tech?key=entry" className={linkClass}>
             <Wrench className={iconClass} />
