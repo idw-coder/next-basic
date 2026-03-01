@@ -15,6 +15,11 @@ declare global {
   }
 }
 
+/**
+ * ?entry または ?key=entry 付きでアクセスした場合、sessionStorage にフラグを保存し、
+ * そのタブが開いている間は広告要素を CSS で非表示にする。
+ * タブを閉じると sessionStorage がクリアされ、通常表示に戻る。
+ */
 export function HideAdsForEntry() {
   const [hide, setHide] = useState(false);
 
