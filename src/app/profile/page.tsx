@@ -56,17 +56,28 @@ const ROLE_LABELS: Record<string, { label: string; variant: "default" | "seconda
   user: { label: "一般ユーザー", variant: "secondary" },
 };
 
-const CATEGORY_META: Record<number, { slug: string; name: string; color: string }> = {
-  1: { slug: "html-basic", name: "HTML", color: "bg-orange-500" },
-  2: { slug: "css-basic", name: "CSS", color: "bg-blue-500" },
-  3: { slug: "javascript-basic", name: "JavaScript", color: "bg-amber-500" },
-  4: { slug: "react-basic", name: "React", color: "bg-cyan-500" },
-  5: { slug: "vue-basic", name: "Vue.js", color: "bg-emerald-500" },
-  6: { slug: "nodejs-basic", name: "Node.js", color: "bg-green-500" },
-  7: { slug: "aws-basic", name: "AWS", color: "bg-amber-600" },
-  8: { slug: "git-basic", name: "Git", color: "bg-rose-600" },
-  9: { slug: "nginx-basic", name: "Nginx", color: "bg-teal-500" },
+// スラグから色へのマッピング（新カテゴリ追加時はここに追記するだけでよい）
+const SLUG_COLOR: Record<string, string> = {
+  "html-basic": "bg-orange-500",
+  "css-basic": "bg-blue-500",
+  "javascript-basic": "bg-amber-500",
+  "react-basic": "bg-cyan-500",
+  "vue-basic": "bg-emerald-500",
+  "nodejs-basic": "bg-green-500",
+  "aws-basic": "bg-amber-600",
+  "git-basic": "bg-rose-600",
+  "nginx-basic": "bg-teal-500",
+  "ts-general": "bg-indigo-500",
+  "security-general": "bg-red-500",
+  "cs-basic": "bg-purple-500",
 };
+
+interface ApiCategory {
+  id: number;
+  slug: string;
+  categoryName?: string;
+  category_name?: string;
+}
 
 function calcStreak(answers: QuizAnswerRecord[]): number {
   if (answers.length === 0) return 0;
@@ -84,7 +95,10 @@ function calcStreak(answers: QuizAnswerRecord[]): number {
   return streak;
 }
 
-function buildStats(answers: QuizAnswerRecord[]): QuizStats {
+function buildStats(
+  answers: QuizAnswerRecord[],
+  categoryById: Record<number, { slug: string; name: string }>,
+): QuizStats {
   const totalAnswered = answers.length;
   const totalCorrect = answers.filter((a) => a.isCorrect).length;
 
@@ -98,7 +112,7 @@ function buildStats(answers: QuizAnswerRecord[]): QuizStats {
 
   const categorySummary: CategorySummary[] = Array.from(summaryMap.entries()).map(
     ([categoryId, s]) => {
-      const meta = CATEGORY_META[categoryId];
+      const meta = categoryById[categoryId];
       return {
         categoryId,
         slug: meta?.slug ?? "",
@@ -128,8 +142,12 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [answers, setAnswers] = useState<QuizAnswerRecord[] | null>(null);
+  const [categoryById, setCategoryById] = useState<Record<number, { slug: string; name: string }>>({});
 
-  const quizStats = useMemo(() => (answers ? buildStats(answers) : null), [answers]);
+  const quizStats = useMemo(
+    () => (answers ? buildStats(answers, categoryById) : null),
+    [answers, categoryById],
+  );
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
@@ -159,11 +177,29 @@ export default function ProfilePage() {
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get("/api/quiz/categories");
+        const cats: ApiCategory[] = res.data;
+        const map: Record<number, { slug: string; name: string }> = {};
+        for (const c of cats) {
+          map[c.id] = {
+            slug: c.slug,
+            name: c.categoryName ?? c.category_name ?? c.slug,
+          };
+        }
+        setCategoryById(map);
+      } catch (error) {
+        console.error("Failed to fetch categories:", error);
+      }
+    };
+
     if (!localStorage.getItem("token")) {
       router.replace("/login");
     } else {
       fetchUser();
       fetchAnswers();
+      fetchCategories();
     }
   }, [router, handleLogout]);
 
@@ -391,8 +427,7 @@ export default function ProfilePage() {
               <CardContent className="space-y-4">
                 {quizStats.categorySummary.map((cat) => {
                   const rate = cat.total > 0 ? Math.round((cat.correct / cat.total) * 100) : 0;
-                  const meta = CATEGORY_META[cat.categoryId];
-                  const barColor = meta?.color ?? "bg-primary";
+                  const barColor = SLUG_COLOR[cat.slug] ?? "bg-primary";
                   return (
                     <div key={cat.categoryId} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
