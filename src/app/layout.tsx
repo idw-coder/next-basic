@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
@@ -48,7 +49,9 @@ export default function RootLayout({
               <Image src="/favicon.ico" alt="" width={32} height={32} className="shrink-0" />
               <span className="text-base md:text-lg">ウェブエンジニア問題集</span>
             </Link>
-            <HeaderNav />
+            <Suspense>
+              <HeaderNav />
+            </Suspense>
           </div>
         </header>
         <main className="min-h-screen">
