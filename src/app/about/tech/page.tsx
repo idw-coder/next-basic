@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import MermaidDiagram from "@/components/MermaidDiagram";
 
@@ -35,7 +36,7 @@ const techStack = [
       { name: "Tailwind CSS v4", note: "ユーティリティファースト" },
       { name: "shadcn/ui", note: "Radix UI ベースのコンポーネント" },
       {
-        name: "Vue 3 + Vuetify（管理画面）",
+        name: "Vue 3 + Vuetify（管理画面）、Vuex（状態管理）",
         note: "管理ダッシュボード",
         wip: true,
       },
@@ -80,7 +81,15 @@ const techStack = [
   },
 ];
 
-export default function TechPage() {
+export default async function TechPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { key } = await searchParams;
+  if (key !== "entry") {
+    notFound();
+  }
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 md:py-16">
       <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

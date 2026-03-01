@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Menu, X, BookOpen, Bell, User as UserIcon, LogIn, Wrench } from "lucide-react";
 import { createAvatar } from "@dicebear/core";
 import { identicon } from "@dicebear/collection";
@@ -13,7 +13,16 @@ export default function HeaderNav() {
   const [open, setOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showTech, setShowTech] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.has("entry") || searchParams.get("key") === "entry") {
+      sessionStorage.setItem("entry", "1");
+    }
+    setShowTech(sessionStorage.getItem("entry") === "1");
+  }, [searchParams]);
 
   useEffect(() => {
     setOpen(false);
@@ -63,11 +72,12 @@ export default function HeaderNav() {
           <Bell className={iconClass} />
           お知らせ
         </Link>
-        <Link href="/about/tech" className={linkClass}>
-          <Wrench className={iconClass} />
-          技術構成
-        </Link>
-
+        {showTech && (
+          <Link href="/about/tech?key=entry" className={linkClass}>
+            <Wrench className={iconClass} />
+            技術構成
+          </Link>
+        )}
         {isLoggedIn ? (
           <Link href="/profile" className={`${linkClass} sm:ml-1`} aria-label="プロフィール">
             {avatarSvg ? (
