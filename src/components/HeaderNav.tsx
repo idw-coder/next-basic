@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, BookOpen, Bell, User as UserIcon, LogIn } from "lucide-react";
+import { Menu, X, BookOpen, Bell, User as UserIcon, LogIn, Wrench } from "lucide-react";
 import { createAvatar } from "@dicebear/core";
 import { identicon } from "@dicebear/collection";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,10 @@ export default function HeaderNav() {
         <Link href="/#news" className={linkClass}>
           <Bell className={iconClass} />
           お知らせ
+        </Link>
+        <Link href="/about/tech" className={linkClass}>
+          <Wrench className={iconClass} />
+          技術構成
         </Link>
 
         {isLoggedIn ? (

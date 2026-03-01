@@ -73,6 +73,9 @@ const CATEGORY_SLUGS = [
   "aws-basic",
   "git-basic",
   "nginx-basic",
+  "ts-general",
+  "security-general",
+  "cs-basic",
 ] as const;
 
 interface CategoryDef {
@@ -178,10 +181,41 @@ const CATEGORIES: CategoryDef[] = [
     description: "リバースプロキシや静的ファイル配信、HTTPS対応など実務に直結する知識。",
     topics: ["location / server", "リバースプロキシ", "SSL / キャッシュ"],
   },
+  {
+    slug: "ts-general", name: "TypeScript",
+    color: "text-indigo-600 dark:text-indigo-400",
+    hoverColor: "bg-indigo-500 hover:bg-indigo-600",
+    bgColor: "bg-indigo-50 dark:bg-indigo-500/10",
+    badgeBg: "bg-indigo-100 dark:bg-indigo-500/20",
+    badgeText: "text-indigo-700 dark:text-indigo-300",
+    description: "基本文法・型システム・Utility Typesからよくあるコンパイルエラーまで幅広くカバー。",
+    topics: ["型システム・ジェネリクス", "Utility Types", "コンパイルエラー"],
+  },
+  {
+    slug: "security-general", name: "セキュリティ",
+    color: "text-red-600 dark:text-red-400",
+    hoverColor: "bg-red-500 hover:bg-red-600",
+    bgColor: "bg-red-50 dark:bg-red-500/10",
+    badgeBg: "bg-red-100 dark:bg-red-500/20",
+    badgeText: "text-red-700 dark:text-red-300",
+    description: "XSS・CSRF・SQLインジェクションなどWebセキュリティの基礎知識を問題形式で学習。",
+    topics: ["XSS / CSRF", "暗号化・認証", "ネットワーク"],
+  },
+  {
+    slug: "cs-basic", name: "CS基礎",
+    color: "text-purple-600 dark:text-purple-400",
+    hoverColor: "bg-purple-500 hover:bg-purple-600",
+    bgColor: "bg-purple-50 dark:bg-purple-500/10",
+    badgeBg: "bg-purple-100 dark:bg-purple-500/20",
+    badgeText: "text-purple-700 dark:text-purple-300",
+    description: "データ構造・アルゴリズム・計算量など、コンピュータサイエンスの基礎を網羅。",
+    topics: ["データ構造", "アルゴリズム", "計算量・エラー"],
+  },
 ];
 
 const NEWS = [
-  { date: "2026/02/28", text: "Google認証を導入しました、サイトの利用をより便利に安心して行えます", isNew: true },
+  { date: "2026/03/01", text: "TypeScript・セキュリティ・CS基礎クイズを公開しました", isNew: true },
+  { date: "2026/02/28", text: "Google認証を導入しました、サイトの利用をより便利に安心して行えます", isNew: false },
   { date: "2026/02/25", text: "ランダムクイズ機能を公開しました", isNew: false },
   { date: "2026/02/21", text: "学習記録・プロフィール機能を公開しました", isNew: false },
   { date: "2026/02/18", text: "解答履歴機能を公開しました", isNew: false },
@@ -215,9 +249,9 @@ export default async function Home() {
               <span className="text-primary">スキマ時間</span>で学習
             </h1>
             <p className="text-base text-muted-foreground md:text-lg mb-6 leading-relaxed">
-              HTML、CSS、JavaScript、React、Vue、Node.js など
+              HTML、CSS、JavaScript、TypeScript、セキュリティ など
               <br className="hidden md:block" />
-              9カテゴリの4択クイズで実践的なウェブ知識を身につけよう
+              12カテゴリの4択クイズで実践的なウェブ知識を身につけよう
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <Button size="lg" className="rounded-full px-8" asChild>
@@ -438,8 +472,7 @@ export default async function Home() {
           <div className="py-3 space-y-1">
             <span className="text-xs text-muted-foreground">今後の予定</span>
             <p className="text-sm text-foreground">
-              Docker、セキュリティ、コンピューターサイエンス、データ構造アルゴリズム
-              間違っているコード2択クイズ、クイズを順次追加予定
+              Docker、データ構造アルゴリズム、間違っているコード2択クイズなどを順次追加予定
             </p>
           </div>
         </div>
