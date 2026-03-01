@@ -38,9 +38,17 @@ async function getQuiz(quizId: string): Promise<QuizDetail | null> {
   }
 }
 
-/**
- * BlockNote形式のJSONかどうかを簡易判定
- */
+function isTiptapFormat(explanation: string): boolean {
+  const trimmed = explanation.trim();
+  if (!trimmed.startsWith("{")) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed?.type === "doc" && Array.isArray(parsed?.content);
+  } catch {
+    return false;
+  }
+}
+
 function isBlockNoteFormat(explanation: string): boolean {
   const trimmed = explanation.trim();
   if (!trimmed.startsWith("[")) return false;
@@ -48,7 +56,7 @@ function isBlockNoteFormat(explanation: string): boolean {
     const parsed = JSON.parse(explanation);
     if (!Array.isArray(parsed)) return false;
     return parsed.every(
-      (b) =>
+      (b: Record<string, unknown>) =>
         b !== null &&
         typeof b === "object" &&
         "type" in b &&
@@ -59,30 +67,35 @@ function isBlockNoteFormat(explanation: string): boolean {
   }
 }
 
-/**
- * BlockNote形式のJSONからプレーンテキストを抽出（SEO用）
- */
-function extractTextFromBlockNote(explanation: string): string {
-  try {
-    const blocks = JSON.parse(explanation);
-    if (!Array.isArray(blocks)) return "";
+function isStructuredExplanation(explanation: string): boolean {
+  return isTiptapFormat(explanation) || isBlockNoteFormat(explanation);
+}
 
-    const texts: string[] = [];
-    
-    for (const block of blocks) {
-      if (!block || typeof block !== "object") continue;
-      
-      // content配列からテキストを抽出
-      if ("content" in block && Array.isArray(block.content)) {
-        for (const item of block.content) {
-          if (item && typeof item === "object" && "text" in item && typeof item.text === "string") {
-            texts.push(item.text);
-          }
-        }
-      }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTextFromNodes(nodes: any[]): string {
+  const texts: string[] = [];
+  for (const node of nodes) {
+    if (!node || typeof node !== "object") continue;
+    if (node.type === "text" && typeof node.text === "string") {
+      texts.push(node.text);
     }
-    
-    return texts.join("");
+    if (Array.isArray(node.content)) {
+      texts.push(extractTextFromNodes(node.content));
+    }
+  }
+  return texts.join("");
+}
+
+function extractPlainText(explanation: string): string {
+  try {
+    const parsed = JSON.parse(explanation);
+    if (parsed?.type === "doc" && Array.isArray(parsed?.content)) {
+      return extractTextFromNodes(parsed.content);
+    }
+    if (Array.isArray(parsed)) {
+      return extractTextFromNodes(parsed);
+    }
+    return "";
   } catch {
     return "";
   }
@@ -143,8 +156,8 @@ export default async function QuizDetailPage({
             {/* 解説テキストをSSRで出力（SEO対策） */}
             {quiz.explanation && (
               <div className="text-muted-foreground whitespace-pre-wrap">
-                {isBlockNoteFormat(quiz.explanation)
-                  ? extractTextFromBlockNote(quiz.explanation)
+                {isStructuredExplanation(quiz.explanation)
+                  ? extractPlainText(quiz.explanation)
                   : quiz.explanation}
               </div>
             )}

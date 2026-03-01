@@ -39,22 +39,32 @@ interface QuizInteractionProps {
   children?: React.ReactNode;
 }
 
-function isBlockNoteFormat(explanation: string): boolean {
+function isStructuredExplanation(explanation: string): boolean {
   const trimmed = explanation.trim();
-  if (!trimmed.startsWith("[")) return false;
-  try {
-    const parsed = JSON.parse(explanation);
-    if (!Array.isArray(parsed)) return false;
-    return parsed.every(
-      (b) =>
-        b !== null &&
-        typeof b === "object" &&
-        "type" in b &&
-        typeof b.type === "string"
-    );
-  } catch {
-    return false;
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parsed?.type === "doc" && Array.isArray(parsed?.content);
+    } catch {
+      return false;
+    }
   }
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (!Array.isArray(parsed)) return false;
+      return parsed.every(
+        (b: Record<string, unknown>) =>
+          b !== null &&
+          typeof b === "object" &&
+          "type" in b &&
+          typeof b.type === "string"
+      );
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -147,8 +157,8 @@ export default function QuizInteraction({
       100
     : 0;
 
-  const hasBlockNoteExplanation =
-    quiz.explanation && isBlockNoteFormat(quiz.explanation);
+  const hasStructuredExplanation =
+    quiz.explanation && isStructuredExplanation(quiz.explanation);
 
   return (
     <div className="space-y-6">
@@ -268,7 +278,7 @@ export default function QuizInteraction({
           {quiz.explanation && (
             <div className="">
               <div className="font-bold text-center mb-2">解説</div>
-              {hasBlockNoteExplanation ? (
+              {hasStructuredExplanation ? (
                 <ExplanationView explanation={quiz.explanation} />
               ) : (
                 children

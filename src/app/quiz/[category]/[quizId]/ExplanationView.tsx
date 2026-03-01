@@ -1,68 +1,87 @@
 "use client";
 
-import type { PartialBlock } from "@blocknote/core";
-import "@blocknote/core/fonts/inter.css";
-import "@blocknote/core/style.css";
-import "@blocknote/mantine/style.css";
-import { useCreateBlockNote } from "@blocknote/react";
-import { BlockNoteView } from "@blocknote/mantine";
-
-/**
- * BlockNote形式のJSONかどうかを簡易判定
- */
-function parseBlockNoteContent(explanation: string): unknown[] | null {
-  const trimmed = explanation.trim();
-  if (!trimmed.startsWith("[")) return null;
-  try {
-    const parsed = JSON.parse(explanation) as unknown;
-    if (!Array.isArray(parsed)) return null;
-    const looksLikeBlocks = parsed.every(
-      (b) =>
-        b !== null &&
-        typeof b === "object" &&
-        "type" in (b as object) &&
-        typeof (b as { type: unknown }).type === "string",
-    );
-    return looksLikeBlocks ? parsed : null;
-  } catch {
-    return null;
-  }
-}
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 
 interface ExplanationViewProps {
   explanation: string;
 }
 
-export default function ExplanationView({ explanation }: ExplanationViewProps) {
-  const blocks = parseBlockNoteContent(explanation);
+function isTiptapJSON(explanation: string): boolean {
+  const trimmed = explanation.trim();
+  if (!trimmed.startsWith("{")) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed?.type === "doc" && Array.isArray(parsed?.content);
+  } catch {
+    return false;
+  }
+}
 
-  if (blocks && blocks.length > 0) {
-    return <BlockNoteExplanation explanation={explanation} blocks={blocks} />;
+// BlockNote形式（JSON配列）からプレーンテキストを抽出する。
+// 管理画面をBlockNote→tiptapに移行したため、旧データの互換用。
+// リッチテキスト表示は不要で、プレーンテキストとして表示できれば十分。
+function extractTextFromBlockNote(json: string): string {
+  try {
+    const blocks = JSON.parse(json);
+    if (!Array.isArray(blocks)) return json;
+    const texts: string[] = [];
+    for (const block of blocks) {
+      if (Array.isArray(block?.content)) {
+        for (const item of block.content) {
+          if (typeof item?.text === "string") texts.push(item.text);
+        }
+      }
+    }
+    return texts.join("\n") || json;
+  } catch {
+    return json;
+  }
+}
+
+function isBlockNoteJSON(explanation: string): boolean {
+  const trimmed = explanation.trim();
+  if (!trimmed.startsWith("[")) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) && parsed.every(
+      (b: Record<string, unknown>) => b !== null && typeof b === "object" && "type" in b
+    );
+  } catch {
+    return false;
+  }
+}
+
+function TiptapExplanation({ explanation }: { explanation: string }) {
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: JSON.parse(explanation),
+    editable: false,
+    immediatelyRender: false,
+  });
+
+  return (
+    <div className="tiptap-explanation prose prose-sm max-w-none">
+      <EditorContent editor={editor} />
+    </div>
+  );
+}
+
+export default function ExplanationView({ explanation }: ExplanationViewProps) {
+  if (isTiptapJSON(explanation)) {
+    return <TiptapExplanation explanation={explanation} />;
+  }
+
+  // BlockNote形式の旧データはプレーンテキストに変換して表示
+  if (isBlockNoteJSON(explanation)) {
+    return (
+      <p className="text-muted-foreground whitespace-pre-wrap">
+        {extractTextFromBlockNote(explanation)}
+      </p>
+    );
   }
 
   return (
     <p className="text-muted-foreground whitespace-pre-wrap">{explanation}</p>
-  );
-}
-
-function BlockNoteExplanation({
-  explanation,
-  blocks,
-}: {
-  explanation: string;
-  blocks: unknown[];
-}) {
-  const editor = useCreateBlockNote(
-    {
-      initialContent: blocks as PartialBlock[],
-      trailingBlock: false,
-    },
-    [explanation],
-  );
-
-  return (
-    <div className="bn-mantine-explanations [&_.bn-editor]:min-h-0 [&_.bn-editor]:!px-0 [&_.bn-block-content]:!py-0 [&_.bn-block-content]:!pt-0 [&_.bn-side-menu]:hidden [&_.bn-toolbar]:hidden">
-      <BlockNoteView editor={editor} editable={false} theme="light" />
-    </div>
   );
 }
