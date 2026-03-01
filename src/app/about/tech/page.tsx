@@ -1,24 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  Server,
-  Database,
-  Globe,
-  Shield,
-  Code2,
-  Layers,
-  Github,
-  ExternalLink,
-  Construction,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import MermaidDiagram from "@/components/MermaidDiagram";
 
 export const metadata: Metadata = {
@@ -31,276 +12,156 @@ const ARCHITECTURE_CHART = `graph TD
   User[ユーザー ブラウザ] -->|HTTPS| Nginx
   Admin[管理者 ブラウザ] -->|HTTPS| Nginx
   Nginx -->|リバースプロキシ :3000| NextJS[Next.js SSR]
-  Nginx -->|静的配信| ViteAdmin[React Vite 管理画面]
+  Nginx -->|静的配信| VueAdmin[Vue 3 管理画面]
   Nginx -->|リバースプロキシ :8888| Backend[Express.js API]
   NextJS -->|Internal API| Backend
-  ViteAdmin -->|REST API| Backend
+  VueAdmin -->|REST API| Backend
   Backend -->|TypeORM| MySQL[(MySQL 8.4)]
   Backend -->|OAuth2| Google[Google OAuth]
 
-  subgraph AWS Lightsail
+  subgraph Docker / GHCR
     Nginx
     NextJS
     Backend
     MySQL
-    ViteAdmin
+    VueAdmin
   end`;
 
-interface TechItem {
-  name: string;
-  description: string;
-  badge?: string;
-}
-
-interface TechSection {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  color: string;
-  bgColor: string;
-  badgeBg: string;
-  badgeText: string;
-  items: TechItem[];
-}
-
-const TECH_SECTIONS: TechSection[] = [
+const techStack = [
   {
-    icon: Globe,
-    title: "フロントエンド",
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-50 dark:bg-blue-500/10",
-    badgeBg: "bg-blue-100 dark:bg-blue-500/20",
-    badgeText: "text-blue-700 dark:text-blue-300",
+    category: "フロントエンド",
     items: [
+      { name: "Next.js 15 (React 19)", note: "App Router / SSR / SSG" },
+      { name: "Tailwind CSS v4", note: "ユーティリティファースト" },
+      { name: "shadcn/ui", note: "Radix UI ベースのコンポーネント" },
       {
-        name: "Next.js 15",
-        description: "App Router・SSR/SSGでSEOとパフォーマンスを両立",
-        badge: "React 19",
-      },
-      {
-        name: "Tailwind CSS v4",
-        description: "ユーティリティファーストでレスポンシブ・ダークモード対応",
-      },
-      {
-        name: "shadcn/ui",
-        description: "Radix UIベースのアクセシブルなUIコンポーネント",
-      },
-      {
-        name: "React Vite（管理画面）",
-        description: "管理者向けダッシュボードをViteで高速開発",
+        name: "Vue 3 + Vuetify（管理画面）",
+        note: "管理ダッシュボード",
+        wip: true,
       },
     ],
   },
   {
-    icon: Server,
-    title: "バックエンド",
-    color: "text-green-600 dark:text-green-400",
-    bgColor: "bg-green-50 dark:bg-green-500/10",
-    badgeBg: "bg-green-100 dark:bg-green-500/20",
-    badgeText: "text-green-700 dark:text-green-300",
+    category: "バックエンド",
     items: [
-      {
-        name: "Express.js",
-        description: "REST APIサーバー。クイズ・ユーザー管理のエンドポイントを提供",
-        badge: "TypeScript",
-      },
-      {
-        name: "TypeORM",
-        description: "TypeScript対応のORMでデータベースを型安全に操作",
-      },
-      {
-        name: "JWT認証",
-        description: "アクセストークン・リフレッシュトークンによるステートレス認証",
-      },
+      { name: "Express.js (TypeScript)", note: "REST API サーバー" },
+      { name: "TypeORM", note: "型安全な ORM" },
+      { name: "JWT", note: "アクセストークン / リフレッシュトークン" },
     ],
   },
   {
-    icon: Database,
-    title: "データベース",
-    color: "text-amber-600 dark:text-amber-400",
-    bgColor: "bg-amber-50 dark:bg-amber-500/10",
-    badgeBg: "bg-amber-100 dark:bg-amber-500/20",
-    badgeText: "text-amber-700 dark:text-amber-300",
+    category: "データベース",
+    items: [{ name: "MySQL 8.4 LTS", note: "クイズ・ユーザー・学習履歴" }],
+  },
+  {
+    category: "認証・セキュリティ",
     items: [
-      {
-        name: "MySQL 8.4",
-        description: "クイズデータ・ユーザー情報・学習履歴を格納",
-        badge: "LTS",
-      },
+      { name: "Google OAuth 2.0", note: "ソーシャルログイン" },
+      { name: "Nginx + Let's Encrypt", note: "HTTPS / リバースプロキシ" },
     ],
   },
   {
-    icon: Shield,
-    title: "認証・セキュリティ",
-    color: "text-red-600 dark:text-red-400",
-    bgColor: "bg-red-50 dark:bg-red-500/10",
-    badgeBg: "bg-red-100 dark:bg-red-500/20",
-    badgeText: "text-red-700 dark:text-red-300",
+    category: "インフラ",
     items: [
       {
-        name: "Google OAuth 2.0",
-        description: "Googleアカウントでのソーシャルログインに対応",
+        name: "Docker / GHCR",
+        note: "コンテナイメージで構成",
+        wip: true,
       },
-      {
-        name: "Nginx + Let's Encrypt",
-        description: "HTTPS化・リバースプロキシ・静的配信を1台で完結",
-      },
+      { name: "GitHub Actions", note: "CI/CD 自動デプロイ" },
     ],
   },
   {
-    icon: Layers,
-    title: "インフラ・デプロイ",
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-50 dark:bg-purple-500/10",
-    badgeBg: "bg-purple-100 dark:bg-purple-500/20",
-    badgeText: "text-purple-700 dark:text-purple-300",
+    category: "開発ツール",
     items: [
-      {
-        name: "AWS Lightsail",
-        description: "低コストなVPSで全サービスを1インスタンスにホスティング",
-      },
-      {
-        name: "GitHub Actions",
-        description: "mainブランチへのpushで自動デプロイ（CI/CD）",
-        badge: "CI/CD",
-      },
-    ],
-  },
-  {
-    icon: Code2,
-    title: "開発ツール",
-    color: "text-teal-600 dark:text-teal-400",
-    bgColor: "bg-teal-50 dark:bg-teal-500/10",
-    badgeBg: "bg-teal-100 dark:bg-teal-500/20",
-    badgeText: "text-teal-700 dark:text-teal-300",
-    items: [
-      {
-        name: "TypeScript",
-        description: "フロントエンド・バックエンド全体を型安全に開発",
-      },
-      {
-        name: "ESLint + Prettier",
-        description: "コード品質とフォーマットを自動チェック",
-      },
+      { name: "TypeScript", note: "フロント・バックエンド共通" },
+      { name: "ESLint + Prettier", note: "Lint / フォーマット" },
     ],
   },
 ];
 
 export default function TechPage() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 md:py-16">
-      {/* 改善中バナー */}
-      <div className="mb-8 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 flex items-center gap-3">
-        <Construction className="size-5 text-amber-600 dark:text-amber-400 shrink-0" />
-        <p className="text-sm text-amber-800 dark:text-amber-300">
-          このページは現在改善中です。内容やデザインは今後変更される場合があります。
-        </p>
+    <div className="max-w-3xl mx-auto px-4 py-10 md:py-16">
+      <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        このページは現在改善中です。内容やデザインは今後変更される場合があります。
       </div>
 
-      {/* ページヘッダー */}
-      <section className="mb-12 md:mb-16 text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground mb-4 md:text-4xl">
-          技術構成
-        </h1>
-        <p className="text-base text-muted-foreground md:text-lg max-w-2xl mx-auto leading-relaxed">
-          ウェブエンジニア問題集を支える技術スタックとシステム構成を紹介します。
-        </p>
-      </section>
+      <h1 className="text-2xl font-bold tracking-tight mb-1">技術構成</h1>
+      <p className="text-sm text-muted-foreground mb-10">
+        ウェブエンジニア問題集を支える技術スタックとシステム構成
+      </p>
 
-      {/* セクション1: システム構成図 */}
-      <section className="mb-12 md:mb-16">
-        <h2 className="text-xl font-bold mb-6 md:text-2xl text-center text-foreground">
-          <Server className="size-5 inline-block mr-2 -mt-0.5 text-primary" />
+      <section className="mb-12">
+        <h2 className="text-lg font-semibold mb-4 border-b pb-2">
           システム構成図
         </h2>
         <MermaidDiagram chart={ARCHITECTURE_CHART} id="architecture-diagram" />
-        <p className="text-xs text-muted-foreground text-center mt-3">
-          Nginx をリバースプロキシとして、Next.js（SSR）・Express.js
-          API・管理画面を統合的に配信しています。
+        <p className="text-xs text-muted-foreground mt-3">
+          Nginx
+          をリバースプロキシとして、Next.js・Express.js&nbsp;API・管理画面を統合配信
         </p>
       </section>
 
-      {/* セクション2: 技術スタック */}
-      <section className="mb-12 md:mb-16">
-        <h2 className="text-xl font-bold mb-6 md:mb-8 md:text-2xl text-center text-foreground">
-          <Code2 className="size-5 inline-block mr-2 -mt-0.5 text-primary" />
-          使用技術
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {TECH_SECTIONS.map((section) => (
-            <Card
-              key={section.title}
-              className={`${section.bgColor} border-none`}
-            >
-              <CardHeader className="pb-3">
-                <CardTitle
-                  className={`${section.color} text-base flex items-center gap-2`}
-                >
-                  <section.icon className="size-5" />
-                  {section.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {section.items.map((item) => (
-                  <div key={item.name} className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-foreground">
+      <section className="mb-12">
+        <h2 className="text-lg font-semibold mb-6 border-b pb-2">使用技術</h2>
+        <div className="space-y-8">
+          {techStack.map((section) => (
+            <div key={section.category}>
+              <h3 className="mb-2">
+                <span className="text-sm bg-gray-100 px-4 p-2 rounded-xl font-semibold tracking-wide">{section.category}</span>
+              </h3>
+              <table className="w-full text-sm">
+                <tbody>
+                  {section.items.map((item) => (
+                    <tr
+                      key={item.name}
+                      className="border-b border-border/40 text-xs last:border-b-0"
+                    >
+                      <td className="py-2 pr-4 w-[240px] font-medium text-[12px] whitespace-nowrap align-top">
                         {item.name}
-                      </span>
-                      {item.badge && (
-                        <Badge
-                          className={`${section.badgeBg} ${section.badgeText} text-[10px] px-1.5 py-0`}
-                        >
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                        {item.wip && (
+                          <span className="ml-2 text-[11px] text-amber-600 font-normal">
+                            移行中
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-muted-foreground">
+                        {item.note}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* セクション3: GitHub */}
-      <section className="mb-8">
-        <div className="rounded-2xl border border-border bg-muted/40 p-6 sm:p-8 text-center">
-          <Github className="size-10 mx-auto mb-4 text-foreground" />
-          <h2 className="text-xl font-bold mb-2 text-foreground md:text-2xl">
-            ソースコード
-          </h2>
-          <p className="text-sm text-muted-foreground mb-6 max-w-lg mx-auto">
-            このプロジェクトのソースコードはGitHubで公開しています。
-            フィードバックやコントリビューションを歓迎します。
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button className="rounded-full px-6" asChild>
-              <Link
-                href="https://github.com/idw-coder"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-bold"
-              >
-                <Github className="size-4" />
-                GitHub プロフィール
-                <ExternalLink className="size-3.5" />
-              </Link>
-            </Button>
-            <Button variant="outline" className="rounded-full px-6" asChild>
-              <Link
-                href="https://github.com/idw-coder/express-mysql-docker"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-bold"
-              >
-                リポジトリを見る
-                <ExternalLink className="size-3.5" />
-              </Link>
-            </Button>
-          </div>
+      <section>
+        <h2 className="text-lg font-semibold mb-4 border-b pb-2">
+          ソースコード
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          GitHub でソースコードを公開しています。
+        </p>
+        <div className="flex gap-6 text-sm">
+          <Link
+            href="https://github.com/idw-coder"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            プロフィール ↗
+          </Link>
+          <Link
+            href="https://github.com/idw-coder/express-mysql-docker"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            リポジトリ ↗
+          </Link>
         </div>
       </section>
     </div>
