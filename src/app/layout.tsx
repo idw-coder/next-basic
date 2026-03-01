@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
-import GoogleAdSense from "@/components/GoogleAdSense";
+import GoogleAdSense, { AdSenseScript } from "@/components/GoogleAdSense";
 import HeaderNav from "@/components/HeaderNav";
 
 export const metadata: Metadata = {
@@ -40,11 +40,7 @@ export default function RootLayout({
       </head>
       <body>
         {clientId && !isDevelopment && (
-          <script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientId}`}
-            crossOrigin="anonymous"
-          />
+          <AdSenseScript clientId={clientId} />
         )}
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
           <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between">
