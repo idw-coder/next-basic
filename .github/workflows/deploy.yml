@@ -1,43 +1,43 @@
-name: Deploy Next.js to Lightsail
+name: Deploy Next.js to Lightsail via GHCR
 
 on:
   push:
     branches: [main]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          node-version: '20'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build Next.js
-        run: npm run build
-        env:
-          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
-          NEXT_PUBLIC_ADSENSE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_ADSENSE_CLIENT_ID }}
-          NEXT_PUBLIC_ADSENSE_SLOT: ${{ secrets.NEXT_PUBLIC_ADSENSE_SLOT }}
-          NEXT_PUBLIC_GOOGLE_AUTH_URL: ${{ secrets.NEXT_PUBLIC_GOOGLE_AUTH_URL }}
-      
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+            NEXT_PUBLIC_ADSENSE_CLIENT_ID=${{ secrets.NEXT_PUBLIC_ADSENSE_CLIENT_ID }}
+            NEXT_PUBLIC_ADSENSE_SLOT=${{ secrets.NEXT_PUBLIC_ADSENSE_SLOT }}
+            NEXT_PUBLIC_GOOGLE_AUTH_URL=${{ secrets.NEXT_PUBLIC_GOOGLE_AUTH_URL }}
+
       - name: Deploy to Lightsail
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          source: ".next/*,package.json,package-lock.json,src/*,public/*"
-          target: "/var/www/app/next-basic"
-          strip_components: 0
-      
-      - name: Restart Next.js on Lightsail
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
@@ -45,6 +45,6 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
             cd /var/www/app
-            docker-compose -f docker-compose.prod.yml build --no-cache nextjs
-            docker-compose -f docker-compose.prod.yml up -d nextjs
+            docker compose -f docker-compose.prod.yml pull nextjs
+            docker compose -f docker-compose.prod.yml up -d nextjs
             docker image prune -f
