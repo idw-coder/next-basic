@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import MermaidDiagram from "@/components/MermaidDiagram";
+import { EntryGuard } from "@/components/EntryGuard";
 
 export const metadata: Metadata = {
   title: "技術構成 | ウェブエンジニア問題集",
@@ -81,16 +81,9 @@ const techStack = [
   },
 ];
 
-export default async function TechPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const { key } = await searchParams;
-  if (key !== "entry") {
-    notFound();
-  }
+export default function TechPage() {
   return (
+    <EntryGuard>
     <div className="max-w-3xl mx-auto px-4 py-10 md:py-16">
       <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         このページは現在改善中です。内容やデザインは今後変更される場合があります。
@@ -174,5 +167,6 @@ export default async function TechPage({
         </div>
       </section>
     </div>
+    </EntryGuard>
   );
 }

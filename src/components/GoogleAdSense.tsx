@@ -16,7 +16,7 @@ declare global {
 }
 
 /**
- * ?entry または ?key=entry 付きでアクセスした場合、sessionStorage にフラグを保存し、
+ * ?mode=entry 付きでアクセスした場合、sessionStorage にフラグを保存し、
  * そのタブが開いている間は広告要素を CSS で非表示にする。
  * タブを閉じると sessionStorage がクリアされ、通常表示に戻る。
  */
@@ -25,7 +25,7 @@ export function HideAdsForEntry() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has("entry") || params.get("key") === "entry") {
+    if (params.get("mode") === "entry") {
       sessionStorage.setItem("entry", "1");
     }
     setHide(sessionStorage.getItem("entry") === "1");

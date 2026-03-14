@@ -18,7 +18,7 @@ export default function HeaderNav() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.has("entry") || searchParams.get("key") === "entry") {
+    if (searchParams.get("mode") === "entry") {
       sessionStorage.setItem("entry", "1");
     }
     setShowTech(sessionStorage.getItem("entry") === "1");
@@ -74,7 +74,7 @@ export default function HeaderNav() {
         </Link>
         {/* entryのURLのみ表示 */}
         {showTech && (
-          <Link href="/about/tech?key=entry" className={linkClass}>
+          <Link href="/about/tech" className={linkClass}>
             <Wrench className={iconClass} />
             技術構成
           </Link>
