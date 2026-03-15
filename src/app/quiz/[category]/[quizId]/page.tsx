@@ -1,8 +1,8 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import QuizInteraction from "./QuizInteraction";
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import QuizInteraction from './QuizInteraction';
 
 interface Choice {
   id: number;
@@ -12,9 +12,7 @@ interface Choice {
 }
 
 const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8888";
+  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
 
 interface QuizDetail {
   id: number;
@@ -28,22 +26,22 @@ interface QuizDetail {
 async function getQuiz(quizId: string): Promise<QuizDetail | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/quiz/${quizId}`, {
-      cache: "no-store",
+      cache: 'no-store',
     });
     if (!res.ok) return null;
     return await res.json();
   } catch (error) {
-    console.error("Failed to fetch quiz:", error);
+    console.error('Failed to fetch quiz:', error);
     return null;
   }
 }
 
 function isTiptapFormat(explanation: string): boolean {
   const trimmed = explanation.trim();
-  if (!trimmed.startsWith("{")) return false;
+  if (!trimmed.startsWith('{')) return false;
   try {
     const parsed = JSON.parse(trimmed);
-    return parsed?.type === "doc" && Array.isArray(parsed?.content);
+    return parsed?.type === 'doc' && Array.isArray(parsed?.content);
   } catch {
     return false;
   }
@@ -51,16 +49,13 @@ function isTiptapFormat(explanation: string): boolean {
 
 function isBlockNoteFormat(explanation: string): boolean {
   const trimmed = explanation.trim();
-  if (!trimmed.startsWith("[")) return false;
+  if (!trimmed.startsWith('[')) return false;
   try {
     const parsed = JSON.parse(explanation);
     if (!Array.isArray(parsed)) return false;
     return parsed.every(
       (b: Record<string, unknown>) =>
-        b !== null &&
-        typeof b === "object" &&
-        "type" in b &&
-        typeof b.type === "string"
+        b !== null && typeof b === 'object' && 'type' in b && typeof b.type === 'string',
     );
   } catch {
     return false;
@@ -75,29 +70,29 @@ function isStructuredExplanation(explanation: string): boolean {
 function extractTextFromNodes(nodes: any[]): string {
   const texts: string[] = [];
   for (const node of nodes) {
-    if (!node || typeof node !== "object") continue;
-    if (node.type === "text" && typeof node.text === "string") {
+    if (!node || typeof node !== 'object') continue;
+    if (node.type === 'text' && typeof node.text === 'string') {
       texts.push(node.text);
     }
     if (Array.isArray(node.content)) {
       texts.push(extractTextFromNodes(node.content));
     }
   }
-  return texts.join("");
+  return texts.join('');
 }
 
 function extractPlainText(explanation: string): string {
   try {
     const parsed = JSON.parse(explanation);
-    if (parsed?.type === "doc" && Array.isArray(parsed?.content)) {
+    if (parsed?.type === 'doc' && Array.isArray(parsed?.content)) {
       return extractTextFromNodes(parsed.content);
     }
     if (Array.isArray(parsed)) {
       return extractTextFromNodes(parsed);
     }
-    return "";
+    return '';
   } catch {
-    return "";
+    return '';
   }
 }
 
@@ -118,10 +113,7 @@ export default async function QuizDetailPage({
           </CardHeader>
           <CardContent>
             <Button asChild variant="link" className="px-0">
-              <Link
-                href={`/quiz/${category}`}
-                className="inline-flex items-center gap-2"
-              >
+              <Link href={`/quiz/${category}`} className="inline-flex items-center gap-2">
                 <ArrowLeft className="size-4 shrink-0" />
                 問題一覧に戻る
               </Link>
@@ -136,10 +128,7 @@ export default async function QuizDetailPage({
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
       <div className="mb-6">
         <Button asChild variant="link" className="px-0 -ml-2">
-          <Link
-            href={`/quiz/${category}`}
-            className="inline-flex items-center gap-2"
-          >
+          <Link href={`/quiz/${category}`} className="inline-flex items-center gap-2">
             <ArrowLeft className="size-4 shrink-0" />
             問題一覧に戻る
           </Link>
@@ -152,16 +141,32 @@ export default async function QuizDetailPage({
         </CardHeader>
         <CardContent>
           {/* インタラクション部分をClient Componentに委譲 */}
-          <QuizInteraction quiz={quiz} categorySlug={category}>
-            {/* 解説テキストをSSRで出力（SEO対策） */}
-            {quiz.explanation && (
-              <div className="text-muted-foreground whitespace-pre-wrap">
+          <QuizInteraction quiz={quiz} categorySlug={category} />
+
+          {/*
+          クローラー対策
+
+          以前はQuizInteractionのchildren経由で渡していた
+          Client Component内のisAnswered: falseでは初期SSRのDOMに含まれず、RSCペイロード(scriptタグ)にのみあるだけ
+          存在していたため、クローラーがコンテンツとして認識できなかったかも
+          ↓
+          sr-onlyで解説テキストを常にDOMに常駐させるよう修正。
+
+          hidden(display:none)ではなくsr-onlyを採用する理由
+          display:noneはGoogleが「ユーザーに見えない隠しコンテンツ」として
+          評価を下げる可能性がある。sr-onlyはアクセシビリティ用途で広く使われる手法であり、
+          スクリーンリーダーやクローラーからアクセス可能なまま視覚的に非表示にできる。
+          */}
+          {quiz.explanation && (
+            <div className="sr-only" aria-hidden="true">
+              <h2>解説</h2>
+              <p>
                 {isStructuredExplanation(quiz.explanation)
                   ? extractPlainText(quiz.explanation)
                   : quiz.explanation}
-              </div>
-            )}
-          </QuizInteraction>
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -178,7 +183,7 @@ export async function generateMetadata({
 
   if (!quiz) {
     return {
-      title: "問題が見つかりません | ウェブエンジニア問題集",
+      title: '問題が見つかりません | ウェブエンジニア問題集',
     };
   }
 

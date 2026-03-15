@@ -36,35 +36,6 @@ interface QuizDetail {
 interface QuizInteractionProps {
   quiz: QuizDetail;
   categorySlug: string;
-  children?: React.ReactNode;
-}
-
-function isStructuredExplanation(explanation: string): boolean {
-  const trimmed = explanation.trim();
-  if (trimmed.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      return parsed?.type === "doc" && Array.isArray(parsed?.content);
-    } catch {
-      return false;
-    }
-  }
-  if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (!Array.isArray(parsed)) return false;
-      return parsed.every(
-        (b: Record<string, unknown>) =>
-          b !== null &&
-          typeof b === "object" &&
-          "type" in b &&
-          typeof b.type === "string"
-      );
-    } catch {
-      return false;
-    }
-  }
-  return false;
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -79,7 +50,6 @@ function shuffleArray<T>(array: T[]): T[] {
 export default function QuizInteraction({
   quiz,
   categorySlug,
-  children,
 }: QuizInteractionProps) {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -156,9 +126,6 @@ export default function QuizInteraction({
         randomSession.quizzes.length) *
       100
     : 0;
-
-  const hasStructuredExplanation =
-    quiz.explanation && isStructuredExplanation(quiz.explanation);
 
   return (
     <div className="space-y-6">
@@ -278,11 +245,7 @@ export default function QuizInteraction({
           {quiz.explanation && (
             <div className="">
               <div className="font-bold text-center mb-2">解説</div>
-              {hasStructuredExplanation ? (
-                <ExplanationView explanation={quiz.explanation} />
-              ) : (
-                children
-              )}
+              <ExplanationView explanation={quiz.explanation} />
             </div>
           )}
 
