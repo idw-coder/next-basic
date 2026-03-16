@@ -13,6 +13,7 @@ import {
   ArrowRight,
   ChevronRight,
   Shuffle,
+  Search,
 } from "lucide-react";
 import {
   Card,
@@ -328,27 +329,48 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ランダムクイズCTA */}
-      <section className="mb-16 md:mb-20">
+      {/* ランダムクイズ & キーワード検索 CTA */}
+      <section className="mb-16 md:mb-20 grid gap-4 sm:grid-cols-2">
         <Link href="/quiz/random" className="block group">
-          <div className="rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-6 sm:p-8 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-            <div className="flex items-center gap-5 sm:gap-6">
-              <div className="flex size-14 sm:size-16 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/60 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors">
-                <Shuffle className="size-7 sm:size-8 text-blue-600 dark:text-blue-400" />
+          <div className="rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-5 sm:p-6 hover:border-blue-400 dark:hover:border-blue-600 transition-colors h-full">
+            <div className="flex items-start gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/60 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors">
+                <Shuffle className="size-6 sm:size-7 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg sm:text-xl font-extrabold text-foreground mb-1">
+                <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-1">
                   ランダムクイズに挑戦！
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-3">
                   全カテゴリからランダムに出題。5問・10問など問題数を選んでサクッと力試し！
                 </p>
+                <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
+                  挑戦する
+                  <ArrowRight className="size-3.5 sm:size-4 group-hover:translate-x-1 transition-transform" />
+                </span>
               </div>
-              <div className="shrink-0 hidden sm:flex items-center gap-1 text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/60 rounded-full px-5 py-2.5 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors">
-                挑戦する
-                <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </Link>
+
+        <Link href="/quiz/search" className="block group">
+          <div className="rounded-2xl border-2 border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 p-5 sm:p-6 hover:border-violet-400 dark:hover:border-violet-600 transition-colors h-full">
+            <div className="flex items-start gap-4">
+              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/60 group-hover:bg-violet-200 dark:group-hover:bg-violet-800/60 transition-colors">
+                <Search className="size-6 sm:size-7 text-violet-600 dark:text-violet-400" />
               </div>
-              <ArrowRight className="size-5 text-blue-600 dark:text-blue-400 shrink-0 sm:hidden group-hover:translate-x-1 transition-transform" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-1">
+                  キーワードで問題を探す
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                  「Promise」「Flexbox」「XSS」など、気になるワードで全カテゴリを横断検索！
+                </p>
+                <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-violet-600 dark:text-violet-400">
+                  検索する
+                  <ArrowRight className="size-3.5 sm:size-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </div>
             </div>
           </div>
         </Link>
