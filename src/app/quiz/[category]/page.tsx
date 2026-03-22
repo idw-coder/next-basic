@@ -1,10 +1,21 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Metadata } from "next";
-import { ArrowLeft, BookOpenCheck, ChevronRight, Shuffle } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpenCheck,
+  ChevronRight,
+  Shuffle,
+  Lightbulb,
+  Target,
+  Users,
+  HelpCircle,
+  ArrowRight,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import QuizListClient from "./QuizListClient";
+import { getCategorySeoContent, type CategorySeoContent } from "./categoryContent";
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
@@ -130,7 +141,12 @@ export async function generateMetadata({
   };
 }
 
-function buildJsonLd(category: Category, quizzes: Quiz[], categorySlug: string) {
+function buildJsonLd(
+  category: Category,
+  quizzes: Quiz[],
+  categorySlug: string,
+  seoContent: CategorySeoContent | null
+) {
   const breadcrumb = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -164,7 +180,24 @@ function buildJsonLd(category: Category, quizzes: Quiz[], categorySlug: string) 
     },
   };
 
-  return [breadcrumb, quizPage];
+  const jsonLdList: Record<string, unknown>[] = [breadcrumb, quizPage];
+
+  if (seoContent && seoContent.faqs.length > 0) {
+    jsonLdList.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: seoContent.faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    });
+  }
+
+  return jsonLdList;
 }
 
 export default async function CategoryQuizPage({
@@ -204,7 +237,8 @@ export default async function CategoryQuizPage({
     getTagsByCategory(category.id),
   ]);
 
-  const jsonLdList = buildJsonLd(category, quizzes, categorySlug);
+  const seoContent = getCategorySeoContent(categorySlug);
+  const jsonLdList = buildJsonLd(category, quizzes, categorySlug, seoContent);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
@@ -256,6 +290,83 @@ export default async function CategoryQuizPage({
         </div>
       </section>
 
+      {/* カテゴリ概要（SEOコンテンツ） */}
+      {seoContent && (
+        <section className="mb-10">
+          <Card className="border-primary/10 bg-gradient-to-br from-primary/[0.03] to-transparent">
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <Lightbulb className="size-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <h2 className="text-lg font-bold text-foreground mb-2">
+                    {category.category_name}とは
+                  </h2>
+                  <p className="text-muted-foreground leading-relaxed text-sm">
+                    {seoContent.overview}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Target className="size-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <h3 className="text-base font-bold text-foreground mb-1">
+                    なぜ{category.category_name}を学ぶべきか
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed text-sm">
+                    {seoContent.whyLearn}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {/* 出題トピック */}
+      {seoContent && (
+        <section className="mb-10">
+          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+            <BookOpenCheck className="size-5 text-primary" />
+            出題トピック
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {seoContent.topics.map((topic) => (
+              <Card key={topic.title} className="border-border/60">
+                <CardContent className="pt-4 pb-4">
+                  <h3 className="text-sm font-bold text-foreground mb-1">
+                    {topic.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {topic.description}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 対象者 */}
+      {seoContent && (
+        <section className="mb-10">
+          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+            <Users className="size-5 text-primary" />
+            こんな方におすすめ
+          </h2>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {seoContent.targetAudience.map((audience) => (
+              <li
+                key={audience}
+                className="flex items-center gap-2 text-sm text-muted-foreground"
+              >
+                <span className="size-1.5 rounded-full bg-primary shrink-0" />
+                {audience}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* ランダムクイズへの導線 */}
       <section className="mb-8">
         <Link href={`/quiz/random?categoryId=${category.id}`} className="block group">
@@ -277,7 +388,7 @@ export default async function CategoryQuizPage({
       </section>
 
       {/* 問題一覧 */}
-      <section>
+      <section className="mb-10">
         <h2 className="sr-only">{category.category_name}の問題一覧</h2>
         <QuizListClient
           initialQuizzes={quizzes}
@@ -288,6 +399,55 @@ export default async function CategoryQuizPage({
           currentTagSlug={tagSlug}
         />
       </section>
+
+      {/* よくある質問（FAQ） */}
+      {seoContent && seoContent.faqs.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+            <HelpCircle className="size-5 text-primary" />
+            {category.category_name}に関するよくある質問
+          </h2>
+          <div className="space-y-3">
+            {seoContent.faqs.map((faq) => (
+              <details
+                key={faq.question}
+                className="group rounded-lg border border-border/60 bg-card"
+              >
+                <summary className="flex cursor-pointer items-center justify-between gap-2 p-4 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+                  <span>{faq.question}</span>
+                  <ChevronRight className="size-4 text-muted-foreground transition-transform group-open:rotate-90 shrink-0" />
+                </summary>
+                <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed border-t border-border/40 pt-3">
+                  {faq.answer}
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 関連カテゴリ */}
+      {seoContent && seoContent.relatedCategories.length > 0 && (
+        <section className="mb-4">
+          <h2 className="text-lg font-bold text-foreground mb-4">
+            関連する問題集
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {seoContent.relatedCategories.map((related) => (
+              <Link
+                key={related.slug}
+                href={`/quiz/${related.slug}`}
+                className="group flex items-center justify-between rounded-lg border border-border/60 bg-card p-3 hover:border-primary/40 hover:bg-primary/[0.03] transition-colors"
+              >
+                <span className="text-sm font-medium text-foreground">
+                  {related.name}
+                </span>
+                <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
