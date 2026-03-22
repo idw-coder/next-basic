@@ -36,6 +36,7 @@ async function getQuiz(quizId: string): Promise<QuizDetail | null> {
   }
 }
 
+// Vue管理画面 リッチテキストエディタ
 function isTiptapFormat(explanation: string): boolean {
   const trimmed = explanation.trim();
   if (!trimmed.startsWith('{')) return false;
@@ -47,6 +48,7 @@ function isTiptapFormat(explanation: string): boolean {
   }
 }
 
+// React管理画面 リッチテキストエディタ（現在使用していない）
 function isBlockNoteFormat(explanation: string): boolean {
   const trimmed = explanation.trim();
   if (!trimmed.startsWith('[')) return false;
@@ -66,6 +68,7 @@ function isStructuredExplanation(explanation: string): boolean {
   return isTiptapFormat(explanation) || isBlockNoteFormat(explanation);
 }
 
+// TipTapのノード配列の中のテキストだけを抽出
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractTextFromNodes(nodes: any[]): string {
   const texts: string[] = [];
@@ -84,6 +87,7 @@ function extractTextFromNodes(nodes: any[]): string {
 function extractPlainText(explanation: string): string {
   try {
     const parsed = JSON.parse(explanation);
+    // TipTap のドキュメント形式
     if (parsed?.type === 'doc' && Array.isArray(parsed?.content)) {
       return extractTextFromNodes(parsed.content);
     }

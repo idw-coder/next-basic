@@ -223,6 +223,7 @@ export default function QuizInteraction({
           回答する
         </Button>
       ) : (
+        // 回答した後のフォームは回答前段階ではDOMに含まれないため、sr-onlyで解説テキストを常にDOMに常駐させるよう修正。
         <div className="space-y-4">
           <Alert
             variant={isCorrect ? "default" : "destructive"}

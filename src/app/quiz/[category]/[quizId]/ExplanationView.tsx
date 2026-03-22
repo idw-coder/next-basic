@@ -7,6 +7,7 @@ interface ExplanationViewProps {
   explanation: string;
 }
 
+// tiptap形式のJSONかどうかをチェック→trueならTiptapExplanationコンポーネントを返す
 function isTiptapJSON(explanation: string): boolean {
   const trimmed = explanation.trim();
   if (!trimmed.startsWith("{")) return false;
@@ -39,6 +40,7 @@ function extractTextFromBlockNote(json: string): string {
   }
 }
 
+// BlockNote形式（JSON配列）かどうかをチェック→trueならextractTextFromBlockNoteコンポーネントを返す
 function isBlockNoteJSON(explanation: string): boolean {
   const trimmed = explanation.trim();
   if (!trimmed.startsWith("[")) return false;
@@ -52,6 +54,7 @@ function isBlockNoteJSON(explanation: string): boolean {
   }
 }
 
+// tiptap形式のJSONを解析して表示
 function TiptapExplanation({ explanation }: { explanation: string }) {
   const editor = useEditor({
     extensions: [StarterKit],
