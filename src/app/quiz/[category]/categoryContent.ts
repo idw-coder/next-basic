@@ -644,6 +644,62 @@ const categoryContentMap: Record<string, CategorySeoContent> = {
       { slug: "nodejs-basic", name: "Node.js基礎" },
     ],
   },
+  "nextjs": {
+    overview:
+      "Next.jsは、Vercelが開発するReactベースのフルスタックフレームワークです。App Router、Server Components、Server Actions、自動コード分割、画像最適化など、プロダクションに必要な機能が標準で揃っています。SSR・SSG・ISRを柔軟に組み合わせることで、パフォーマンスとSEOに優れたWebアプリケーションを構築できます。",
+    whyLearn:
+      "Next.jsはReactエコシステムで最も採用されているフレームワークの一つで、企業の採用実績も急速に増えています。App RouterやServer Componentsなど最新のReactアーキテクチャを実践的に学べるほか、デプロイ・キャッシュ戦略・ミドルウェアなどフルスタック開発のスキルが身につきます。",
+    topics: [
+      {
+        title: "App Router と Server Components",
+        description:
+          "App Routerのファイルベースルーティング、Server ComponentとClient Componentの使い分け、\"use client\"ディレクティブの適切な配置を出題します。",
+      },
+      {
+        title: "データフェッチとキャッシュ",
+        description:
+          "fetch()のキャッシュ戦略、revalidateによるISR、generateStaticParamsでの静的生成、動的レンダリングとの使い分けを扱います。",
+      },
+      {
+        title: "Server Actions",
+        description:
+          "\"use server\"ディレクティブによるServer Actionsの定義、フォーム処理、Client Componentへの関数の受け渡しパターンを問います。",
+      },
+      {
+        title: "実践的なエラー解決",
+        description:
+          "Hydrationエラー、Module not found、Dynamic server usage、next/imageの設定エラーなど、開発現場で頻出するエラーの原因と対処法を出題します。",
+      },
+    ],
+    faqs: [
+      {
+        question: "Next.jsを学ぶ前にReactの知識は必要ですか？",
+        answer:
+          "はい、Next.jsはReactをベースにしたフレームワークのため、コンポーネント、Hooks、JSXなどReactの基本を理解していることが前提です。React の基礎を一通り学んでからNext.jsに進むとスムーズに習得できます。",
+      },
+      {
+        question: "App RouterとPages Routerはどちらを学ぶべきですか？",
+        answer:
+          "Next.js 13以降はApp Routerが推奨されており、新規プロジェクトではApp Routerの使用が標準です。Server ComponentsやServer Actionsなど最新機能はApp Router専用のため、これから学ぶ方はApp Routerを中心に学習しましょう。",
+      },
+      {
+        question: "Next.jsのHydrationエラーはなぜ起きるのですか？",
+        answer:
+          "サーバーで生成したHTMLとクライアントで描画されるHTMLが一致しない場合に発生します。Date.now()やMath.random()の使用、typeof windowによる条件分岐、ブラウザ拡張機能によるDOM変更などが主な原因です。useEffectで動的コンテンツをマウント後に描画する方法で対処できます。",
+      },
+    ],
+    targetAudience: [
+      "Reactを習得済みでフレームワークに挑戦したい方",
+      "App RouterやServer Componentsを実践的に学びたい方",
+      "SSR/SSG/ISRの使い分けを理解したいエンジニア",
+      "Next.jsの頻出エラーの解決方法を身につけたい方",
+    ],
+    relatedCategories: [
+      { slug: "react-basic", name: "React基礎" },
+      { slug: "ts-general", name: "TypeScript" },
+      { slug: "nodejs-basic", name: "Node.js基礎" },
+    ],
+  },
 };
 
 export function getCategorySeoContent(

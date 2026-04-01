@@ -81,6 +81,10 @@ const CATEGORY_COLORS: Record<string, { badge: string; text: string }> = {
     badge: "bg-purple-100 dark:bg-purple-500/20",
     text: "text-purple-700 dark:text-purple-300",
   },
+  "nextjs": {
+    badge: "bg-slate-100 dark:bg-slate-500/20",
+    text: "text-slate-700 dark:text-slate-300",
+  },
 };
 
 function getCategoryColor(slug: string) {

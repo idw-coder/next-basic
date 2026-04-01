@@ -71,6 +71,7 @@ const CATEGORY_SLUGS = [
   "react-basic",
   "vue-basic",
   "nodejs-basic",
+  "nextjs",
   "aws-basic",
   "git-basic",
   "nginx-basic",
@@ -153,6 +154,16 @@ const CATEGORIES: CategoryDef[] = [
     topics: ["基本・モジュール", "Express.js", "非同期処理"],
   },
   {
+    slug: "nextjs", name: "Next.js",
+    color: "text-slate-700 dark:text-slate-300",
+    hoverColor: "bg-slate-700 hover:bg-slate-800",
+    bgColor: "bg-slate-50 dark:bg-slate-500/10",
+    badgeBg: "bg-slate-100 dark:bg-slate-500/20",
+    badgeText: "text-slate-700 dark:text-slate-300",
+    description: "App Router・Server Components・エラー解決など、Next.jsの実践的なトピックをカバー。",
+    topics: ["App Router", "Server Components", "エラー解決"],
+  },
+  {
     slug: "git-basic", name: "Git",
     color: "text-rose-600 dark:text-rose-400",
     hoverColor: "bg-rose-600 hover:bg-rose-700",
@@ -215,7 +226,8 @@ const CATEGORIES: CategoryDef[] = [
 ];
 
 const NEWS = [
-  { date: "2026/03/01", text: "TypeScript・セキュリティ・CS基礎クイズを公開しました", isNew: true },
+  { date: "2026/04/01", text: "Next.jsクイズを公開しました", isNew: true },
+  { date: "2026/03/01", text: "TypeScript・セキュリティ・CS基礎クイズを公開しました", isNew: false },
   { date: "2026/02/28", text: "Google認証を導入しました、サイトの利用をより便利に安心して行えます", isNew: false },
   { date: "2026/02/25", text: "ランダムクイズ機能を公開しました", isNew: false },
   { date: "2026/02/21", text: "学習記録・プロフィール機能を公開しました", isNew: false },
@@ -252,7 +264,7 @@ export default async function Home() {
             <p className="text-base text-muted-foreground md:text-lg mb-6 leading-relaxed">
               HTML、CSS、JavaScript、TypeScript、セキュリティ など
               <br className="hidden md:block" />
-              12カテゴリの4択クイズで実践的なウェブ知識を身につけよう
+              13カテゴリの4択クイズで実践的なウェブ知識を身につけよう
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <Button size="lg" className="rounded-full px-8" asChild>
@@ -494,7 +506,7 @@ export default async function Home() {
           <div className="py-3 space-y-1">
             <span className="text-xs text-muted-foreground">今後の予定</span>
             <p className="text-sm text-foreground">
-              Docker、データ構造アルゴリズム、間違っているコード2択クイズなどを順次追加予定
+              Docker、間違っているコード2択クイズなどを順次追加予定
             </p>
           </div>
         </div>

@@ -173,6 +173,8 @@ const SUGGESTED_KEYWORDS = [
   "ジェネリクス",
   "Docker",
   "リバースプロキシ",
+  "Hydration",
+  "Server Actions",
 ];
 
 export default async function SearchPage({
