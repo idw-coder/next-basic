@@ -78,6 +78,7 @@ const CATEGORY_SLUGS = [
   "ts-general",
   "security-general",
   "cs-basic",
+  "docker",
 ] as const;
 
 interface CategoryDef {
@@ -223,10 +224,20 @@ const CATEGORIES: CategoryDef[] = [
     description: "データ構造・アルゴリズム・計算量など、コンピュータサイエンスの基礎を網羅。",
     topics: ["データ構造", "アルゴリズム", "計算量・エラー"],
   },
+  {
+    slug: "docker", name: "Docker",
+    color: "text-sky-600 dark:text-sky-400",
+    hoverColor: "bg-sky-500 hover:bg-sky-600",
+    bgColor: "bg-sky-50 dark:bg-sky-500/10",
+    badgeBg: "bg-sky-100 dark:bg-sky-500/20",
+    badgeText: "text-sky-700 dark:text-sky-300",
+    description: "コンテナ仮想化のDocker。Dockerfile・docker compose・ボリューム管理などを問題形式で習得。",
+    topics: ["イメージ・コンテナ", "Dockerfile", "docker compose"],
+  },
 ];
 
 const NEWS = [
-  { date: "2026/04/01", text: "Next.jsクイズを公開しました", isNew: true },
+  { date: "2026/04/01", text: "Next.js・Dockerクイズを公開しました", isNew: true },
   { date: "2026/03/01", text: "TypeScript・セキュリティ・CS基礎クイズを公開しました", isNew: false },
   { date: "2026/02/28", text: "Google認証を導入しました、サイトの利用をより便利に安心して行えます", isNew: false },
   { date: "2026/02/25", text: "ランダムクイズ機能を公開しました", isNew: false },
@@ -264,7 +275,7 @@ export default async function Home() {
             <p className="text-base text-muted-foreground md:text-lg mb-6 leading-relaxed">
               HTML、CSS、JavaScript、TypeScript、セキュリティ など
               <br className="hidden md:block" />
-              13カテゴリの4択クイズで実践的なウェブ知識を身につけよう
+              14カテゴリの4択クイズで実践的なウェブ知識を身につけよう
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <Button size="lg" className="rounded-full px-8" asChild>
@@ -431,31 +442,6 @@ export default async function Home() {
             );
           })}
 
-          {/* Docker（準備中） */}
-          <Card className="bg-blue-50 dark:bg-blue-500/10 gap-0 py-0 border-none h-full opacity-70">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-0 px-4 pt-4 sm:px-6 sm:pt-6">
-              <CardTitle className="text-blue-600 dark:text-blue-400 text-base sm:text-lg">Docker</CardTitle>
-              <Badge variant="secondary" className="text-xs shrink-0">準備中</Badge>
-            </CardHeader>
-            <CardContent className="flex-1 space-y-2 sm:space-y-3 px-4 sm:px-6 pt-2 sm:pt-3">
-              <CardDescription className="leading-relaxed text-xs sm:text-sm">
-                コンテナ仮想化のDocker。イメージのビルド、Docker Composeなどを問題形式で習得。
-              </CardDescription>
-              <div className="flex flex-wrap gap-1">
-                {["イメージ・コンテナ", "Dockerfile", "ネットワーク"].map((t) => (
-                  <span key={t} className="text-[10px] sm:text-[11px] text-muted-foreground bg-background/60 rounded-full px-2 py-0.5">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="px-4 pb-4 sm:px-6 sm:pb-6 pt-2 sm:pt-3">
-              <Button disabled className="rounded-full w-full opacity-50 cursor-not-allowed h-8 sm:h-10 text-xs sm:text-sm">
-                <Clock className="size-3.5 sm:size-4 shrink-0 mr-2" />
-                準備中
-              </Button>
-            </CardFooter>
-          </Card>
         </div>
       </section>
 
@@ -506,7 +492,7 @@ export default async function Home() {
           <div className="py-3 space-y-1">
             <span className="text-xs text-muted-foreground">今後の予定</span>
             <p className="text-sm text-foreground">
-              Docker、間違っているコード2択クイズなどを順次追加予定
+              間違っているコード2択クイズなどを順次追加予定
             </p>
           </div>
         </div>

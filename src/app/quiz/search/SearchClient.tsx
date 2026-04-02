@@ -85,6 +85,10 @@ const CATEGORY_COLORS: Record<string, { badge: string; text: string }> = {
     badge: "bg-slate-100 dark:bg-slate-500/20",
     text: "text-slate-700 dark:text-slate-300",
   },
+  "docker": {
+    badge: "bg-sky-100 dark:bg-sky-500/20",
+    text: "text-sky-700 dark:text-sky-300",
+  },
 };
 
 function getCategoryColor(slug: string) {

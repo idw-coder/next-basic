@@ -644,6 +644,63 @@ const categoryContentMap: Record<string, CategorySeoContent> = {
       { slug: "nodejs-basic", name: "Node.js基礎" },
     ],
   },
+  "docker": {
+    overview:
+      "Dockerは、コンテナ型仮想化技術を提供するオープンソースプラットフォームです。アプリケーションとその依存関係をコンテナとしてパッケージ化し、どの環境でも同一の動作を保証します。Dockerfile によるイメージのビルド、Docker Compose による複数コンテナの管理、ボリュームやネットワークの制御など、モダンな開発・デプロイワークフローに不可欠な技術です。",
+    whyLearn:
+      "Dockerはローカル開発環境の統一、CI/CDパイプライン、本番デプロイなど、ソフトウェア開発のあらゆる段階で活用されています。「自分の環境では動くのに…」という問題を解消し、チーム開発の効率を大幅に向上させます。Kubernetes などのコンテナオーケストレーションの前提知識としても必須です。",
+    topics: [
+      {
+        title: "イメージとコンテナ",
+        description:
+          "Dockerイメージの仕組み、レイヤー構造、コンテナのライフサイクル（作成・起動・停止・削除）、docker run のオプションについて出題します。",
+      },
+      {
+        title: "Dockerfile",
+        description:
+          "FROM・COPY・RUN・CMD・ENTRYPOINTなどの命令、マルチステージビルド、レイヤーキャッシュの最適化、.dockerignore の活用を扱います。",
+      },
+      {
+        title: "Docker Compose",
+        description:
+          "docker-compose.yml の構成、サービス定義、依存関係（depends_on）、環境変数、ネットワーク設定など複数コンテナの管理を問います。",
+      },
+      {
+        title: "ボリュームとネットワーク",
+        description:
+          "データの永続化（ボリュームマウント・バインドマウント）、コンテナ間通信、ブリッジネットワーク、ポートマッピングについて出題します。",
+      },
+    ],
+    faqs: [
+      {
+        question: "DockerとVMはどう違いますか？",
+        answer:
+          "VMはハイパーバイザー上でゲストOSを丸ごと動かすのに対し、Dockerはホストカーネルを共有しプロセスレベルで隔離するため、起動が高速でリソース消費も少ないです。軽量かつポータブルな環境構築に適しています。",
+      },
+      {
+        question: "Docker Composeはどのような場合に使いますか？",
+        answer:
+          "Webアプリ＋データベース＋キャッシュなど、複数のコンテナを連携させる開発環境で活用します。docker-compose.yml に全サービスを定義し、docker compose up 一つで環境全体を起動できます。",
+      },
+      {
+        question: "Dockerイメージを小さくするコツは？",
+        answer:
+          "Alpine Linux などの軽量ベースイメージを使う、マルチステージビルドでビルド成果物のみを最終イメージにコピーする、不要ファイルを .dockerignore で除外する、RUN命令をまとめてレイヤー数を減らすなどが効果的です。",
+      },
+    ],
+    targetAudience: [
+      "コンテナ技術をこれから学びたい方",
+      "開発環境の構築を効率化したいエンジニア",
+      "CI/CDやクラウドデプロイの基礎を固めたい方",
+      "Kubernetesの学習前にDocker基礎を押さえたい方",
+    ],
+    relatedCategories: [
+      { slug: "nginx-basic", name: "Nginx基礎" },
+      { slug: "aws-basic", name: "AWS基礎" },
+      { slug: "nodejs-basic", name: "Node.js基礎" },
+    ],
+  },
+
   "nextjs": {
     overview:
       "Next.jsは、Vercelが開発するReactベースのフルスタックフレームワークです。App Router、Server Components、Server Actions、自動コード分割、画像最適化など、プロダクションに必要な機能が標準で揃っています。SSR・SSG・ISRを柔軟に組み合わせることで、パフォーマンスとSEOに優れたWebアプリケーションを構築できます。",

@@ -61,6 +61,7 @@ const CATEGORY_COLOR_MAP: Record<string, { bg: string; border: string; text: str
   "security-general":  { bg: "bg-red-50 dark:bg-red-500/10",        border: "border-red-200 dark:border-red-700",        text: "text-red-600 dark:text-red-400" },
   "cs-basic":          { bg: "bg-purple-50 dark:bg-purple-500/10",  border: "border-purple-200 dark:border-purple-700",  text: "text-purple-600 dark:text-purple-400" },
   "nextjs":            { bg: "bg-slate-50 dark:bg-slate-500/10",    border: "border-slate-200 dark:border-slate-700",    text: "text-slate-700 dark:text-slate-300" },
+  "docker":            { bg: "bg-sky-50 dark:bg-sky-500/10",      border: "border-sky-200 dark:border-sky-700",      text: "text-sky-600 dark:text-sky-400" },
 };
 
 const DEFAULT_CAT_COLOR = { bg: "bg-gray-50 dark:bg-gray-500/10", border: "border-gray-200 dark:border-gray-700", text: "text-gray-600 dark:text-gray-400" };
