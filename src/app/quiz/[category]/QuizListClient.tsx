@@ -163,7 +163,7 @@ export default function QuizListClient({
                       {index + 1}
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <p className="text-foreground font-medium mb-1 line-clamp-2 text-sm sm:text-base">{quiz.question}</p>
+                      <p className="text-foreground font-medium mb-1 line-clamp-2 text-sm sm:text-base whitespace-pre-line">{quiz.question}</p>
                       <div className="flex flex-wrap gap-1">
                         {quiz.tags.map((t) => (
                           <span key={t.id} className="text-xs text-blue-700/80 dark:text-blue-300/80">#{t.name}</span>

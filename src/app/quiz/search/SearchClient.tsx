@@ -305,7 +305,7 @@ export default function SearchClient({
                               {quiz.categoryName}
                             </span>
                           </div>
-                          <p className="text-foreground font-medium line-clamp-2 text-sm sm:text-base leading-relaxed">
+                          <p className="text-foreground font-medium line-clamp-2 text-sm sm:text-base leading-relaxed whitespace-pre-line">
                             {quiz.question}
                           </p>
                           {quiz.tags.length > 0 && (
