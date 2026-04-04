@@ -236,8 +236,9 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-const NEWS = [
-  { date: "2026/04/01", text: "Next.js・Dockerクイズを公開しました", isNew: true },
+const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
+  { date: "2026/04/04", text: "サブスクリプション機能を準備中です。正式リリースまでもうしばらくお待ちください。", isNew: true, link: "/payment" },
+  { date: "2026/04/01", text: "Next.js・Dockerクイズを公開しました", isNew: false },
   { date: "2026/03/01", text: "TypeScript・セキュリティ・CS基礎クイズを公開しました", isNew: false },
   { date: "2026/02/28", text: "Google認証を導入しました、サイトの利用をより便利に安心して行えます", isNew: false },
   { date: "2026/02/25", text: "ランダムクイズ機能を公開しました", isNew: false },
@@ -474,21 +475,30 @@ export default async function Home() {
           お知らせ
         </h2>
         <div className="max-w-2xl mx-auto divide-y divide-border">
-          {NEWS.map((item, i) => (
-            <div key={i} className="py-3 space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {item.date}
-                </span>
-                {item.isNew && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 leading-4">
-                    NEW
-                  </Badge>
-                )}
+          {NEWS.map((item, i) => {
+            const content = (
+              <div className={`py-3 space-y-1 ${item.link ? "group cursor-pointer" : ""}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {item.date}
+                  </span>
+                  {item.isNew && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 leading-4">
+                      NEW
+                    </Badge>
+                  )}
+                </div>
+                <p className={`text-sm text-foreground ${item.link ? "group-hover:text-primary transition-colors" : ""}`}>
+                  {item.text}
+                </p>
               </div>
-              <p className="text-sm text-foreground">{item.text}</p>
-            </div>
-          ))}
+            );
+            return item.link ? (
+              <Link key={i} href={item.link}>{content}</Link>
+            ) : (
+              <div key={i}>{content}</div>
+            );
+          })}
           <div className="py-3 space-y-1">
             <span className="text-xs text-muted-foreground">今後の予定</span>
             <p className="text-sm text-foreground">
