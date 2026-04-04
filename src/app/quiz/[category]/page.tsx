@@ -364,8 +364,8 @@ export default async function CategoryQuizPage({
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {seoContent.topics.map((topic) => (
-              <Card key={topic.title} className="border-border/60">
-                <CardContent className="pt-4 pb-4">
+              <Card key={topic.title} className="border-border/60 py-4">
+                <CardContent>
                   <h3 className="text-sm font-bold text-foreground mb-1">
                     {topic.title}
                   </h3>
