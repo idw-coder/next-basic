@@ -404,36 +404,36 @@ export default async function Home() {
         <h2 className="text-xl font-bold mb-6 md:mb-8 md:text-2xl text-center text-foreground">
           学習カテゴリ
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
           {CATEGORIES.map((cat) => {
             const count = counts[cat.slug] ?? 0;
             return (
               <Card key={cat.slug} className={`${cat.bgColor} gap-0 py-0 border-none h-full`}>
-                <CardHeader className="flex flex-row items-center justify-between gap-3 pb-0 px-4 pt-4 sm:px-6 sm:pt-6">
-                  <CardTitle className={`${cat.color} text-base sm:text-lg`}>{cat.name}</CardTitle>
-                  <Badge className={`${cat.badgeBg} ${cat.badgeText} text-xs shrink-0`}>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-0 px-3 pt-3 sm:px-6 sm:pt-6">
+                  <CardTitle className={`${cat.color} text-sm sm:text-lg`}>{cat.name}</CardTitle>
+                  <Badge className={`${cat.badgeBg} ${cat.badgeText} text-[10px] sm:text-xs shrink-0`}>
                     {count > 0 ? `${count}問` : "準備中"}
                   </Badge>
                 </CardHeader>
-                <CardContent className="flex-1 space-y-2 sm:space-y-3 px-4 sm:px-6 pt-2 sm:pt-3">
-                  <CardDescription className="leading-relaxed text-xs sm:text-sm">
+                <CardContent className="flex-1 space-y-2 sm:space-y-3 px-3 sm:px-6 pt-1.5 sm:pt-3">
+                  <CardDescription className="leading-relaxed text-xs sm:text-sm hidden sm:block">
                     {cat.description}
                   </CardDescription>
                   <div className="flex flex-wrap gap-1">
                     {cat.topics.map((t) => (
-                      <span key={t} className="text-[10px] sm:text-[11px] text-muted-foreground bg-background/60 rounded-full px-2 py-0.5">
+                      <span key={t} className="text-[9px] sm:text-[11px] text-muted-foreground bg-background/60 rounded-full px-1.5 sm:px-2 py-0.5">
                         {t}
                       </span>
                     ))}
                   </div>
                 </CardContent>
-                <CardFooter className="px-4 pb-4 sm:px-6 sm:pb-6 pt-2 sm:pt-3">
-                  <Button className={`${cat.hoverColor} rounded-full w-full text-white h-8 sm:h-10 text-xs sm:text-sm`} asChild>
+                <CardFooter className="px-3 pb-3 sm:px-6 sm:pb-6 pt-1.5 sm:pt-3">
+                  <Button className={`${cat.hoverColor} rounded-full w-full text-white h-7 sm:h-10 text-[11px] sm:text-sm`} asChild>
                     <Link
                       href={`/quiz/${cat.slug}`}
-                      className="inline-flex w-full items-center justify-center gap-2 font-bold"
+                      className="inline-flex w-full items-center justify-center gap-1.5 sm:gap-2 font-bold"
                     >
-                      <PlayCircle className="size-3.5 sm:size-4 shrink-0" />
+                      <PlayCircle className="size-3 sm:size-4 shrink-0" />
                       問題を解く
                     </Link>
                   </Button>
@@ -450,7 +450,7 @@ export default async function Home() {
         <h2 className="text-xl font-bold mb-8 md:text-2xl text-center text-foreground">
           学習のすすめ方
         </h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
           {[
             { step: 1, title: "まずはクイズに挑戦", desc: "スキマ時間に1問ずつ。会員登録なしですぐ始められます。" },
             { step: 2, title: "間違えた問題を復習", desc: "解答履歴から間違えた問題をピックアップして解き直しましょう。" },
@@ -458,11 +458,11 @@ export default async function Home() {
             { step: 4, title: "コードを書いて実践", desc: "問題で学んだ知識を、実際にコードを書いて理解を深めましょう。" },
           ].map((s) => (
             <div key={s.step} className="text-center">
-              <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-sm">
+              <div className="mx-auto mb-2 sm:mb-3 flex size-8 sm:size-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xs sm:text-sm">
                 {s.step}
               </div>
-              <p className="font-semibold text-foreground text-sm mb-1">{s.title}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
+              <p className="font-semibold text-foreground text-xs sm:text-sm mb-1">{s.title}</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
