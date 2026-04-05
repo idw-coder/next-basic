@@ -338,13 +338,165 @@ pending ──(payment_intent.payment_failed)──> failed
 
 ---
 
+## ローカル開発・動作確認手順
+
+### 1. Stripe ダッシュボードで商品・価格を作成
+
+1. [Stripe Dashboard](https://dashboard.stripe.com/) にテストモードでログイン
+2. **Product catalog** → **Add product** で以下の2つを作成
+
+| 商品名 | 価格 | 課金間隔 |
+|---|---|---|
+| Pro（月額） | ¥980 | Monthly (recurring) |
+| Pro（年額） | ¥7,980 | Yearly (recurring) |
+
+3. 各 Price の詳細画面に表示される **Price ID**（`price_xxxxxxxx`）をメモ
+
+### 2. バックエンドの環境変数を設定
+
+`backend/.env` に以下を設定:
+
+```env
+STRIPE_SECRET_KEY=sk_test_xxxxxxxx        # Stripe Dashboard → Developers → API keys → Secret key
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxx      # 手順 4 で Stripe CLI から取得
+FRONTEND_URL=http://localhost:3000
+```
+
+### 3. フロントエンドの環境変数を設定
+
+`next-basic/.env.local` に以下を追記:
+
+```env
+NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID=price_xxxxxxxx   # 手順 1 の月額 Price ID
+NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID=price_xxxxxxxx    # 手順 1 の年額 Price ID
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8888
+```
+
+### 4. Stripe CLI でローカル Webhook を転送
+
+Webhook がないと決済完了後に Payment ステータスが `pending` のまま更新されない。
+
+```bash
+# Stripe CLI のインストール（未インストールの場合）
+brew install stripe/stripe-cli/stripe
+
+# Stripe にログイン
+stripe login
+
+# Webhook イベントをローカルのバックエンドに転送
+stripe listen --forward-to localhost:8888/api/webhook/stripe
+```
+
+ターミナルに表示される `whsec_xxxxxxxx` を `backend/.env` の `STRIPE_WEBHOOK_SECRET` に設定する。
+
+### 5. 準備中フラグの解除
+
+`SubscriptionClient.tsx` の `isPreparing` を一時的に変更:
+
+```typescript
+// 変更前
+const isPreparing = !isFree;
+
+// 変更後（ローカル確認用）
+const isPreparing = false;
+```
+
+### 6. 起動
+
+3つのターミナルで以下を起動:
+
+```bash
+# ターミナル 1: バックエンド
+cd backend && npm run dev
+
+# ターミナル 2: フロントエンド
+cd next-basic && npm run dev
+
+# ターミナル 3: Stripe CLI（手順 4 で起動済み）
+```
+
+### 7. 動作確認
+
+1. `http://localhost:3000` でログイン
+2. `/payment` にアクセス → Pro プランの「このプランを選ぶ」をクリック
+3. Stripe Checkout 画面で**テストカード**を入力:
+   - カード番号: `4242 4242 4242 4242`
+   - 有効期限: 任意の未来日（例: `12/30`）
+   - CVC: 任意の3桁（例: `123`）
+4. 決済完了 → `/payment/success` にリダイレクトされることを確認
+5. Stripe CLI のターミナルに `checkout.session.completed` イベントが表示されることを確認
+
+### 確認後の戻し
+
+動作確認が終わったら `isPreparing` を元に戻す:
+
+```typescript
+const isPreparing = !isFree;
+```
+
+`.env.local` は `.gitignore` に含まれるため、そのまま残して問題ない。
+
+---
+
 ## 正式リリース時の対応事項
 
-1. **Stripe ダッシュボードで商品・価格を作成**し、Price ID を環境変数に設定
-2. **準備中フラグを解除**: `SubscriptionClient.tsx` の `isPreparing` ロジックを変更
-3. **トップページのお知らせを更新**: NEWS の準備中メッセージを正式リリースメッセージに差し替え
-4. **Webhook エンドポイントを本番環境に登録**（Stripe Dashboard → Webhooks）
-5. **テストカード（`4242 4242 4242 4242`）で動作確認**
+### 1. Stripe ダッシュボードで商品・価格を作成
+
+本番モード（Live）で月額・年額の Price を作成し、Price ID（`price_xxx`）を取得する。
+
+### 2. GitHub Secrets に Price ID を追加
+
+GitHub → Settings → Secrets and variables → Actions で以下を登録:
+
+| Secret 名 | 値 |
+|---|---|
+| `NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID` | 月額プランの Price ID（`price_xxx`） |
+| `NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID` | 年額プランの Price ID（`price_xxx`） |
+
+### 3. Dockerfile に ARG を追加
+
+`next-basic/Dockerfile` の既存 ARG の後に追加:
+
+```dockerfile
+ARG NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
+ARG NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID
+```
+
+### 4. deploy.yml に build-args を追加
+
+`.github/workflows/deploy.yml` の `build-args` に追加:
+
+```yaml
+NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID }}
+NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID }}
+```
+
+### 5. 準備中フラグを解除
+
+`SubscriptionClient.tsx` の `isPreparing` ロジックを変更:
+
+```typescript
+// 変更前
+const isPreparing = !isFree;
+
+// 変更後
+const isPreparing = false;
+```
+
+### 6. トップページのお知らせを更新
+
+`src/app/page.tsx` の NEWS 配列で準備中メッセージを正式リリースメッセージに差し替える。
+
+### 7. Webhook エンドポイントを本番環境に登録
+
+Stripe Dashboard → **Developers** → **Webhooks** でエンドポイントを追加:
+
+- URL: `https://<本番ドメイン>/api/webhook/stripe`
+- 監視イベント: `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`
+
+### 8. テストカードで動作確認
+
+本番デプロイ前にステージング環境またはテストモードで `4242 4242 4242 4242` を使って一連のフローを確認する。
 
 ---
 
