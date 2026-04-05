@@ -78,20 +78,24 @@ function shuffleArray<T>(array: T[]): T[] {
 
 interface RandomQuizClientProps {
   categories: Category[];
-  initialCategoryId?: number;
+  initialCategorySlug?: string;
   isCompleted?: boolean;
 }
 
 export default function RandomQuizClient({
   categories,
-  initialCategoryId,
+  initialCategorySlug,
   isCompleted,
 }: RandomQuizClientProps) {
   const router = useRouter();
 
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | "all">(
-    initialCategoryId ?? "all",
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | "all">(() => {
+    if (initialCategorySlug) {
+      const found = categories.find((c) => c.slug === initialCategorySlug);
+      if (found) return found.id;
+    }
+    return "all";
+  });
   const [quizCount, setQuizCount] = useState<number>(10);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -283,7 +287,7 @@ export default function RandomQuizClient({
           <CardTitle className="text-lg">問題数を選択</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3">
             {QUIZ_COUNTS.map((count) => {
               const style = QUIZ_COUNT_STYLES[count];
               return (
@@ -292,7 +296,7 @@ export default function RandomQuizClient({
                   type="button"
                   onClick={() => setQuizCount(count)}
                   className={cn(
-                    "relative rounded-xl border-2 p-4 text-center transition-all",
+                    "relative rounded-xl border-2 p-2.5 sm:p-4 text-center transition-all",
                     style.bg,
                     quizCount === count
                       ? `${style.border} shadow-sm scale-[1.02]`
@@ -301,7 +305,7 @@ export default function RandomQuizClient({
                 >
                   <div
                     className={cn(
-                      "text-2xl font-extrabold tabular-nums",
+                      "text-xl sm:text-2xl font-extrabold tabular-nums",
                       style.text,
                     )}
                   >
@@ -309,7 +313,7 @@ export default function RandomQuizClient({
                   </div>
                   <div
                     className={cn(
-                      "text-xs font-medium",
+                      "text-[10px] sm:text-xs font-medium",
                       style.label,
                     )}
                   >

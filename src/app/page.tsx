@@ -299,12 +299,16 @@ export default async function Home() {
           </div>
           <div className="text-center sm:text-left sm:flex-1 sm:max-w-xl">
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mb-3 sm:mb-4 md:text-5xl leading-tight">
-              ウェブ知識を<span className="inline-block"><span className="text-primary">スキマ時間</span>で学習</span>
+              ウェブ知識を<span className="inline-block"><span className="text-red-500">スキマ時間</span>で学習</span>
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground md:text-lg mb-3 sm:mb-4">
               1問30秒から。4択クイズでサクッと力試し
             </p>
-            <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 mb-4 sm:mb-6">
+            <div className="relative flex flex-wrap justify-center sm:justify-start gap-1.5 mb-4 sm:mb-6">
+              <Sparkles className="absolute -top-2.5 -left-1 sm:-left-3 size-3.5 sm:size-4 text-amber-400 pointer-events-none" aria-hidden="true" />
+              <Sparkles className="absolute -top-1 right-4 sm:right-auto sm:left-[70%] size-3 sm:size-3.5 text-red-400/25 pointer-events-none -rotate-12" aria-hidden="true" />
+              <Sparkles className="absolute top-1/2 -right-1 sm:right-auto sm:left-[90%] size-3.5 sm:size-4 text-amber-300/60 pointer-events-none rotate-6" aria-hidden="true" />
+              <Sparkles className="absolute -bottom-2 left-[30%] sm:left-[45%] size-3 sm:size-3.5 text-red-400/30 pointer-events-none rotate-12" aria-hidden="true" />
               {[
                 { name: "HTML", cls: "text-orange-600 bg-orange-50 border-orange-200" },
                 { name: "CSS", cls: "text-blue-600 bg-blue-50 border-blue-200" },
@@ -336,7 +340,7 @@ export default async function Home() {
             <div className="mt-4 sm:mt-6 flex justify-center sm:justify-start">
               <div className="inline-flex items-center gap-3 sm:gap-5 rounded-xl border border-gray-200 bg-white/80 px-4 sm:px-5 py-2 sm:py-2.5 shadow-sm">
                 <div className="text-center">
-                  <p className="text-lg sm:text-2xl font-black text-primary leading-none">15</p>
+                  <p className="text-lg sm:text-2xl font-black text-red-500 leading-none">15</p>
                   <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">カテゴリ</p>
                 </div>
                 <div className="h-6 sm:h-7 w-px bg-gray-200" />
@@ -360,7 +364,7 @@ export default async function Home() {
       {/* 特徴 */}
       <section className="mb-16 md:mb-20 bg-muted/40 rounded-2xl px-5 py-10 md:px-8">
         <h2 className="text-xl font-bold mb-8 md:text-2xl text-center text-foreground">
-          <Sparkles className="size-5 inline-block mr-2 -mt-0.5 text-primary" />
+          <Sparkles className="size-5 inline-block mr-2 -mt-0.5 text-red-400" />
           このサイトの特徴
         </h2>
         <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">

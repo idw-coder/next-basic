@@ -33,22 +33,23 @@ export const metadata: Metadata = {
 export default async function RandomQuizPage({
   searchParams,
 }: {
-  searchParams: Promise<{ categoryId?: string; completed?: string }>;
+  searchParams: Promise<{ category?: string; categoryId?: string; completed?: string }>;
 }) {
-  const { categoryId, completed } = await searchParams;
+  const { category, categoryId, completed } = await searchParams;
   const categories = await getCategories();
 
-  const initialCategoryId = categoryId ? Number(categoryId) : undefined;
-  const validCategoryId =
-    initialCategoryId && categories.some((c) => c.id === initialCategoryId)
-      ? initialCategoryId
+  const matchedCategory = category
+    ? categories.find((c) => c.slug === category)
+    : categoryId
+      ? categories.find((c) => String(c.id) === categoryId)
       : undefined;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
       <RandomQuizClient
+        key={matchedCategory?.slug ?? "all"}
         categories={categories}
-        initialCategoryId={validCategoryId}
+        initialCategorySlug={matchedCategory?.slug}
         isCompleted={completed === "1"}
       />
     </div>

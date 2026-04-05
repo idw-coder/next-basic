@@ -300,20 +300,20 @@ export default async function CategoryQuizPage({
 
       {/* ランダムクイズへの導線 */}
       <section className="mb-8">
-        <Link href={`/quiz/random?categoryId=${category.id}`} className="block group">
-          <div className="flex items-center gap-3 rounded-lg border-2 border-dashed border-primary/30 hover:border-primary/60 bg-primary/5 p-4 transition-colors">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
-              <Shuffle className="size-5 text-primary" />
+        <Link href={`/quiz/random?category=${category.slug}`} className="block group">
+          <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 p-3 sm:p-4 transition-colors">
+            <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/15 transition-colors">
+              <Shuffle className="size-4 sm:size-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-foreground text-sm sm:text-base">
                 {category.category_name} ランダムクイズ
               </p>
-              <p className="text-xs text-muted-foreground">
-                5問・10問など問題数を選んでランダムに出題
+              <p className="text-[11px] sm:text-xs text-muted-foreground">
+                問題数を選んでランダムに出題
               </p>
             </div>
-            <ChevronRight className="size-5 text-primary shrink-0 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="size-5 text-primary shrink-0 group-hover:translate-x-1 transition-transform" />
           </div>
         </Link>
       </section>
