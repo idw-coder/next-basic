@@ -701,6 +701,63 @@ const categoryContentMap: Record<string, CategorySeoContent> = {
     ],
   },
 
+  "linux": {
+    overview:
+      "Linuxは、サーバー運用やクラウド環境で圧倒的なシェアを持つオープンソースのオペレーティングシステムです。コマンドライン操作（bash/zsh）、ファイルパーミッション管理、プロセス制御、ネットワーク設定、シェルスクリプトなど、インフラエンジニアやバックエンド開発者にとって不可欠な基礎知識を幅広くカバーしています。Dockerコンテナやクラウドインスタンスの多くがLinux上で動作しており、モダンな開発環境における必須スキルです。",
+    whyLearn:
+      "Web開発やインフラ運用の現場では、Linux上でのサーバー管理・デプロイ作業が日常的に行われます。コマンドラインの基本操作、ファイルパーミッション、プロセス管理、ネットワーク設定の知識は、DevOpsやSREはもちろん、アプリケーション開発者にとっても必須です。AWS EC2やDockerコンテナもLinuxベースで動作するため、Linuxの理解がクラウド活用の土台となります。",
+    topics: [
+      {
+        title: "コマンドライン操作",
+        description:
+          "grep、find、tar、パイプ、リダイレクトなど、日常的に使用するLinuxコマンドの使い方とオプションについて出題します。",
+      },
+      {
+        title: "パーミッションとユーザー管理",
+        description:
+          "chmod、chown、ファイルパーミッションの数値表記、所有者・グループの概念、sudo・rootユーザーの適切な使い分けを扱います。",
+      },
+      {
+        title: "プロセス管理とサービス",
+        description:
+          "ps、kill、top、systemctl、cronによるプロセスの監視・制御・定期実行タスクの設定について問います。",
+      },
+      {
+        title: "シェルスクリプトとネットワーク",
+        description:
+          "シェルスクリプトの基本構文、SSH接続、シンボリックリンク、リダイレクトとパイプなど実務で頻出するトピックを出題します。",
+      },
+    ],
+    faqs: [
+      {
+        question: "Linux初心者はどのディストリビューションから始めるべきですか？",
+        answer:
+          "UbuntuやLinux Mintが初心者に最も推奨されます。デスクトップ用途なら日本語環境が充実したUbuntu、サーバー用途ならUbuntu ServerやRocky Linux（CentOS後継）が人気です。WSL（Windows Subsystem for Linux）でWindows上からLinuxを試すこともできます。",
+      },
+      {
+        question: "Web開発者にLinuxの知識は必要ですか？",
+        answer:
+          "はい、必要です。本番サーバーの多くはLinuxで運用されており、デプロイ・ログ確認・トラブルシューティングなどでコマンドライン操作が求められます。DockerやCI/CD環境もLinuxベースで動作するため、基本的なLinuxコマンドの知識は開発者の必須スキルです。",
+      },
+      {
+        question: "このクイズはLinux未経験でも解けますか？",
+        answer:
+          "基礎的な問題から出題しているため、コマンドラインに触れたことがあれば挑戦できます。わからない問題があっても詳しい解説を読みながら学習できるので、実務で使うLinuxコマンドを効率的に身につけられます。",
+      },
+    ],
+    targetAudience: [
+      "サーバー管理やインフラ運用を学びたいエンジニア",
+      "Docker・クラウド環境でLinuxコマンドを使いこなしたい方",
+      "コマンドライン操作に不安がある開発者",
+      "DevOps・SREを目指す方",
+    ],
+    relatedCategories: [
+      { slug: "docker", name: "Docker" },
+      { slug: "nginx-basic", name: "Nginx基礎" },
+      { slug: "aws-basic", name: "AWS基礎" },
+    ],
+  },
+
   "nextjs": {
     overview:
       "Next.jsは、Vercelが開発するReactベースのフルスタックフレームワークです。App Router、Server Components、Server Actions、自動コード分割、画像最適化など、プロダクションに必要な機能が標準で揃っています。SSR・SSG・ISRを柔軟に組み合わせることで、パフォーマンスとSEOに優れたWebアプリケーションを構築できます。",

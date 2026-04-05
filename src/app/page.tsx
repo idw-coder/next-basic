@@ -79,6 +79,7 @@ const CATEGORY_SLUGS = [
   "security-general",
   "cs-basic",
   "docker",
+  "linux",
 ] as const;
 
 interface CategoryDef {
@@ -234,10 +235,21 @@ const CATEGORIES: CategoryDef[] = [
     description: "コンテナ仮想化のDocker。Dockerfile・docker compose・ボリューム管理などを問題形式で習得。",
     topics: ["イメージ・コンテナ", "Dockerfile", "docker compose"],
   },
+  {
+    slug: "linux", name: "Linux",
+    color: "text-lime-600 dark:text-lime-400",
+    hoverColor: "bg-lime-500 hover:bg-lime-600",
+    bgColor: "bg-lime-50 dark:bg-lime-500/10",
+    badgeBg: "bg-lime-100 dark:bg-lime-500/20",
+    badgeText: "text-lime-700 dark:text-lime-300",
+    description: "コマンド操作・パーミッション・プロセス管理・ネットワークなど、実務で頻出するLinux基礎知識。",
+    topics: ["コマンド操作", "パーミッション", "プロセス管理"],
+  },
 ];
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
-  { date: "2026/04/04", text: "サブスクリプション機能を準備中です。正式リリースまでもうしばらくお待ちください。", isNew: true, link: "/payment" },
+  { date: "2026/04/05", text: "Linuxクイズを公開しました", isNew: true },
+  { date: "2026/04/04", text: "サブスクリプション機能を準備中です。正式リリースまでもうしばらくお待ちください。", isNew: false, link: "/payment" },
   { date: "2026/04/01", text: "Next.js・Dockerクイズを公開しました", isNew: false },
   { date: "2026/03/01", text: "TypeScript・セキュリティ・CS基礎クイズを公開しました", isNew: false },
   { date: "2026/02/28", text: "Google認証を導入しました、サイトの利用をより便利に安心して行えます", isNew: false },
@@ -276,7 +288,7 @@ export default async function Home() {
             <p className="text-base text-muted-foreground md:text-lg mb-6 leading-relaxed">
               HTML、CSS、JavaScript、TypeScript、セキュリティ など
               <br className="hidden md:block" />
-              14カテゴリの4択クイズで実践的なウェブ知識を身につけよう
+              15カテゴリの4択クイズで実践的なウェブ知識を身につけよう
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <Button size="lg" className="rounded-full px-8" asChild>

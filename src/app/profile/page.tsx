@@ -70,6 +70,9 @@ const SLUG_COLOR: Record<string, string> = {
   "ts-general": "bg-indigo-500",
   "security-general": "bg-red-500",
   "cs-basic": "bg-purple-500",
+  "nextjs": "bg-slate-700",
+  "docker": "bg-sky-500",
+  "linux": "bg-lime-500",
 };
 
 interface ApiCategory {

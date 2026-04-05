@@ -175,6 +175,7 @@ const SUGGESTED_KEYWORDS = [
   "リバースプロキシ",
   "Hydration",
   "Server Actions",
+  "chmod",
 ];
 
 export default async function SearchPage({

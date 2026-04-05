@@ -89,6 +89,10 @@ const CATEGORY_COLORS: Record<string, { badge: string; text: string }> = {
     badge: "bg-sky-100 dark:bg-sky-500/20",
     text: "text-sky-700 dark:text-sky-300",
   },
+  "linux": {
+    badge: "bg-lime-100 dark:bg-lime-500/20",
+    text: "text-lime-700 dark:text-lime-300",
+  },
 };
 
 function getCategoryColor(slug: string) {
