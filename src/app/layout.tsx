@@ -50,7 +50,7 @@ export default function RootLayout({
         <HideAdsForEntry />
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
           <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 font-bold text-gray-900 hover:text-blue-600 transition-colors shrink-0">
+            <Link href="/" className="flex items-center gap-2 font-bold text-gray-900 hover:text-primary transition-colors shrink-0">
               <Image src="/favicon.ico" alt="" width={32} height={32} className="shrink-0" />
               <span className="text-base md:text-lg">ウェブエンジニア問題集</span>
             </Link>

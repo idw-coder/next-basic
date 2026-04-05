@@ -5,7 +5,6 @@ import {
   BadgeCheck,
   Clock,
   RotateCcw,
-  PlayCircle,
   Flame,
   Target,
   TrendingUp,
@@ -15,14 +14,6 @@ import {
   Shuffle,
   Search,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -247,6 +238,24 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
+const CIRCLE_COLORS: Record<string, string> = {
+  "html-basic": "border-orange-400",
+  "css-basic": "border-blue-400",
+  "javascript-basic": "border-yellow-400",
+  "react-basic": "border-cyan-400",
+  "vue-basic": "border-emerald-400",
+  "nodejs-basic": "border-green-500",
+  "nextjs": "border-gray-500",
+  "git-basic": "border-rose-500",
+  "aws-basic": "border-orange-500",
+  "nginx-basic": "border-teal-500",
+  "ts-general": "border-indigo-400",
+  "security-general": "border-red-500",
+  "cs-basic": "border-purple-400",
+  "docker": "border-sky-400",
+  "linux": "border-lime-500",
+};
+
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   { date: "2026/04/05", text: "Linuxクイズを公開しました", isNew: true },
   { date: "2026/04/04", text: "サブスクリプション機能を準備中です。正式リリースまでもうしばらくお待ちください。", isNew: false, link: "/payment" },
@@ -264,11 +273,20 @@ const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
 
 export default async function Home() {
   const counts = await getQuizCountsBySlugs([...CATEGORY_SLUGS]);
+  const totalCount = Object.values(counts).reduce((sum, c) => sum + c, 0);
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 md:py-16">
       {/* ヒーロー */}
-      <section className="mb-16 md:mb-20">
-        <div className="flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-8">
+      <section className="mb-16 md:mb-20 relative overflow-hidden">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none select-none" aria-hidden="true" viewBox="0 0 400 300" preserveAspectRatio="none" fill="none">
+          <path d="M -10 285 C 120 278 280 180 410 15 L 410 55 C 280 220 120 295 -10 300 Z" fill="#e5e7eb" opacity="0.45" />
+        </svg>
+        <div className="absolute top-2 right-6 sm:right-14 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-primary/10 pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/3 right-1 sm:right-4 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
+        <div className="absolute bottom-8 right-1/4 w-6 h-6 rounded-full bg-amber-200/30 pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1 left-1/4 w-4 h-4 rounded-full bg-gray-300/50 pointer-events-none" aria-hidden="true" />
+        <div className="absolute bottom-1/3 left-4 sm:left-8 w-7 h-7 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
+        <div className="relative flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-8">
           <div className="flex justify-center sm:justify-start">
             <Image
               src="/inpiration_man_color.png"
@@ -280,12 +298,10 @@ export default async function Home() {
             />
           </div>
           <div className="text-center sm:text-left sm:flex-1 sm:max-w-xl">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground mb-4 md:text-4xl leading-tight">
-              ウェブ知識を
-              <br className="block sm:hidden" />
-              <span className="text-primary">スキマ時間</span>で学習
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-4 md:text-5xl leading-tight">
+              ウェブ知識を<span className="inline-block"><span className="text-primary">スキマ時間</span>で学習</span>
             </h1>
-            <p className="text-base text-muted-foreground md:text-lg mb-6 leading-relaxed">
+            <p className="text-lg text-muted-foreground md:text-xl mb-6 leading-relaxed">
               HTML、CSS、JavaScript、TypeScript、セキュリティ など
               <br className="hidden md:block" />
               15カテゴリの4択クイズで実践的なウェブ知識を身につけよう
@@ -299,6 +315,26 @@ export default async function Home() {
               </Button>
               <span className="text-xs text-muted-foreground">会員登録なしですぐ始められます</span>
             </div>
+            <div className="mt-6 flex justify-center sm:justify-start">
+              <div className="inline-flex items-center gap-4 sm:gap-5 rounded-xl border border-gray-200 bg-white/80 px-5 py-2.5 shadow-sm">
+                <div className="text-center">
+                  <p className="text-xl sm:text-2xl font-black text-primary leading-none">15</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">カテゴリ</p>
+                </div>
+                <div className="h-7 w-px bg-gray-200" />
+                <div className="text-center">
+                  <p className="text-xl sm:text-2xl font-black text-foreground leading-none">
+                    {totalCount > 0 ? totalCount : 500}<span className="text-xs font-normal text-muted-foreground">+</span>
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">問題数</p>
+                </div>
+                <div className="h-7 w-px bg-gray-200" />
+                <div className="text-center">
+                  <p className="text-sm font-bold text-green-600 leading-none">無料</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">で利用可能</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -311,7 +347,7 @@ export default async function Home() {
         </h2>
         <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
           {[
-            { icon: BadgeCheck, color: "text-primary", title: "完全無料", desc: "会員登録なしでも\nすべての問題を利用可能" },
+            { icon: BadgeCheck, color: "text-primary", title: "無料で利用可能", desc: "会員登録なしでも\nすぐに問題を解ける" },
             { icon: Clock, color: "text-primary", title: "スキマ時間で学べる", desc: "1問ずつ短時間で\n解答できる設計" },
             { icon: RotateCcw, color: "text-primary", title: "復習しやすい", desc: "間違えた問題を\n繰り返し解き直せる" },
             { icon: TrendingUp, color: "text-primary", title: "成長を実感", desc: "正答率や学習日数を\nプロフィールで確認" },
@@ -414,47 +450,49 @@ export default async function Home() {
 
       {/* 学習カテゴリ */}
       <section id="categories" className="mb-16 md:mb-20">
-        <h2 className="text-xl font-bold mb-6 md:mb-8 md:text-2xl text-center text-foreground">
+        <h2 className="text-xl font-bold mb-2 md:mb-3 md:text-2xl text-center text-foreground">
           学習カテゴリ
         </h2>
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
-          {CATEGORIES.map((cat) => {
-            const count = counts[cat.slug] ?? 0;
-            return (
-              <Card key={cat.slug} className={`${cat.bgColor} gap-0 py-0 border-none h-full`}>
-                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-0 px-3 pt-3 sm:px-6 sm:pt-6">
-                  <CardTitle className={`${cat.color} text-sm sm:text-lg`}>{cat.name}</CardTitle>
-                  <Badge className={`${cat.badgeBg} ${cat.badgeText} text-[10px] sm:text-xs shrink-0`}>
-                    {count > 0 ? `${count}問` : "準備中"}
-                  </Badge>
-                </CardHeader>
-                <CardContent className="flex-1 space-y-2 sm:space-y-3 px-3 sm:px-6 pt-1.5 sm:pt-3">
-                  <CardDescription className="leading-relaxed text-xs sm:text-sm hidden sm:block">
-                    {cat.description}
-                  </CardDescription>
-                  <div className="flex flex-wrap gap-1">
-                    {cat.topics.map((t) => (
-                      <span key={t} className="text-[9px] sm:text-[11px] text-muted-foreground bg-background/60 rounded-full px-1.5 sm:px-2 py-0.5">
-                        {t}
-                      </span>
-                    ))}
+        <p className="text-sm text-muted-foreground text-center mb-8 md:mb-10">
+          15カテゴリの問題に挑戦しよう
+        </p>
+        <div className="relative">
+          <div className="absolute -top-1 right-8 sm:right-14 w-7 h-7 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
+          <div className="absolute top-1/4 left-0 sm:left-6 w-5 h-5 rounded-full bg-amber-200/30 pointer-events-none" aria-hidden="true" />
+          <div className="absolute bottom-10 right-1/4 w-6 h-6 rounded-full bg-primary/10 pointer-events-none" aria-hidden="true" />
+          <div className="absolute top-1/2 right-3 sm:right-10 w-4 h-4 rounded-full bg-gray-300/40 pointer-events-none" aria-hidden="true" />
+          <div className="absolute bottom-2 left-1/3 w-5 h-5 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-5 sm:gap-7 lg:gap-9 justify-items-center">
+            {CATEGORIES.map((cat) => {
+              const count = counts[cat.slug] ?? 0;
+              return (
+                <Link
+                  key={cat.slug}
+                  href={`/quiz/${cat.slug}`}
+                  className="group flex flex-col items-center gap-1.5 sm:gap-2"
+                >
+                  <div
+                    className={`
+                      w-[76px] h-[76px] sm:w-[100px] sm:h-[100px] lg:w-[116px] lg:h-[116px]
+                      rounded-full border-[3px] ${CIRCLE_COLORS[cat.slug] ?? "border-gray-300"}
+                      flex items-center justify-center bg-white
+                      group-hover:scale-105 group-hover:shadow-lg
+                      transition-all duration-200
+                    `}
+                  >
+                    <span className="text-[11px] sm:text-sm lg:text-[15px] font-bold text-gray-700">
+                      {cat.name}
+                    </span>
                   </div>
-                </CardContent>
-                <CardFooter className="px-3 pb-3 sm:px-6 sm:pb-6 pt-1.5 sm:pt-3">
-                  <Button className={`${cat.hoverColor} rounded-full w-full text-white h-7 sm:h-10 text-[11px] sm:text-sm`} asChild>
-                    <Link
-                      href={`/quiz/${cat.slug}`}
-                      className="inline-flex w-full items-center justify-center gap-1.5 sm:gap-2 font-bold"
-                    >
-                      <PlayCircle className="size-3 sm:size-4 shrink-0" />
-                      問題を解く
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })}
-
+                  {count > 0 && (
+                    <span className="text-[10px] sm:text-xs text-muted-foreground">
+                      {count}問
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </section>
 

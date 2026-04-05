@@ -263,8 +263,16 @@ export default async function CategoryQuizPage({
       </nav>
 
       {/* ヘッダー */}
-      <section className="mb-10">
-        <div className="flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-6">
+      <section className="mb-10 relative overflow-hidden">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none select-none" aria-hidden="true" viewBox="0 0 400 300" preserveAspectRatio="none" fill="none">
+          <path d="M -10 285 C 120 278 280 180 410 15 L 410 55 C 280 220 120 295 -10 300 Z" fill="#e5e7eb" opacity="0.4" />
+        </svg>
+        <div className="absolute top-1 right-6 sm:right-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/2 right-1 sm:right-3 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
+        <div className="absolute bottom-3 right-1/4 w-5 h-5 rounded-full bg-amber-200/30 pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-0 left-1/4 w-4 h-4 rounded-full bg-gray-300/40 pointer-events-none" aria-hidden="true" />
+        <div className="absolute bottom-1/3 left-1 sm:left-5 w-6 h-6 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
+        <div className="relative flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-6">
           <div className="flex justify-center sm:justify-start">
             <Image
               src="/inpiration_man_color.png"
