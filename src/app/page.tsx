@@ -286,7 +286,7 @@ export default async function Home() {
         <div className="absolute bottom-8 right-1/4 w-6 h-6 rounded-full bg-amber-200/30 pointer-events-none" aria-hidden="true" />
         <div className="absolute top-1 left-1/4 w-4 h-4 rounded-full bg-gray-300/50 pointer-events-none" aria-hidden="true" />
         <div className="absolute bottom-1/3 left-4 sm:left-8 w-7 h-7 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
-        <div className="relative flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-8">
+        <div className="relative flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-4 sm:gap-8">
           <div className="flex justify-center sm:justify-start">
             <Image
               src="/inpiration_man_color.png"
@@ -294,44 +294,62 @@ export default async function Home() {
               width={588}
               height={761}
               priority
-              className="w-full max-w-[160px] md:max-w-[200px] h-auto -scale-x-100"
+              className="w-full max-w-[120px] sm:max-w-[160px] md:max-w-[200px] h-auto -scale-x-100"
             />
           </div>
           <div className="text-center sm:text-left sm:flex-1 sm:max-w-xl">
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-4 md:text-5xl leading-tight">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mb-3 sm:mb-4 md:text-5xl leading-tight">
               ウェブ知識を<span className="inline-block"><span className="text-primary">スキマ時間</span>で学習</span>
             </h1>
-            <p className="text-lg text-muted-foreground md:text-xl mb-6 leading-relaxed">
-              HTML、CSS、JavaScript、TypeScript、セキュリティ など
-              <br className="hidden md:block" />
-              15カテゴリの4択クイズで実践的なウェブ知識を身につけよう
+            <p className="text-sm sm:text-base text-muted-foreground md:text-lg mb-3 sm:mb-4">
+              1問30秒から。4択クイズでサクッと力試し
             </p>
-            <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 mb-4 sm:mb-6">
+              {[
+                { name: "HTML", cls: "text-orange-600 bg-orange-50 border-orange-200" },
+                { name: "CSS", cls: "text-blue-600 bg-blue-50 border-blue-200" },
+                { name: "JavaScript", cls: "text-amber-600 bg-amber-50 border-amber-200" },
+                { name: "React", cls: "text-cyan-600 bg-cyan-50 border-cyan-200" },
+                { name: "Vue", cls: "text-emerald-600 bg-emerald-50 border-emerald-200" },
+                { name: "Node.js", cls: "text-green-600 bg-green-50 border-green-200" },
+                { name: "TypeScript", cls: "text-indigo-600 bg-indigo-50 border-indigo-200" },
+                { name: "AWS", cls: "text-amber-700 bg-amber-50 border-amber-200" },
+                { name: "Git", cls: "text-rose-600 bg-rose-50 border-rose-200" },
+                { name: "Next.js", cls: "text-slate-700 bg-slate-50 border-slate-200" },
+                { name: "Docker", cls: "text-sky-600 bg-sky-50 border-sky-200" },
+                { name: "Linux", cls: "text-lime-600 bg-lime-50 border-lime-200" },
+              ].map((tag) => (
+                <span key={tag.name} className={`text-[10px] sm:text-xs font-semibold rounded-full px-2 py-0.5 sm:px-2.5 sm:py-0.5 border ${tag.cls}`}>
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
               <Button size="lg" className="rounded-full px-8" asChild>
                 <Link href="#categories" className="inline-flex items-center gap-2 font-bold">
                   学習を始める
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
-              <span className="text-xs text-muted-foreground">会員登録なしですぐ始められます</span>
+              <span className="text-[10px] sm:text-xs text-muted-foreground">会員登録なしですぐ始められます</span>
             </div>
-            <div className="mt-6 flex justify-center sm:justify-start">
-              <div className="inline-flex items-center gap-4 sm:gap-5 rounded-xl border border-gray-200 bg-white/80 px-5 py-2.5 shadow-sm">
+            <div className="mt-4 sm:mt-6 flex justify-center sm:justify-start">
+              <div className="inline-flex items-center gap-3 sm:gap-5 rounded-xl border border-gray-200 bg-white/80 px-4 sm:px-5 py-2 sm:py-2.5 shadow-sm">
                 <div className="text-center">
-                  <p className="text-xl sm:text-2xl font-black text-primary leading-none">15</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">カテゴリ</p>
+                  <p className="text-lg sm:text-2xl font-black text-primary leading-none">15</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">カテゴリ</p>
                 </div>
-                <div className="h-7 w-px bg-gray-200" />
+                <div className="h-6 sm:h-7 w-px bg-gray-200" />
                 <div className="text-center">
-                  <p className="text-xl sm:text-2xl font-black text-foreground leading-none">
-                    {totalCount > 0 ? totalCount : 500}<span className="text-xs font-normal text-muted-foreground">+</span>
+                  <p className="text-lg sm:text-2xl font-black text-foreground leading-none">
+                    {totalCount > 0 ? totalCount : 500}<span className="text-[10px] sm:text-xs font-normal text-muted-foreground">+</span>
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">問題数</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">問題数</p>
                 </div>
-                <div className="h-7 w-px bg-gray-200" />
+                <div className="h-6 sm:h-7 w-px bg-gray-200" />
                 <div className="text-center">
-                  <p className="text-sm font-bold text-green-600 leading-none">無料</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">で利用可能</p>
+                  <p className="text-xs sm:text-sm font-bold text-green-600 leading-none">無料</p>
+                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">で利用可能</p>
                 </div>
               </div>
             </div>
