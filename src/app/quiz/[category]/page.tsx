@@ -366,23 +366,30 @@ export default async function CategoryQuizPage({
       {/* 出題トピック */}
       {seoContent && (
         <section className="mb-10">
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
             <BookOpenCheck className="size-5 text-primary" />
             出題トピック
           </h2>
+          <div className="flex gap-1 mb-4">
+            <span className="w-4 h-1 rounded-full bg-red-400" />
+            <span className="w-4 h-1 rounded-full bg-blue-400" />
+            <span className="w-4 h-1 rounded-full bg-amber-400" />
+            <span className="w-4 h-1 rounded-full bg-green-400" />
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {seoContent.topics.map((topic) => (
-              <Card key={topic.title} className="border-border/60 py-4">
-                <CardContent>
+            {seoContent.topics.map((topic, i) => {
+              const borderColors = ["border-l-red-400", "border-l-blue-400", "border-l-amber-400", "border-l-green-400", "border-l-purple-400", "border-l-cyan-400"];
+              return (
+                <div key={topic.title} className={`rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm border-l-[5px] ${borderColors[i % borderColors.length]} p-4`}>
                   <h3 className="text-sm font-bold text-foreground mb-1">
                     {topic.title}
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {topic.description}
                   </p>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -390,20 +397,29 @@ export default async function CategoryQuizPage({
       {/* 対象者 */}
       {seoContent && (
         <section className="mb-10">
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
             <Users className="size-5 text-primary" />
             こんな方におすすめ
           </h2>
+          <div className="flex gap-1 mb-4">
+            <span className="w-4 h-1 rounded-full bg-red-400" />
+            <span className="w-4 h-1 rounded-full bg-blue-400" />
+            <span className="w-4 h-1 rounded-full bg-amber-400" />
+            <span className="w-4 h-1 rounded-full bg-green-400" />
+          </div>
           <ul className="grid gap-2 sm:grid-cols-2">
-            {seoContent.targetAudience.map((audience) => (
-              <li
-                key={audience}
-                className="flex items-center gap-2 text-sm text-muted-foreground"
-              >
-                <span className="size-1.5 rounded-full bg-primary shrink-0" />
-                {audience}
-              </li>
-            ))}
+            {seoContent.targetAudience.map((audience, i) => {
+              const dotColors = ["bg-red-400", "bg-blue-400", "bg-amber-400", "bg-green-400", "bg-purple-400", "bg-cyan-400"];
+              return (
+                <li
+                  key={audience}
+                  className="flex items-center gap-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm px-4 py-3 text-sm text-foreground"
+                >
+                  <span className={`size-2 rounded-full ${dotColors[i % dotColors.length]} shrink-0`} />
+                  {audience}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -411,21 +427,27 @@ export default async function CategoryQuizPage({
       {/* よくある質問（FAQ） */}
       {seoContent && seoContent.faqs.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
             <HelpCircle className="size-5 text-primary" />
             {category.category_name}に関するよくある質問
           </h2>
+          <div className="flex gap-1 mb-4">
+            <span className="w-4 h-1 rounded-full bg-red-400" />
+            <span className="w-4 h-1 rounded-full bg-blue-400" />
+            <span className="w-4 h-1 rounded-full bg-amber-400" />
+            <span className="w-4 h-1 rounded-full bg-green-400" />
+          </div>
           <div className="space-y-3">
             {seoContent.faqs.map((faq) => (
               <details
                 key={faq.question}
-                className="group rounded-lg border border-border/60 bg-card"
+                className="group rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden"
               >
                 <summary className="flex cursor-pointer items-center justify-between gap-2 p-4 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
                   <span>{faq.question}</span>
                   <ChevronRight className="size-4 text-muted-foreground transition-transform group-open:rotate-90 shrink-0" />
                 </summary>
-                <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed border-t border-border/40 pt-3">
+                <div className="px-4 pb-4 text-sm text-muted-foreground leading-relaxed border-t border-gray-100 dark:border-gray-800 pt-3">
                   {faq.answer}
                 </div>
               </details>
@@ -437,22 +459,37 @@ export default async function CategoryQuizPage({
       {/* 関連カテゴリ */}
       {seoContent && seoContent.relatedCategories.length > 0 && (
         <section className="mb-4">
-          <h2 className="text-lg font-bold text-foreground mb-4">
+          <h2 className="text-lg font-bold text-foreground mb-1">
             関連する問題集
           </h2>
+          <div className="flex gap-1 mb-4">
+            <span className="w-4 h-1 rounded-full bg-red-400" />
+            <span className="w-4 h-1 rounded-full bg-blue-400" />
+            <span className="w-4 h-1 rounded-full bg-amber-400" />
+            <span className="w-4 h-1 rounded-full bg-green-400" />
+          </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            {seoContent.relatedCategories.map((related) => (
-              <Link
-                key={related.slug}
-                href={`/quiz/${related.slug}`}
-                className="group flex items-center justify-between rounded-lg border border-border/60 bg-card p-3 hover:border-primary/40 hover:bg-primary/[0.03] transition-colors"
-              >
-                <span className="text-sm font-medium text-foreground">
-                  {related.name}
-                </span>
-                <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-              </Link>
-            ))}
+            {seoContent.relatedCategories.map((related, i) => {
+              const colors = [
+                { border: "border-l-red-400", arrow: "bg-red-400" },
+                { border: "border-l-blue-400", arrow: "bg-blue-400" },
+                { border: "border-l-amber-400", arrow: "bg-amber-400" },
+                { border: "border-l-green-400", arrow: "bg-green-400" },
+              ];
+              const c = colors[i % colors.length];
+              return (
+                <Link key={related.slug} href={`/quiz/${related.slug}`} className="group">
+                  <div className={`flex items-center rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm pr-3 border-l-[5px] ${c.border} group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200`}>
+                    <span className="flex-1 font-bold text-sm text-foreground py-3 pl-4 truncate">
+                      {related.name}
+                    </span>
+                    <div className={`flex size-7 shrink-0 items-center justify-center rounded-full ${c.arrow} group-hover:scale-110 transition-transform duration-200`}>
+                      <ChevronRight className="size-4 text-white" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}

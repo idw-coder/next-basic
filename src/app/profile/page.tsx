@@ -391,43 +391,31 @@ export default function ProfilePage() {
         <>
           {/* 概要カード群 */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Card>
-              <CardContent className="flex flex-col items-center pt-5 pb-4">
-                <BookOpen className="size-5 text-primary mb-1" />
-                <p className="text-2xl font-bold">{quizStats.totalAnswered}</p>
-                <p className="text-xs text-muted-foreground">回答数</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex flex-col items-center pt-5 pb-4">
-                <Target className="size-5 text-green-500 mb-1" />
-                <p className="text-2xl font-bold">{quizStats.correctRate}%</p>
-                <p className="text-xs text-muted-foreground">正答率</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex flex-col items-center pt-5 pb-4">
-                <TrendingUp className="size-5 text-blue-500 mb-1" />
-                <p className="text-2xl font-bold">{quizStats.totalCorrect}</p>
-                <p className="text-xs text-muted-foreground">正解数</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex flex-col items-center pt-5 pb-4">
-                <Flame className="size-5 text-orange-500 mb-1" />
-                <p className="text-2xl font-bold">{quizStats.streakDays}</p>
-                <p className="text-xs text-muted-foreground">連続学習日</p>
-              </CardContent>
-            </Card>
+            {[
+              { icon: BookOpen, color: "text-primary", border: "border-l-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", value: quizStats.totalAnswered, label: "回答数" },
+              { icon: Target, color: "text-green-500", border: "border-l-green-400", bg: "bg-green-50 dark:bg-green-500/10", value: `${quizStats.correctRate}%`, label: "正答率" },
+              { icon: TrendingUp, color: "text-blue-500", border: "border-l-amber-400", bg: "bg-amber-50 dark:bg-amber-500/10", value: quizStats.totalCorrect, label: "正解数" },
+              { icon: Flame, color: "text-orange-500", border: "border-l-red-400", bg: "bg-red-50 dark:bg-red-500/10", value: quizStats.streakDays, label: "連続学習日" },
+            ].map((stat) => (
+              <div key={stat.label} className={`rounded-xl ${stat.bg} border border-gray-100 dark:border-gray-800 shadow-sm border-l-[5px] ${stat.border} flex flex-col items-center pt-5 pb-4`}>
+                <stat.icon className={`size-5 ${stat.color} mb-1`} />
+                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+              </div>
+            ))}
           </div>
 
           {/* カテゴリ別進捗 */}
           {quizStats.categorySummary.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">カテゴリ別の学習進捗</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm p-5 sm:p-6">
+              <h3 className="text-base font-bold text-foreground mb-1">カテゴリ別の学習進捗</h3>
+              <div className="flex gap-1 mb-5">
+                <span className="w-4 h-1 rounded-full bg-red-400" />
+                <span className="w-4 h-1 rounded-full bg-blue-400" />
+                <span className="w-4 h-1 rounded-full bg-amber-400" />
+                <span className="w-4 h-1 rounded-full bg-green-400" />
+              </div>
+              <div className="space-y-4">
                 {quizStats.categorySummary.map((cat) => {
                   const rate = cat.total > 0 ? Math.round((cat.correct / cat.total) * 100) : 0;
                   const barColor = SLUG_COLOR[cat.slug] ?? "bg-primary";
@@ -448,8 +436,8 @@ export default function ProfilePage() {
                     </div>
                   );
                 })}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* 学習が未開始の場合 */}

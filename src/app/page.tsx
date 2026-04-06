@@ -238,22 +238,22 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-const CIRCLE_COLORS: Record<string, string> = {
-  "html-basic": "border-orange-400",
-  "css-basic": "border-blue-400",
-  "javascript-basic": "border-yellow-400",
-  "react-basic": "border-cyan-400",
-  "vue-basic": "border-emerald-400",
-  "nodejs-basic": "border-green-500",
-  "nextjs": "border-gray-500",
-  "git-basic": "border-rose-500",
-  "aws-basic": "border-orange-500",
-  "nginx-basic": "border-teal-500",
-  "ts-general": "border-indigo-400",
-  "security-general": "border-red-500",
-  "cs-basic": "border-purple-400",
-  "docker": "border-sky-400",
-  "linux": "border-lime-500",
+const CARD_COLORS: Record<string, { border: string; arrow: string }> = {
+  "html-basic": { border: "border-l-orange-400", arrow: "bg-orange-400" },
+  "css-basic": { border: "border-l-blue-400", arrow: "bg-blue-400" },
+  "javascript-basic": { border: "border-l-yellow-400", arrow: "bg-yellow-400" },
+  "react-basic": { border: "border-l-cyan-400", arrow: "bg-cyan-400" },
+  "vue-basic": { border: "border-l-emerald-400", arrow: "bg-emerald-400" },
+  "nodejs-basic": { border: "border-l-green-500", arrow: "bg-green-500" },
+  "nextjs": { border: "border-l-gray-500", arrow: "bg-gray-500" },
+  "git-basic": { border: "border-l-rose-500", arrow: "bg-rose-500" },
+  "aws-basic": { border: "border-l-orange-500", arrow: "bg-orange-500" },
+  "nginx-basic": { border: "border-l-teal-500", arrow: "bg-teal-500" },
+  "ts-general": { border: "border-l-indigo-400", arrow: "bg-indigo-400" },
+  "security-general": { border: "border-l-red-500", arrow: "bg-red-500" },
+  "cs-basic": { border: "border-l-purple-400", arrow: "bg-purple-400" },
+  "docker": { border: "border-l-sky-400", arrow: "bg-sky-400" },
+  "linux": { border: "border-l-lime-500", arrow: "bg-lime-500" },
 };
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
@@ -363,10 +363,16 @@ export default async function Home() {
 
       {/* 特徴 */}
       <section className="mb-16 md:mb-20 bg-muted/40 rounded-2xl px-5 py-10 md:px-8">
-        <h2 className="text-xl font-bold mb-8 md:text-2xl text-center text-foreground">
+        <h2 className="text-xl font-extrabold md:text-2xl text-center text-foreground">
           <Sparkles className="size-5 inline-block mr-2 -mt-0.5 text-red-400" />
           このサイトの特徴
         </h2>
+        <div className="flex justify-center gap-1 mt-2.5 mb-8">
+          <span className="w-5 h-1.5 rounded-full bg-red-400" />
+          <span className="w-5 h-1.5 rounded-full bg-blue-400" />
+          <span className="w-5 h-1.5 rounded-full bg-amber-400" />
+          <span className="w-5 h-1.5 rounded-full bg-green-400" />
+        </div>
         <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
           {[
             { icon: BadgeCheck, color: "text-primary", title: "無料で利用可能", desc: "会員登録なしでも\nすぐに問題を解ける" },
@@ -385,12 +391,71 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* 学習カテゴリ */}
+      <section id="categories" className="mb-16 md:mb-20 relative py-10 md:py-14">
+        <div className="absolute -top-6 -left-8 w-36 h-36 rounded-full bg-amber-200/25 blur-2xl pointer-events-none" aria-hidden="true" />
+        <div className="absolute -bottom-8 -right-6 w-44 h-44 rounded-full bg-cyan-200/25 blur-2xl pointer-events-none" aria-hidden="true" />
+        <div className="absolute top-1/2 -right-4 w-28 h-28 rounded-full bg-rose-200/20 blur-2xl pointer-events-none" aria-hidden="true" />
+        <div className="absolute bottom-1/4 -left-4 w-24 h-24 rounded-full bg-green-200/20 blur-2xl pointer-events-none" aria-hidden="true" />
+
+        <div className="text-center mb-8 md:mb-10">
+          <h2 className="text-xl font-extrabold md:text-2xl text-foreground">
+            学習カテゴリ
+          </h2>
+          <div className="flex justify-center gap-1 mt-2.5 mb-3">
+            <span className="w-5 h-1.5 rounded-full bg-red-400" />
+            <span className="w-5 h-1.5 rounded-full bg-blue-400" />
+            <span className="w-5 h-1.5 rounded-full bg-amber-400" />
+            <span className="w-5 h-1.5 rounded-full bg-green-400" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            15カテゴリの問題に挑戦しよう
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 relative">
+          {CATEGORIES.map((cat) => {
+            const count = counts[cat.slug] ?? 0;
+            const colors = CARD_COLORS[cat.slug];
+            return (
+              <Link key={cat.slug} href={`/quiz/${cat.slug}`} className="group">
+                <div
+                  className={`flex items-center rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm pr-3 sm:pr-4 border-l-[5px] ${colors?.border ?? "border-l-gray-400"} group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200`}
+                >
+                  <div className="flex-1 min-w-0 py-3 sm:py-4 pl-3 sm:pl-4">
+                    <p className="font-bold text-sm sm:text-base text-foreground truncate">
+                      {cat.name}
+                    </p>
+                    {count > 0 && (
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+                        {count}問
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    className={`flex size-7 sm:size-8 shrink-0 items-center justify-center rounded-full ${colors?.arrow ?? "bg-gray-400"} group-hover:scale-110 transition-transform duration-200`}
+                  >
+                    <ChevronRight className="size-4 text-white" />
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
       {/* 会員登録CTA */}
       <section className="mb-16 md:mb-20 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl px-5 py-10 md:px-8">
         <div className="text-center mb-8">
-          <h2 className="text-xl font-bold md:text-2xl mb-2 text-foreground">
+          <h2 className="text-xl font-extrabold md:text-2xl text-foreground">
             無料会員登録で学習をもっと便利に
           </h2>
+          <div className="flex justify-center gap-1 mt-2.5 mb-3">
+            <span className="w-5 h-1.5 rounded-full bg-red-400" />
+            <span className="w-5 h-1.5 rounded-full bg-blue-400" />
+            <span className="w-5 h-1.5 rounded-full bg-amber-400" />
+            <span className="w-5 h-1.5 rounded-full bg-green-400" />
+          </div>
           <p className="text-sm text-muted-foreground">
             登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。
           </p>
@@ -470,68 +535,26 @@ export default async function Home() {
         </Link>
       </section>
 
-      {/* 学習カテゴリ */}
-      <section id="categories" className="mb-16 md:mb-20">
-        <h2 className="text-xl font-bold mb-2 md:mb-3 md:text-2xl text-center text-foreground">
-          学習カテゴリ
-        </h2>
-        <p className="text-sm text-muted-foreground text-center mb-8 md:mb-10">
-          15カテゴリの問題に挑戦しよう
-        </p>
-        <div className="relative">
-          <div className="absolute -top-1 right-8 sm:right-14 w-7 h-7 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
-          <div className="absolute top-1/4 left-0 sm:left-6 w-5 h-5 rounded-full bg-amber-200/30 pointer-events-none" aria-hidden="true" />
-          <div className="absolute bottom-10 right-1/4 w-6 h-6 rounded-full bg-primary/10 pointer-events-none" aria-hidden="true" />
-          <div className="absolute top-1/2 right-3 sm:right-10 w-4 h-4 rounded-full bg-gray-300/40 pointer-events-none" aria-hidden="true" />
-          <div className="absolute bottom-2 left-1/3 w-5 h-5 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-5 sm:gap-7 lg:gap-9 justify-items-center">
-            {CATEGORIES.map((cat) => {
-              const count = counts[cat.slug] ?? 0;
-              return (
-                <Link
-                  key={cat.slug}
-                  href={`/quiz/${cat.slug}`}
-                  className="group flex flex-col items-center gap-1.5 sm:gap-2"
-                >
-                  <div
-                    className={`
-                      w-[76px] h-[76px] sm:w-[100px] sm:h-[100px] lg:w-[116px] lg:h-[116px]
-                      rounded-full border-[3px] ${CIRCLE_COLORS[cat.slug] ?? "border-gray-300"}
-                      flex items-center justify-center bg-white
-                      group-hover:scale-105 group-hover:shadow-lg
-                      transition-all duration-200
-                    `}
-                  >
-                    <span className="text-[11px] sm:text-sm lg:text-[15px] font-bold text-gray-700">
-                      {cat.name}
-                    </span>
-                  </div>
-                  {count > 0 && (
-                    <span className="text-[10px] sm:text-xs text-muted-foreground">
-                      {count}問
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* 学習のすすめ方 */}
       <section className="mb-16 md:mb-20 bg-muted/40 rounded-2xl px-5 py-10 md:px-8">
-        <h2 className="text-xl font-bold mb-8 md:text-2xl text-center text-foreground">
+        <h2 className="text-xl font-extrabold md:text-2xl text-center text-foreground">
           学習のすすめ方
         </h2>
+        <div className="flex justify-center gap-1 mt-2.5 mb-8">
+          <span className="w-5 h-1.5 rounded-full bg-red-400" />
+          <span className="w-5 h-1.5 rounded-full bg-blue-400" />
+          <span className="w-5 h-1.5 rounded-full bg-amber-400" />
+          <span className="w-5 h-1.5 rounded-full bg-green-400" />
+        </div>
         <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
           {[
-            { step: 1, title: "まずはクイズに挑戦", desc: "スキマ時間に1問ずつ。会員登録なしですぐ始められます。" },
-            { step: 2, title: "間違えた問題を復習", desc: "解答履歴から間違えた問題をピックアップして解き直しましょう。" },
-            { step: 3, title: "プロフィールで確認", desc: "会員登録すると正答率・連続学習日数・カテゴリ別進捗を確認できます。" },
-            { step: 4, title: "コードを書いて実践", desc: "問題で学んだ知識を、実際にコードを書いて理解を深めましょう。" },
+            { step: 1, color: "bg-red-400", title: "まずはクイズに挑戦", desc: "スキマ時間に1問ずつ。会員登録なしですぐ始められます。" },
+            { step: 2, color: "bg-blue-400", title: "間違えた問題を復習", desc: "解答履歴から間違えた問題をピックアップして解き直しましょう。" },
+            { step: 3, color: "bg-amber-400", title: "プロフィールで確認", desc: "会員登録すると正答率・連続学習日数・カテゴリ別進捗を確認できます。" },
+            { step: 4, color: "bg-green-400", title: "コードを書いて実践", desc: "問題で学んだ知識を、実際にコードを書いて理解を深めましょう。" },
           ].map((s) => (
             <div key={s.step} className="text-center">
-              <div className="mx-auto mb-2 sm:mb-3 flex size-8 sm:size-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xs sm:text-sm">
+              <div className={`mx-auto mb-2 sm:mb-3 flex size-8 sm:size-10 items-center justify-center rounded-full ${s.color} text-white font-bold text-xs sm:text-sm shadow-sm`}>
                 {s.step}
               </div>
               <p className="font-semibold text-foreground text-xs sm:text-sm mb-1">{s.title}</p>
@@ -543,9 +566,15 @@ export default async function Home() {
 
       {/* お知らせ */}
       <section id="news" className="mb-8">
-        <h2 className="text-xl font-bold mb-6 md:text-2xl text-center text-foreground">
+        <h2 className="text-xl font-extrabold md:text-2xl text-center text-foreground">
           お知らせ
         </h2>
+        <div className="flex justify-center gap-1 mt-2.5 mb-6">
+          <span className="w-5 h-1.5 rounded-full bg-red-400" />
+          <span className="w-5 h-1.5 rounded-full bg-blue-400" />
+          <span className="w-5 h-1.5 rounded-full bg-amber-400" />
+          <span className="w-5 h-1.5 rounded-full bg-green-400" />
+        </div>
         <div className="max-w-2xl mx-auto divide-y divide-border">
           {NEWS.map((item, i) => {
             const content = (

@@ -216,12 +216,18 @@ export default async function SearchPage({
       {/* ヘッダー */}
       <section className="mb-10">
         <div className="text-center">
-          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-primary/10">
-            <Search className="size-7 text-primary" />
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-500/10">
+            <Search className="size-7 text-violet-500" />
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground mb-2 md:text-3xl">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl">
             問題を検索
           </h1>
+          <div className="flex justify-center gap-1 mt-2.5 mb-3">
+            <span className="w-5 h-1.5 rounded-full bg-red-400" />
+            <span className="w-5 h-1.5 rounded-full bg-blue-400" />
+            <span className="w-5 h-1.5 rounded-full bg-amber-400" />
+            <span className="w-5 h-1.5 rounded-full bg-green-400" />
+          </div>
           <p className="text-muted-foreground text-sm md:text-base">
             全{categories.length}カテゴリからキーワードで横断検索できます
           </p>
