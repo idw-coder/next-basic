@@ -56,36 +56,37 @@ async function getTags(): Promise<Tag[]> {
   }
 }
 
-async function searchAllQuizzes(
-  categories: Category[],
-  q: string
-): Promise<SearchQuiz[]> {
+async function searchQuizzes(q: string): Promise<SearchQuiz[]> {
   if (!q.trim()) return [];
 
-  const results = await Promise.all(
-    categories.map(async (cat) => {
-      try {
-        const params = new URLSearchParams({ q });
-        const res = await fetch(
-          `${API_BASE_URL}/api/quiz/category/${cat.id}/quizzes?${params.toString()}`,
-          { cache: "no-store" }
-        );
-        if (!res.ok) return [];
-        const quizzes: { id: number; slug: string; question: string; tags: Tag[] }[] =
-          await res.json();
-        return quizzes.map((quiz) => ({
-          ...quiz,
-          categoryId: cat.id,
-          categorySlug: cat.slug,
-          categoryName: cat.category_name,
-        }));
-      } catch {
-        return [];
-      }
-    })
-  );
-
-  return results.flat();
+  try {
+    const params = new URLSearchParams({ q });
+    const res = await fetch(
+      `${API_BASE_URL}/api/quiz/search?${params.toString()}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const quizzes: {
+      id: number;
+      slug: string;
+      question: string;
+      tags: Tag[];
+      category_id: number;
+      category_slug: string | null;
+      category_name: string | null;
+    }[] = await res.json();
+    return quizzes.map((quiz) => ({
+      id: quiz.id,
+      slug: quiz.slug,
+      question: quiz.question,
+      tags: quiz.tags,
+      categoryId: quiz.category_id,
+      categorySlug: quiz.category_slug ?? "",
+      categoryName: quiz.category_name ?? "",
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -178,8 +179,11 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const [categories, tags] = await Promise.all([getCategories(), getTags()]);
-  const results = q ? await searchAllQuizzes(categories, q) : [];
+  const [categories, tags, results] = await Promise.all([
+    getCategories(),
+    getTags(),
+    q ? searchQuizzes(q) : Promise.resolve([]),
+  ]);
   const suggestedKeywords = tags.map((t) => t.name);
   const jsonLdList = buildJsonLd(q, q ? results.length : undefined);
 
