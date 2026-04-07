@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SectionHeading } from "@/components/SectionHeading";
 import QuizListClient from "./QuizListClient";
 import { getCategorySeoContent, type CategorySeoContent } from "./categoryContent";
 
@@ -366,16 +367,9 @@ export default async function CategoryQuizPage({
       {/* 出題トピック */}
       {seoContent && (
         <section className="mb-10">
-          <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
-            <BookOpenCheck className="size-5 text-primary" />
+          <SectionHeading size="sm" center={false} className="mb-4" icon={<BookOpenCheck className="size-5 text-primary" />}>
             出題トピック
-          </h2>
-          <div className="flex gap-1 mb-4">
-            <span className="w-4 h-1 rounded-full bg-red-400" />
-            <span className="w-4 h-1 rounded-full bg-blue-400" />
-            <span className="w-4 h-1 rounded-full bg-amber-400" />
-            <span className="w-4 h-1 rounded-full bg-green-400" />
-          </div>
+          </SectionHeading>
           <div className="grid gap-3 sm:grid-cols-2">
             {seoContent.topics.map((topic, i) => {
               const borderColors = ["border-l-red-400", "border-l-blue-400", "border-l-amber-400", "border-l-green-400", "border-l-purple-400", "border-l-cyan-400"];
@@ -397,16 +391,9 @@ export default async function CategoryQuizPage({
       {/* 対象者 */}
       {seoContent && (
         <section className="mb-10">
-          <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
-            <Users className="size-5 text-primary" />
+          <SectionHeading size="sm" center={false} className="mb-4" icon={<Users className="size-5 text-primary" />}>
             こんな方におすすめ
-          </h2>
-          <div className="flex gap-1 mb-4">
-            <span className="w-4 h-1 rounded-full bg-red-400" />
-            <span className="w-4 h-1 rounded-full bg-blue-400" />
-            <span className="w-4 h-1 rounded-full bg-amber-400" />
-            <span className="w-4 h-1 rounded-full bg-green-400" />
-          </div>
+          </SectionHeading>
           <ul className="grid gap-2 sm:grid-cols-2">
             {seoContent.targetAudience.map((audience, i) => {
               const dotColors = ["bg-red-400", "bg-blue-400", "bg-amber-400", "bg-green-400", "bg-purple-400", "bg-cyan-400"];
@@ -427,16 +414,9 @@ export default async function CategoryQuizPage({
       {/* よくある質問（FAQ） */}
       {seoContent && seoContent.faqs.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
-            <HelpCircle className="size-5 text-primary" />
+          <SectionHeading size="sm" center={false} className="mb-4" icon={<HelpCircle className="size-5 text-primary" />}>
             {category.category_name}に関するよくある質問
-          </h2>
-          <div className="flex gap-1 mb-4">
-            <span className="w-4 h-1 rounded-full bg-red-400" />
-            <span className="w-4 h-1 rounded-full bg-blue-400" />
-            <span className="w-4 h-1 rounded-full bg-amber-400" />
-            <span className="w-4 h-1 rounded-full bg-green-400" />
-          </div>
+          </SectionHeading>
           <div className="space-y-3">
             {seoContent.faqs.map((faq) => (
               <details
@@ -459,15 +439,9 @@ export default async function CategoryQuizPage({
       {/* 関連カテゴリ */}
       {seoContent && seoContent.relatedCategories.length > 0 && (
         <section className="mb-4">
-          <h2 className="text-lg font-bold text-foreground mb-1">
+          <SectionHeading size="sm" center={false} className="mb-4">
             関連する問題集
-          </h2>
-          <div className="flex gap-1 mb-4">
-            <span className="w-4 h-1 rounded-full bg-red-400" />
-            <span className="w-4 h-1 rounded-full bg-blue-400" />
-            <span className="w-4 h-1 rounded-full bg-amber-400" />
-            <span className="w-4 h-1 rounded-full bg-green-400" />
-          </div>
+          </SectionHeading>
           <div className="grid gap-3 sm:grid-cols-3">
             {seoContent.relatedCategories.map((related, i) => {
               const colors = [

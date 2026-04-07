@@ -44,6 +44,18 @@ async function getCategories(): Promise<Category[]> {
   }
 }
 
+async function getTags(): Promise<Tag[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/quiz/tags`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
 async function searchAllQuizzes(
   categories: Category[],
   q: string
@@ -160,32 +172,15 @@ function buildJsonLd(q?: string, resultCount?: number) {
   return [breadcrumb, searchAction];
 }
 
-const SUGGESTED_KEYWORDS = [
-  "Promise",
-  "Flexbox",
-  "Hooks",
-  "async",
-  "セレクタ",
-  "DOM",
-  "S3",
-  "rebase",
-  "XSS",
-  "ジェネリクス",
-  "Docker",
-  "リバースプロキシ",
-  "Hydration",
-  "Server Actions",
-  "chmod",
-];
-
 export default async function SearchPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const categories = await getCategories();
+  const [categories, tags] = await Promise.all([getCategories(), getTags()]);
   const results = q ? await searchAllQuizzes(categories, q) : [];
+  const suggestedKeywords = tags.map((t) => t.name);
   const jsonLdList = buildJsonLd(q, q ? results.length : undefined);
 
   return (
@@ -238,7 +233,7 @@ export default async function SearchPage({
         initialResults={results}
         categories={categories}
         currentQuery={q || ""}
-        suggestedKeywords={SUGGESTED_KEYWORDS}
+        suggestedKeywords={suggestedKeywords}
       />
     </div>
   );
