@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Crown,
@@ -88,38 +88,35 @@ export default function SubscriptionClient() {
     setIsLoggedIn(!!localStorage.getItem('token'));
   }, []);
 
-  const handleSubscribe = useCallback(
-    async (plan: Plan) => {
-      setError(null);
+  const handleSubscribe = async (plan: Plan) => {
+    setError(null);
 
-      if (!isLoggedIn) {
-        router.push('/login');
-        return;
+    if (!isLoggedIn) {
+      router.push('/login');
+      return;
+    }
+
+    if (!plan.priceId) return;
+
+    try {
+      setLoadingPlan(plan.id);
+      const res = await api.post('/api/payment/subscription', {
+        priceId: plan.priceId,
+      });
+      if (res.data.url) {
+        window.location.href = res.data.url;
       }
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        'サブスクリプションの開始に失敗しました';
+      setError(msg);
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
 
-      if (!plan.priceId) return;
-
-      try {
-        setLoadingPlan(plan.id);
-        const res = await api.post('/api/payment/subscription', {
-          priceId: plan.priceId,
-        });
-        if (res.data.url) {
-          window.location.href = res.data.url;
-        }
-      } catch (err: unknown) {
-        const msg =
-          (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-          'サブスクリプションの開始に失敗しました';
-        setError(msg);
-      } finally {
-        setLoadingPlan(null);
-      }
-    },
-    [isLoggedIn, router],
-  );
-
-  const handlePortal = useCallback(async () => {
+  const handlePortal = async () => {
     setError(null);
     try {
       setPortalLoading(true);
@@ -135,7 +132,7 @@ export default function SubscriptionClient() {
     } finally {
       setPortalLoading(false);
     }
-  }, []);
+  };
 
   const isPreparingBanner = true;
 
@@ -185,8 +182,8 @@ export default function SubscriptionClient() {
           const Icon = plan.icon;
           const isFree = plan.id === 'free';
           const isLoading = loadingPlan === plan.id;
-          // const isPreparingPlan = !isFree;
-          const isPreparingPlan = false;
+          const isPreparingPlan = !isFree;
+          // const isPreparingPlan = false;
 
           return (
             <Card
