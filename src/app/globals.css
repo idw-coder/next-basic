@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@plugin "@tailwindcss/typography";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -121,6 +123,47 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* rehype-pretty-code (shiki) */
+[data-rehype-pretty-code-figure] pre {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+[data-rehype-pretty-code-figure] code {
+  display: grid;
+  background: none !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+  border-radius: 0 !important;
+}
+
+[data-rehype-pretty-code-figure] code > [data-line] {
+  padding: 0 0.25rem;
+}
+
+.prose [data-rehype-pretty-code-figure] pre {
+  margin: 1.25em 0;
+}
+
+.prose :not(pre) > code {
+  background: var(--muted);
+  padding: 0.15em 0.35em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-weight: 500;
+}
+
+.subheading-anchor {
+  text-decoration: none;
+}
+
+.subheading-anchor:hover {
+  text-decoration: underline;
 }
 
 /* tiptap解説エリアのスタイル（Tailwind preflightでリセットされる分を補完） */

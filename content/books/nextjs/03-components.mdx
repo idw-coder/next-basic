@@ -1,0 +1,132 @@
+---
+title: "コンポーネントを理解する"
+description: "Server ComponentsとClient Componentsの違いと使い分けを学びます。"
+order: 3
+---
+
+# コンポーネントを理解する
+
+Next.js（App Router）では、Reactコンポーネントが2種類に分かれます。**Server Components** と **Client Components** です。この章では、その違いと使い分けを理解しましょう。
+
+## Server Components
+
+App Routerでは、すべてのコンポーネントが**デフォルトでServer Components**です。サーバー側でレンダリングされるため、以下の特徴があります：
+
+- データベースやファイルシステムに直接アクセスできる
+- APIキーなどの機密情報を安全に扱える
+- クライアントに送信されるJavaScriptが減る
+
+```tsx
+// app/users/page.tsx — Server Component（デフォルト）
+async function getUsers() {
+  const res = await fetch("https://api.example.com/users");
+  return res.json();
+}
+
+export default async function UsersPage() {
+  const users = await getUsers();
+
+  return (
+    <div>
+      <h1>ユーザー一覧</h1>
+      <ul>
+        {users.map((user: { id: number; name: string }) => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+注目すべきは、コンポーネント関数に `async` が使えることです。Server Componentsでは、非同期処理を直接コンポーネント内で実行できます。
+
+## Client Components
+
+ブラウザ側でインタラクティブな動作が必要なときは、ファイルの先頭に `"use client"` ディレクティブを追加します：
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <p>カウント: {count}</p>
+      <button onClick={() => setCount(count + 1)}>
+        +1
+      </button>
+    </div>
+  );
+}
+```
+
+Client Componentsが必要になるのは、主に以下のケースです：
+
+- `useState`、`useEffect` などのReact Hooksを使う
+- `onClick`、`onChange` などのイベントハンドラを使う
+- ブラウザ専用のAPI（`window`、`localStorage`など）にアクセスする
+
+## 使い分けの指針
+
+Server ComponentsとClient Componentsをどう使い分けるか、以下の表を参考にしてください：
+
+| やりたいこと | Server | Client |
+|-------------|--------|--------|
+| データの取得 | 得意 | 可能 |
+| 機密情報へのアクセス | 得意 | 不可 |
+| ステート管理 | 不可 | 得意 |
+| イベントハンドラ | 不可 | 得意 |
+| ブラウザAPI | 不可 | 得意 |
+
+基本方針は「**できるだけServer Components**を使い、インタラクティブな部分だけをClient Componentsに切り出す」です。
+
+## 組み合わせのパターン
+
+実際のアプリケーションでは、Server ComponentsがClient Componentsを子として含む形で組み合わせます：
+
+```tsx
+// app/dashboard/page.tsx — Server Component
+import Counter from "./Counter";
+
+export default async function DashboardPage() {
+  const data = await fetchDashboardData();
+
+  return (
+    <div>
+      <h1>ダッシュボード</h1>
+      <p>最終更新: {data.lastUpdated}</p>
+      {/* Client Componentを埋め込む */}
+      <Counter />
+    </div>
+  );
+}
+```
+
+```tsx
+// app/dashboard/Counter.tsx — Client Component
+"use client";
+
+import { useState } from "react";
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  return (
+    <button onClick={() => setCount(c => c + 1)}>
+      クリック数: {count}
+    </button>
+  );
+}
+```
+
+このように、ページ全体はServer Componentで構成し、インタラクティブな部分（ここでは`Counter`）だけをClient Componentとして切り出すのが推奨パターンです。
+
+## まとめ
+
+- App Routerではデフォルトで **Server Components**
+- `"use client"` を付けると **Client Components** になる
+- サーバーで完結する処理はServer Componentsで、UIのインタラクションはClient Componentsで
+- 両者を適切に組み合わせることで、パフォーマンスと開発体験を両立できる

@@ -182,8 +182,9 @@ export default function SubscriptionClient() {
           const Icon = plan.icon;
           const isFree = plan.id === 'free';
           const isLoading = loadingPlan === plan.id;
-          const isPreparingPlan = !isFree;
-          // const isPreparingPlan = false;
+          // const isPreparingPlan = !isFree;
+          // TODO: feature flag
+          const isPreparingPlan = false;
 
           return (
             <Card

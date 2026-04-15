@@ -11,12 +11,14 @@ import {
   Users,
   HelpCircle,
   ArrowRight,
+  Library,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/SectionHeading";
 import QuizListClient from "./QuizListClient";
 import { getCategorySeoContent, type CategorySeoContent } from "./categoryContent";
+import { getBookForCategory, getChaptersByBook } from "@/lib/books";
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
@@ -298,6 +300,33 @@ export default async function CategoryQuizPage({
           </div>
         </div>
       </section>
+
+      {/* 関連する教科書への導線 */}
+      {(() => {
+        const relatedBook = getBookForCategory(categorySlug);
+        if (!relatedBook) return null;
+        const chapterCount = getChaptersByBook(relatedBook.bookSlug).length;
+        return (
+          <section className="mb-8">
+            <Link href={`/books/${relatedBook.bookSlug}`} className="block group">
+              <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100/80 p-3 sm:p-4 transition-colors">
+                <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 group-hover:bg-amber-200 transition-colors">
+                  <Library className="size-4 sm:size-5 text-amber-700" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-foreground text-sm sm:text-base">
+                    {relatedBook.title}
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">
+                    まずは教科書でインプット（全{chapterCount}章）
+                  </p>
+                </div>
+                <ArrowRight className="size-5 text-amber-700 shrink-0 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          </section>
+        );
+      })()}
 
       {/* ランダムクイズへの導線 */}
       <section className="mb-8">

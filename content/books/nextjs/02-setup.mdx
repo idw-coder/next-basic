@@ -1,0 +1,120 @@
+---
+title: "開発環境のセットアップ"
+description: "Next.jsプロジェクトの作成から開発サーバーの起動まで、ステップバイステップで解説します。"
+order: 2
+---
+
+# 開発環境のセットアップ
+
+この章では、Next.jsの開発環境をゼロから構築します。必要なツールのインストールから、プロジェクトの作成、開発サーバーの起動までを一通り行います。
+
+## 前提条件
+
+Next.jsを使うには、以下のツールが必要です：
+
+- **Node.js** 18.17以降（LTS推奨）
+- **npm**、**yarn**、または **pnpm**（パッケージマネージャー）
+
+Node.jsがインストールされているか確認するには、ターミナルで以下のコマンドを実行してください：
+
+```bash
+node -v
+# v20.11.0 のように表示されればOK
+
+npm -v
+# 10.2.4 のように表示されればOK
+```
+
+## プロジェクトの作成
+
+`create-next-app` を使って新しいプロジェクトを作成します。ターミナルで以下を実行してください：
+
+```bash
+npx create-next-app@latest my-first-app
+```
+
+対話形式でいくつかの質問が表示されます。以下の設定を推奨します：
+
+```
+✔ Would you like to use TypeScript? … Yes
+✔ Would you like to use ESLint? … Yes
+✔ Would you like to use Tailwind CSS? … Yes
+✔ Would you like your code inside a `src/` directory? … Yes
+✔ Would you like to use App Router? (recommended) … Yes
+✔ Would you like to use Turbopack for next dev? … Yes
+✔ Would you like to customize the import alias? … No
+```
+
+## ディレクトリ構成
+
+プロジェクトが作成されると、以下のようなディレクトリ構成になります：
+
+```
+my-first-app/
+├── src/
+│   └── app/
+│       ├── layout.tsx    ← ルートレイアウト
+│       ├── page.tsx      ← トップページ
+│       └── globals.css   ← グローバルスタイル
+├── public/               ← 静的ファイル
+├── next.config.ts        ← Next.js設定
+├── package.json
+└── tsconfig.json
+```
+
+特に重要なのは `src/app/` ディレクトリです。ここに配置するファイルが、そのままアプリケーションのルーティングに対応します。
+
+## 開発サーバーの起動
+
+プロジェクトのディレクトリに移動して、開発サーバーを起動しましょう：
+
+```bash
+cd my-first-app
+npm run dev
+```
+
+ターミナルに以下のような出力が表示されれば成功です：
+
+```
+   ▲ Next.js 15.x.x
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.x:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+```
+
+ブラウザで `http://localhost:3000` にアクセスすると、Next.jsのウェルカムページが表示されます。
+
+## package.json のスクリプト
+
+`package.json` には、よく使うコマンドが定義されています：
+
+```json
+{
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  }
+}
+```
+
+| コマンド | 説明 |
+|---------|------|
+| `npm run dev` | 開発サーバーを起動（HMR対応） |
+| `npm run build` | 本番用にビルド |
+| `npm run start` | ビルド済みアプリを起動 |
+| `npm run lint` | ESLintでコードをチェック |
+
+## まとめ
+
+この章では以下のことを行いました：
+
+- Node.jsの確認
+- `create-next-app` でプロジェクトを作成
+- ディレクトリ構成の理解
+- 開発サーバーの起動
+
+次の章では、Next.jsのコンポーネントシステム（Server Components と Client Components）について学びます。
