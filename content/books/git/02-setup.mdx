@@ -1,0 +1,166 @@
+---
+title: "Gitの初期設定 — user.nameとSSH鍵のセットアップ"
+description: "Gitをインストールした直後に必ず行うべき初期設定を解説します。user.name / user.email の設定、SSH鍵の生成とGitHubへの登録まで、ステップバイステップで進めます。"
+order: 2
+---
+
+Gitをインストールしたあと、コミットやGitHubとの連携をする前に必ず済ませておくべき初期設定があります。この章では、**最初の1回だけやればOK**な設定をまとめて終わらせます。
+
+## Gitがインストールされているか確認する
+
+まずは自分のPCにGitが入っているかを確認しましょう。
+
+```bash
+git --version
+# git version 2.43.0 のように表示されればOK
+```
+
+インストールされていない場合は、以下から入手します。
+
+- **macOS** — `brew install git`（Homebrew）
+- **Windows** — [Git for Windows](https://gitforwindows.org/) をダウンロード
+- **Linux** — `sudo apt install git`（Ubuntu/Debian系）
+
+## user.name と user.email を設定する
+
+Gitのコミットには必ず「誰がコミットしたか」の情報が記録されます。この情報をまず設定します。
+
+```bash
+git config --global user.name "Taro Yamada"
+git config --global user.email "taro@example.com"
+```
+
+`--global` は「このPC全体の設定」という意味です。プロジェクトごとに個別の設定をしたい場合は `--global` を外してリポジトリ内で実行します（例: 業務用のメールアドレスを特定のプロジェクトだけで使うケースなど）。
+
+設定内容を確認するには以下のコマンドを使います。
+
+```bash
+git config --global --list
+# user.name=Taro Yamada
+# user.email=taro@example.com
+```
+
+ここで設定したメールアドレスが**公開リポジトリのコミット履歴に残る**点に注意してください。個人用のメールアドレスを公開したくない場合は、GitHubが提供する `noreply` メールアドレスを使う方法があります。
+
+```bash
+git config --global user.email "12345678+username@users.noreply.github.com"
+```
+
+この形式のメールアドレスはGitHubの `Settings → Emails` で確認できます。
+
+## デフォルトブランチ名を設定する
+
+新しくリポジトリを作ったときの初期ブランチ名は、以前は `master` が標準でしたが、現在は `main` が一般的です。以下のコマンドで明示的に `main` を初期ブランチ名にします。
+
+```bash
+git config --global init.defaultBranch main
+```
+
+これを設定しておかないと、`git init` したときに警告が出たり、古い名前の `master` ブランチで初期化されたりして、GitHubでのデフォルトブランチ（`main`）とズレて混乱します。
+
+## エディタの設定
+
+コミットメッセージを書くときに起動されるエディタを指定できます。デフォルトだと `vim` が立ち上がることが多く、使い慣れていないと戸惑います。
+
+```bash
+# VS Code を使う場合
+git config --global core.editor "code --wait"
+
+# nano を使う場合
+git config --global core.editor "nano"
+```
+
+`code --wait` は「VS Codeが閉じるまで待つ」という意味で、これを付けないとGitがエディタ終了を認識できません。
+
+## SSH鍵を生成する
+
+GitHubとの通信方式には HTTPS と SSH の2種類がありますが、**実務では SSH を使うのが一般的**です。毎回パスワードを入力する必要がなく、2要素認証にも強いためです。
+
+まず、既存のSSH鍵があるか確認します。
+
+```bash
+ls -la ~/.ssh
+# id_ed25519, id_ed25519.pub などがあれば既に鍵がある
+```
+
+なければ新しく生成します。現在推奨されているのは `ed25519` という方式です。
+
+```bash
+ssh-keygen -t ed25519 -C "taro@example.com"
+```
+
+対話的に以下を聞かれます。
+
+- **Enter file in which to save the key** — そのままEnter（デフォルトの場所に保存）
+- **Enter passphrase** — パスフレーズ。空でもOKだが、セキュリティを上げるなら設定を推奨
+
+生成されると `~/.ssh/id_ed25519`（秘密鍵）と `~/.ssh/id_ed25519.pub`（公開鍵）の2つのファイルができます。
+
+```
+重要 —
+秘密鍵（id_ed25519）は絶対に他人に見せない、共有しない、リポジトリにコミットしない
+公開鍵（id_ed25519.pub）のほうは公開してOK
+```
+
+## GitHubに公開鍵を登録する
+
+生成した**公開鍵**をGitHubに登録します。公開鍵の中身を表示してコピーしてください。
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+# ssh-ed25519 AAAAC3... taro@example.com
+```
+
+GitHubの [SSH and GPG keys](https://github.com/settings/keys) ページを開き、`New SSH key` をクリック。
+
+- **Title** — 分かりやすい名前（例: `MacBook Pro 2024`）
+- **Key type** — `Authentication Key`
+- **Key** — 先ほどコピーした公開鍵を貼り付け
+
+登録できたら、接続テストをします。
+
+```bash
+ssh -T git@github.com
+# Hi username! You've successfully authenticated, but GitHub does not provide shell access.
+```
+
+この `Hi username!` のメッセージが出れば成功です。
+
+## 全体の流れ
+
+ここまでの手順を整理すると以下のようになります。
+
+<MermaidDiagram chart={`
+flowchart TB
+    A["Gitインストール"] --> B["user.name / user.email 設定"]
+    B --> C["init.defaultBranch 設定"]
+    C --> D["SSH鍵を生成"]
+    D --> E["公開鍵をGitHubに登録"]
+    E --> F["接続テスト"]
+`} />
+
+この流れを一度済ませれば、同じPCでは以後やり直す必要はありません。新しいPCに移行したときや、OSを再インストールしたときだけまた必要になります。
+
+## よくあるハマりどころ
+
+**1. `Permission denied (publickey)` エラー**
+
+SSH鍵は生成したが、GitHubに公開鍵を登録していない、または間違った鍵を登録した場合に出ます。`cat ~/.ssh/id_ed25519.pub` の内容が、GitHub側に登録したものと一致するか確認してください。
+
+**2. コミットの名前が違う**
+
+`git config --global user.name` を設定する前にコミットしてしまった場合、設定変更後も過去のコミットの名前は書き換わりません。過去のコミットの作者情報を修正するには `git rebase` や `git filter-branch` を使う必要がありますが、通常は「これから先のコミットを正しくする」だけで問題ありません。
+
+**3. 複数のGitHubアカウントを使い分けたい**
+
+仕事用と個人用でアカウントを切り替えたい場合は、`~/.ssh/config` でホスト別に鍵を指定する方法があります。これは後の章のトピックを超えるので、必要になったら別途調べてください（キーワード: `ssh config Host github.com-work`）。
+
+## ちゃんと使うためのポイント
+
+- `user.name` と `user.email` は最初に必ず設定する
+- 初期ブランチ名は `main` にしておく
+- GitHubとの通信は **SSH** を使う（パスワード入力が不要で安全）
+- **秘密鍵は絶対に公開しない**、リポジトリにコミットしない
+- `ssh -T git@github.com` で接続テストができる
+
+次の章では、実際にリポジトリを作って `add` → `commit` → `push` という Gitの最も基本的なフローを体験します。

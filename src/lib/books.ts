@@ -7,6 +7,7 @@ import { books, chapters } from '#site/content';
 const categoryToBookMap: Record<string, string> = {
   nextjs: 'nextjs',
   'react-basic': 'nextjs',
+  'git-basic': 'git',
 };
 
 /**

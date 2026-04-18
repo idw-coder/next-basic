@@ -1,0 +1,219 @@
+---
+title: "add・commit・pushの基本フロー — ステージングとは何か"
+description: "Gitの最も基本的な操作である add / commit / push の流れを解説します。ステージングエリアの役割と、なぜこの3ステップに分かれているのかを理解します。"
+order: 3
+---
+
+Gitを使うときの基本動作は「変更を記録して、リモートに送る」だけです。しかし、その間に**ステージング**という独特の概念が挟まっています。この章では、`add` → `commit` → `push` の3ステップと、ステージングエリアの役割を理解します。
+
+## 3つのエリアを理解する
+
+Gitには、ファイルが置かれる**3つの概念的なエリア**があります。
+
+| エリア | 英語名 | 意味 |
+|---|---|---|
+| 作業ディレクトリ | Working Directory | 実際に編集しているファイル群 |
+| ステージングエリア | Staging Area (Index) | 次のコミットに含めるファイルを準備する場所 |
+| リポジトリ | Repository | 確定した変更履歴が保存される場所 |
+
+<MermaidDiagram chart={`
+flowchart LR
+    A["作業ディレクトリ"] -->|git add| B["ステージング"]
+    B -->|git commit| C["リポジトリ"]
+    C -->|git push| D["GitHub"]
+`} />
+
+それぞれのエリアは、対応するGitコマンドで移動します。
+
+- `git add` — 作業ディレクトリ → ステージング
+- `git commit` — ステージング → リポジトリ（ローカル）
+- `git push` — リポジトリ（ローカル） → GitHub（リモート）
+
+## なぜステージングが必要なのか
+
+「変更して保存する」だけなら、`add` と `commit` は1つのコマンドで済みそうな気がします。なぜ2段階に分かれているのでしょうか。
+
+理由は、**コミットに含める変更を選べるようにするため**です。
+
+たとえば、あなたが1つのファイルの中で以下の2つの変更を同時にしたとします。
+
+1. ログイン機能のバグ修正
+2. ボタンのスタイル調整
+
+この2つは別々のコミットにしたほうが履歴が綺麗です（後で「ログイン機能の修正だけ取り消したい」ときに楽）。ステージングがあるおかげで、**ファイル全体をコミットせず、変更の一部だけをコミット対象に選ぶ**ことができます。
+
+```bash
+# ファイル単位で選ぶ
+git add src/login.js
+
+# 変更の「塊」単位で選ぶ（対話モード）
+git add -p
+```
+
+`git add -p` は上級者がよく使うテクニックで、ファイル内の変更箇所（hunk）ごとに「これは含める」「これは含めない」を選べます。
+
+## リポジトリを作る
+
+まずは新しいリポジトリを作りましょう。適当なディレクトリで以下を実行します。
+
+```bash
+mkdir my-project
+cd my-project
+git init
+# Initialized empty Git repository in /path/to/my-project/.git/
+```
+
+`git init` を実行すると、そのディレクトリに `.git/` という隠しディレクトリが作られます。この中にGitが管理するすべての情報（履歴、設定、オブジェクト）が保存されます。
+
+```bash
+ls -la
+# .git/  ← ここにすべての履歴が入る
+```
+
+もしリポジトリをGit管理から外したいときは、この `.git/` ディレクトリを削除すればOKです。
+
+## ファイルを作って状態を確認する
+
+試しにファイルを作ってみます。
+
+```bash
+echo "# My Project" > README.md
+git status
+```
+
+`git status` は**最もよく使うコマンド**です。今、どのファイルがどの状態にあるかを教えてくれます。
+
+```
+On branch main
+
+No commits yet
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	README.md
+
+nothing added to commit but untracked files present
+```
+
+`Untracked files` と表示されています。これは「Gitがまだ認識していないファイル」という意味です。
+
+## git add でステージングに上げる
+
+```bash
+git add README.md
+git status
+```
+
+```
+On branch main
+
+No commits yet
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+	new file:   README.md
+```
+
+`Changes to be committed` のセクションに移動しました。これが「ステージングされた状態」です。
+
+複数ファイルをまとめて追加する場合は、以下のように書けます。
+
+```bash
+git add .       # カレントディレクトリ以下すべての変更を追加
+git add -A      # リポジトリ全体のすべての変更を追加（削除含む）
+git add *.js    # 拡張子でまとめて
+```
+
+`git add .` は便利ですが、**意図しないファイルまで含めてしまうリスク**があります。慣れないうちは `git status` で確認してから使うのが安全です。
+
+## git commit で履歴に記録する
+
+ステージングしたものを、コミットとして確定させます。
+
+```bash
+git commit -m "Add README"
+```
+
+`-m` オプションでコミットメッセージを指定します。このメッセージは履歴に残り、後で「なぜこの変更をしたのか」を振り返るための大事な情報になります。
+
+### 良いコミットメッセージの書き方
+
+駆け出しのうちは `fix`、`update`、`変更` のような曖昧なメッセージを書きがちですが、これでは履歴を見返したときに役に立ちません。以下のような書き方を心がけます。
+
+| 悪い例 | 良い例 |
+|---|---|
+| `fix` | `fix: ログイン時のメールアドレス検証が効かない問題を修正` |
+| `update README` | `docs: READMEにセットアップ手順を追加` |
+| `変更` | `feat: ユーザー一覧ページに検索機能を追加` |
+
+先頭に `feat:` `fix:` `docs:` などのプレフィックスを付ける [Conventional Commits](https://www.conventionalcommits.org/ja/) という慣習もあり、チーム開発ではよく採用されています。
+
+## git push でGitHubに送る
+
+ローカルでコミットしただけでは、まだGitHubには反映されていません。GitHubに送るには、まずリモートリポジトリの情報を登録します。
+
+```bash
+git remote add origin git@github.com:username/my-project.git
+```
+
+`origin` というのは慣習的なリモート名で、「メインのリモート」を指します。
+
+```bash
+git push -u origin main
+```
+
+`-u`（または `--set-upstream`）は「ローカルの `main` ブランチを、リモートの `origin/main` に紐づける」という意味です。**最初の1回だけ付ければOK**で、次回以降は `git push` だけで送れます。
+
+## 一連の流れをまとめる
+
+ここまでの手順を通しで書くと以下のようになります。
+
+```bash
+# 1. リポジトリを作る
+mkdir my-project && cd my-project
+git init
+
+# 2. ファイルを作る
+echo "# My Project" > README.md
+
+# 3. 状態を確認
+git status
+
+# 4. ステージングに上げる
+git add README.md
+
+# 5. コミットする
+git commit -m "Initial commit"
+
+# 6. リモートに紐づける（初回のみ）
+git remote add origin git@github.com:username/my-project.git
+
+# 7. プッシュする
+git push -u origin main
+```
+
+2回目以降の変更は、3〜5と7の繰り返しになります。
+
+## よくあるハマりどころ
+
+**1. `nothing to commit, working tree clean` と表示される**
+
+変更を加えずに `git commit` しようとすると出ます。`git status` で変更があるか確認してください。
+
+**2. `git add` したあとにファイルを編集したら、編集分が反映されない**
+
+`git add` はその時点のスナップショットをステージングに取ります。`add` 後に編集した内容をコミットに含めたい場合は、もう一度 `git add` が必要です。
+
+**3. `.gitignore` で除外し忘れたファイルをコミットしてしまった**
+
+`node_modules/` や `.env` などは絶対にコミットしてはいけません。後の章で詳しく扱いますが、リポジトリのルートに `.gitignore` を作ってから作業を始める癖を付けてください。
+
+## ちゃんと使うためのポイント
+
+- Gitには**作業ディレクトリ / ステージング / リポジトリ**の3つのエリアがある
+- `git add` → `git commit` → `git push` が基本フロー
+- **コミットメッセージは「何を・なぜ」が分かるように書く**
+- `git status` を頻繁に打って、今どの状態にあるかを確認する
+- `.env` や `node_modules/` は `.gitignore` で必ず除外する
+
+次の章では、複数人で並行して作業するために欠かせない**ブランチ**の使い方を学びます。

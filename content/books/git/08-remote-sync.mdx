@@ -1,0 +1,241 @@
+---
+title: "リモートとの同期 — fetch・pull・pushを正しく使う"
+description: "ローカルとリモート（GitHub）を同期するコマンド、fetch・pull・pushの違いと使い分けを解説します。pullの内部動作、pull --rebase、push -uの意味まで踏み込みます。"
+order: 8
+---
+
+GitHubで共同作業するときに毎日使うのが、リモートとの同期コマンドです。`fetch` `pull` `push` の3つは似ているようで役割が違います。この章では、**それぞれが内部で何をしているのか**を理解して、事故を起こさずに同期できるようになりましょう。
+
+## ローカルとリモートの関係
+
+まず、ローカルのリポジトリがリモート（GitHub）とどう繋がっているかを整理します。
+
+<MermaidDiagram chart={`
+flowchart LR
+    A["作業ディレクトリ"] <--> B["ローカルリポジトリ<br/>.git"]
+    B <-->|"fetch / push"| C["リモート追跡ブランチ<br/>origin/main"]
+    C <-->|"ネットワーク"| D["GitHub"]
+`} />
+
+ここで重要なのが **リモート追跡ブランチ**（`origin/main` のような名前のもの）です。これは「ローカルに保存されている、リモートの最新状態のコピー」です。
+
+ローカルのあなたのPCには、実は2種類のmainが存在します。
+
+- `main` — あなたが作業しているブランチ
+- `origin/main` — GitHubの `main` の状態を記録した追跡用ブランチ
+
+この違いを意識できると、`fetch` と `pull` の違いが明確になります。
+
+## git fetch — 情報だけ取ってくる
+
+`git fetch` は、**リモートの最新情報をローカルに持ってくるだけ**のコマンドです。
+
+```bash
+git fetch origin
+```
+
+これを実行すると、GitHubの最新状態が `origin/main` に反映されますが、**あなたの作業中の `main` ブランチには何も影響しません**。
+
+<MermaidDiagram chart={`
+flowchart LR
+    A["GitHub"] -->|"fetch"| B["origin/main<br/>（ローカル内の追跡用）"]
+    C["main<br/>（作業中）"] -.->|"影響なし"| C
+`} />
+
+### fetchの使いどころ
+
+「リモートに何か新しい変更がないか確認したい」「ただし自分の作業にはまだ取り込みたくない」というときに使います。
+
+```bash
+git fetch origin
+git log main..origin/main  # リモートにだけあるコミットを表示
+```
+
+fetchしてから内容を確認し、必要なら手動でmergeやrebaseする、というのが**安全で玄人っぽい使い方**です。
+
+## git pull — fetch + merge の合わせ技
+
+`git pull` は、**fetch した内容を自動で現在のブランチに取り込む**コマンドです。内部的には以下と同じ動作をしています。
+
+```bash
+# git pull origin main の実体
+git fetch origin
+git merge origin/main
+```
+
+つまり `pull` = `fetch` + `merge` です。
+
+```bash
+git pull origin main
+```
+
+`-u`（upstream）が設定されていれば、ブランチ名を省略できます。
+
+```bash
+git pull
+```
+
+### pullのメリットとデメリット
+
+**メリット** — 一発で最新状態に追いつける、楽
+
+**デメリット** — 無意識にマージコミットが作られたり、予期せぬコンフリクトに遭遇することがある
+
+特に問題になりやすいのが、**自分もローカルでコミットしていて、リモートにも別のコミットがある**ケースです。
+
+<MermaidDiagram chart={`
+gitGraph
+    commit id: "A"
+    commit id: "B"
+    branch local
+    commit id: "C (自分)"
+    checkout main
+    commit id: "D (他人)"
+`} />
+
+この状態で `git pull` すると、mergeコミットが自動で作られます。小さな変更なのに無駄なマージコミットが挟まって、履歴が汚れがちです。
+
+## git pull --rebase — 一直線を保つ
+
+この問題を解決するのが `git pull --rebase` です。**fetchしてからrebaseする**ので、mergeコミットが作られず、履歴が一直線になります。
+
+```bash
+git pull --rebase origin main
+```
+
+毎回 `--rebase` を付けるのが面倒なら、デフォルトにしておけます。
+
+```bash
+git config --global pull.rebase true
+```
+
+この設定を入れておくと、`git pull` が自動でrebase動作になります。個人プロジェクトやチームの方針がrebase寄りなら設定しておくと便利です。
+
+### pull / pull --rebase の比較
+
+| 操作 | 履歴の形 | マージコミット |
+|---|---|---|
+| `git pull`（merge） | 分岐が残る | できる |
+| `git pull --rebase` | 一直線 | できない |
+
+## git push — リモートに送る
+
+`git push` は、**ローカルのコミットをリモートに送る**コマンドです。
+
+```bash
+git push origin main
+```
+
+### 初回のpushで `-u` を付ける意味
+
+新しいブランチを初めてpushするときは `-u`（または `--set-upstream`）が必要です。
+
+```bash
+git push -u origin feature/login
+```
+
+これは「ローカルの `feature/login` を、リモートの `origin/feature/login` に紐づける」という設定をします。一度紐づければ、次回からは以下で済みます。
+
+```bash
+git push
+git pull
+```
+
+### push が拒否されるケース
+
+よくあるのが「リモートが進んでいるためpushできない」というエラーです。
+
+```
+! [rejected]        main -> main (fetch first)
+error: failed to push some refs
+hint: Updates were rejected because the remote contains work that you
+hint: do not have locally.
+```
+
+これは、あなたが知らない間に誰かがリモートにpushしていて、リモートの方が先に進んでいる状態です。解決するには、まずpullして最新を取り込みます。
+
+```bash
+git pull --rebase
+git push
+```
+
+### force push の使いどころと危険性
+
+どうしてもリモートの履歴を上書きしたいときに使うのが `--force` オプションです。
+
+```bash
+git push --force origin feature/login
+```
+
+これは**他人の変更を問答無用で上書きする**ので非常に危険です。安全側に倒すには `--force-with-lease` を使います。
+
+```bash
+git push --force-with-lease origin feature/login
+```
+
+`--force-with-lease` は、リモートの状態が「あなたが最後に確認したとき」と違っていたら失敗してくれます。誰かが後からpushしていたら、それを壊さずに済みます。
+
+**`--force` より `--force-with-lease`** を習慣にしてください。
+
+## 3つのコマンドの使い分け
+
+| 状況 | コマンド |
+|---|---|
+| リモートの最新状態だけ確認したい | `git fetch` |
+| 最新を取り込んで作業を続けたい | `git pull` または `git pull --rebase` |
+| 自分の変更をリモートに送りたい | `git push` |
+| 新しいブランチを初めてpushする | `git push -u origin <branch>` |
+| rebase後などに強制push | `git push --force-with-lease` |
+
+## 安全な同期フロー
+
+実務でよく使う、安全なフローを紹介します。
+
+```bash
+# 1. 作業を始める前に最新を取り込む
+git switch main
+git pull
+
+# 2. 作業用ブランチを切る
+git switch -c feature/new-feature
+
+# 3. 作業、コミット
+# ...
+
+# 4. 途中で main の最新を取り込む
+git fetch origin
+git rebase origin/main
+
+# 5. 作業完了したらpush
+git push -u origin feature/new-feature
+```
+
+「作業開始前にpull、作業中に定期的に `fetch` + `rebase`、完了したらpush」が身につけば、同期事故はほぼ起きません。
+
+## よくあるハマりどころ
+
+**1. 他人のブランチに気付かずpushしてしまった**
+
+ブランチ名を間違えて既存のブランチにpushすると、他人の作業を上書きする可能性があります。`git push` 前に `git branch -vv` で現在のブランチと紐付け先を確認する癖を付けましょう。
+
+**2. `git pull` してコンフリクトした**
+
+6章と同じ手順で解決します。`pull` の内部は `merge` なので、通常のマージコンフリクトと同じです。
+
+**3. pullしたら自分のコミットが消えた（ように見える）**
+
+実際にはreflogに残っているので消えていません。`git reflog` で直前のHEAD位置を確認して、必要なら `git reset --hard` で復元できます。
+
+**4. `origin/main` と `main` がどう違うのか混乱する**
+
+`main` は「あなたが今作業しているローカルブランチ」、`origin/main` は「GitHub側の状態をローカルに保存したコピー」です。`fetch` は `origin/main` を更新するだけ、`pull` は `origin/main` を更新してから `main` に取り込む、と覚えてください。
+
+## ちゃんと使うためのポイント
+
+- `fetch` は**情報だけ取得**、作業ブランチに影響しない
+- `pull` は **fetch + merge** の合わせ技
+- `pull --rebase` で**履歴を一直線に保てる**
+- `push -u` は**初回だけ、追跡関係を作るため**
+- force pushは必ず **`--force-with-lease`** を使う
+
+次の章では、作業の途中で別のブランチに切り替えたいときに使う `git stash` を学びます。

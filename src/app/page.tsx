@@ -15,8 +15,8 @@ import {
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { SectionHeading } from "@/components/SectionHeading";
+import { NewsList } from "@/components/news-list";
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
@@ -258,7 +258,8 @@ const CATEGORY_COLORS: Record<string, { border: string; hoverBg: string }> = {
 };
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
-  { date: "2026/04/05", text: "Linuxクイズを公開しました", isNew: true },
+  { date: "2026/04/18", text: "教科書「Gitをちゃんと使う」「Next.jsを動かして学ぶ」を公開しました", isNew: true, link: "/books" },
+  { date: "2026/04/05", text: "Linuxクイズを公開しました", isNew: false },
   { date: "2026/04/04", text: "サブスクリプション機能を準備中です。正式リリースまでもうしばらくお待ちください。", isNew: false, link: "/payment" },
   { date: "2026/04/01", text: "Next.js・Dockerクイズを公開しました", isNew: false },
   { date: "2026/03/01", text: "TypeScript・セキュリティ・CS基礎クイズを公開しました", isNew: false },
@@ -516,12 +517,13 @@ export default async function Home() {
         <SectionHeading className="mb-8">
           学習のすすめ方
         </SectionHeading>
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-5">
           {[
             { step: 1, color: "bg-red-400", title: "まずはクイズに挑戦", desc: "スキマ時間に1問ずつ。会員登録なしですぐ始められます。" },
             { step: 2, color: "bg-blue-400", title: "間違えた問題を復習", desc: "解答履歴から間違えた問題をピックアップして解き直しましょう。" },
-            { step: 3, color: "bg-amber-400", title: "プロフィールで確認", desc: "会員登録すると正答率・連続学習日数・カテゴリ別進捗を確認できます。" },
-            { step: 4, color: "bg-green-400", title: "コードを書いて実践", desc: "問題で学んだ知識を、実際にコードを書いて理解を深めましょう。" },
+            { step: 3, color: "bg-indigo-400", title: "教科書で体系的に学ぶ", desc: "クイズで気になったテーマは教科書で基礎から順番に理解を深められます。" },
+            { step: 4, color: "bg-amber-400", title: "プロフィールで確認", desc: "会員登録すると正答率・連続学習日数・カテゴリ別進捗を確認できます。" },
+            { step: 5, color: "bg-green-400", title: "コードを書いて実践", desc: "問題で学んだ知識を、実際にコードを書いて理解を深めましょう。" },
           ].map((s) => (
             <div key={s.step} className="text-center">
               <div className={`mx-auto mb-2 sm:mb-3 flex size-8 sm:size-10 items-center justify-center rounded-full ${s.color} text-white font-bold text-xs sm:text-sm shadow-sm`}>
@@ -539,32 +541,9 @@ export default async function Home() {
         <SectionHeading className="mb-6">
           お知らせ
         </SectionHeading>
-        <div className="max-w-2xl mx-auto divide-y divide-border">
-          {NEWS.map((item, i) => {
-            const content = (
-              <div className={`py-3 space-y-1 ${item.link ? "group cursor-pointer" : ""}`}>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {item.date}
-                  </span>
-                  {item.isNew && (
-                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0 leading-4">
-                      NEW
-                    </Badge>
-                  )}
-                </div>
-                <p className={`text-sm text-foreground ${item.link ? "group-hover:text-primary transition-colors" : ""}`}>
-                  {item.text}
-                </p>
-              </div>
-            );
-            return item.link ? (
-              <Link key={i} href={item.link}>{content}</Link>
-            ) : (
-              <div key={i}>{content}</div>
-            );
-          })}
-          <div className="py-3 space-y-1">
+        <div className="max-w-2xl mx-auto">
+          <NewsList items={NEWS} />
+          <div className="border-t border-border py-3 space-y-1">
             <span className="text-xs text-muted-foreground">今後の予定</span>
             <p className="text-sm text-foreground">
               間違っているコード2択クイズなどを順次追加予定

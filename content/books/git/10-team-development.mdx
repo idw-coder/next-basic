@@ -1,0 +1,299 @@
+---
+title: "GitHubでのチーム開発 — Pull Requestとマージ戦略"
+description: "GitHubを使ったチーム開発の流れを解説します。Pull Requestの作り方、コードレビューの進め方、Merge commit / Squash merge / Rebase merge の使い分けまで、実務で必要な知識を網羅します。"
+order: 10
+---
+
+ここまでの章で、Git単体の使い方は一通り学んできました。最終章では、実際のチーム開発で**どういうフローで作業が進むのか**を見ていきます。
+
+GitHubでのチーム開発は、**Pull Request を軸にしたレビュー文化**が中心です。この仕組みが分かれば、どの現場に入っても通用します。
+
+## 全体の流れ
+
+標準的なチーム開発のフローは以下のような形です。
+
+<MermaidDiagram chart={`
+flowchart TB
+    A["mainから作業ブランチを切る"] --> B["コードを書く / コミット"]
+    B --> C["リモートにpush"]
+    C --> D["Pull Requestを作る"]
+    D --> E["レビューを受ける"]
+    E --> F{"承認される？"}
+    F -->|"修正依頼"| B
+    F -->|"承認"| G["mainにマージ"]
+    G --> H["作業ブランチを削除"]
+`} />
+
+この流れを**GitHub Flow** と呼びます。もっと複雑なフロー（Git Flow、GitLab Flow など）もありますが、今の主流はこのシンプルなGitHub Flowです。
+
+## Pull Request とは
+
+**Pull Request（PR）** は、「自分のブランチの変更をmainに取り込んでほしい」という依頼です。
+
+PRを作ると、GitHub上に以下のような画面が生まれます。
+
+- 変更されたファイルの差分
+- コミット履歴
+- レビューコメントのスレッド
+- マージボタン
+- CI（自動テスト）の結果
+
+レビュアーはこの画面で変更内容を確認し、コメントや修正依頼を返します。承認されたらマージボタンでmainに取り込む、という流れです。
+
+## PRを作る手順
+
+### 1. ブランチを切って作業する
+
+```bash
+git switch main
+git pull
+git switch -c feature/user-login
+
+# ... 作業 ...
+git add .
+git commit -m "feat: ユーザーログイン機能を追加"
+```
+
+### 2. リモートにpush
+
+```bash
+git push -u origin feature/user-login
+```
+
+push後、ターミナルに以下のようなURLが表示されます。
+
+```
+remote: Create a pull request for 'feature/user-login' on GitHub by visiting:
+remote:      https://github.com/username/repo/pull/new/feature/user-login
+```
+
+このURLをブラウザで開くとPR作成画面になります。
+
+### 3. PRの本文を書く
+
+PRのタイトルと本文は**レビュアーの時間を節約するための情報**です。最低限以下を書きます。
+
+- **何を変えたか**
+- **なぜその変更が必要か**
+- **どう動作確認したか**
+- **スクリーンショット**（UI変更の場合）
+
+多くのチームではPRテンプレートを用意しています。リポジトリに `.github/pull_request_template.md` があれば、PR作成時に自動で本文に展開されます。
+
+### 4. レビュアーをアサインして依頼
+
+右サイドバーの `Reviewers` で、レビューしてもらう人を指定します。チームのルールによっては、**特定のファイルは特定の人のレビューが必須**といった設定（`CODEOWNERS`）がされています。
+
+## レビューを受ける・返す
+
+### レビューされる側
+
+コメントが付いたら、以下のような対応をします。
+
+1. **指摘内容を理解する** — 不明なら質問する、曖昧なまま修正しない
+2. **修正する or 議論する** — 納得できないなら意見を書いてよい
+3. **修正したらpush** — PRには自動で反映される
+4. **返信する** — 「修正しました」「これはこういう意図です」など
+
+PRブランチに追加で `git push` すると、PRの差分が自動更新されます。コミットは溜めっぱなしで大丈夫（最終的にマージ時にまとめることもできる）。
+
+### レビューする側
+
+レビューは**バグ探しだけではなく、設計・可読性・テスト・ドキュメント**まで広く見ます。
+
+- 指摘は**具体的に**、コード行にコメントを付ける
+- 褒める点も書く（`LGTM`、`Nice!`）
+- 修正必須と改善提案を区別する（`[must]`、`[nits]` のような接頭辞を使う慣習も）
+- 質問で気づきを促すスタイルも有効（`このケースはどうなりますか？`）
+
+GitHubのレビュー機能には以下の3段階があります。
+
+| 種類 | 用途 |
+|---|---|
+| Comment | ただコメントするだけ |
+| Approve | 承認 |
+| Request changes | 修正が必要 |
+
+## マージ戦略 — 3つの選択肢
+
+PRを承認したあと、mainにマージするときは3つの方式から選べます。
+
+<MermaidDiagram chart={`
+flowchart TB
+    A["PRの変更をmainに取り込む"] --> B["Create a merge commit"]
+    A --> C["Squash and merge"]
+    A --> D["Rebase and merge"]
+`} />
+
+### Create a merge commit（通常マージ）
+
+`git merge` と同じで、マージコミットを作って統合します。
+
+<MermaidDiagram chart={`
+gitGraph
+    commit id: "A"
+    branch feature
+    commit id: "C1"
+    commit id: "C2"
+    checkout main
+    merge feature id: "M"
+`} />
+
+- **メリット** — PRのコミット履歴がすべて残る、「いつマージしたか」が明確
+- **デメリット** — マージコミットが増えて履歴が複雑になる
+
+### Squash and merge（スカッシュマージ）
+
+**PRの全コミットを1つにまとめて**mainに追加する方式です。
+
+<MermaidDiagram chart={`
+gitGraph
+    commit id: "A"
+    commit id: "PR-merged"
+`} />
+
+- **メリット** — mainの履歴が1 PR = 1コミットで綺麗
+- **デメリット** — PR内の細かいコミット履歴は失われる
+
+多くのチームがこの方式を採用しています。**個々のPRがmainから見て1つの意味のある変更単位**になるため、履歴が読みやすくなります。
+
+### Rebase and merge（リベースマージ）
+
+PRの各コミットを**1つずつmainの先端に積み重ねる**方式です。マージコミットは作られません。
+
+<MermaidDiagram chart={`
+gitGraph
+    commit id: "A"
+    commit id: "C1"
+    commit id: "C2"
+`} />
+
+- **メリット** — 履歴が一直線、各コミットが独立して残る
+- **デメリット** — PRの「塊」が分かりづらくなる、コミットが綺麗に整理されていないと履歴が汚れる
+
+### どれを選ぶべきか
+
+| チームの特徴 | 推奨 |
+|---|---|
+| 履歴を綺麗にしたい、1PR=1機能で管理したい | **Squash** |
+| PRの詳細履歴を残したい、大規模な変更が多い | **Merge commit** |
+| コミット1つ1つに意味がある、厳密に履歴を管理したい | **Rebase** |
+
+迷ったらSquash、で問題ありません。
+
+## CIとの連携
+
+最近のGitHubリポジトリは、PRを作ると自動でテストやLintが走るのが普通です。これを CI（Continuous Integration）と呼びます。
+
+GitHub Actionsを使う場合、`.github/workflows/` にYAMLファイルを置くと、以下のようなチェックが自動実行されます。
+
+- 自動テスト（`npm test` など）
+- Lintチェック（`eslint`、`prettier`）
+- ビルドが通るか
+- TypeScriptの型チェック
+
+PR画面には各チェックの結果が表示され、すべて通らないとマージできない設定にもできます。**CIが落ちているPRはマージしない**のがルールです。
+
+## ブランチ保護ルール
+
+GitHubのリポジトリ設定で、**mainブランチへの直接pushを禁止**することができます。
+
+- `main` への直接pushを禁止
+- PRを経由しないとマージできない
+- 最低1人のレビュー承認が必須
+- CIが通らないとマージ不可
+
+この設定が入っていれば、事故でmainを壊すことは起こりにくくなります。チームで開発するリポジトリでは**ほぼ必須の設定**です。
+
+## マージ後の後片付け
+
+PRがマージされたら、作業ブランチは不要になります。
+
+### リモートブランチの削除
+
+GitHubのPR画面に `Delete branch` ボタンが表示されるので、クリックすればリモートのブランチが削除されます。
+
+### ローカルブランチの削除
+
+ローカル側も手動で削除します。
+
+```bash
+git switch main
+git pull
+git branch -d feature/user-login
+```
+
+大文字の `-D` は強制削除なので、普段は小文字の `-d` を使ってください。未マージのブランチが残っていたら `-d` が教えてくれます。
+
+### 一括削除したい場合
+
+マージ済みのブランチをまとめて削除するワンライナー:
+
+```bash
+git branch --merged | grep -v "main" | xargs git branch -d
+```
+
+## よくあるハマりどころ
+
+**1. PRを出したあとにmainが進んだ**
+
+mainの最新を取り込む必要があります。rebaseかmergeで取り込めますが、チームの方針に従ってください。
+
+```bash
+git switch feature/my-work
+git fetch origin
+git rebase origin/main
+git push --force-with-lease
+```
+
+**2. レビューの指摘がいっぱい、気持ちが折れる**
+
+レビューは**コードを否定しているのではなく、コードを良くするための共同作業**です。指摘が多いのは、それだけ丁寧に見てくれている証拠。淡々と修正していきましょう。
+
+**3. PRが大きくなりすぎてレビューされない**
+
+レビュアーは大きすぎるPRを嫌います。**1 PR = 1つの目的**になるように、作業を分けてPRを作るのが基本です。理想は数百行以内、最大でも1000行を目安に。
+
+**4. コンフリクトしてマージできない**
+
+PR画面で「This branch has conflicts」と表示されたら、ローカルでmainを取り込んで解決します。
+
+```bash
+git switch feature/my-work
+git fetch origin
+git merge origin/main
+# コンフリクト解決
+git push
+```
+
+## ちゃんと使うためのポイント
+
+- チーム開発は **GitHub Flow**（main + PR）が主流
+- PRは**レビュアーの時間を節約するように本文を書く**
+- マージ戦略は迷ったら **Squash and merge**
+- mainブランチは**保護ルール**でpush禁止にする
+- **CIが落ちているPRはマージしない**
+- 1 PRは小さく、**1つの目的に絞る**
+
+## 最後に
+
+この本で学んだことをまとめると、以下のようになります。
+
+1. **Gitの役割** — 変更履歴を管理して、チーム開発を可能にする
+2. **初期設定** — user.name、SSH鍵、defaultBranch
+3. **基本フロー** — add → commit → push
+4. **ブランチ** — switch、restoreで安全に操作
+5. **merge / rebase** — 使い分けの判断基準
+6. **コンフリクト** — 編集 → add → commit
+7. **取り消し** — restore / reset / revert の違い
+8. **リモート同期** — fetch / pull / push
+9. **stash** — 作業の一時退避
+10. **チーム開発** — Pull Request と マージ戦略
+
+ここまで身につけば、**実務でGitを使うのに困ることはほぼなくなります**。
+
+Gitは奥が深く、まだまだ便利なコマンドや高度な使い方があります（`cherry-pick`、`bisect`、`worktree`、`submodule` など）。必要になったときに調べれば十分です。
+
+最初のうちは、思い出せないコマンドがあって当然です。`git help <command>` や公式ドキュメント、この本をその都度参照しながら進めてください。使い続けるうちに、自然と手が覚えていきます。
+
+Git、ちゃんと使えるようになりましたか？

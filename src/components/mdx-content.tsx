@@ -1,7 +1,8 @@
 import * as runtime from "react/jsx-runtime";
+import MermaidDiagram from "@/components/MermaidDiagram";
 
 const sharedComponents = {
-  // カスタムMDXコンポーネントをここに追加可能
+  MermaidDiagram,
 };
 
 const useMDXComponent = (code: string) => {

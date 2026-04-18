@@ -1,0 +1,235 @@
+---
+title: "stashで作業を一時退避する"
+description: "git stashの使い方を解説します。作業途中で別のブランチに切り替えたいときの退避方法、stash pop / apply の違い、複数のstashの管理まで網羅します。"
+order: 9
+---
+
+実務でGitを使っていると、こんな場面に遭遇します。
+
+- 機能開発中にバグ報告が入って、緊急で修正したい
+- 別のブランチに切り替えて確認したいことがある
+- 作業が中途半端すぎてコミットはしたくない
+
+こういうときに便利なのが `git stash` です。**作業途中の変更を一時的に退避**して、後で取り出せる機能です。
+
+## stash の役割
+
+`git stash` は、現在の作業状態（作業ディレクトリとステージングの変更）を**スタッシュと呼ばれる一時保管場所に退避**します。
+
+<MermaidDiagram chart={`
+flowchart LR
+    A["作業中の変更"] -->|"git stash"| B["stash@{0}<br/>退避"]
+    B -->|"git stash pop"| A
+`} />
+
+退避した後の作業ディレクトリは、最後のコミット時点に戻ります。そのまま別のブランチに切り替えたり、別の作業を始めたりできます。
+
+## 基本的な使い方
+
+### 退避する
+
+```bash
+git stash
+# Saved working directory and index state WIP on main: abc1234 last commit
+```
+
+このコマンドで、未コミットの変更がすべて退避されます。作業ディレクトリはクリーンな状態になります。
+
+`git status` で確認すると、何も変更がないように見えます。
+
+```bash
+git status
+# On branch main
+# nothing to commit, working tree clean
+```
+
+### 退避内容を確認する
+
+どんな変更を退避しているかを見るには `git stash list` を使います。
+
+```bash
+git stash list
+# stash@{0}: WIP on main: abc1234 last commit
+```
+
+`stash@{0}` が最新の退避、`stash@{1}` `stash@{2}` と古いほど番号が増えます。
+
+中身を詳しく見たいときは以下。
+
+```bash
+git stash show stash@{0}
+# 変更されたファイルの概要
+
+git stash show -p stash@{0}
+# 具体的な差分を全部表示
+```
+
+### 取り出す
+
+退避した変更を元に戻すには、2つの方法があります。
+
+```bash
+git stash pop      # 取り出してスタッシュから削除
+git stash apply    # 取り出すがスタッシュに残す
+```
+
+`pop` と `apply` の違いは、**取り出した後にスタッシュから消えるかどうか**です。
+
+| コマンド | 作業ディレクトリに復元 | スタッシュから削除 |
+|---|---|---|
+| `git stash pop` | する | **する** |
+| `git stash apply` | する | しない |
+
+基本は `pop` でOKです。`apply` は「同じ変更を複数のブランチに適用したい」「万が一のために退避を残しておきたい」ようなケースで使います。
+
+## 典型的な使い方
+
+### 緊急バグ修正のパターン
+
+機能開発中に緊急でバグ修正をしなければいけなくなった状況です。
+
+```bash
+# 1. 今の作業を退避
+git stash
+
+# 2. mainに戻って修正用ブランチを切る
+git switch main
+git switch -c hotfix/critical-bug
+
+# 3. 修正してpush
+# ... 修正作業 ...
+git commit -am "fix: 緊急バグを修正"
+git push -u origin hotfix/critical-bug
+
+# 4. 元のブランチに戻って作業再開
+git switch feature/my-work
+git stash pop
+```
+
+`git stash` があれば、途中の作業を捨てずに別の仕事を挟めます。
+
+### ブランチを間違えた
+
+作業ブランチを切り忘れて `main` に直接編集してしまった、というときも `stash` が便利です。
+
+```bash
+# 1. 変更を退避
+git stash
+
+# 2. 正しいブランチを切る
+git switch -c feature/new-feature
+
+# 3. 退避していた変更を復元
+git stash pop
+```
+
+これで `main` に直接コミットする事故を防げます。
+
+### pullする前に退避
+
+作業途中で `git pull` したいけど、未コミットの変更があるとコンフリクトする可能性があります。そういうときは:
+
+```bash
+git stash
+git pull
+git stash pop
+```
+
+## 部分的に退避する
+
+ファイル単位で退避したいときは `-p`（patch）オプションを使います。
+
+```bash
+git stash push -p
+```
+
+変更の塊（hunk）ごとに「これを退避するか」を対話的に選べます。「機能Aの変更だけ残して、機能Bの変更は退避したい」というような細かい整理に使えます。
+
+## メッセージ付きで退避する
+
+複数のstashを管理するときに便利なのが、メッセージ付きの退避です。
+
+```bash
+git stash push -m "WIP: ユーザー登録のバリデーション"
+```
+
+こうしておくと、`git stash list` で見たときに何の退避か分かります。
+
+```
+stash@{0}: On main: WIP: ユーザー登録のバリデーション
+stash@{1}: On main: WIP: 検索機能の調整
+```
+
+## stashを削除する
+
+不要になったstashは削除できます。
+
+```bash
+# 特定のstashを削除
+git stash drop stash@{0}
+
+# すべてのstashを削除
+git stash clear
+```
+
+`clear` は全削除なので慎重に。
+
+## stashしたコミットはブランチにできる
+
+「退避した変更、別ブランチで続きをやりたい」というときは、stashから直接ブランチを作れます。
+
+```bash
+git stash branch new-feature stash@{0}
+```
+
+これで `new-feature` ブランチが作られ、stashの内容がそこに展開されます。stash自体は削除されます。
+
+## untracked ファイルを扱う
+
+デフォルトでは、`git stash` は**まだ追跡されていない新規ファイル**を退避しません。新しく作ったファイルも含めて退避したい場合は `-u`（untracked）を付けます。
+
+```bash
+git stash -u
+```
+
+`.gitignore` で無視されているファイルまで含めたいなら `-a`（all）を使います（ほぼ使いません）。
+
+```bash
+git stash -a
+```
+
+## よくあるハマりどころ
+
+**1. stashしたのに変更がない**
+
+新規ファイルは `-u` を付けないと退避されません。`git stash -u` を使ってください。
+
+**2. stash popでコンフリクト**
+
+別のブランチに切り替えてから `stash pop` した場合、そのブランチの状態と退避内容がコンフリクトすることがあります。普通のマージコンフリクトと同じ手順（編集 → `git add`）で解決できます。
+
+ただし、**コンフリクトしても pop は成功扱い**になり、stashから削除されてしまうことがあるので注意してください。心配なら `apply` を使って、うまくいったのを確認してから `drop` するのが安全です。
+
+```bash
+git stash apply
+# ... 確認 ...
+git stash drop
+```
+
+**3. stashしすぎて何が何だか**
+
+溜め込みすぎると管理不能になります。`git stash list` で定期的に確認し、不要になったものは `drop` しましょう。そもそも**stashは一時退避なので、長期間残すべきではありません**。1日以上残りそうなら、ちゃんとブランチを切ってコミットすべきです。
+
+**4. stashを忘れる**
+
+「stashしたことを忘れて、そのコードが消えた！」と焦ることがあります。`git stash list` で探せば見つかります。reflogと違って、stashは明示的に削除しない限り残ります。
+
+## ちゃんと使うためのポイント
+
+- `git stash` は**未コミットの変更を一時退避**するコマンド
+- 戻すときは `pop`（削除あり）か `apply`（削除なし）
+- 新規ファイルを含めたいなら **`-u`** を付ける
+- **メッセージ付き退避**で複数の退避を管理できる
+- stashは一時的なもの、**長期保存するならブランチを切る**
+
+次の章ではいよいよ、GitHubを使ったチーム開発の実践編です。Pull Request、コードレビュー、マージ戦略について学びます。

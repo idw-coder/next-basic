@@ -47,6 +47,9 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
 
   return (
     <article>
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">
+        {chapter.title}
+      </h1>
       <div className="prose prose-gray max-w-none">
         <MDXContent code={chapter.body} />
       </div>

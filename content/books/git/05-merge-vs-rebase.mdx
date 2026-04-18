@@ -1,0 +1,233 @@
+---
+title: "mergeとrebaseの違いと使い分け"
+description: "Gitでブランチを統合する2つの方法、mergeとrebaseを解説します。それぞれの動作の違い、履歴の見え方、実務での使い分けの判断基準を明確にします。"
+order: 5
+---
+
+ブランチで作業した内容を別のブランチに取り込む方法は、Gitでは主に2つあります。`merge` と `rebase` です。**どちらも「変更を取り込む」という結果は似ていますが、履歴の残り方がまったく違います**。
+
+この章は、Gitで多くの人がつまずくポイントです。図を見ながらゆっくり理解していきましょう。
+
+## 出発点 — 2つのブランチが分岐している状況
+
+`main` から分岐した `feature` ブランチで作業を進めている状況を考えます。その間に `main` にも別のコミットが追加されたとします。
+
+<MermaidDiagram chart={`
+gitGraph
+    commit id: "A"
+    commit id: "B"
+    branch feature
+    commit id: "C"
+    commit id: "D"
+    checkout main
+    commit id: "E"
+`} />
+
+この状態で、`feature` の変更を `main` に取り込みたい、または `feature` を `main` の最新に追従させたい、というのがこれから扱うテーマです。
+
+## merge — 合流地点を作る
+
+`git merge` は、2つのブランチを合流させて**「マージコミット」という新しいコミットを作る**方法です。
+
+```bash
+git switch main
+git merge feature
+```
+
+結果は以下のような形になります。
+
+<MermaidDiagram chart={`
+gitGraph
+    commit id: "A"
+    commit id: "B"
+    branch feature
+    commit id: "C"
+    commit id: "D"
+    checkout main
+    commit id: "E"
+    merge feature id: "M"
+`} />
+
+`M` がマージコミットです。2つのブランチが合流した痕跡がそのまま履歴に残ります。
+
+### mergeのメリット
+
+- **履歴が事実のまま残る** — 誰がいつどのブランチで作業していたかが分かる
+- **安全** — 既存のコミットを書き換えないため、事故が起きにくい
+- **コンフリクト解決が1回で済む** — マージコミットの作成時にまとめて解決
+
+### mergeのデメリット
+
+- **履歴が複雑になる** — ブランチが多いと分岐が入り組んで見づらい
+- **マージコミットが大量に残る** — 小さな変更でもマージコミットが挟まる
+
+## rebase — 歴史を書き換えて一本道にする
+
+`git rebase` は、**ブランチの根元（base）を付け替える**操作です。`feature` ブランチのコミットを、`main` の最新コミットの上に積み直します。
+
+```bash
+git switch feature
+git rebase main
+```
+
+結果は以下のような形になります。
+
+<MermaidDiagram chart={`
+gitGraph
+    commit id: "A"
+    commit id: "B"
+    commit id: "E"
+    branch feature
+    commit id: "C'"
+    commit id: "D'"
+`} />
+
+`C` と `D` が、`E` の上に `C'` `D'` として**作り直されて**います。ここがrebaseの重要ポイントです。**元のC・Dとは別のコミット**（ハッシュが変わる）になっています。
+
+このあと `main` に取り込めば、履歴は綺麗な一本道になります。
+
+```bash
+git switch main
+git merge feature  # Fast-forwardマージされる
+```
+
+<MermaidDiagram chart={`
+gitGraph
+    commit id: "A"
+    commit id: "B"
+    commit id: "E"
+    commit id: "C'"
+    commit id: "D'"
+`} />
+
+### rebaseのメリット
+
+- **履歴が一直線になって読みやすい**
+- **マージコミットが生まれない**
+- **個別のコミットの意味が明確に残る**
+
+### rebaseのデメリット
+
+- **コミットが書き換えられる**（ハッシュが変わる）ため、既に共有したブランチに使うと事故る
+- **コンフリクト解決がコミットごとに発生**する可能性がある
+
+## 違いを表で整理
+
+| 項目 | merge | rebase |
+|---|---|---|
+| 履歴の形 | 分岐が残る | 一直線 |
+| マージコミット | できる | できない |
+| コミットの書き換え | なし | **あり（ハッシュが変わる）** |
+| コンフリクト解決 | 1回 | コミットごとに発生する可能性 |
+| 共有済みブランチ | OK | **NG（原則）** |
+
+## 実務での使い分け
+
+どちらを使うべきかは、チームの方針とブランチの状態で決まります。
+
+### rebaseを使うべきケース
+
+- **自分のローカルブランチだけで作業しているとき**
+- **Pull Requestを出す前に、mainの最新を取り込んで整理したいとき**
+- **作業途中のコミットを綺麗に整理したいとき**（対話的rebase）
+
+```bash
+# feature ブランチで作業中、main の最新を取り込む
+git switch feature
+git fetch origin
+git rebase origin/main
+```
+
+### mergeを使うべきケース
+
+- **複数人で共有しているブランチを統合するとき**
+- **Pull Requestをマージするとき**（GitHubの「Merge pull request」ボタン）
+- **履歴に「このブランチで作業していた」記録を残したいとき**
+
+## やってはいけないrebase
+
+**既にリモートにpushして他人と共有しているブランチをrebaseしない**、これが鉄則です。
+
+rebaseはコミットを書き換えるので、他人が持っているコミットと食い違いが発生します。他の人が `git pull` したときに、履歴の整合性が壊れて大混乱になります。
+
+```
+NG:
+  1. feature ブランチを push
+  2. 同僚がそれを pull して作業開始
+  3. あなたが feature を rebase して force push
+  4. 同僚のローカルで履歴が破綻
+```
+
+「自分だけが触っているブランチならrebase OK、他人と共有するブランチならmerge」と覚えておけば間違いありません。
+
+## 対話的rebase — コミットを整理する
+
+`git rebase -i`（interactive）を使うと、**コミット自体を編集**できます。
+
+```bash
+git rebase -i HEAD~3
+# 直近3コミットを対話的に編集
+```
+
+エディタが開いて、以下のような画面が表示されます。
+
+```
+pick abc1234 feat: ユーザー登録機能を追加
+pick def5678 fix: タイポ修正
+pick ghi9012 feat: メール送信処理を追加
+```
+
+`pick` の部分を以下のキーワードに書き換えると、コミットを操作できます。
+
+| キーワード | 動作 |
+|---|---|
+| `pick` | そのまま採用 |
+| `reword` | コミットメッセージを書き換える |
+| `squash` | 前のコミットに統合（メッセージも統合） |
+| `fixup` | 前のコミットに統合（メッセージ破棄） |
+| `drop` | そのコミットを削除 |
+
+たとえば「タイポ修正」のコミットを直前のコミットに統合したいなら、`fixup` に書き換えるだけです。Pull Requestを出す前に履歴を綺麗にする用途で使われます。
+
+## よくあるハマりどころ
+
+**1. rebase中にコンフリクトが起きた**
+
+rebaseは各コミットを順番に適用するため、複数のコミットでコンフリクトが起きることがあります。解決したら以下で次に進みます。
+
+```bash
+git add <解決したファイル>
+git rebase --continue
+
+# 途中でやめたい場合
+git rebase --abort
+```
+
+**2. Pull Requestの後に main を取り込みたい**
+
+レビュー中にmainが進んだ場合、`merge` と `rebase` どちらでも取り込めます。チームの方針に従ってください。
+
+```bash
+# mergeで取り込む場合
+git switch feature
+git merge origin/main
+
+# rebaseで取り込む場合
+git switch feature
+git rebase origin/main
+git push --force-with-lease  # rebase後はforce push必須
+```
+
+**3. `--force` push は危険**
+
+rebase後のpushは通常のpushでは拒否されるので `--force` が必要ですが、`--force` は他人の変更を上書きする危険があります。**必ず `--force-with-lease` を使う**のが安全です。これはリモートの状態が自分の想定と違ったら失敗してくれるオプションです。
+
+## ちゃんと使うためのポイント
+
+- **merge は「合流」、rebase は「土台の付け替え」**
+- rebaseは**コミットのハッシュを書き換える**
+- **共有済みブランチはrebaseしない**、mergeを使う
+- ローカルブランチの整理には rebase が強力
+- force pushは必ず **`--force-with-lease`** を使う
+
+次の章では、mergeやrebaseでほぼ必ず遭遇する**コンフリクト**の発生原因と解決手順を学びます。
