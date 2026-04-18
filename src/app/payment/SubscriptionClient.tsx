@@ -134,7 +134,17 @@ export default function SubscriptionClient() {
     }
   };
 
-  const isPreparingBanner = true;
+  const [stripeActive, setStripeActive] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'stripeActive') {
+      // sessionStorageなのでタブ閉じたら無効化される
+      sessionStorage.setItem('stripeActive', '1');
+    }
+    setStripeActive(sessionStorage.getItem('stripeActive') === '1');
+  }, []);
+
+  const isPreparingBanner = !stripeActive;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 md:py-16">
@@ -182,9 +192,7 @@ export default function SubscriptionClient() {
           const Icon = plan.icon;
           const isFree = plan.id === 'free';
           const isLoading = loadingPlan === plan.id;
-          // const isPreparingPlan = !isFree;
-          // TODO: feature flag
-          const isPreparingPlan = false;
+          const isPreparingPlan = !isFree && !stripeActive;
 
           return (
             <Card

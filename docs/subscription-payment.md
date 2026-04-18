@@ -5,8 +5,8 @@
 Stripe Checkout を利用したサブスクリプション決済機能のフロントエンド実装。
 バックエンドの `/api/payment/*` エンドポイントと連携し、プラン選択 → Stripe Checkout → 結果表示の一連のフローを提供する。
 
-> **現在のステータス: 準備中**
-> Proプランのボタンは disabled で、正式リリースまで購入不可の状態。
+> **現在のステータス: 準備中（Feature Flag で制御）**
+> デフォルトでは Pro プランのボタンは disabled。`?mode=stripeActive` で有効化可能。
 
 ---
 
@@ -104,15 +104,27 @@ Stripe Checkout を利用したサブスクリプション決済機能のフロ�
 | Pro プランのボタン | 準備中フラグ OFF & ログイン済 | `POST /api/payment/subscription` → Stripe Checkout URL へリダイレクト |
 | 「管理ポータルを開く」 | ログイン済 | `POST /api/payment/portal` → Stripe Billing Portal URL へリダイレクト |
 
-#### 準備中フラグの制御
+#### 準備中フラグの制御（Feature Flag）
 
-`SubscriptionClient.tsx` 内の以下の行で制御:
+`?mode=stripeActive` クエリパラメータによる Feature Flag で制御。
+汎用フック `useFeatureFlag`（`src/lib/featureFlags.ts`）を使用し、sessionStorage でタブ単位のフラグを管理する。
 
 ```typescript
-const isPreparing = !isFree;
+// src/app/payment/SubscriptionClient.tsx
+const stripeActive = useFeatureFlag('stripeActive');
+const isPreparingBanner = !stripeActive;        // 準備中バナーの表示
+const isPreparingPlan = !isFree && !stripeActive; // 有料プランボタンの disabled 制御
 ```
 
-正式リリース時にはこのフラグを条件変更（例: `false` に固定、または環境変数で制御）することで有効化する。
+| 状態 | 条件 | バナー | 有料プランボタン |
+|---|---|---|---|
+| デフォルト | `stripeActive` OFF | 表示 | disabled（「準備中」） |
+| 有効化 | `stripeActive` ON | 非表示 | 有効（「このプランを選ぶ」） |
+
+**フラグの有効化方法:** `?mode=stripeActive` 付きでページにアクセスする。以降そのタブ内ではフラグが維持され、タブを閉じると解除される。
+
+> この方式は `?mode=entry`（広告非表示）と同じ sessionStorage パターンを汎用化したもの。
+> 将来的に `?mode=xxxFeature` のような別のフラグも `useFeatureFlag('xxxFeature')` で追加可能。
 
 ---
 
@@ -324,6 +336,7 @@ pending ──(payment_intent.payment_failed)──> failed
 
 | ファイル | 説明 |
 |---|---|
+| `src/lib/featureFlags.ts` | `?mode=xxx` による Feature Flag 管理フック（汎用） |
 | `src/app/payment/page.tsx` | プラン一覧ページ（Server Component、メタデータ） |
 | `src/app/payment/SubscriptionClient.tsx` | プラン一覧・申込ロジック（Client Component） |
 | `src/app/payment/success/page.tsx` | 決済完了ページ |
@@ -389,19 +402,7 @@ stripe listen --forward-to localhost:8888/api/webhook/stripe
 
 ターミナルに表示される `whsec_xxxxxxxx` を `backend/.env` の `STRIPE_WEBHOOK_SECRET` に設定する。
 
-### 5. 準備中フラグの解除
-
-`SubscriptionClient.tsx` の `isPreparing` を一時的に変更:
-
-```typescript
-// 変更前
-const isPreparing = !isFree;
-
-// 変更後（ローカル確認用）
-const isPreparing = false;
-```
-
-### 6. 起動
+### 5. 起動
 
 3つのターミナルで以下を起動:
 
@@ -415,26 +416,23 @@ cd next-basic && npm run dev
 # ターミナル 3: Stripe CLI（手順 4 で起動済み）
 ```
 
-### 7. 動作確認
+### 6. 動作確認
 
 1. `http://localhost:3000` でログイン
-2. `/payment` にアクセス → Pro プランの「このプランを選ぶ」をクリック
-3. Stripe Checkout 画面で**テストカード**を入力:
+2. `http://localhost:3000/payment` にアクセス → 「準備中」バナーが表示され、有料プランボタンが disabled であることを確認
+3. `http://localhost:3000/payment?mode=stripeActive` にアクセス → バナーが消え、有料プランボタンが有効になることを確認
+4. URL から `?mode=stripeActive` を外して `/payment` にアクセス → 同じタブ内ではフラグが維持され、ボタンが有効のままであることを確認
+5. Pro プランの「このプランを選ぶ」をクリック
+6. Stripe Checkout 画面で**テストカード**を入力:
    - カード番号: `4242 4242 4242 4242`
    - 有効期限: 任意の未来日（例: `12/30`）
    - CVC: 任意の3桁（例: `123`）
-4. 決済完了 → `/payment/success` にリダイレクトされることを確認
-5. Stripe CLI のターミナルに `checkout.session.completed` イベントが表示されることを確認
+7. 決済完了 → `/payment/success` にリダイレクトされることを確認
+8. Stripe CLI のターミナルに `checkout.session.completed` イベントが表示されることを確認
+9. タブを閉じて新しいタブで `/payment` にアクセス → 「準備中」に戻ることを確認
 
-### 確認後の戻し
-
-動作確認が終わったら `isPreparing` を元に戻す:
-
-```typescript
-const isPreparing = !isFree;
-```
-
-`.env.local` は `.gitignore` に含まれるため、そのまま残して問題ない。
+> **コードの変更は不要。** `?mode=stripeActive` を付けるだけでフラグが有効化される。
+> `.env.local` は `.gitignore` に含まれるため、そのまま残して問題ない。
 
 ---
 
@@ -471,17 +469,20 @@ NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_MONTH
 NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID }}
 ```
 
-### 5. 準備中フラグを解除
+### 5. Feature Flag から固定有効化へ切り替え
 
-`SubscriptionClient.tsx` の `isPreparing` ロジックを変更:
+`SubscriptionClient.tsx` の Feature Flag を解除し、常に有効化する:
 
 ```typescript
-// 変更前
-const isPreparing = !isFree;
+// 変更前（Feature Flag で制御）
+const stripeActive = useFeatureFlag('stripeActive');
+const isPreparingBanner = !stripeActive;
 
-// 変更後
-const isPreparing = false;
+// 変更後（常に有効）
+const isPreparingBanner = false;
 ```
+
+`useFeatureFlag` の import と `isPreparingPlan` の参照も合わせて削除する。
 
 ### 6. トップページのお知らせを更新
 
