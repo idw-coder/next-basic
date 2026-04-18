@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { getAllBooks, getChaptersByBook } from "@/lib/books";
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
@@ -98,5 +99,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }))
   );
 
-  return [...staticPages, ...categoryPages, ...quizPages];
+  const allBooks = getAllBooks();
+
+  const bookPages: MetadataRoute.Sitemap = [
+    {
+      url: `${SITE_URL}/books`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    ...allBooks.map((book) => ({
+      url: `${SITE_URL}/books/${book.bookSlug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
+    ...allBooks.flatMap((book) =>
+      getChaptersByBook(book.bookSlug).map((chapter) => ({
+        url: `${SITE_URL}/books/${book.bookSlug}/${chapter.chapterSlug}`,
+        lastModified: new Date(),
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+      }))
+    ),
+  ];
+
+  return [...staticPages, ...bookPages, ...categoryPages, ...quizPages];
 }
