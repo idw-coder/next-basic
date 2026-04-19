@@ -7,6 +7,7 @@ import GoogleAdSense, { HideAdsForEntry } from '@/components/GoogleAdSense';
 import HeaderNav from '@/components/HeaderNav';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://study.ntorelabo.com'),
   title: 'ウェブエンジニア問題集 | HTML/CSS/React/Node.js 無料学習サイト',
   description:
     'ウェブ開発に必要なHTML、CSS、JavaScript、React、Node.jsを4択クイズで学べる無料学習プラットフォーム。初学者から実務経験者まで、問題を解きながらスキルアップできます。',
