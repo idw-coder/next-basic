@@ -37,6 +37,8 @@ jobs:
             NEXT_PUBLIC_ADSENSE_SLOT=${{ secrets.NEXT_PUBLIC_ADSENSE_SLOT }}
             NEXT_PUBLIC_GOOGLE_AUTH_URL=${{ secrets.NEXT_PUBLIC_GOOGLE_AUTH_URL }}
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID }}
+            NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID }}
 
       - name: Deploy to Lightsail
         uses: appleboy/ssh-action@master

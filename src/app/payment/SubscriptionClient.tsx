@@ -96,7 +96,10 @@ export default function SubscriptionClient() {
       return;
     }
 
-    if (!plan.priceId) return;
+    if (!plan.priceId) {
+      setError('現在このプランはご利用いただけません。しばらくしてから再度お試しください。');
+      return;
+    }
 
     try {
       setLoadingPlan(plan.id);
