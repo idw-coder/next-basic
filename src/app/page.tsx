@@ -13,10 +13,12 @@ import {
   ChevronRight,
   Shuffle,
   Search,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/SectionHeading";
 import { NewsList } from "@/components/news-list";
+import { getAllBooks, getChaptersByBook } from "@/lib/books";
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
@@ -276,6 +278,7 @@ const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
 export default async function Home() {
   const counts = await getQuizCountsBySlugs([...CATEGORY_SLUGS]);
   const totalCount = Object.values(counts).reduce((sum, c) => sum + c, 0);
+  const bookList = getAllBooks();
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 md:py-16 overflow-x-hidden">
       {/* ヒーロー */}
@@ -394,7 +397,7 @@ export default async function Home() {
         <div className="absolute bottom-1/4 left-0 w-24 h-24 rounded-full bg-green-200/20 blur-2xl pointer-events-none" aria-hidden="true" />
 
         <SectionHeading className="mb-8 md:mb-10" subtitle="15カテゴリの問題に挑戦しよう">
-          学習カテゴリ
+          クイズカテゴリ
         </SectionHeading>
 
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-5 sm:gap-7 lg:gap-9 justify-items-center">
@@ -429,6 +432,48 @@ export default async function Home() {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      {/* 教科書 */}
+      <section id="books" className="mb-16 md:mb-20">
+        <SectionHeading className="mb-8 md:mb-10" subtitle="基礎から体系的に学べる技術書コンテンツ">
+          教科書
+        </SectionHeading>
+        <div className="grid gap-4 sm:grid-cols-2 max-w-3xl mx-auto">
+          {bookList.map((book) => {
+            const chapterCount = getChaptersByBook(book.bookSlug).length;
+            return (
+              <Link
+                key={book.bookSlug}
+                href={`/books/${book.bookSlug}`}
+                className="group flex items-start gap-4 rounded-xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md hover:border-primary/30"
+              >
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <BookOpen className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground group-hover:text-primary transition-colors">
+                    {book.title}
+                  </h3>
+                  <p className="mt-1 text-xs sm:text-sm text-muted-foreground line-clamp-2">
+                    {book.description}
+                  </p>
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    全{chapterCount}章
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+        <div className="text-center mt-6">
+          <Button variant="outline" className="rounded-full px-6" size="sm" asChild>
+            <Link href="/books" className="inline-flex items-center gap-1 text-xs font-semibold">
+              すべての教科書を見る
+              <ChevronRight className="size-3.5" />
+            </Link>
+          </Button>
         </div>
       </section>
 
