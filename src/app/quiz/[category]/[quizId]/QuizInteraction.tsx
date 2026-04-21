@@ -178,7 +178,7 @@ export default function QuizInteraction({
               onClick={() => !isAnswered && setSelectedChoice(choice.id)}
               disabled={isAnswered}
               className={cn(
-                "group w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all duration-150",
+                "group w-full text-left px-2.5 py-3 sm:p-4 rounded-xl border-2 transition-all duration-150",
                 "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800",
                 isAnswered && "cursor-not-allowed",
                 !isAnswered &&
@@ -192,7 +192,7 @@ export default function QuizInteraction({
                   "border-destructive bg-red-50 dark:bg-destructive/10 shadow-md"
               )}
             >
-              <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-2.5 sm:gap-4">
                 <div
                   className={cn(
                     "size-9 sm:size-10 shrink-0 rounded-md flex items-center justify-center text-base sm:text-lg font-black transition-colors",
@@ -209,7 +209,7 @@ export default function QuizInteraction({
                 >
                   {letter}
                 </div>
-                <span className="flex-1 text-foreground text-base sm:text-lg font-medium leading-snug">
+                <span className="flex-1 text-foreground text-sm sm:text-xl font-medium sm:font-semibold leading-snug">
                   {choice.choice_text}
                 </span>
                 {showCorrect && (
@@ -262,8 +262,8 @@ export default function QuizInteraction({
           </Alert>
 
           {quiz.explanation && (
-            <div className="">
-              <div className="font-bold text-center mb-2">解説</div>
+            <div className="rounded-xl border border-black/5 bg-white dark:bg-gray-900 shadow-sm p-3 sm:p-5">
+              <div className="font-bold text-center mb-3 text-foreground">解説</div>
               <ExplanationView explanation={quiz.explanation} />
             </div>
           )}

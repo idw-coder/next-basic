@@ -78,13 +78,15 @@ export default function ExplanationView({ explanation }: ExplanationViewProps) {
   // BlockNote形式の旧データはプレーンテキストに変換して表示
   if (isBlockNoteJSON(explanation)) {
     return (
-      <p className="text-muted-foreground whitespace-pre-wrap">
+      <p className="text-foreground/90 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
         {extractTextFromBlockNote(explanation)}
       </p>
     );
   }
 
   return (
-    <p className="text-muted-foreground whitespace-pre-wrap">{explanation}</p>
+    <p className="text-foreground/90 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+      {explanation}
+    </p>
   );
 }

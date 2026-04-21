@@ -131,8 +131,8 @@ export default async function QuizDetailPage({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
-      <div className="mb-6">
+    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-8 md:py-12">
+      <div className="mb-4 sm:mb-6">
         <Button asChild variant="link" className="px-0 -ml-2">
           <Link href={`/quiz/${category}`} className="inline-flex items-center gap-2">
             <ArrowLeft className="size-4 shrink-0" />
@@ -142,7 +142,7 @@ export default async function QuizDetailPage({
       </div>
 
       <Card
-        className={`relative overflow-hidden border-0 shadow-lg ${theme.cardBgClass}`}
+        className={`relative overflow-hidden border-0 shadow-lg py-4 sm:py-6 ${theme.cardBgClass}`}
       >
         {/* 装飾: 右上のドット */}
         <span
@@ -154,7 +154,7 @@ export default async function QuizDetailPage({
           <span className="size-2 rounded-full bg-white/70" />
         </span>
 
-        <CardHeader className="gap-4">
+        <CardHeader className="gap-3 sm:gap-4 px-3 sm:px-6">
           <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${theme.badgeClass}`}
@@ -163,11 +163,11 @@ export default async function QuizDetailPage({
               {theme.label}クイズ
             </span>
           </div>
-          <h1 className="font-black text-xl sm:text-2xl leading-snug tracking-tight whitespace-pre-wrap text-foreground">
+          <h1 className="font-black text-lg sm:text-2xl leading-snug tracking-tight whitespace-pre-wrap text-foreground">
             {quiz.question}
           </h1>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           {/* インタラクション部分をClient Componentに委譲 */}
           <QuizInteraction quiz={quiz} categorySlug={category} />
 
