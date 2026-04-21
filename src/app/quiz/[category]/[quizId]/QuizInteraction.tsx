@@ -246,8 +246,9 @@ export default function QuizInteraction({
             variant={isCorrect ? "default" : "destructive"}
             className={cn(
               "mb-6",
-              isCorrect &&
-                "border-green-500 bg-green-500/10 text-green-800 dark:text-green-200 [&_div]:text-current"
+              isCorrect
+                ? "border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 [&_div]:text-current"
+                : "bg-red-50 dark:bg-red-950"
             )}
           >
             <AlertTitle className="font-bold text-center">
