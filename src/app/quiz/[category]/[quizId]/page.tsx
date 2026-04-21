@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getCategoryTheme } from '@/lib/categoryTheme';
 import QuizInteraction from './QuizInteraction';
 
 interface Choice {
@@ -107,6 +108,7 @@ export default async function QuizDetailPage({
 }) {
   const { category, quizId } = await params;
   const quiz = await getQuiz(quizId);
+  const theme = getCategoryTheme(category);
 
   if (!quiz) {
     return (
@@ -139,9 +141,31 @@ export default async function QuizDetailPage({
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <h1 className="font-semibold text-md sm:text-lg whitespace-pre-wrap">{quiz.question}</h1>
+      <Card
+        className={`relative overflow-hidden border-0 shadow-lg ${theme.cardBgClass}`}
+      >
+        {/* 装飾: 右上のドット */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-4 right-4 flex gap-1.5"
+        >
+          <span className="size-2 rounded-full bg-white/70" />
+          <span className="size-2 rounded-full bg-white/70" />
+          <span className="size-2 rounded-full bg-white/70" />
+        </span>
+
+        <CardHeader className="gap-4">
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${theme.badgeClass}`}
+            >
+              <HelpCircle className="size-3.5" aria-hidden="true" />
+              {theme.label}クイズ
+            </span>
+          </div>
+          <h1 className="font-black text-xl sm:text-2xl leading-snug tracking-tight whitespace-pre-wrap text-foreground">
+            {quiz.question}
+          </h1>
         </CardHeader>
         <CardContent>
           {/* インタラクション部分をClient Componentに委譲 */}
