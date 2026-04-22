@@ -260,7 +260,8 @@ const CATEGORY_COLORS: Record<string, { border: string; hoverBg: string }> = {
 };
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
-  { date: "2026/04/18", text: "教科書「Gitをちゃんと使う」「Next.jsを動かして学ぶ」を公開しました", isNew: true, link: "/books" },
+  { date: "2026/04/21", text: "教科書「コンピュータサイエンスの基礎」を公開しました", isNew: true, link: "/books/cs-basics" },
+  { date: "2026/04/18", text: "教科書「Gitをちゃんと使う」「Next.jsを動かして学ぶ」を公開しました", isNew: false, link: "/books" },
   { date: "2026/04/05", text: "Linuxクイズを公開しました", isNew: false },
   { date: "2026/04/04", text: "サブスクリプション機能を準備中です。正式リリースまでもうしばらくお待ちください。", isNew: false, link: "/payment" },
   { date: "2026/04/01", text: "Next.js・Dockerクイズを公開しました", isNew: false },
