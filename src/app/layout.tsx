@@ -83,6 +83,24 @@ export default function RootLayout({
             <div className="flex justify-center w-full min-h-[80px] max-w-[280px] mb-4 md:min-h-[100px] md:mb-6 overflow-hidden">
               <GoogleAdSense adSlot={adSlot} />
             </div>
+            <div className="flex justify-center mb-4">
+              <a
+                href="https://x.com/web_eng_quiz"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="ウェブエンジニア問題集の公式Xアカウントをフォロー"
+                className="inline-flex items-center gap-2 rounded-full bg-black text-white px-4 py-2 text-xs md:text-sm font-semibold hover:opacity-85 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  className="size-4 fill-current"
+                >
+                  <path d="M18.244 2H21.5l-7.5 8.57L22.5 22h-6.844l-5.356-7.01L4.2 22H.944l8.02-9.164L.5 2h7.02l4.84 6.398L18.244 2zm-1.2 18h1.88L7.02 4H5.02l12.024 16z" />
+                </svg>
+                Xでフォロー
+              </a>
+            </div>
             <div className="text-center text-gray-600 text-xs md:text-sm">
               <p>&copy; 2026 ウェブエンジニア問題集. All rights reserved.</p>
             </div>
