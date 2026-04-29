@@ -122,6 +122,15 @@ const categoryThemeMap: Record<string, CategoryTheme> = {
     cardBgClass: "bg-red-200",
     decoTextClass: "text-red-700/70",
   },
+  "sql-basic": {
+    slug: "sql-basic",
+    label: "SQL",
+    badgeClass: WHITE_BADGE,
+    accentClass: "text-fuchsia-700",
+    ringClass: "ring-fuchsia-300",
+    cardBgClass: "bg-fuchsia-200",
+    decoTextClass: "text-fuchsia-700/70",
+  },
   "cs-basic": {
     slug: "cs-basic",
     label: "CS基礎",

@@ -531,6 +531,63 @@ const categoryContentMap: Record<string, CategorySeoContent> = {
     ],
   },
 
+  "sql-basic": {
+    overview:
+      "SQLは、リレーショナルデータベースに対してデータの取得・追加・更新・削除を行うための標準的な言語です。SELECT、WHERE、JOIN、GROUP BYなどの基本構文から、制約、インデックス、トランザクション、正規化まで、Webアプリケーション開発で日常的に使う知識を幅広く扱います。",
+    whyLearn:
+      "多くのWebサービスはMySQLやPostgreSQLなどのデータベースを利用しており、SQLの理解はバックエンド開発やデータ分析の土台になります。適切なクエリを書けることは、機能実装だけでなく、パフォーマンス改善、データ整合性の維持、障害調査にも直結します。",
+    topics: [
+      {
+        title: "基本構文とCRUD",
+        description:
+          "SELECT、INSERT、UPDATE、DELETE、WHERE、ORDER BY、LIMITなど、日常的に使うSQL文の基本を出題します。",
+      },
+      {
+        title: "JOINと集計",
+        description:
+          "INNER JOIN、LEFT JOIN、GROUP BY、HAVING、COUNT、DISTINCTなど、複数テーブルや集計処理に関する知識を扱います。",
+      },
+      {
+        title: "制約とテーブル設計",
+        description:
+          "PRIMARY KEY、FOREIGN KEY、UNIQUE制約、正規化、1対多・多対多の関係など、データ設計の基礎を問います。",
+      },
+      {
+        title: "実践的な運用知識",
+        description:
+          "インデックス、トランザクション、COMMIT、ROLLBACK、EXPLAIN、SQLインジェクション対策など、実務で重要なトピックを扱います。",
+      },
+    ],
+    faqs: [
+      {
+        question: "SQLは初心者でも学びやすいですか？",
+        answer:
+          "はい、SELECTやWHEREなどの基本構文は比較的短い文で試せるため、初学者でも始めやすい分野です。まずはデータを取得するクエリから学び、JOINや集計、トランザクションへ段階的に進むと理解しやすくなります。",
+      },
+      {
+        question: "SQLとMySQLは何が違いますか？",
+        answer:
+          "SQLはデータベースを操作するための言語で、MySQLはSQLを使って操作するリレーショナルデータベース管理システムの一つです。PostgreSQL、SQLite、SQL ServerなどもSQLを利用しますが、細かな文法や機能には違いがあります。",
+      },
+      {
+        question: "Web開発者にSQLの知識は必要ですか？",
+        answer:
+          "はい、必要です。ユーザー、注文、記事、ログなど多くのアプリケーションデータはデータベースに保存されます。SQLを理解していると、API実装、管理画面開発、パフォーマンス改善、障害調査をより正確に進められます。",
+      },
+    ],
+    targetAudience: [
+      "バックエンド開発やデータベース操作を学びたい方",
+      "MySQLやPostgreSQLの基礎を確認したいエンジニア",
+      "JOINや集計クエリに苦手意識がある方",
+      "SQLインジェクションやトランザクションなど実務知識を押さえたい方",
+    ],
+    relatedCategories: [
+      { slug: "nodejs-basic", name: "Node.js基礎" },
+      { slug: "security-general", name: "セキュリティ" },
+      { slug: "docker", name: "Docker" },
+    ],
+  },
+
   "cs-basic": {
     overview:
       "コンピュータサイエンス（CS）の基礎は、効率的なプログラムを書くための土台となる知識体系です。データ構造（配列、リスト、ツリー、ハッシュテーブル等）、アルゴリズム（ソート、探索、動的計画法等）、計算量（Big-O記法）、ネットワーク、OSの仕組みなど、技術の根幹となる概念を扱います。",

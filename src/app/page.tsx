@@ -71,6 +71,7 @@ const CATEGORY_SLUGS = [
   "nginx-basic",
   "ts-general",
   "security-general",
+  "sql-basic",
   "cs-basic",
   "docker",
   "linux",
@@ -210,6 +211,16 @@ const CATEGORIES: CategoryDef[] = [
     topics: ["XSS / CSRF", "暗号化・認証", "ネットワーク"],
   },
   {
+    slug: "sql-basic", name: "SQL",
+    color: "text-fuchsia-600 dark:text-fuchsia-400",
+    hoverColor: "bg-fuchsia-500 hover:bg-fuchsia-600",
+    bgColor: "bg-fuchsia-50 dark:bg-fuchsia-500/10",
+    badgeBg: "bg-fuchsia-100 dark:bg-fuchsia-500/20",
+    badgeText: "text-fuchsia-700 dark:text-fuchsia-300",
+    description: "SELECT・JOIN・集計・トランザクションなど、データベース操作の基礎を学べます。",
+    topics: ["SELECT / WHERE", "JOIN・集計", "設計・トランザクション"],
+  },
+  {
     slug: "cs-basic", name: "CS基礎",
     color: "text-purple-600 dark:text-purple-400",
     hoverColor: "bg-purple-500 hover:bg-purple-600",
@@ -254,12 +265,14 @@ const CATEGORY_COLORS: Record<string, { border: string; hoverBg: string }> = {
   "nginx-basic": { border: "border-teal-500", hoverBg: "group-hover:bg-teal-50 dark:group-hover:bg-teal-500/10" },
   "ts-general": { border: "border-indigo-400", hoverBg: "group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10" },
   "security-general": { border: "border-red-500", hoverBg: "group-hover:bg-red-50 dark:group-hover:bg-red-500/10" },
+  "sql-basic": { border: "border-fuchsia-500", hoverBg: "group-hover:bg-fuchsia-50 dark:group-hover:bg-fuchsia-500/10" },
   "cs-basic": { border: "border-purple-400", hoverBg: "group-hover:bg-purple-50 dark:group-hover:bg-purple-500/10" },
   "docker": { border: "border-sky-400", hoverBg: "group-hover:bg-sky-50 dark:group-hover:bg-sky-500/10" },
   "linux": { border: "border-lime-500", hoverBg: "group-hover:bg-lime-50 dark:group-hover:bg-lime-500/10" },
 };
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
+  { date: "2026/04/29", text: "SQLクイズを公開しました", isNew: true, link: "/quiz/sql-basic" },
   { date: "2026/04/21", text: "教科書「コンピュータサイエンスの基礎」を公開しました", isNew: true, link: "/books/cs-basics" },
   { date: "2026/04/18", text: "教科書「Gitをちゃんと使う」「Next.jsを動かして学ぶ」を公開しました", isNew: false, link: "/books" },
   { date: "2026/04/05", text: "Linuxクイズを公開しました", isNew: false },
@@ -328,6 +341,7 @@ export default async function Home() {
                 { name: "Next.js", cls: "text-slate-700 bg-slate-50 border-slate-200" },
                 { name: "Docker", cls: "text-sky-600 bg-sky-50 border-sky-200" },
                 { name: "Linux", cls: "text-lime-600 bg-lime-50 border-lime-200" },
+                { name: "SQL", cls: "text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200" },
               ].map((tag) => (
                 <span key={tag.name} className={`text-[10px] sm:text-xs font-semibold rounded-full px-2 py-0.5 sm:px-2.5 sm:py-0.5 border ${tag.cls}`}>
                   {tag.name}
@@ -346,7 +360,7 @@ export default async function Home() {
             <div className="mt-4 sm:mt-6 flex justify-center sm:justify-start">
               <div className="inline-flex items-center gap-3 sm:gap-5 rounded-xl border border-gray-200 bg-white/80 px-4 sm:px-5 py-2 sm:py-2.5 shadow-sm">
                 <div className="text-center">
-                  <p className="text-lg sm:text-2xl font-black text-red-500 leading-none">15</p>
+                  <p className="text-lg sm:text-2xl font-black text-red-500 leading-none">16</p>
                   <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">カテゴリ</p>
                 </div>
                 <div className="h-6 sm:h-7 w-px bg-gray-200" />
@@ -397,7 +411,7 @@ export default async function Home() {
         <div className="absolute top-1/2 right-0 w-28 h-28 rounded-full bg-rose-200/20 blur-2xl pointer-events-none" aria-hidden="true" />
         <div className="absolute bottom-1/4 left-0 w-24 h-24 rounded-full bg-green-200/20 blur-2xl pointer-events-none" aria-hidden="true" />
 
-        <SectionHeading className="mb-8 md:mb-10" subtitle="15カテゴリの問題に挑戦しよう">
+        <SectionHeading className="mb-8 md:mb-10" subtitle="16カテゴリの問題に挑戦しよう">
           クイズカテゴリ
         </SectionHeading>
 

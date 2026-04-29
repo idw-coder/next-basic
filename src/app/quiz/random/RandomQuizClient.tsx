@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -59,6 +59,7 @@ const CATEGORY_COLOR_MAP: Record<string, { bg: string; border: string; text: str
   "nginx-basic":       { bg: "bg-teal-50 dark:bg-teal-500/10",      border: "border-teal-200 dark:border-teal-700",      text: "text-teal-600 dark:text-teal-400" },
   "ts-general":        { bg: "bg-indigo-50 dark:bg-indigo-500/10",  border: "border-indigo-200 dark:border-indigo-700",  text: "text-indigo-600 dark:text-indigo-400" },
   "security-general":  { bg: "bg-red-50 dark:bg-red-500/10",        border: "border-red-200 dark:border-red-700",        text: "text-red-600 dark:text-red-400" },
+  "sql-basic":         { bg: "bg-fuchsia-50 dark:bg-fuchsia-500/10", border: "border-fuchsia-200 dark:border-fuchsia-700", text: "text-fuchsia-600 dark:text-fuchsia-400" },
   "cs-basic":          { bg: "bg-purple-50 dark:bg-purple-500/10",  border: "border-purple-200 dark:border-purple-700",  text: "text-purple-600 dark:text-purple-400" },
   "nextjs":            { bg: "bg-slate-50 dark:bg-slate-500/10",    border: "border-slate-200 dark:border-slate-700",    text: "text-slate-700 dark:text-slate-300" },
   "docker":            { bg: "bg-sky-50 dark:bg-sky-500/10",      border: "border-sky-200 dark:border-sky-700",      text: "text-sky-600 dark:text-sky-400" },
@@ -206,7 +207,6 @@ export default function RandomQuizClient({
     return (
       <ResultView
         session={completedSession}
-        categories={categories}
         onRetry={handleRetry}
         onChangeSettings={handleChangeSettings}
       />
@@ -348,12 +348,10 @@ export default function RandomQuizClient({
 
 function ResultView({
   session,
-  categories,
   onRetry,
   onChangeSettings,
 }: {
   session: RandomQuizSession;
-  categories: Category[];
   onRetry: () => Promise<void>;
   onChangeSettings: () => void;
 }) {
@@ -363,12 +361,6 @@ function ResultView({
   const totalCount = session.answers.length;
   const scorePercent =
     totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-
-  const categorySlugMap = useMemo(() => {
-    const map = new Map<number, string>();
-    categories.forEach((c) => map.set(c.id, c.slug));
-    return map;
-  }, [categories]);
 
   const handleRetry = async () => {
     setIsRetrying(true);

@@ -77,6 +77,10 @@ const CATEGORY_COLORS: Record<string, { badge: string; text: string }> = {
     badge: "bg-red-100 dark:bg-red-500/20",
     text: "text-red-700 dark:text-red-300",
   },
+  "sql-basic": {
+    badge: "bg-fuchsia-100 dark:bg-fuchsia-500/20",
+    text: "text-fuchsia-700 dark:text-fuchsia-300",
+  },
   "cs-basic": {
     badge: "bg-purple-100 dark:bg-purple-500/20",
     text: "text-purple-700 dark:text-purple-300",
