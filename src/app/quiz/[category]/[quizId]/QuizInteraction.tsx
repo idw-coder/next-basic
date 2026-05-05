@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useState, useMemo, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Trophy, X } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { useQuizHistory } from "@/hooks/useQuizHistory";
+import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowRight, Check, Trophy, X } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { useQuizHistory } from '@/hooks/useQuizHistory';
 import {
   getRandomSession,
   saveRandomSession,
   clearRandomSession,
   type RandomQuizSession,
-} from "@/lib/randomQuizSession";
-import ExplanationView from "./ExplanationView";
+} from '@/lib/randomQuizSession';
+import ExplanationView from './ExplanationView';
 
 interface Choice {
   id: number;
@@ -47,14 +47,10 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export default function QuizInteraction({
-  quiz,
-  categorySlug,
-}: QuizInteractionProps) {
+export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionProps) {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
-  const [randomSession, setRandomSession] =
-    useState<RandomQuizSession | null>(null);
+  const [randomSession, setRandomSession] = useState<RandomQuizSession | null>(null);
   const { addAnswer } = useQuizHistory();
   const router = useRouter();
 
@@ -68,30 +64,22 @@ export default function QuizInteraction({
     }
   }, [quiz.id]);
 
-  const shuffledChoices = useMemo(
-    () => shuffleArray(quiz.choices),
-    [quiz.choices],
-  );
+  const shuffledChoices = useMemo(() => shuffleArray(quiz.choices), [quiz.choices]);
 
   const correctChoice = quiz.choices.find((c) => c.is_correct);
   const isCorrect =
-    selectedChoice !== null &&
-    quiz.choices.find((c) => c.id === selectedChoice)?.is_correct;
+    selectedChoice !== null && quiz.choices.find((c) => c.id === selectedChoice)?.is_correct;
 
   const handleAnswer = () => {
     if (selectedChoice === null) return;
     setIsAnswered(true);
-    const correct =
-      quiz.choices.find((c) => c.id === selectedChoice)?.is_correct ?? false;
+    const correct = quiz.choices.find((c) => c.id === selectedChoice)?.is_correct ?? false;
     addAnswer(quiz.id, quiz.category_id, correct);
 
     if (randomSession) {
       const updated: RandomQuizSession = {
         ...randomSession,
-        answers: [
-          ...randomSession.answers,
-          { quizId: quiz.id, isCorrect: correct },
-        ],
+        answers: [...randomSession.answers, { quizId: quiz.id, isCorrect: correct }],
       };
       saveRandomSession(updated);
       setRandomSession(updated);
@@ -103,7 +91,7 @@ export default function QuizInteraction({
     const nextIndex = randomSession.currentIndex + 1;
 
     if (nextIndex >= randomSession.quizzes.length) {
-      router.push("/quiz/random?completed=1");
+      router.push('/quiz/random?completed=1');
     } else {
       const updated = { ...randomSession, currentIndex: nextIndex };
       saveRandomSession(updated);
@@ -122,9 +110,7 @@ export default function QuizInteraction({
     : false;
 
   const randomProgress = randomSession
-    ? ((randomSession.currentIndex + (isAnswered ? 1 : 0)) /
-        randomSession.quizzes.length) *
-      100
+    ? ((randomSession.currentIndex + (isAnswered ? 1 : 0)) / randomSession.quizzes.length) * 100
     : 0;
 
   return (
@@ -134,7 +120,7 @@ export default function QuizInteraction({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              ランダムクイズ{" "}
+              ランダムクイズ{' '}
               <span className="font-bold text-foreground text-lg">
                 {randomSession.currentIndex + 1}
               </span>
@@ -142,9 +128,7 @@ export default function QuizInteraction({
               <span>{randomSession.quizzes.length}</span>
             </span>
             <div className="flex items-center gap-3">
-              <Badge variant="secondary">
-                {Math.round(randomProgress)}%
-              </Badge>
+              <Badge variant="secondary">{Math.round(randomProgress)}%</Badge>
               <button
                 type="button"
                 onClick={handleExitRandom}
@@ -178,33 +162,27 @@ export default function QuizInteraction({
               onClick={() => !isAnswered && setSelectedChoice(choice.id)}
               disabled={isAnswered}
               className={cn(
-                "group w-full text-left px-2.5 py-3 sm:p-4 rounded-xl border-2 transition-all duration-150",
-                "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800",
-                isAnswered && "cursor-not-allowed",
+                'group w-full text-left px-2.5 py-3 sm:p-4 rounded-md border-2 transition-all duration-150',
+                'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800',
+                isAnswered && 'cursor-not-allowed',
                 !isAnswered &&
-                  "cursor-pointer hover:border-primary/60 hover:shadow-md hover:-translate-y-0.5",
-                isSelected &&
-                  !isAnswered &&
-                  "border-primary bg-primary/5 shadow-md",
-                showCorrect &&
-                  "border-green-500 bg-green-50 dark:bg-green-500/10 shadow-md",
-                showWrong &&
-                  "border-destructive bg-red-50 dark:bg-destructive/10 shadow-md"
+                  'cursor-pointer hover:border-primary/60 hover:shadow-md hover:-translate-y-0.5',
+                isSelected && !isAnswered && 'border-primary bg-primary/5 shadow-md',
+                showCorrect && 'border-green-500 bg-green-50 dark:bg-green-500/10 shadow-md',
+                showWrong && 'border-destructive bg-red-50 dark:bg-destructive/10 shadow-md',
               )}
             >
               <div className="flex items-center gap-2.5 sm:gap-4">
                 <div
                   className={cn(
-                    "size-9 sm:size-10 shrink-0 rounded-md flex items-center justify-center text-base sm:text-lg font-black transition-colors",
-                    "bg-foreground text-background",
+                    'size-9 sm:size-10 shrink-0 rounded-md flex items-center justify-center text-base sm:text-lg font-black transition-colors',
+                    'bg-foreground text-background',
                     !isAnswered &&
                       !isSelected &&
-                      "group-hover:bg-primary group-hover:text-primary-foreground",
-                    isSelected &&
-                      !isAnswered &&
-                      "bg-primary text-primary-foreground",
-                    showCorrect && "bg-green-600 text-white",
-                    showWrong && "bg-destructive text-white"
+                      'group-hover:bg-primary group-hover:text-primary-foreground',
+                    isSelected && !isAnswered && 'bg-primary text-primary-foreground',
+                    showCorrect && 'bg-green-600 text-white',
+                    showWrong && 'bg-destructive text-white',
                   )}
                 >
                   {letter}
@@ -213,16 +191,10 @@ export default function QuizInteraction({
                   {choice.choice_text}
                 </span>
                 {showCorrect && (
-                  <Check
-                    className="size-5 sm:size-6 shrink-0 text-green-600"
-                    aria-label="正解"
-                  />
+                  <Check className="size-5 sm:size-6 shrink-0 text-green-600" aria-label="正解" />
                 )}
                 {showWrong && (
-                  <X
-                    className="size-5 sm:size-6 shrink-0 text-destructive"
-                    aria-label="不正解"
-                  />
+                  <X className="size-5 sm:size-6 shrink-0 text-destructive" aria-label="不正解" />
                 )}
               </div>
             </button>
@@ -243,26 +215,24 @@ export default function QuizInteraction({
         // 回答した後のフォームは回答前段階ではDOMに含まれないため、sr-onlyで解説テキストを常にDOMに常駐させるよう修正。
         <div className="space-y-4">
           <Alert
-            variant={isCorrect ? "default" : "destructive"}
+            variant={isCorrect ? 'default' : 'destructive'}
             className={cn(
-              "mb-6",
+              'mb-6',
               isCorrect
-                ? "border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 [&_div]:text-current"
-                : "bg-red-50 dark:bg-red-950"
+                ? 'border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 [&_div]:text-current'
+                : 'bg-red-50 dark:bg-red-950',
             )}
           >
             <AlertTitle className="font-bold text-center">
-              {isCorrect ? "正解です" : "不正解です"}
+              {isCorrect ? '正解です' : '不正解です'}
             </AlertTitle>
             {!isCorrect && correctChoice && (
-              <AlertDescription>
-                正解: {correctChoice.choice_text}
-              </AlertDescription>
+              <AlertDescription>正解: {correctChoice.choice_text}</AlertDescription>
             )}
           </Alert>
 
           {quiz.explanation && (
-            <div className="rounded-xl border border-black/5 bg-white dark:bg-gray-900 shadow-sm p-3 sm:p-5">
+            <div className="rounded-md border border-black/5 bg-white dark:bg-gray-900 shadow-sm p-3 sm:p-5">
               <div className="font-bold text-center mb-3 text-foreground">解説</div>
               <ExplanationView explanation={quiz.explanation} />
             </div>
@@ -270,11 +240,7 @@ export default function QuizInteraction({
 
           {/* ナビゲーション: ランダムモード or 通常モード */}
           {randomSession ? (
-            <Button
-              onClick={handleNextRandomQuiz}
-              className="w-full"
-              size="lg"
-            >
+            <Button onClick={handleNextRandomQuiz} className="w-full" size="lg">
               {isLastRandomQuiz ? (
                 <>
                   結果を見る
@@ -288,12 +254,7 @@ export default function QuizInteraction({
               )}
             </Button>
           ) : (
-            <Button
-              asChild
-              className="w-full"
-              variant="secondary"
-              size="lg"
-            >
+            <Button asChild className="w-full" variant="secondary" size="lg">
               <Link
                 href={`/quiz/${categorySlug}`}
                 className="inline-flex items-center justify-center gap-2"

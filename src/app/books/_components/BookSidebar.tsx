@@ -1,17 +1,11 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
-import { cn } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { useState } from "react";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Menu } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useState } from 'react';
 
 interface Chapter {
   title: string;
@@ -53,10 +47,10 @@ function SidebarContent({
                 href={href}
                 onClick={onNavigate}
                 className={cn(
-                  "flex items-start gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
+                  'flex items-start gap-2.5 rounded-xs px-2.5 py-2 text-sm transition-colors',
                   isActive
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                 )}
               >
                 <span className="shrink-0 text-xs font-mono mt-0.5 text-gray-400 w-4 text-right">

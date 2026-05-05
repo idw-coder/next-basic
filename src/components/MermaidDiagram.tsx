@@ -76,7 +76,7 @@ export default function MermaidDiagram({
   return (
     <div
       ref={containerRef}
-      className="w-full overflow-x-auto rounded-xl border border-border bg-white p-4 dark:bg-slate-900/50 md:p-6"
+      className="w-full overflow-x-auto rounded-md border border-border bg-white p-4 dark:bg-slate-900/50 md:p-6"
       dangerouslySetInnerHTML={{ __html: svg }}
       style={maxWidth ? { maxWidth } : undefined}
     />

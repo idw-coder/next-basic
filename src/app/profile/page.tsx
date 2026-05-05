@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import api from "@/lib/api";
-import { createAvatar } from "@dicebear/core";
-import { identicon } from "@dicebear/collection";
-import { Flame, Target, BookOpen, TrendingUp } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import api from '@/lib/api';
+import { createAvatar } from '@dicebear/core';
+import { identicon } from '@dicebear/collection';
+import { Flame, Target, BookOpen, TrendingUp } from 'lucide-react';
 
 interface User {
   id: string;
@@ -51,28 +51,31 @@ interface QuizStats {
   categorySummary: CategorySummary[];
 }
 
-const ROLE_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
-  admin: { label: "管理者", variant: "destructive" },
-  user: { label: "一般ユーザー", variant: "secondary" },
+const ROLE_LABELS: Record<
+  string,
+  { label: string; variant: 'default' | 'secondary' | 'destructive' }
+> = {
+  admin: { label: '管理者', variant: 'destructive' },
+  user: { label: '一般ユーザー', variant: 'secondary' },
 };
 
 // スラグから色へのマッピング（新カテゴリ追加時はここに追記するだけでよい）
 const SLUG_COLOR: Record<string, string> = {
-  "html-basic": "bg-orange-500",
-  "css-basic": "bg-blue-500",
-  "javascript-basic": "bg-amber-500",
-  "react-basic": "bg-cyan-500",
-  "vue-basic": "bg-emerald-500",
-  "nodejs-basic": "bg-green-500",
-  "aws-basic": "bg-amber-600",
-  "git-basic": "bg-rose-600",
-  "nginx-basic": "bg-teal-500",
-  "ts-general": "bg-indigo-500",
-  "security-general": "bg-red-500",
-  "cs-basic": "bg-purple-500",
-  "nextjs": "bg-slate-700",
-  "docker": "bg-sky-500",
-  "linux": "bg-lime-500",
+  'html-basic': 'bg-orange-500',
+  'css-basic': 'bg-blue-500',
+  'javascript-basic': 'bg-amber-500',
+  'react-basic': 'bg-cyan-500',
+  'vue-basic': 'bg-emerald-500',
+  'nodejs-basic': 'bg-green-500',
+  'aws-basic': 'bg-amber-600',
+  'git-basic': 'bg-rose-600',
+  'nginx-basic': 'bg-teal-500',
+  'ts-general': 'bg-indigo-500',
+  'security-general': 'bg-red-500',
+  'cs-basic': 'bg-purple-500',
+  nextjs: 'bg-slate-700',
+  docker: 'bg-sky-500',
+  linux: 'bg-lime-500',
 };
 
 interface ApiCategory {
@@ -84,9 +87,7 @@ interface ApiCategory {
 
 function calcStreak(answers: QuizAnswerRecord[]): number {
   if (answers.length === 0) return 0;
-  const dateSet = new Set(
-    answers.map((a) => new Date(a.answeredAt).toISOString().slice(0, 10))
-  );
+  const dateSet = new Set(answers.map((a) => new Date(a.answeredAt).toISOString().slice(0, 10)));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   let streak = 0;
@@ -118,12 +119,12 @@ function buildStats(
       const meta = categoryById[categoryId];
       return {
         categoryId,
-        slug: meta?.slug ?? "",
+        slug: meta?.slug ?? '',
         name: meta?.name ?? `カテゴリ ${categoryId}`,
         total: s.total,
         correct: s.correct,
       };
-    }
+    },
   );
 
   return {
@@ -138,14 +139,22 @@ function buildStats(
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string>("user");
+  const [role, setRole] = useState<string>('user');
   const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState<EditForm>({ name: "", email: "", currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [form, setForm] = useState<EditForm>({
+    name: '',
+    email: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [answers, setAnswers] = useState<QuizAnswerRecord[] | null>(null);
-  const [categoryById, setCategoryById] = useState<Record<number, { slug: string; name: string }>>({});
+  const [categoryById, setCategoryById] = useState<Record<number, { slug: string; name: string }>>(
+    {},
+  );
 
   const quizStats = useMemo(
     () => (answers ? buildStats(answers, categoryById) : null),
@@ -153,36 +162,36 @@ export default function ProfilePage() {
   );
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    router.push('/login');
   }, [router]);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await api.get("/api/auth/me");
+        const res = await api.get('/api/auth/me');
         setUser(res.data.user);
-        setRole(res.data.role ?? "user");
-        localStorage.setItem("user", JSON.stringify(res.data.user));
+        setRole(res.data.role ?? 'user');
+        localStorage.setItem('user', JSON.stringify(res.data.user));
       } catch (error) {
-        console.error("Failed to fetch user:", error);
+        console.error('Failed to fetch user:', error);
         handleLogout();
       }
     };
 
     const fetchAnswers = async () => {
       try {
-        const res = await api.get("/api/quiz/history");
+        const res = await api.get('/api/quiz/history');
         setAnswers(res.data);
       } catch (error) {
-        console.error("Failed to fetch quiz history:", error);
+        console.error('Failed to fetch quiz history:', error);
       }
     };
 
     const fetchCategories = async () => {
       try {
-        const res = await api.get("/api/quiz/categories");
+        const res = await api.get('/api/quiz/categories');
         const cats: ApiCategory[] = res.data;
         const map: Record<number, { slug: string; name: string }> = {};
         for (const c of cats) {
@@ -193,12 +202,12 @@ export default function ProfilePage() {
         }
         setCategoryById(map);
       } catch (error) {
-        console.error("Failed to fetch categories:", error);
+        console.error('Failed to fetch categories:', error);
       }
     };
 
-    if (!localStorage.getItem("token")) {
-      router.replace("/login");
+    if (!localStorage.getItem('token')) {
+      router.replace('/login');
     } else {
       fetchUser();
       fetchAnswers();
@@ -214,7 +223,13 @@ export default function ProfilePage() {
 
   const handleEditStart = () => {
     if (!user) return;
-    setForm({ name: user.name, email: user.email, currentPassword: "", newPassword: "", confirmPassword: "" });
+    setForm({
+      name: user.name,
+      email: user.email,
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
     setError(null);
     setSuccess(null);
     setIsEditing(true);
@@ -231,17 +246,17 @@ export default function ProfilePage() {
     setSuccess(null);
 
     if (!form.name.trim() || !form.email.trim()) {
-      setError("名前とメールアドレスは必須です");
+      setError('名前とメールアドレスは必須です');
       return;
     }
 
     if (form.newPassword && form.newPassword !== form.confirmPassword) {
-      setError("新しいパスワードが一致しません");
+      setError('新しいパスワードが一致しません');
       return;
     }
 
     if (form.newPassword && !form.currentPassword) {
-      setError("パスワードを変更する場合は現在のパスワードが必要です");
+      setError('パスワードを変更する場合は現在のパスワードが必要です');
       return;
     }
 
@@ -256,16 +271,16 @@ export default function ProfilePage() {
         payload.newPassword = form.newPassword;
       }
 
-      const res = await api.patch("/api/auth/me", payload);
+      const res = await api.patch('/api/auth/me', payload);
       const updated: User = res.data.user;
       setUser(updated);
-      localStorage.setItem("user", JSON.stringify(updated));
-      setSuccess("プロフィールを更新しました");
+      localStorage.setItem('user', JSON.stringify(updated));
+      setSuccess('プロフィールを更新しました');
       setIsEditing(false);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "更新に失敗しました";
+        '更新に失敗しました';
       setError(msg);
     } finally {
       setSaving(false);
@@ -274,7 +289,7 @@ export default function ProfilePage() {
 
   if (!user || !avatarSvg) return null;
 
-  const roleInfo = ROLE_LABELS[role] ?? { label: role, variant: "secondary" as const };
+  const roleInfo = ROLE_LABELS[role] ?? { label: role, variant: 'secondary' as const };
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
@@ -298,7 +313,9 @@ export default function ProfilePage() {
             <p className="text-sm text-green-600 bg-green-50 rounded-md px-3 py-2">{success}</p>
           )}
           {error && (
-            <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>
+            <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
+              {error}
+            </p>
           )}
 
           {isEditing ? (
@@ -356,7 +373,7 @@ export default function ProfilePage() {
 
               <div className="flex gap-2 pt-1">
                 <Button onClick={handleSave} disabled={saving} className="flex-1">
-                  {saving ? "保存中…" : "保存"}
+                  {saving ? '保存中…' : '保存'}
                 </Button>
                 <Button onClick={handleEditCancel} variant="outline" className="flex-1">
                   キャンセル
@@ -372,7 +389,7 @@ export default function ProfilePage() {
               <div>
                 <p className="text-sm text-muted-foreground">登録日</p>
                 <p className="font-medium">
-                  {new Date(user.createdAt).toLocaleDateString("ja-JP")}
+                  {new Date(user.createdAt).toLocaleDateString('ja-JP')}
                 </p>
               </div>
               <Button onClick={handleEditStart} variant="secondary" className="w-full">
@@ -392,12 +409,43 @@ export default function ProfilePage() {
           {/* 概要カード群 */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { icon: BookOpen, color: "text-primary", border: "border-l-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", value: quizStats.totalAnswered, label: "回答数" },
-              { icon: Target, color: "text-green-500", border: "border-l-green-400", bg: "bg-green-50 dark:bg-green-500/10", value: `${quizStats.correctRate}%`, label: "正答率" },
-              { icon: TrendingUp, color: "text-blue-500", border: "border-l-amber-400", bg: "bg-amber-50 dark:bg-amber-500/10", value: quizStats.totalCorrect, label: "正解数" },
-              { icon: Flame, color: "text-orange-500", border: "border-l-red-400", bg: "bg-red-50 dark:bg-red-500/10", value: quizStats.streakDays, label: "連続学習日" },
+              {
+                icon: BookOpen,
+                color: 'text-primary',
+                border: 'border-l-blue-400',
+                bg: 'bg-blue-50 dark:bg-blue-500/10',
+                value: quizStats.totalAnswered,
+                label: '回答数',
+              },
+              {
+                icon: Target,
+                color: 'text-green-500',
+                border: 'border-l-green-400',
+                bg: 'bg-green-50 dark:bg-green-500/10',
+                value: `${quizStats.correctRate}%`,
+                label: '正答率',
+              },
+              {
+                icon: TrendingUp,
+                color: 'text-blue-500',
+                border: 'border-l-amber-400',
+                bg: 'bg-amber-50 dark:bg-amber-500/10',
+                value: quizStats.totalCorrect,
+                label: '正解数',
+              },
+              {
+                icon: Flame,
+                color: 'text-orange-500',
+                border: 'border-l-red-400',
+                bg: 'bg-red-50 dark:bg-red-500/10',
+                value: quizStats.streakDays,
+                label: '連続学習日',
+              },
             ].map((stat) => (
-              <div key={stat.label} className={`rounded-xl ${stat.bg} border border-gray-100 dark:border-gray-800 shadow-sm border-l-[5px] ${stat.border} flex flex-col items-center pt-5 pb-4`}>
+              <div
+                key={stat.label}
+                className={`rounded-md ${stat.bg} border border-gray-100 dark:border-gray-800 shadow-sm border-l-[5px] ${stat.border} flex flex-col items-center pt-5 pb-4`}
+              >
                 <stat.icon className={`size-5 ${stat.color} mb-1`} />
                 <p className="text-2xl font-bold text-foreground">{stat.value}</p>
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
@@ -407,7 +455,7 @@ export default function ProfilePage() {
 
           {/* カテゴリ別進捗 */}
           {quizStats.categorySummary.length > 0 && (
-            <div className="rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm p-5 sm:p-6">
+            <div className="rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm p-5 sm:p-6">
               <h3 className="text-base font-bold text-foreground mb-1">カテゴリ別の学習進捗</h3>
               <div className="flex gap-1 mb-5">
                 <span className="w-4 h-1 rounded-full bg-red-400" />
@@ -418,7 +466,7 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 {quizStats.categorySummary.map((cat) => {
                   const rate = cat.total > 0 ? Math.round((cat.correct / cat.total) * 100) : 0;
-                  const barColor = SLUG_COLOR[cat.slug] ?? "bg-primary";
+                  const barColor = SLUG_COLOR[cat.slug] ?? 'bg-primary';
                   return (
                     <div key={cat.categoryId} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
@@ -445,9 +493,7 @@ export default function ProfilePage() {
             <Card>
               <CardContent className="py-8 text-center">
                 <BookOpen className="size-10 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-muted-foreground">
-                  まだクイズの回答履歴がありません
-                </p>
+                <p className="text-muted-foreground">まだクイズの回答履歴がありません</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   クイズに挑戦して学習を始めましょう！
                 </p>

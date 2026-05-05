@@ -122,7 +122,7 @@ export default function BooksPage() {
             <Link
               key={book.bookSlug}
               href={`/books/${book.bookSlug}`}
-              className={`group relative block overflow-hidden rounded-2xl border-2 border-black/5 ${theme.cardBg} p-5 sm:p-6 shadow-sm transition hover:shadow-lg hover:-translate-y-0.5`}
+              className={`group relative block overflow-hidden rounded-md border-2 border-black/5 ${theme.cardBg} p-5 sm:p-6 shadow-sm transition hover:shadow-lg hover:-translate-y-0.5`}
             >
               {/* 右上の装飾ドット */}
               <span
@@ -144,7 +144,7 @@ export default function BooksPage() {
 
               <div className={`flex items-start gap-4 ${isNew ? 'mt-4' : ''}`}>
                 <div
-                  className={`flex size-14 shrink-0 items-center justify-center rounded-xl ${theme.iconBg} ${theme.iconText} shadow-sm`}
+                  className={`flex size-14 shrink-0 items-center justify-center rounded-md ${theme.iconBg} ${theme.iconText} shadow-sm`}
                 >
                   <BookOpen className="size-7" strokeWidth={2.5} />
                 </div>

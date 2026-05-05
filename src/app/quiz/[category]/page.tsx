@@ -1,6 +1,6 @@
-import Link from "next/link";
-import Image from "next/image";
-import { Metadata } from "next";
+import Link from 'next/link';
+import Image from 'next/image';
+import { Metadata } from 'next';
 import {
   ArrowLeft,
   BookOpenCheck,
@@ -12,20 +12,18 @@ import {
   HelpCircle,
   ArrowRight,
   Library,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { SectionHeading } from "@/components/SectionHeading";
-import QuizListClient from "./QuizListClient";
-import { getCategorySeoContent, type CategorySeoContent } from "./categoryContent";
-import { getBookForCategory, getChaptersByBook } from "@/lib/books";
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { SectionHeading } from '@/components/SectionHeading';
+import QuizListClient from './QuizListClient';
+import { getCategorySeoContent, type CategorySeoContent } from './categoryContent';
+import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 
 const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8888";
+  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://web-mondai.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web-mondai.com';
 
 export interface Tag {
   id: number;
@@ -50,49 +48,44 @@ interface Category {
 async function getCategory(categorySlug: string): Promise<Category | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
-      cache: "no-store",
+      cache: 'no-store',
     });
     if (!res.ok) return null;
     const categories: Category[] = await res.json();
     return categories.find((c) => c.slug === categorySlug) || null;
   } catch (error) {
-    console.error("Failed to fetch category:", error);
+    console.error('Failed to fetch category:', error);
     return null;
   }
 }
 
-async function getQuizzes(
-  categoryId: number,
-  q?: string,
-  tagSlug?: string
-): Promise<Quiz[]> {
+async function getQuizzes(categoryId: number, q?: string, tagSlug?: string): Promise<Quiz[]> {
   try {
     const params = new URLSearchParams();
-    if (q) params.append("q", q);
-    if (tagSlug) params.append("tagSlug", tagSlug);
+    if (q) params.append('q', q);
+    if (tagSlug) params.append('tagSlug', tagSlug);
 
     const res = await fetch(
       `${API_BASE_URL}/api/quiz/category/${categoryId}/quizzes?${params.toString()}`,
-      { cache: "no-store" }
+      { cache: 'no-store' },
     );
     if (!res.ok) return [];
     return await res.json();
   } catch (error) {
-    console.error("Failed to fetch quizzes:", error);
+    console.error('Failed to fetch quizzes:', error);
     return [];
   }
 }
 
 async function getTagsByCategory(categoryId: number): Promise<Tag[]> {
   try {
-    const res = await fetch(
-      `${API_BASE_URL}/api/quiz/category/${categoryId}/tags`,
-      { cache: "no-store" }
-    );
+    const res = await fetch(`${API_BASE_URL}/api/quiz/category/${categoryId}/tags`, {
+      cache: 'no-store',
+    });
     if (!res.ok) return [];
     return await res.json();
   } catch (error) {
-    console.error("Failed to fetch tags:", error);
+    console.error('Failed to fetch tags:', error);
     return [];
   }
 }
@@ -106,14 +99,13 @@ export async function generateMetadata({
   const category = await getCategory(categorySlug);
 
   if (!category) {
-    return { title: "カテゴリが見つかりません" };
+    return { title: 'カテゴリが見つかりません' };
   }
 
   const title = `${category.category_name} 問題集 | ウェブエンジニア問題集`;
-  const description =
-    category.description
-      ? `${category.category_name}の問題集。${category.description} 無料で学べる4択クイズ形式。`
-      : `${category.category_name}に関する4択クイズ問題集。基礎から実践まで無料で学べます。`;
+  const description = category.description
+    ? `${category.category_name}の問題集。${category.description} 無料で学べる4択クイズ形式。`
+    : `${category.category_name}に関する4択クイズ問題集。基礎から実践まで無料で学べます。`;
 
   return {
     title,
@@ -124,12 +116,12 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      type: "website",
-      locale: "ja_JP",
+      type: 'website',
+      locale: 'ja_JP',
       url: `${SITE_URL}/quiz/${categorySlug}`,
     },
     twitter: {
-      card: "summary_large_image",
+      card: 'summary_large_image',
       title,
       description,
     },
@@ -137,9 +129,9 @@ export async function generateMetadata({
       category.category_name,
       `${category.category_name} クイズ`,
       `${category.category_name} 問題`,
-      "ウェブ開発",
-      "学習",
-      "無料",
+      'ウェブ開発',
+      '学習',
+      '無料',
     ],
   };
 }
@@ -148,20 +140,20 @@ function buildJsonLd(
   category: Category,
   quizzes: Quiz[],
   categorySlug: string,
-  seoContent: CategorySeoContent | null
+  seoContent: CategorySeoContent | null,
 ) {
   const breadcrumb = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
     itemListElement: [
       {
-        "@type": "ListItem",
+        '@type': 'ListItem',
         position: 1,
-        name: "ホーム",
+        name: 'ホーム',
         item: SITE_URL,
       },
       {
-        "@type": "ListItem",
+        '@type': 'ListItem',
         position: 2,
         name: `${category.category_name} 問題集`,
         item: `${SITE_URL}/quiz/${categorySlug}`,
@@ -170,15 +162,15 @@ function buildJsonLd(
   };
 
   const quizPage = {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
     name: `${category.category_name} 問題集`,
     description: category.description || `${category.category_name}に関するクイズ問題集`,
     url: `${SITE_URL}/quiz/${categorySlug}`,
     numberOfItems: quizzes.length,
     isPartOf: {
-      "@type": "WebSite",
-      name: "ウェブエンジニア問題集",
+      '@type': 'WebSite',
+      name: 'ウェブエンジニア問題集',
       url: SITE_URL,
     },
   };
@@ -187,13 +179,13 @@ function buildJsonLd(
 
   if (seoContent && seoContent.faqs.length > 0) {
     jsonLdList.push({
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
       mainEntity: seoContent.faqs.map((faq) => ({
-        "@type": "Question",
+        '@type': 'Question',
         name: faq.question,
         acceptedAnswer: {
-          "@type": "Answer",
+          '@type': 'Answer',
           text: faq.answer,
         },
       })),
@@ -258,23 +250,52 @@ export default async function CategoryQuizPage({
       <nav aria-label="パンくずリスト" className="mb-6 text-sm">
         <ol className="flex items-center gap-1 text-muted-foreground">
           <li>
-            <Link href="/" className="hover:text-foreground transition-colors">ホーム</Link>
+            <Link href="/" className="hover:text-foreground transition-colors">
+              ホーム
+            </Link>
           </li>
-          <li><ChevronRight className="size-3.5" /></li>
+          <li>
+            <ChevronRight className="size-3.5" />
+          </li>
           <li className="text-foreground font-medium">{category.category_name} 問題集</li>
         </ol>
       </nav>
 
       {/* ヘッダー */}
       <section className="mb-10 relative overflow-hidden">
-        <svg className="absolute inset-0 w-full h-full pointer-events-none select-none" aria-hidden="true" viewBox="0 0 400 300" preserveAspectRatio="none" fill="none">
-          <path d="M -10 285 C 120 278 280 180 410 15 L 410 55 C 280 220 120 295 -10 300 Z" fill="#e5e7eb" opacity="0.4" />
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none select-none"
+          aria-hidden="true"
+          viewBox="0 0 400 300"
+          preserveAspectRatio="none"
+          fill="none"
+        >
+          <path
+            d="M -10 285 C 120 278 280 180 410 15 L 410 55 C 280 220 120 295 -10 300 Z"
+            fill="#e5e7eb"
+            opacity="0.4"
+          />
         </svg>
-        <div className="absolute top-1 right-6 sm:right-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 pointer-events-none" aria-hidden="true" />
-        <div className="absolute top-1/2 right-1 sm:right-3 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
-        <div className="absolute bottom-3 right-1/4 w-5 h-5 rounded-full bg-amber-200/30 pointer-events-none" aria-hidden="true" />
-        <div className="absolute top-0 left-1/4 w-4 h-4 rounded-full bg-gray-300/40 pointer-events-none" aria-hidden="true" />
-        <div className="absolute bottom-1/3 left-1 sm:left-5 w-6 h-6 rounded-full bg-primary/8 pointer-events-none" aria-hidden="true" />
+        <div
+          className="absolute top-1 right-6 sm:right-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 pointer-events-none"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute top-1/2 right-1 sm:right-3 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-primary/8 pointer-events-none"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute bottom-3 right-1/4 w-5 h-5 rounded-full bg-amber-200/30 pointer-events-none"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute top-0 left-1/4 w-4 h-4 rounded-full bg-gray-300/40 pointer-events-none"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute bottom-1/3 left-1 sm:left-5 w-6 h-6 rounded-full bg-primary/8 pointer-events-none"
+          aria-hidden="true"
+        />
         <div className="relative flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-6">
           <div className="flex justify-center sm:justify-start">
             <Image
@@ -309,7 +330,7 @@ export default async function CategoryQuizPage({
         return (
           <section className="mb-8">
             <Link href={`/books/${relatedBook.bookSlug}`} className="block group">
-              <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100/80 p-3 sm:p-4 transition-colors">
+              <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 hover:bg-amber-100/80 p-3 sm:p-4 transition-colors">
                 <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 group-hover:bg-amber-200 transition-colors">
                   <Library className="size-4 sm:size-5 text-amber-700" />
                 </div>
@@ -331,7 +352,7 @@ export default async function CategoryQuizPage({
       {/* ランダムクイズへの導線 */}
       <section className="mb-8">
         <Link href={`/quiz/random?category=${category.slug}`} className="block group">
-          <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 p-3 sm:p-4 transition-colors">
+          <div className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 hover:bg-primary/10 p-3 sm:p-4 transition-colors">
             <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/15 transition-colors">
               <Shuffle className="size-4 sm:size-5 text-primary" />
             </div>
@@ -396,17 +417,30 @@ export default async function CategoryQuizPage({
       {/* 出題トピック */}
       {seoContent && (
         <section className="mb-10">
-          <SectionHeading size="sm" center={false} className="mb-4" icon={<BookOpenCheck className="size-5 text-primary" />}>
+          <SectionHeading
+            size="sm"
+            center={false}
+            className="mb-4"
+            icon={<BookOpenCheck className="size-5 text-primary" />}
+          >
             出題トピック
           </SectionHeading>
           <div className="grid gap-3 sm:grid-cols-2">
             {seoContent.topics.map((topic, i) => {
-              const borderColors = ["border-l-red-400", "border-l-blue-400", "border-l-amber-400", "border-l-green-400", "border-l-purple-400", "border-l-cyan-400"];
+              const borderColors = [
+                'border-l-red-400',
+                'border-l-blue-400',
+                'border-l-amber-400',
+                'border-l-green-400',
+                'border-l-purple-400',
+                'border-l-cyan-400',
+              ];
               return (
-                <div key={topic.title} className={`rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm border-l-[5px] ${borderColors[i % borderColors.length]} p-4`}>
-                  <h3 className="text-sm font-bold text-foreground mb-1">
-                    {topic.title}
-                  </h3>
+                <div
+                  key={topic.title}
+                  className={`rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm border-l-[5px] ${borderColors[i % borderColors.length]} p-4`}
+                >
+                  <h3 className="text-sm font-bold text-foreground mb-1">{topic.title}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {topic.description}
                   </p>
@@ -420,18 +454,32 @@ export default async function CategoryQuizPage({
       {/* 対象者 */}
       {seoContent && (
         <section className="mb-10">
-          <SectionHeading size="sm" center={false} className="mb-4" icon={<Users className="size-5 text-primary" />}>
+          <SectionHeading
+            size="sm"
+            center={false}
+            className="mb-4"
+            icon={<Users className="size-5 text-primary" />}
+          >
             こんな方におすすめ
           </SectionHeading>
           <ul className="grid gap-2 sm:grid-cols-2">
             {seoContent.targetAudience.map((audience, i) => {
-              const dotColors = ["bg-red-400", "bg-blue-400", "bg-amber-400", "bg-green-400", "bg-purple-400", "bg-cyan-400"];
+              const dotColors = [
+                'bg-red-400',
+                'bg-blue-400',
+                'bg-amber-400',
+                'bg-green-400',
+                'bg-purple-400',
+                'bg-cyan-400',
+              ];
               return (
                 <li
                   key={audience}
-                  className="flex items-center gap-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm px-4 py-3 text-sm text-foreground"
+                  className="flex items-center gap-3 rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm px-4 py-3 text-sm text-foreground"
                 >
-                  <span className={`size-2 rounded-full ${dotColors[i % dotColors.length]} shrink-0`} />
+                  <span
+                    className={`size-2 rounded-full ${dotColors[i % dotColors.length]} shrink-0`}
+                  />
                   {audience}
                 </li>
               );
@@ -443,14 +491,19 @@ export default async function CategoryQuizPage({
       {/* よくある質問（FAQ） */}
       {seoContent && seoContent.faqs.length > 0 && (
         <section className="mb-10">
-          <SectionHeading size="sm" center={false} className="mb-4" icon={<HelpCircle className="size-5 text-primary" />}>
+          <SectionHeading
+            size="sm"
+            center={false}
+            className="mb-4"
+            icon={<HelpCircle className="size-5 text-primary" />}
+          >
             {category.category_name}に関するよくある質問
           </SectionHeading>
           <div className="space-y-3">
             {seoContent.faqs.map((faq) => (
               <details
                 key={faq.question}
-                className="group rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden"
+                className="group rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden"
               >
                 <summary className="flex cursor-pointer items-center justify-between gap-2 p-4 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
                   <span>{faq.question}</span>
@@ -474,19 +527,23 @@ export default async function CategoryQuizPage({
           <div className="grid gap-3 sm:grid-cols-3">
             {seoContent.relatedCategories.map((related, i) => {
               const colors = [
-                { border: "border-l-red-400", arrow: "bg-red-400" },
-                { border: "border-l-blue-400", arrow: "bg-blue-400" },
-                { border: "border-l-amber-400", arrow: "bg-amber-400" },
-                { border: "border-l-green-400", arrow: "bg-green-400" },
+                { border: 'border-l-red-400', arrow: 'bg-red-400' },
+                { border: 'border-l-blue-400', arrow: 'bg-blue-400' },
+                { border: 'border-l-amber-400', arrow: 'bg-amber-400' },
+                { border: 'border-l-green-400', arrow: 'bg-green-400' },
               ];
               const c = colors[i % colors.length];
               return (
                 <Link key={related.slug} href={`/quiz/${related.slug}`} className="group">
-                  <div className={`flex items-center rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm pr-3 border-l-[5px] ${c.border} group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200`}>
+                  <div
+                    className={`flex items-center rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm pr-3 border-l-[5px] ${c.border} group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200`}
+                  >
                     <span className="flex-1 font-bold text-sm text-foreground py-3 pl-4 truncate">
                       {related.name}
                     </span>
-                    <div className={`flex size-7 shrink-0 items-center justify-center rounded-full ${c.arrow} group-hover:scale-110 transition-transform duration-200`}>
+                    <div
+                      className={`flex size-7 shrink-0 items-center justify-center rounded-full ${c.arrow} group-hover:scale-110 transition-transform duration-200`}
+                    >
                       <ChevronRight className="size-4 text-white" />
                     </div>
                   </div>

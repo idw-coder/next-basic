@@ -153,7 +153,7 @@ export default function SubscriptionClient() {
     <div className="max-w-5xl mx-auto px-4 py-10 md:py-16">
       {/* 準備中バナー */}
       {isPreparingBanner && (
-        <div className="mb-8 rounded-xl border-2 border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30 p-4 sm:p-5">
+        <div className="mb-8 rounded-md border-2 border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30 p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <Construction className="size-6 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
@@ -183,7 +183,7 @@ export default function SubscriptionClient() {
 
       {/* エラー */}
       {error && (
-        <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 flex items-start gap-3 max-w-2xl mx-auto">
+        <div className="mb-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 flex items-start gap-3 max-w-2xl mx-auto">
           <AlertTriangle className="size-5 text-destructive shrink-0 mt-0.5" />
           <p className="text-sm text-destructive">{error}</p>
         </div>
@@ -318,7 +318,7 @@ export default function SubscriptionClient() {
               a: '年額プランの途中解約による日割り返金は行っておりません。残りの契約期間は引き続きご利用いただけます。',
             },
           ].map((faq) => (
-            <div key={faq.q} className="rounded-lg border p-4 bg-muted/30">
+            <div key={faq.q} className="rounded-md border p-4 bg-muted/30">
               <p className="font-semibold text-sm text-foreground mb-1.5">Q. {faq.q}</p>
               <p className="text-sm text-muted-foreground">A. {faq.a}</p>
             </div>
