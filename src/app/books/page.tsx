@@ -1,13 +1,12 @@
-import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
-import { BookOpen, Sparkles, ArrowRight } from "lucide-react";
-import { getAllBooks, getChaptersByBook } from "@/lib/books";
+import type { Metadata } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
+import { BookOpen, Sparkles, ArrowRight } from 'lucide-react';
+import { getAllBooks, getChaptersByBook } from '@/lib/books';
 
 export const metadata: Metadata = {
-  title: "Books | ウェブエンジニア問題集",
-  description:
-    "エンジニア初学者向けの技術書コンテンツ。体系的に基礎から学べます。",
+  title: 'Books | ウェブエンジニア問題集',
+  description: 'エンジニア初学者向けの技術書コンテンツ。体系的に基礎から学べます。',
 };
 
 // 書籍ごとのテーマ（ポップ感のための色セット）
@@ -22,47 +21,56 @@ interface BookTheme {
 }
 
 const DEFAULT_THEME: BookTheme = {
-  cardBg: "bg-amber-50",
-  iconBg: "bg-amber-200",
-  iconText: "text-amber-700",
-  accent: "text-amber-700",
-  accentHover: "group-hover:text-amber-700",
-  badgeBg: "bg-white",
-  badgeText: "text-amber-700",
+  cardBg: 'bg-amber-50',
+  iconBg: 'bg-amber-200',
+  iconText: 'text-amber-700',
+  accent: 'text-amber-700',
+  accentHover: 'group-hover:text-amber-700',
+  badgeBg: 'bg-white',
+  badgeText: 'text-amber-700',
 };
 
 const bookThemeMap: Record<string, BookTheme> = {
-  "cs-basics": {
-    cardBg: "bg-purple-100",
-    iconBg: "bg-purple-200",
-    iconText: "text-purple-700",
-    accent: "text-purple-700",
-    accentHover: "group-hover:text-purple-700",
-    badgeBg: "bg-white",
-    badgeText: "text-purple-700",
+  'cs-basics': {
+    cardBg: 'bg-purple-100',
+    iconBg: 'bg-purple-200',
+    iconText: 'text-purple-700',
+    accent: 'text-purple-700',
+    accentHover: 'group-hover:text-purple-700',
+    badgeBg: 'bg-white',
+    badgeText: 'text-purple-700',
   },
   nextjs: {
-    cardBg: "bg-zinc-100",
-    iconBg: "bg-zinc-200",
-    iconText: "text-zinc-800",
-    accent: "text-zinc-800",
-    accentHover: "group-hover:text-zinc-900",
-    badgeBg: "bg-white",
-    badgeText: "text-zinc-800",
+    cardBg: 'bg-zinc-100',
+    iconBg: 'bg-zinc-200',
+    iconText: 'text-zinc-800',
+    accent: 'text-zinc-800',
+    accentHover: 'group-hover:text-zinc-900',
+    badgeBg: 'bg-white',
+    badgeText: 'text-zinc-800',
   },
-  git: {
-    cardBg: "bg-rose-100",
-    iconBg: "bg-rose-200",
-    iconText: "text-rose-700",
-    accent: "text-rose-700",
-    accentHover: "group-hover:text-rose-700",
-    badgeBg: "bg-white",
-    badgeText: "text-rose-700",
+  'git-basic': {
+    cardBg: 'bg-rose-100',
+    iconBg: 'bg-rose-200',
+    iconText: 'text-rose-700',
+    accent: 'text-rose-700',
+    accentHover: 'group-hover:text-rose-700',
+    badgeBg: 'bg-white',
+    badgeText: 'text-rose-700',
+  },
+  'unit-testing': {
+    cardBg: 'bg-emerald-100',
+    iconBg: 'bg-emerald-200',
+    iconText: 'text-emerald-700',
+    accent: 'text-emerald-700',
+    accentHover: 'group-hover:text-emerald-700',
+    badgeBg: 'bg-white',
+    badgeText: 'text-emerald-700',
   },
 };
 
 // NEW バッジ対象の書籍（手動管理）
-const NEW_BOOK_SLUGS = new Set<string>(["cs-basics"]);
+const NEW_BOOK_SLUGS = new Set<string>(['cs-basics']);
 
 export default function BooksPage() {
   const books = getAllBooks();
@@ -70,14 +78,14 @@ export default function BooksPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
       {/* ヒーロー */}
-      <section className="relative mb-10 md:mb-14 overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-white to-purple-50 border border-black/5 px-5 py-8 sm:px-8 sm:py-10">
+      <section className="relative mb-10 md:mb-14 overflow-hidden rounded-sm bg-gradient-to-br from-amber-50 via-white to-yellow-50 border border-black/5 px-5 py-8 sm:px-8 sm:py-10">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -top-4 -right-6 w-28 h-28 rounded-full bg-amber-200/50 blur-2xl"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-8 left-1/4 w-32 h-32 rounded-full bg-purple-200/50 blur-2xl"
+          className="pointer-events-none absolute -bottom-8 left-1/4 w-32 h-32 rounded-full bg-orange-200/50 blur-2xl"
         />
         {/* 書籍イラスト: 右上に絶対配置して本文の幅を邪魔しない */}
         <Image
@@ -95,9 +103,7 @@ export default function BooksPage() {
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-gray-900 leading-tight">
             <span className="block">駆け出しエンジニアのための</span>
-            <span className="block mt-1 text-3xl sm:text-4xl md:text-5xl text-primary">
-              教科書
-            </span>
+            <span className="block mt-2 text-3xl sm:text-4xl md:text-5xl text-primary">教科書</span>
           </h1>
           <p className="mt-3 text-gray-600 text-sm md:text-base">
             体系的に学べる技術書コンテンツです。クイズの前に、まずはここでインプットしましょう。
@@ -136,7 +142,7 @@ export default function BooksPage() {
                 </span>
               )}
 
-              <div className={`flex items-start gap-4 ${isNew ? "mt-4" : ""}`}>
+              <div className={`flex items-start gap-4 ${isNew ? 'mt-4' : ''}`}>
                 <div
                   className={`flex size-14 shrink-0 items-center justify-center rounded-xl ${theme.iconBg} ${theme.iconText} shadow-sm`}
                 >
