@@ -379,11 +379,11 @@ export default async function Home() {
   const totalCount = Object.values(counts).reduce((sum, c) => sum + c, 0);
   const bookList = getAllBooks();
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 md:py-16 overflow-x-hidden">
+    <div className="max-w-5xl mx-auto px-4 py-10 md:py-16">
       {/* ヒーロー */}
-      <section className="mb-16 md:mb-20 relative overflow-hidden">
+      <section className="mb-16 md:mb-20 relative">
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none select-none"
+          className="absolute left-1/2 top-0 -translate-x-1/2 w-screen h-full pointer-events-none select-none"
           aria-hidden="true"
           viewBox="0 0 400 300"
           preserveAspectRatio="none"
@@ -549,8 +549,8 @@ export default async function Home() {
             },
           ].map((f) => (
             <div key={f.title} className="text-center">
-              <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10">
-                <f.icon className={`size-6 ${f.color}`} />
+              <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-primary/10">
+                <f.icon className={`size-8 ${f.color}`} />
               </div>
               <p className="font-semibold text-foreground text-sm mb-1">{f.title}</p>
               <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
@@ -563,23 +563,6 @@ export default async function Home() {
 
       {/* 学習カテゴリ */}
       <section id="categories" className="mb-16 md:mb-20 relative py-10 md:py-14 overflow-hidden">
-        <div
-          className="absolute -top-6 left-0 w-36 h-36 rounded-full bg-amber-200/25 blur-2xl pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute -bottom-8 right-0 w-44 h-44 rounded-full bg-cyan-200/25 blur-2xl pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute top-1/2 right-0 w-28 h-28 rounded-full bg-rose-200/20 blur-2xl pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute bottom-1/4 left-0 w-24 h-24 rounded-full bg-green-200/20 blur-2xl pointer-events-none"
-          aria-hidden="true"
-        />
-
         <SectionHeading className="mb-8 md:mb-10" subtitle="16カテゴリの問題に挑戦しよう">
           クイズカテゴリ
         </SectionHeading>

@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 @plugin "@tailwindcss/typography";
 
@@ -120,6 +120,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -170,17 +173,98 @@
   text-decoration: underline;
 }
 
+.prose h2 {
+  font-size: clamp(1.25rem, 2.5vw + 0.5rem, 1.75rem);
+  font-weight: bold;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.375rem;
+}
+
+.prose h3 {
+  font-size: clamp(1.05rem, 1.8vw + 0.4rem, 1.35rem);
+  font-weight: bold;
+  color: oklch(0.4 0 0);
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(0.8rem, 1.2vw + 0.3rem, 0.9375rem);
+}
+
+.prose table th {
+  background: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.prose table td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.prose table tr:nth-child(even) td {
+  background: oklch(from var(--muted) l c h / 0.4);
+}
+
+.prose dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem;
+}
+
+.prose dt {
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+.prose dd {
+  margin-left: 1.25rem;
+  color: var(--muted-foreground);
+}
+
 /* tiptap解説エリアのスタイル（Tailwind preflightでリセットされる分を補完） */
 .tiptap-explanation {
-  h1 { font-size: 1.5em; font-weight: 700; margin: 0.5em 0; }
-  h2 { font-size: 1.25em; font-weight: 700; margin: 0.5em 0; }
-  h3 { font-size: 1.1em; font-weight: 600; margin: 0.5em 0; }
-  p { margin: 0.25em 0; }
-  strong { font-weight: 700; }
-  em { font-style: italic; }
-  ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-  ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
-  li { margin: 0.25em 0; }
+  h1 {
+    font-size: 1.5em;
+    font-weight: 700;
+    margin: 0.5em 0;
+  }
+  h2 {
+    font-size: 1.25em;
+    font-weight: 700;
+    margin: 0.5em 0;
+  }
+  h3 {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin: 0.5em 0;
+  }
+  p {
+    margin: 0.25em 0;
+  }
+  strong {
+    font-weight: 700;
+  }
+  em {
+    font-style: italic;
+  }
+  ul {
+    list-style: disc;
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+  }
+  ol {
+    list-style: decimal;
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+  }
+  li {
+    margin: 0.25em 0;
+  }
   blockquote {
     border-left: 3px solid var(--border);
     padding-left: 1em;

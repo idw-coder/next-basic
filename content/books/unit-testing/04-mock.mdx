@@ -1,0 +1,45 @@
+---
+title: 'モックとは'
+description: 'モックとは'
+order: 4
+---
+
+## モックとスタブの違いについて
+
+どちらもテスト用の偽物ですが、役割が違います。
+
+スタブは「テストに必要な入力を与える」ためのものです。
+テスト対象が依存している部品に、都合の良い値を返させます。
+
+モックは「外部への出力が正しく行われたか検証する」ためのものです。
+
+つまりスタブはArrangeで使い、モックはAssertで使います。
+データの流れで言えば、スタブは外から中への入力、モックは中から外への出力を扱います。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef stub fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef sut fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef mock fill:#ef4444,color:#fff,stroke:#b91c1c
+
+    S[スタブ\nStub]:::stub -->|入力 / Arrange| T[テスト対象\nSUT]:::sut
+    T -->|出力 / Assert| M[モック\nMock]:::mock
+
+`}
+/>
+
+<Callout type="column">
+
+### 「Vitestでスタブにもvi.mockを使っている」
+
+スタブとモックは概念上の区別であって、ライブラリのAPIレベルで分かれているわけではありません。
+
+Vitest、Jest、Moqなどほとんどのライブラリが両方の用途を同じ機能で提供しています。
+なので「スタブにもvi.mockを使っている」のは自然なことで、間違いではありません。
+
+大事なのはAPIの名前ではなく、「これは入力を与えるために置いているのか、出力を検証するために置いているのか」を自分で意識できていることです。
+
+<Figure src="/images/pc-work-woman01.png" alt="PCで作業をしている女性のイラスト" maxWidth="300px" />
+
+</Callout>

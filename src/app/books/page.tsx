@@ -70,23 +70,20 @@ const bookThemeMap: Record<string, BookTheme> = {
 };
 
 // NEW バッジ対象の書籍（手動管理）
-const NEW_BOOK_SLUGS = new Set<string>(['cs-basics']);
+const NEW_BOOK_SLUGS = new Set<string>(['unit-testing']);
+
+// 書籍の表示順（手動管理）
+const BOOK_ORDER = ['unit-testing', 'git', 'cs-basics', 'nextjs'];
 
 export default function BooksPage() {
-  const books = getAllBooks();
+  const books = getAllBooks().sort(
+    (a, b) => BOOK_ORDER.indexOf(a.bookSlug) - BOOK_ORDER.indexOf(b.bookSlug),
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
       {/* ヒーロー */}
-      <section className="relative mb-10 md:mb-14 overflow-hidden rounded-sm bg-gradient-to-br from-amber-50 via-white to-yellow-50 border border-black/5 px-5 py-8 sm:px-8 sm:py-10">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-4 -right-6 w-28 h-28 rounded-full bg-amber-200/50 blur-2xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-8 left-1/4 w-32 h-32 rounded-full bg-orange-200/50 blur-2xl"
-        />
+      <section className="relative mb-10 md:mb-14 overflow-hidden rounded-sm border border-black/5 px-5 py-8 sm:px-8 sm:py-10">
         {/* 書籍イラスト: 右上に絶対配置して本文の幅を邪魔しない */}
         <Image
           src="/book_open_simple.png"
