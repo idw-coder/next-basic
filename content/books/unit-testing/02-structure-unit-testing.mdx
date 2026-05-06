@@ -1,0 +1,104 @@
+---
+title: '単体テストの構造'
+description: '単体テストの構造'
+order: 2
+---
+
+## AAAパターンについて考えていく
+
+単体テストの記述はAAAパターンで記述するのが基本です。
+
+AAAパターンとは、Arrange-Act-Assertの略で、単体テストを書くときの3つのステップを表しています。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A[Arrange
+    準備] --> B[Act
+    実行] --> C[Assert
+    検証]
+`}
+/>
+
+1. **Arrange** テストを実行するための準備
+2. **Act** テストを実行
+3. **Assert** テストの結果を検証
+
+具体的には、以下のようになります。
+
+```typescript
+describe('Unit Test', () => {
+  it('should be true', () => {
+    // Arrange
+    const a = 1;
+    const b = 2;
+    const expected = 3;
+
+    // Act
+    const result = a + b;
+
+    // Assert
+    expect(result).toBe(expected);
+  });
+});
+```
+
+### 通常は準備のArrange記述から始めますが、テスト駆動開発の場合は最初から**アサート**を書きます。
+
+このような書き方は直感的でないように感じるかもしれませんが、解決したい問題は何かというゴールから逆算していくという意味では自然な流れです。
+
+テスト駆動開発ではなく、すでに実装済みのコードがある場合は、まずはそのコードをテストするために必要な準備Arrangeの記述から始めます。
+
+### AAAパターンで同じステップを複数になることは避ける
+
+AAAパターンでは、同じステップを複数になることは避けるべきです
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef ok fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef bad fill:#ef4444,color:#fff,stroke:#b91c1c
+
+    A[Arrange] --> B[Act] -->  C[Assert]
+    C --> |2回目| D[Act] --> |2回目| E[Assert]
+
+    class A,B,C ok
+    class D,E bad
+
+`}
+/>
+
+Act → Assert のサイクルが複数回になっている。これは統合テストの兆候であり、単体テストとしては避けるべきパターンです。
+
+## フィクスチャは「複数のテストで共通するArrangeを抽出・共有する仕組み」です
+
+テストフィクスチャとは、テストの実行に必要な前提条件や環境のことです。
+テストデータ、モックオブジェクト、DB接続、設定済みのインスタンスなど、テストが動くために必要な「お膳立て」全体を指します。
+
+```typescript
+// フィクスチャ 複数のテストで共通する準備をまとめる
+let user: { name: string; age: number };
+
+beforeEach(() => {
+  // 各テストの前に共通のArrangeを実行
+  user = { name: 'Alice', age: 25 };
+});
+
+describe('User', () => {
+  it('名前が正しい', () => {
+    expect(user.name).toBe('Alice');
+  });
+
+  it('成人である', () => {
+    expect(user.age).toBeGreaterThanOrEqual(18);
+  });
+});
+```
+
+<Callout type="column">
+## テスト対象のメソッド名を単体テストの名前に入れるのは避けるべき
+
+メソッド名をリネームしたらテスト名も全部直す必要が出る、という保守コストの問題が一番わかりやすい理由ですが、本質的な理由は別にあります。
+テストが語るべきなのは「振る舞い」であって「実装の構造」ではない、という点です。
+
+</Callout>

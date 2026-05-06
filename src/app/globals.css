@@ -158,6 +158,10 @@
   font-weight: 500;
 }
 
+.prose blockquote {
+  overflow-wrap: anywhere;
+}
+
 .subheading-anchor {
   text-decoration: none;
 }

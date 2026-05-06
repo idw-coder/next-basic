@@ -6,7 +6,7 @@ order: 1
 
 単体テストは本番コードとは性質が異なり、目的なく書けば無駄になる。
 
-この章では、まず「何のために書くのか」を整理すべきだ。
+この章では、まず「単体テストの定義」を整理します。
 
 ## そもそも単体テストとは
 
@@ -15,17 +15,24 @@ order: 1
 - 単体（ユニット 少量）のコードのテスト
 - 実行環境が隔離されている
 
-### 単体テストの「単位」の捉え方と、依存をどう扱うかで2つの学派に
+<Callout type="note">
+単体テストの「隔離」の捉え方で2つの学派に
+分類されます。
 
 - 古典学派（デトロイト学派） — 「単位」を振る舞いの単位と捉える。テスト対象が依存する他のクラスやモジュールも、可能な限りそのまま使う。
   モックに置き換えるのはDBや外部APIなど、テスト実行が困難なものに限定する。テストが実際の動作に近くなる反面、失敗時にどこが原因か特定しにくいことがある。
 - ロンドン学派（モッキスト学派） — 「単位」をクラスや関数そのものと捉える。テスト対象以外の依存はすべてモックに置き換え、完全に隔離した状態でテストする。
   失敗箇所の特定は容易だが、内部実装への依存が強くなり、リファクタリングのたびにテストが壊れやすい。
 
-この分類はMartin Fowlerの記事「Mocks Aren't Stubs」で初期に明文化され、Vladimir Khorikov著『Unit Testing Principles, Practices, and Patterns』で体系的に整理されました。
+> この分類はMartin Fowlerの記事「Mocks Aren't Stubs」で初期に明文化され、Vladimir Khorikov著『Unit Testing Principles, Practices, and Patterns』で体系的に整理されました。
 
-https://martinfowler.com/articles/mocksArentStubs.html
-https://www.manning.com/books/unit-testing
+> https://martinfowler.com/articles/mocksArentStubs.html
+
+> https://www.manning.com/books/unit-testing
+
+</Callout>
+
+<Figure src="/images/pc-work-woman01.png" alt="PCで作業をしている女性のイラスト" maxWidth="500px" />
 
 ## 単体テストの目的は、アプリケーションの継続的な開発において、コードの成長速度を落とさないこと
 
@@ -50,6 +57,8 @@ xychart-beta
 テストコードは「この関数はこの入力に対してこの結果を返すべき」という仕様そのものになります。
 
 コメントやドキュメントと違って実行可能なので、コードと乖離しません
+
+各テストメソッドが「この実装コードは何を保証しているのか」を語るべきだ、というのはテスト設計の基本的な考え方です。
 
 ## 良いテストとは
 

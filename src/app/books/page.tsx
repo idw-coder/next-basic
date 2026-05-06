@@ -59,13 +59,13 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-rose-700',
   },
   'unit-testing': {
-    cardBg: 'bg-emerald-100',
-    iconBg: 'bg-emerald-200',
-    iconText: 'text-emerald-700',
-    accent: 'text-emerald-700',
-    accentHover: 'group-hover:text-emerald-700',
+    cardBg: 'bg-slate-100',
+    iconBg: 'bg-slate-200',
+    iconText: 'text-slate-700',
+    accent: 'text-slate-700',
+    accentHover: 'group-hover:text-slate-700',
     badgeBg: 'bg-white',
-    badgeText: 'text-emerald-700',
+    badgeText: 'text-slate-700',
   },
 };
 
