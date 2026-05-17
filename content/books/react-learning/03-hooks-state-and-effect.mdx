@@ -1,0 +1,245 @@
+---
+title: 'Hooks入門 — useStateとuseEffectの最初の一歩'
+description: '関数コンポーネントで状態と副作用を扱う基本形と、依存配列を誤ったときに起きる典型トラブルを短く整理します。'
+order: 3
+---
+
+Hooksは、**関数コンポーネントの中でstateやライフサイクルに相当する処理を書くためのAPI**です。
+`useState` と `useEffect` はほぼすべてのアプリで登場するので、ここで基本の型を固めます。
+
+---
+
+## ステートとは
+
+コンポーネントが扱うデータにはpropsとstateの2種類があります。
+
+propsは親コンポーネントから渡される読み取り専用のデータで、関数の引数に相当します。
+一方stateはコンポーネント自身が管理・変更できるデータで、変更するとそのコンポーネントが再レンダリングされます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef parent fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef child fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef data fill:#f8fafc,color:#1e293b,stroke:#cbd5e1
+
+    P[親コンポーネント] -->|props を渡す| C[子コンポーネント]
+    C -->|自身で管理| S[state]
+    S -->|変更されると| R[再レンダー → UI更新]
+
+    class P parent
+    class C child
+    class S,R data
+
+`}
+/>
+
+### Reactの根本的な考え方 — UIはstateの関数
+
+`UI = f(state)` — stateが変われば自動的にUIが更新されます。
+DOMを直接操作するのではなく、stateを変えることで間接的にUIを制御するのがReactの設計思想です。
+
+<Callout type="column">
+### 「関数がデータを持つ」ことに違和感がある場合
+
+普通の関数は呼び出しが終わればローカル変数は消えます。
+stateもコンポーネント関数自体が保持しているわけではありません。
+
+実態は、Reactのランタイムが内部のデータ構造（Fiberツリー）にstateを保管しており、
+`useState` はその保管場所へのアクセス手段です。
+関数が再呼び出しされてもReact側が値を覚えているので、前回の値を引き継げます。
+
+</Callout>
+
+---
+
+## useState
+
+`useState` は、コンポーネントに状態変数を追加するフックです。
+値を更新するとReactが再レンダーをスケジュールし、新しい値に基づいてUIが再計算されます。
+
+```tsx
+import { useState } from 'react';
+
+export function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button type="button" onClick={() => setCount((c) => c + 1)}>
+      カウント {count}
+    </button>
+  );
+}
+```
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef action fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef react fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef result fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A[ユーザーがボタンをクリック] --> B["setCount(c => c + 1) を呼ぶ"]
+    B --> C[Reactが新しいstateを保存]
+    C --> D[コンポーネント関数を再実行]
+    D --> E["useState が新しい count を返す"]
+    E --> F[新しいUIをDOMに反映]
+
+    class A action
+    class B,C,D,E react
+    class F result
+
+`}
+/>
+
+### set関数への値の渡し方
+
+**次のstateを直接渡す**
+
+```tsx
+setCount(count + 1);
+```
+
+シンプルだが、同一レンダー内で複数回呼ぶと `count` が古い値を参照する場合がある。
+
+**更新用関数（updater function）を渡す**
+
+```tsx
+setCount((prev) => prev + 1);
+```
+
+この `prev` はどこから来るのか。自分で渡しているわけではありません。
+`setCount` に関数を渡すと、Reactがその関数を呼び出すときに「現在のstateの値」を第1引数として自動的に渡してくれます。
+つまり `prev` の中身はReactが入れてくれるもので、自分が書くのは「前の値をもらったら何を返すか」のロジックだけです。
+
+```tsx
+// この流れをイメージする
+// 1. setCount に関数を渡す
+setCount((prev) => prev + 1);
+
+// 2. React内部でこう呼ばれる（イメージ）
+//    const next = あなたの関数(現在のstate);  → (0) => 0 + 1  → 1
+//    stateを1に更新して再レンダー
+```
+
+この仕組みのおかげで、同一レンダー内で複数回呼んでも正しく積み上がります。
+迷ったらこちらを使えば安全です。
+
+---
+
+## useEffect
+
+`useEffect` は、**DOMの更新が反映されたあと**に実行される処理を書く場所です。
+API呼び出し、購読の開始・停止、タイマー、localStorageの読み書きなどが典型的な用途です。
+
+イベントハンドラで済む処理を `useEffect` に書く必要はありません。
+「レンダーの結果として外部と同期する必要がある」ときに使うものです。
+
+```tsx
+import { useEffect, useState } from 'react';
+
+export function Clock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id); // クリーンアップ
+  }, []);
+
+  return <p>{now.toLocaleTimeString()}</p>;
+}
+```
+
+### 依存配列の読み方
+
+第2引数の依存配列は「このエフェクトが何に反応するか」の宣言です。
+
+`[]` — マウント時に1回だけ実行。アンマウント時にクリーンアップが走る。上のタイマーの例がこれ。
+
+`[userId]` — `userId` が変わるたびに再実行される。前回のクリーンアップが先に走ってから新しいエフェクトが実行される。
+
+省略 — 毎レンダー後に実行される。意図しない無限ループの温床になるため、基本的に避ける。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef mount fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef update fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef unmount fill:#ef4444,color:#fff,stroke:#b91c1c
+
+    A["コンポーネントがマウント"] --> B["useEffect のコールバック実行"]
+    B --> C{"依存配列の値が変わった？"}
+    C -->|はい| D["前回のクリーンアップ実行"] --> E["新しいコールバック実行"]
+    C -->|いいえ| F["何もしない"]
+    E --> C
+    G["コンポーネントがアンマウント"] --> H["最後のクリーンアップ実行"]
+
+    class A,B mount
+    class C,D,E,F update
+    class G,H unmount
+
+`}
+/>
+
+---
+
+## よくあるつまずきと対策
+
+### オブジェクトや配列のstateを変更したのにUIが更新されない
+
+数値や文字列のstateは問題なく更新できたのに、オブジェクトや配列にすると動かない、というケースです。
+原因はJavaScriptの「参照」の仕組みにあります。
+
+JavaScriptでは、数値や文字列は値そのものが比較されますが、オブジェクトや配列は「メモリ上のどこにあるか（参照）」で比較されます。
+
+```tsx
+// 数値の比較 → 値が同じなら等しい
+1 === 1; // true
+
+// オブジェクトの比較 → 同じ参照でないと等しくない
+const a = { name: 'Alice' };
+const b = { name: 'Alice' };
+a === b; // false（中身は同じだが、別のオブジェクト）
+```
+
+Reactのset関数は、渡された値が前回と同じかどうかをこの方法で判定します。
+オブジェクトのプロパティを書き換えても、オブジェクト自体は同じ参照のままなので、Reactは「変わっていない」と判断して再レンダーをスキップします。
+
+```tsx
+// NG
+user.name = 'Bob'; // プロパティは変わったが…
+setUser(user); // 参照は同じなのでReactは無視する
+
+// OK
+setUser({ ...user, name: 'Bob' }); // 新しいオブジェクトを作って渡す
+```
+
+配列も同様で、`push` や `splice` で中身を変えるのではなく、`map` や `filter`、スプレッド構文で新しい配列を作って渡します。
+
+```tsx
+// NG
+items.push(newItem);
+setItems(items);
+
+// OK
+setItems([...items, newItem]);
+```
+
+### useEffect内でsetStateし続けて無限ループ
+
+依存配列に含めた値をエフェクト内で更新すると、更新 → 再レンダー → エフェクト再実行 → 更新…のループに入ります。
+条件分岐で更新をガードするか、そもそもエフェクトではなくイベントハンドラで処理すべきかを再検討してください。
+
+### クリーンアップ忘れで購読やタイマーが残る
+
+`useEffect` から `return () => …` で後始末の関数を返さないと、コンポーネントが画面から消えた後もタイマーやイベントリスナーが動き続けます。
+特に `setInterval` と `addEventListener` は忘れやすいので注意してください。
+
+---
+
+## まとめ
+
+`useState` は**UIに影響するローカル状態**の置き場所、`useEffect` は**レンダー結果に紐づく副作用**の置き場所です。
+依存配列は「いつ再同期するか」をコードで宣言するもので、適当に書くとバグの温床になります。
+
+ここまでで、Reactの記法・部品化・状態更新の三本柱に触れました。

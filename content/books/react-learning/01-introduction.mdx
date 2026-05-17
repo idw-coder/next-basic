@@ -1,0 +1,84 @@
+---
+title: 'Reactとは何か — UIを宣言的に組み立てる'
+description: 'Reactの役割、SPAにおける位置づけ、コンポーネント指向のメリットを整理して、これからの章の土台を作ります。'
+order: 1
+---
+
+Reactは、ユーザーインターフェース（UI）を構築するための **JavaScriptライブラリ** です。
+Meta（旧Facebook）が開発し、**「宣言的な記述」** と **「コンポーネント分割」** によって、
+複雑な画面でも読みやすく保守しやすいコードにまとめやすいのが特徴です。
+
+この章では、Reactを最初に触るときに迷いやすい「何ができるツールなのか」「他の技術との関係は？」を整理します。
+
+## 命令的 vs 宣言的
+
+Webアプリケーションの画面は、HTML・CSS・JavaScriptの3つで成り立ちます。
+Reactを使わない従来の書き方と、Reactの書き方の違いを見てみます。
+
+**命令的（how を書く）** — DOMを取得して、値を書き換えて、イベントごとに手順を一つずつ指示する。
+
+```js
+// 従来の書き方
+const el = document.getElementById('count');
+let count = 0;
+document.getElementById('btn').addEventListener('click', () => {
+  count++;
+  el.textContent = `カウント ${count}`; // DOMを直接書き換える
+});
+```
+
+**宣言的（what を書く）** — 「データがこうなら画面はこう見えるべき」だけを書く。DOMの更新手順はReactが担う。
+
+```tsx
+// Reactの書き方
+function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount((c) => c + 1)}>カウント {count}</button>;
+  // countが変われば、Reactが自動的にボタンのテキストを更新する
+}
+```
+
+開発者は「いまのデータなら画面はこうあるべき」と書くことに集中でき、
+DOM操作の手順を逐一書く必要がなくなります。
+
+## コンポーネントとは
+
+Reactでは、画面を **小さな部品（コンポーネント）** に分割します。
+ボタン1つ、カード1枚、ヘッダー全体など、単位はチームの設計次第ですが、
+共通して「入力（props）を受け取り、UIの一片を返す関数」という形になります。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef page fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef section fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef part fill:#f8fafc,color:#1e293b,stroke:#cbd5e1
+
+    Page[ページ全体] --> Header[Header]
+    Page --> Main[Main]
+    Page --> Footer[Footer]
+    Main --> Card1[Card]
+    Main --> Card2[Card]
+    Card1 --> Button1[Button]
+    Card2 --> Button2[Button]
+
+    class Page page
+    class Header,Main,Footer section
+    class Card1,Card2,Button1,Button2 part
+
+`}
+/>
+
+コンポーネントに分割することで、同じ構造のUIを部品として使い回せる、ファイルや関数の責務が分かれて変更箇所が追いやすい、部品単位でテストができる、といったメリットが生まれます。
+
+## ライブラリとフレームワークの違い
+
+Reactそのものは **UIレイヤに特化したライブラリ** です。
+ルーティングやデータ取得の標準は別パッケージ（React Router、TanStack Queryなど）やフレームワーク（Next.js、Remixなど）に任せる設計になっています。
+
+そのため学習の現場では「まずReact、そのあとNext.js」のような順序が取られやすいです。
+本書もReactの核に絞り、そのうえでフレームワーク学習に進める土台を整えます。
+
+---
+
+次の章では、Reactの記法の中心であるJSXと、関数コンポーネント・propsの渡し方を具体例で見ていきます。

@@ -1,0 +1,260 @@
+---
+title: 'useMemoとuseCallback — 不要な再計算・再生成を防ぐ'
+description: 'メモ化の基本的な考え方と、useMemo・useCallbackの使いどころ・使いすぎの判断基準を整理します。'
+order: 4
+---
+
+前章で扱った `useState` や `useEffect` とは役割が異なり、
+`useMemo` と `useCallback` は **パフォーマンス最適化** のためのHooksです。
+
+この章では、なぜこれらが必要になるのかを再レンダーの仕組みから理解し、
+使うべき場面と使わなくてよい場面の判断基準を身につけます。
+
+---
+
+## 前提 — 再レンダーのたびに何が起きるか
+
+Reactではstateが変わるとコンポーネント関数が再実行されます。
+関数が再実行されるということは、関数内のすべてのコードがもう一度走るということです。
+
+```tsx
+function UserList({ users }: { users: User[] }) {
+  // 再レンダーのたびに、この並べ替え処理が毎回走る
+  const sorted = users.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+  // 再レンダーのたびに、この関数オブジェクトが毎回新しく作られる
+  const handleClick = (id: string) => {
+    console.log(id);
+  };
+
+  return (
+    <ul>
+      {sorted.map((u) => (
+        <li key={u.id} onClick={() => handleClick(u.id)}>
+          {u.name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+多くの場合これは問題になりません。JavaScriptの実行は十分に速く、小さな計算や関数の再生成は気にならないからです。
+
+しかし、次のようなケースでは無視できなくなります。
+
+- 並べ替えやフィルタリングの対象が数千件以上ある
+- 子コンポーネントが `React.memo` でラップされていて、propsの参照が変わると無駄に再レンダーされる
+- `useEffect` の依存配列に関数やオブジェクトが入っていて、毎回新しい参照が作られることでエフェクトが意図せず再実行される
+
+---
+
+## useMemo — 計算結果のメモ化
+
+`useMemo` は、依存配列の値が変わらない限り前回の計算結果を使い回すフックです。
+
+```tsx
+import { useMemo } from 'react';
+
+function UserList({ users }: { users: User[] }) {
+  const sorted = useMemo(
+    () => users.slice().sort((a, b) => a.name.localeCompare(b.name)),
+    [users], // usersが変わったときだけ再計算する
+  );
+
+  return (
+    <ul>
+      {sorted.map((u) => (
+        <li key={u.id}>{u.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`useMemo` に渡すのは「値を返す関数」と「依存配列」です。
+依存配列の中身が前回と同じなら関数は実行されず、キャッシュされた前回の戻り値がそのまま返ります。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef check fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef skip fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef run fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A[再レンダー発生] --> B{"依存配列の値は\n前回と同じ？"}
+    B -->|同じ| C["前回の計算結果を\nそのまま返す"]
+    B -->|変わった| D["関数を実行して\n新しい結果を返す"]
+    D --> E[結果をキャッシュ]
+
+    class A,B check
+    class C skip
+    class D,E run
+
+`}
+/>
+
+### useEffectとの違い
+
+`useMemo` と `useEffect` はどちらも依存配列を持ち、「値が変わったら何かする」という判定の仕組みは同じです。
+しかし「何をするか」と「いつやるか」がまったく異なります。
+
+`useMemo` はレンダー中に同期的に値を計算して返します。
+コンポーネント関数の実行中に「この値が今すぐ必要だから計算する。ただし依存が前回と同じならキャッシュを返す」という動きです。
+
+`useEffect` はレンダーが終わってDOMに反映されたあとに実行されます。
+値を返すためのものではなく、外部との同期（API呼び出し、タイマー設定など）のためのものです。
+
+```tsx
+function Example({ userId }: { userId: string }) {
+  // useMemo — レンダー中に計算される。結果はすぐ使える。
+  const displayName = useMemo(() => {
+    return computeExpensiveName(userId);
+  }, [userId]);
+
+  // useEffect — レンダー後に走る。結果が届くのは次の再レンダー以降。
+  useEffect(() => {
+    fetchUserProfile(userId).then(setProfile);
+  }, [userId]);
+
+  return <p>{displayName}</p>;
+}
+```
+
+判断基準はシンプルで、レンダー中に値が欲しいなら `useMemo`、レンダー後に外部と何かやりとりしたいなら `useEffect` です。
+
+---
+
+## useCallback — 関数のメモ化
+
+`useCallback` は、依存配列の値が変わらない限り同じ関数オブジェクトを使い回すフックです。
+
+```tsx
+import { useCallback } from 'react';
+
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = useCallback(() => {
+    console.log('clicked');
+  }, []); // 依存する値がないので、常に同じ関数オブジェクトが返る
+
+  return <Child onClick={handleClick} />;
+}
+```
+
+実は `useCallback` は `useMemo` の特殊ケースです。
+関数を返す `useMemo` と全く同じ動きをします。
+
+```tsx
+// この2つは同じ意味
+const handleClick = useCallback(() => {
+  /* ... */
+}, [deps]);
+const handleClick = useMemo(
+  () => () => {
+    /* ... */
+  },
+  [deps],
+);
+```
+
+`useCallback` は「関数をメモ化する」という意図が読み取りやすいので、関数をメモ化したいときはこちらを使います。
+
+---
+
+## useCallbackが意味を持つ場面
+
+`useCallback` 単体では、ほとんどの場合パフォーマンスに影響しません。
+関数オブジェクトの生成コスト自体はごく小さいからです。
+
+`useCallback` が意味を持つのは、渡した先で参照の同一性が重要になる場合です。
+
+### React.memoと組み合わせる
+
+`React.memo` でラップされた子コンポーネントは、propsが前回と同じなら再レンダーをスキップします。
+しかし、親が再レンダーされるたびに新しい関数オブジェクトがpropsとして渡されると、
+子は「propsが変わった」と判断して毎回再レンダーされてしまいます。
+
+```tsx
+// React.memoでラップ → propsが同じなら再レンダーをスキップ
+const ExpensiveChild = React.memo(function ExpensiveChild({ onClick }: { onClick: () => void }) {
+  // 重い描画処理...
+  return <button onClick={onClick}>実行</button>;
+});
+
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  // useCallbackなし → 毎回新しい関数 → ExpensiveChildも毎回再レンダー
+  // useCallbackあり → 同じ関数 → ExpensiveChildの再レンダーをスキップ
+  const handleClick = useCallback(() => {
+    console.log('clicked');
+  }, []);
+
+  return (
+    <div>
+      <p>{count}</p>
+      <button onClick={() => setCount((c) => c + 1)}>+1</button>
+      <ExpensiveChild onClick={handleClick} />
+    </div>
+  );
+}
+```
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef parent fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef memo fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef skip fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef rerender fill:#ef4444,color:#fff,stroke:#b91c1c
+
+    P["Parent が再レンダー"] --> F{"onClick は\n前回と同じ？"}
+    F -->|"useCallback あり\n同じ参照"| S["ExpensiveChild\nスキップ"]
+    F -->|"useCallback なし\n新しい参照"| R["ExpensiveChild\n再レンダー"]
+
+    class P parent
+    class F memo
+    class S skip
+    class R rerender
+
+`}
+/>
+
+### useEffectの依存配列に関数を含める場合
+
+`useEffect` の依存配列に関数を入れるとき、その関数が毎回新しく生成されるとエフェクトが毎回再実行されます。
+`useCallback` で関数の参照を安定させることで、意図しないエフェクトの再実行を防げます。
+
+---
+
+## 使うべきか迷ったときの判断基準
+
+`useMemo` と `useCallback` はあくまで最適化の手段であり、正しさのためのものではありません。
+これらがなくてもアプリは正しく動きます。
+
+**使う場面**
+
+- 計算が明らかに重い（大量データのソート、フィルタリング、集計など）
+- `React.memo` された子コンポーネントにpropsとして渡す値や関数
+- `useEffect` の依存配列に含まれるオブジェクトや関数の参照を安定させたい
+
+**使わなくてよい場面**
+
+- 単純な計算（四則演算、文字列結合、短い配列の操作など）
+- `React.memo` されていない子コンポーネントへのprops（メモ化しても子は結局再レンダーされる）
+- コンポーネント内で完結する関数（子に渡さない、依存配列にも入れない）
+
+迷ったら「まずメモ化なしで書く → 実際に遅いと感じたら計測してボトルネックを特定 → 必要な箇所にだけ入れる」の順序で進めてください。
+最初からすべてをメモ化するのは、コードの複雑さが増す割に効果が薄いことがほとんどです。
+
+---
+
+## まとめ
+
+`useMemo` は計算結果を、`useCallback` は関数オブジェクトをメモ化します。
+どちらも依存配列の値が変わらない限り前回の値を使い回す仕組みで、本質的には同じものです。
+
+これらは正しさではなくパフォーマンスのためのHooksなので、
+「計測して遅い → 原因を特定 → メモ化で解決」という順序を守ることが大事です。

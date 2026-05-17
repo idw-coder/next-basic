@@ -1,0 +1,104 @@
+---
+title: 'JSXとコンポーネント — propsで部品をつなぐ'
+description: 'JSXのルール、式の埋め込み、関数コンポーネントとpropsのパターンを、短いコード例でなぞります。'
+order: 2
+---
+
+JSXは、JavaScriptの構文拡張であり、**見た目に近い形でUIツリーを書ける記法**です。
+ビルド時に `React.createElement` 呼び出しへ変換され、ブラウザが理解できる形になります。
+
+## JSXのルール
+
+**1つのルート要素で返す**
+
+隣接した要素をそのまま並べて返すことはできません。親要素で包むか、React Fragment `<></>` を使います。
+
+```tsx
+// NG
+return (
+  <h2>タイトル</h2>
+  <p>本文</p>
+);
+
+// OK
+return (
+  <>
+    <h2>タイトル</h2>
+    <p>本文</p>
+  </>
+);
+```
+
+**HTMLとの属性名の違い**
+
+JSXはJavaScriptなので、HTMLの予約語と衝突する属性名が変わっています。
+`class` → `className`、`for` → `htmlFor` が代表的です。
+イベント属性もキャメルケースになります（`onclick` → `onClick`）。
+
+**波括弧でJavaScript式を埋め込む**
+
+`{}` の中にはJavaScriptの式を書けます。変数、関数呼び出し、三項演算子など、値を返すものなら何でも入ります。
+
+```tsx
+type User = { name: string };
+
+function Welcome({ name }: User) {
+  return (
+    <section className="stack">
+      <h2>ようこそ</h2>
+      <p>{name} さん</p>
+    </section>
+  );
+}
+```
+
+## propsで部品を再利用する
+
+コンポーネントは**入力としてpropsオブジェクト**を受け取ります。
+親が子へ値や関数を渡し、子はそれを使って表示やイベント処理を行います。
+
+よくあるpropsの種類として、表示用のデータ（ラベル、数値、画像URLなど）、見た目のバリアント（`"primary" | "ghost"` のような列挙でクラスを切り替える）、コールバック（ボタンが押されたときに親へ通知する `onClick` など）があります。
+
+propsは**子から親へ直接書き換えない**のが原則です。
+変更が必要なら、親がstateを持ち、イベントでstateを更新して再度子へ流し込みます。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef parent fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef child fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef flow fill:#f8fafc,color:#1e293b,stroke:#cbd5e1
+
+    P["親コンポーネント\n（stateを持つ）"] -->|"props: データを渡す"| C[子コンポーネント]
+    C -->|"コールバック: イベントを通知"| P
+
+    class P parent
+    class C child
+
+`}
+/>
+
+## childrenスロット
+
+タグの内側に書いた内容は、特別なprop **`children`** として渡せます。
+レイアウト用のラッパーやカード枠など、「外枠は固定だが中身は呼び出し側が決める」パターンでよく使います。
+
+```tsx
+function Card(props: { title: string; children: React.ReactNode }) {
+  return (
+    <article className="card">
+      <h3>{props.title}</h3>
+      <div>{props.children}</div>
+    </article>
+  );
+}
+
+// 使う側
+<Card title="お知らせ">
+  <p>明日は休業日です。</p>
+</Card>;
+```
+
+---
+
+次の章では、画面内で変化するデータを扱う **`useState` と `useEffect`（Hooks）** に入ります。
