@@ -1,14 +1,30 @@
 ---
-title: 'useMemoとuseCallback — 不要な再計算・再生成を防ぐ'
-description: 'メモ化の基本的な考え方と、useMemo・useCallbackの使いどころ・使いすぎの判断基準を整理します。'
+title: '再レンダーを起こさないHooks — useRef・useMemo・useCallback'
+description: 'useRefで再レンダーなしに値を保持する方法と、useMemo・useCallbackによるメモ化の使いどころを整理します。'
 order: 4
 ---
 
-前章で扱った `useState` や `useEffect` とは役割が異なり、
-`useMemo` と `useCallback` は **パフォーマンス最適化** のためのHooksです。
+前章の `useState` は値を更新すると再レンダーが走るフックでした。
+この章で扱う `useRef`・`useMemo`・`useCallback` は、いずれも **再レンダーを引き起こさない** フックです。
 
-この章では、なぜこれらが必要になるのかを再レンダーの仕組みから理解し、
-使うべき場面と使わなくてよい場面の判断基準を身につけます。
+それぞれ目的が違うので、まず全体像を示します。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef state fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef ref fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef memo fill:#f59e0b,color:#fff,stroke:#d97706
+
+    S["useState\n値を保持\n更新で再レンダー"] ~~~ R["useRef\n値を保持\n更新しても再レンダーしない"]
+    R ~~~ M["useMemo / useCallback\n計算結果・関数をキャッシュ\n依存が変わったときだけ再計算"]
+
+    class S state
+    class R ref
+    class M memo
+
+`}
+/>
 
 ---
 
@@ -27,6 +43,10 @@ function UserList({ users }: { users: User[] }) {
     console.log(id);
   };
 
+  // 再レンダーのたびに、この変数は0にリセットされる
+  let renderCount = 0;
+  renderCount++; // 常に1
+
   return (
     <ul>
       {sorted.map((u) => (
@@ -39,13 +59,111 @@ function UserList({ users }: { users: User[] }) {
 }
 ```
 
-多くの場合これは問題になりません。JavaScriptの実行は十分に速く、小さな計算や関数の再生成は気にならないからです。
+ローカル変数は毎回消えて作り直される。計算も毎回やり直される。関数オブジェクトも毎回新しく生まれる。
+この3つの問題に対して、それぞれ `useRef`・`useMemo`・`useCallback` が解決策を提供します。
 
-しかし、次のようなケースでは無視できなくなります。
+---
 
-- 並べ替えやフィルタリングの対象が数千件以上ある
-- 子コンポーネントが `React.memo` でラップされていて、propsの参照が変わると無駄に再レンダーされる
-- `useEffect` の依存配列に関数やオブジェクトが入っていて、毎回新しい参照が作られることでエフェクトが意図せず再実行される
+## useRef — 再レンダーせずに値を保持する
+
+`useRef` は、再レンダーをまたいで値を保持するが、値を変えても再レンダーを引き起こさないフックです。
+
+`useState` との違いを比較するとわかりやすいです。
+
+```tsx
+const [count, setCount] = useState(0);
+// setCount(1) → stateが変わる → 再レンダーが走る → UIが更新される
+
+const countRef = useRef(0);
+// countRef.current = 1 → 値は変わる → 再レンダーは走らない → UIはそのまま
+```
+
+`useRef` は `.current` プロパティを持つオブジェクトを返します。
+`.current` を直接書き換えられますが、Reactはその変更を監視していないので再レンダーは起きません。
+
+### いつuseStateではなくuseRefを使うのか
+
+判断基準は「その値がUIの表示に影響するかどうか」です。
+
+画面に表示する値なら `useState` を使います。値が変わったときに画面を更新してほしいからです。
+画面には表示しないが裏側で覚えておきたい値なら `useRef` を使います。再レンダーのコストが不要だからです。
+
+### 典型的な使い方
+
+**DOM要素への参照**
+
+最もよく使うパターンです。JSXの `ref` 属性に渡すと、Reactがマウント時にそのDOM要素を `.current` に入れてくれます。
+
+```tsx
+function TextInput() {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleClick = () => {
+    // DOM要素に直接アクセスできる
+    inputRef.current?.focus();
+  };
+
+  return (
+    <>
+      <input ref={inputRef} />
+      <button onClick={handleClick}>フォーカスする</button>
+    </>
+  );
+}
+```
+
+**前回の値を覚えておく**
+
+```tsx
+function Counter() {
+  const [count, setCount] = useState(0);
+  const prevCountRef = useRef(0);
+
+  useEffect(() => {
+    prevCountRef.current = count; // レンダー後に前回の値を保存
+  });
+
+  return (
+    <p>
+      現在 {count}（前回 {prevCountRef.current}）
+    </p>
+  );
+}
+```
+
+**タイマーIDの保持**
+
+03章のuseEffectで見たタイマーのIDも、コンポーネントの外から参照したい場合は `useRef` で保持します。
+
+```tsx
+function StopWatch() {
+  const [seconds, setSeconds] = useState(0);
+  const intervalRef = useRef<number | null>(null);
+
+  const start = () => {
+    intervalRef.current = window.setInterval(() => {
+      setSeconds((s) => s + 1);
+    }, 1000);
+  };
+
+  const stop = () => {
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+    }
+  };
+
+  return (
+    <div>
+      <p>{seconds}秒</p>
+      <button onClick={start}>開始</button>
+      <button onClick={stop}>停止</button>
+    </div>
+  );
+}
+```
+
+タイマーIDは画面に表示しないので `useState` ではなく `useRef` が適切です。
+もし `useState` で持つと、IDが変わるたびに不要な再レンダーが発生します。
 
 ---
 
@@ -122,6 +240,21 @@ function Example({ userId }: { userId: string }) {
 ```
 
 判断基準はシンプルで、レンダー中に値が欲しいなら `useMemo`、レンダー後に外部と何かやりとりしたいなら `useEffect` です。
+
+### useRefとの違い
+
+`useRef` も `useMemo` も再レンダーを起こさずに値を保持しますが、用途が違います。
+
+`useRef` は値をそのまま保持し続けます。自分で `.current` を書き換えるまで変わりません。
+`useMemo` は依存配列が変わったら自動的に再計算します。「派生データ」（元のデータから計算で得られるデータ）のキャッシュに向いています。
+
+```tsx
+// useRef — 自分で書き換えるまでずっと同じ値
+const timerIdRef = useRef<number | null>(null);
+
+// useMemo — usersが変わったら自動的にソートし直す
+const sorted = useMemo(() => sortUsers(users), [users]);
+```
 
 ---
 
@@ -253,8 +386,9 @@ flowchart LR
 
 ## まとめ
 
-`useMemo` は計算結果を、`useCallback` は関数オブジェクトをメモ化します。
-どちらも依存配列の値が変わらない限り前回の値を使い回す仕組みで、本質的には同じものです。
+`useRef` は再レンダーなしに値を保持する手段で、DOM参照やタイマーIDなどUIに直接表示しないデータに使います。
+`useMemo` は計算結果を、`useCallback` は関数オブジェクトをメモ化し、依存配列が変わらない限り前回の値を使い回します。
 
-これらは正しさではなくパフォーマンスのためのHooksなので、
-「計測して遅い → 原因を特定 → メモ化で解決」という順序を守ることが大事です。
+3つに共通するのは「再レンダーを引き起こさない」という性質です。
+`useState` が「変更 → 再レンダー → UI更新」のサイクルを回すフックなのに対し、
+この章のフックはそのサイクルの外側で値を管理するためのものです。
