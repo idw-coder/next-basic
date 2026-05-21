@@ -1,0 +1,248 @@
+---
+title: '依存配列を正しく書く — exhaustive-depsの読み方'
+description: 'ESLintのexhaustive-depsルールが何をチェックしているか、警告を無視するとどうなるか（stale closure）、正しい対処法を具体例で解説します。'
+order: 6
+---
+
+前章で依存配列の基本を学びました。
+この章では、実務で最もハマりやすい **「依存配列に何を入れるべきか」** を深掘りします。
+
+ESLintの `react-hooks/exhaustive-deps` ルールが何をチェックし、なぜ警告が出るのか、そして警告を無視するとどうなるのかを理解すれば、依存配列で迷うことは大幅に減ります。
+
+---
+
+## exhaustive-depsルールとは
+
+ESLintプラグイン `eslint-plugin-react-hooks` に含まれるルールで、`useEffect`・`useMemo`・`useCallback` の依存配列を自動チェックします。
+
+チェックしていることは単純です。「コールバック関数の中で参照している変数が、依存配列に含まれているか」を見ています。
+
+```tsx
+const [count, setCount] = useState(0);
+const [name, setName] = useState('Alice');
+
+// 警告: React Hook useEffect has a missing dependency: 'name'
+useEffect(() => {
+  console.log(`${name} のカウント: ${count}`);
+}, [count]); // nameが抜けている
+```
+
+エフェクト内で `count` と `name` の両方を使っているのに、依存配列には `count` しか入っていません。ESLintはこれを「`name` が抜けている」と警告します。
+
+---
+
+## 警告を無視するとどうなるか — stale closure
+
+依存配列から変数を省くと、エフェクトは「古い値を掴んだまま」動き続けます。これを **stale closure（古いクロージャ）** と呼びます。
+
+### 具体例
+
+```tsx
+function ChatRoom({ roomId }: { roomId: string }) {
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const connection = createConnection(roomId);
+    connection.on('message', (msg) => {
+      // この message は、エフェクトが実行された時点の値で固定される
+      console.log(`[${roomId}] 受信: ${msg}, 入力中: ${message}`);
+    });
+    connection.connect();
+
+    return () => connection.disconnect();
+  }, [roomId]); // ← messageが依存配列に入っていない
+
+  return <input value={message} onChange={(e) => setMessage(e.target.value)} />;
+}
+```
+
+`message` をエフェクト内で使っているのに依存配列に入れていません。エフェクトが実行された時点の `message` の値（初期値の `''`）がクロージャに閉じ込められ、その後 `message` が変わっても、エフェクト内ではずっと空文字のままです。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef capture fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef stale fill:#ef4444,color:#fff,stroke:#b91c1c
+    classDef correct fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["エフェクト実行時\nmessage = ''"] --> B["クロージャが '' を捕捉"]
+    B --> C["ユーザーが入力\nmessage = 'hello'"]
+    C --> D{"messageは\n依存配列に入っている？"}
+    D -->|いいえ| E["エフェクト再実行されない\nmessageは '' のまま"]
+    D -->|はい| F["エフェクト再実行\n新しい 'hello' を捕捉"]
+
+    class A,B capture
+    class E stale
+    class F correct
+
+`}
+/>
+
+### クロージャとは何か
+
+JavaScriptの関数は、定義された時点の外側の変数を記憶しています。これがクロージャです。
+
+```tsx
+function createCounter() {
+  let count = 0;
+  return () => {
+    count++;
+    return count;
+  };
+}
+
+const counter = createCounter();
+counter(); // 1
+counter(); // 2 — 関数が count を覚えている
+```
+
+`useEffect` のコールバックも同じ仕組みです。コールバック関数は、定義された時点のstate・propsを記憶しています。依存配列が変わらない限りコールバックは再生成されないので、古い値を掴んだままになります。
+
+---
+
+## 警告が出るケース
+
+### コンポーネント内で定義した変数・関数
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  // コンポーネント内で定義した関数
+  const fetchResults = () => {
+    return fetch(`/api/search?q=${query}`);
+  };
+
+  // 警告: 'fetchResults' が依存配列に入っていない
+  useEffect(() => {
+    fetchResults().then(/* ... */);
+  }, [query]); // fetchResultsも入れるべき？
+}
+```
+
+`fetchResults` はレンダーのたびに新しい関数オブジェクトとして生成されます。依存配列に入れると毎回エフェクトが再実行されてしまいます。
+
+この場合の正しい対処は、関数を依存配列に追加することではなく、**コードの構造を変える**ことです。
+
+---
+
+## 正しい対処法 — 依存を減らすようにコードを変える
+
+「依存配列からこの変数を外したい」と思ったとき、正しいアプローチは「依存配列を手で書き換える」ことではなく、「エフェクトがその変数に依存しないようにコードを変える」ことです。
+
+### 対処1: 関数をエフェクトの中に移動する
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  useEffect(() => {
+    // 関数をエフェクト内で定義すれば、依存配列に入れる必要がない
+    const fetchResults = () => {
+      return fetch(`/api/search?q=${query}`);
+    };
+
+    fetchResults().then(/* ... */);
+  }, [query]); // queryだけ依存すればよい
+}
+```
+
+エフェクト内でしか使わない関数は、エフェクト内で定義するのが最もシンプルです。
+
+### 対処2: updater functionで前のstateを参照する
+
+```tsx
+// NG — countを依存配列に入れると毎カウントでエフェクト再実行
+useEffect(() => {
+  const id = setInterval(() => {
+    setCount(count + 1); // countに依存
+  }, 1000);
+  return () => clearInterval(id);
+}, [count]); // カウントが変わるたびにタイマーを作り直す
+
+// OK — updater functionで前のstateを参照する
+useEffect(() => {
+  const id = setInterval(() => {
+    setCount((prev) => prev + 1); // countに依存しない
+  }, 1000);
+  return () => clearInterval(id);
+}, []); // 依存配列が空 → タイマーは1回だけ作られる
+```
+
+`setCount(count + 1)` はクロージャ経由で `count` を参照するため依存配列に入れる必要がありますが、`setCount((prev) => prev + 1)` はReactが最新値を渡してくれるので、`count` への依存がなくなります。
+
+### 対処3: useCallbackで関数の参照を安定させる
+
+エフェクトの外で定義した関数をエフェクト内で使いたい場合（他の場所でも使っている場合など）は、`useCallback` で関数をメモ化して参照を安定させます。
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  // useCallbackで関数の参照を安定させる
+  const fetchResults = useCallback(() => {
+    return fetch(`/api/search?q=${query}`);
+  }, [query]);
+
+  useEffect(() => {
+    fetchResults().then(/* ... */);
+  }, [fetchResults]); // fetchResultsはqueryが変わったときだけ新しくなる
+}
+```
+
+`useCallback` については08章で詳しく扱います。
+
+---
+
+## オブジェクトや関数が依存配列に入るとエフェクトが毎回走る
+
+03章で学んだ「参照比較」の問題が、依存配列でも出てきます。
+
+```tsx
+function UserList({ filters }: { filters: { status: string } }) {
+  // このオブジェクトはレンダーのたびに新しく生成される
+  const params = { status: filters.status, limit: 10 };
+
+  useEffect(() => {
+    fetchUsers(params).then(setUsers);
+  }, [params]); // 毎回新しいオブジェクト → 毎回エフェクト実行
+}
+```
+
+`params` は毎レンダーで新しいオブジェクトが作られます。中身が同じでも参照が異なるので、Reactは「変わった」と判断し、エフェクトが毎回再実行されます。
+
+対処法はいくつかあります。
+
+```tsx
+// 対処A: プリミティブ値を直接依存配列に入れる
+useEffect(() => {
+  fetchUsers({ status: filters.status, limit: 10 }).then(setUsers);
+}, [filters.status]); // 文字列なので値で比較される
+
+// 対処B: useMemoでオブジェクトをメモ化する
+const params = useMemo(() => ({ status: filters.status, limit: 10 }), [filters.status]);
+useEffect(() => {
+  fetchUsers(params).then(setUsers);
+}, [params]);
+```
+
+対処Aの方がシンプルで、可能な限りこちらを選んでください。対処Bはオブジェクトの構造がエフェクト外でも必要な場合に使います。
+
+---
+
+## eslint-disable は最終手段
+
+```tsx
+// eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
+  // ...
+}, []);
+```
+
+`eslint-disable` でルールを無効化することは可能ですが、これは「stale closureのリスクを理解した上で意図的に無視する」という宣言です。初学者が「警告がうるさいから消す」目的で使うのは避けてください。
+
+まず上記の対処法（関数をエフェクト内に移動、updater function、useCallback、プリミティブ値の依存）を試し、どれでも解決できない特殊なケースでのみ検討してください。
+
+---
+
+## まとめ
+
+ESLintの `exhaustive-deps` ルールは、エフェクト内で使っている変数が依存配列に漏れなく入っているかをチェックします。
+
+警告を無視すると、古い値を掴んだままのstale closureが生まれ、バグの原因になります。
+
+警告への正しい対処は「依存配列を手で削る」ことではなく、「エフェクトがその変数に依存しないようにコードの構造を変える」ことです。関数をエフェクト内に移す、updater functionを使う、プリミティブ値で依存する、useCallbackで参照を安定させる、といった手段があります。

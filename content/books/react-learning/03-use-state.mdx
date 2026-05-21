@@ -1,0 +1,274 @@
+---
+title: 'useState — stateの仕組みと参照の罠'
+description: 'useStateの基本から、オブジェクトや配列をstateに持つときのイミュータブル更新、複数stateの設計判断までを整理します。'
+order: 3
+---
+
+前章までで、JSX・コンポーネント・propsというReactの骨格を見てきました。
+この章からはHooksに入ります。最初に扱うのは、もっとも頻繁に使う `useState` です。
+
+---
+
+## UIはstateの関数
+
+Reactの根本的な考え方は `UI = f(state)` です。
+stateが変われば自動的にUIが更新される。DOMを直接操作するのではなく、stateを変えることで間接的にUIを制御します。
+
+コンポーネントが扱うデータにはpropsとstateの2種類があります。
+
+propsは親コンポーネントから渡される読み取り専用のデータで、関数の引数に相当します。
+一方stateはコンポーネント自身が管理・変更できるデータで、変更するとそのコンポーネントが再レンダリングされます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef parent fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef child fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef data fill:#f8fafc,color:#1e293b,stroke:#cbd5e1
+
+    P[親コンポーネント] -->|props を渡す| C[子コンポーネント]
+    C -->|自身で管理| S[state]
+    S -->|変更されると| R[再レンダー → UI更新]
+
+    class P parent
+    class C child
+    class S,R data
+
+`}
+/>
+
+---
+
+## useStateの基本
+
+`useState` は、コンポーネントに状態変数を追加するフックです。
+値を更新するとReactが再レンダーをスケジュールし、新しい値に基づいてUIが再計算されます。
+
+```tsx
+import { useState } from 'react';
+
+export function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button type="button" onClick={() => setCount((c) => c + 1)}>
+      カウント {count}
+    </button>
+  );
+}
+```
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef action fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef react fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef result fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A[ユーザーがボタンをクリック] --> B["setCount(c => c + 1) を呼ぶ"]
+    B --> C[Reactが新しいstateを保存]
+    C --> D[コンポーネント関数を再実行]
+    D --> E["useState が新しい count を返す"]
+    E --> F[新しいUIをDOMに反映]
+
+    class A action
+    class B,C,D,E react
+    class F result
+
+`}
+/>
+
+---
+
+## stateの正体 — 関数が値を覚えられる理由
+
+普通の関数は呼び出しが終わればローカル変数は消えます。
+しかし `useState` で管理した値は、関数が再実行されても前回の値を引き継げます。
+
+これは、stateがコンポーネント関数自体に保持されているわけではないからです。
+実態はReactのランタイムが内部のデータ構造（Fiberツリー）にstateを保管しており、`useState` はその保管場所へのアクセス手段です。
+
+<Callout type="column">
+### Fiberツリーのイメージ
+
+Reactはコンポーネントツリーに対応するFiberノードのツリーを内部に持っています。
+各Fiberノードが、そのコンポーネントのstateやエフェクトの情報を保管します。
+
+`useState(0)` と書いたとき、Reactは「このコンポーネントの1番目のstateフック」として値を保管場所に記録します。
+次の再レンダーで同じ `useState` が呼ばれると、保管場所から前回の値を取り出して返します。
+
+これがHooksのルール「フックはコンポーネントのトップレベルでのみ呼ぶ」の理由です。
+条件分岐やループの中で呼ぶと、呼び出し順序がずれて保管場所との対応が壊れます。
+
+</Callout>
+
+---
+
+## set関数への値の渡し方
+
+### 次のstateを直接渡す
+
+```tsx
+setCount(count + 1);
+```
+
+シンプルだが、同一レンダー内で複数回呼ぶと `count` が古い値を参照する場合があります。
+
+```tsx
+function handleTripleClick() {
+  setCount(count + 1); // count = 0 → 1
+  setCount(count + 1); // count = 0 → 1（同じレンダーなのでcountはまだ0）
+  setCount(count + 1); // count = 0 → 1（同上）
+  // 結果: 1回しか増えない
+}
+```
+
+### 更新用関数（updater function）を渡す
+
+```tsx
+setCount((prev) => prev + 1);
+```
+
+`setCount` に関数を渡すと、Reactがその関数を呼び出すときに「現在のstateの値」を第1引数として自動的に渡してくれます。
+`prev` の中身はReactが入れてくれるもので、自分が書くのは「前の値をもらったら何を返すか」のロジックだけです。
+
+```tsx
+function handleTripleClick() {
+  setCount((prev) => prev + 1); // 0 → 1
+  setCount((prev) => prev + 1); // 1 → 2
+  setCount((prev) => prev + 1); // 2 → 3
+  // 結果: 3回増える
+}
+```
+
+迷ったらupdater functionを使えば安全です。
+
+---
+
+## オブジェクトや配列のstateと参照の罠
+
+数値や文字列のstateは問題なく更新できたのに、オブジェクトや配列にすると動かない、というケースがあります。
+原因はJavaScriptの「参照」の仕組みにあります。
+
+### 参照比較の仕組み
+
+JavaScriptでは、数値や文字列は値そのものが比較されますが、オブジェクトや配列は「メモリ上のどこにあるか（参照）」で比較されます。
+
+```tsx
+// 数値の比較 → 値が同じなら等しい
+1 === 1; // true
+
+// オブジェクトの比較 → 同じ参照でないと等しくない
+const a = { name: 'Alice' };
+const b = { name: 'Alice' };
+a === b; // false（中身は同じだが、別のオブジェクト）
+```
+
+Reactのset関数は、渡された値が前回と同じかどうかを `Object.is`（ほぼ `===` と同じ）で判定します。
+オブジェクトのプロパティを書き換えても、オブジェクト自体は同じ参照のままなので、Reactは「変わっていない」と判断して再レンダーをスキップします。
+
+### オブジェクトのstateを更新する
+
+```tsx
+const [user, setUser] = useState({ name: 'Alice', age: 25 });
+
+// NG — プロパティを書き換えても参照は同じ
+user.name = 'Bob';
+setUser(user); // Reactは変化を検知しない
+
+// OK — スプレッド構文で新しいオブジェクトを作る
+setUser({ ...user, name: 'Bob' });
+```
+
+`{ ...user, name: 'Bob' }` は「`user` のすべてのプロパティをコピーした新しいオブジェクトを作り、`name` だけ上書きする」という意味です。新しいオブジェクトなので参照が変わり、Reactは変化を検知します。
+
+### 配列のstateを更新する
+
+配列も同様です。`push` や `splice` は元の配列を変更する（ミューテーション）ので、参照が変わりません。
+
+```tsx
+const [items, setItems] = useState(['React', 'Next.js']);
+
+// NG — pushは元の配列を変更するだけ
+items.push('Remix');
+setItems(items);
+
+// OK — スプレッド構文で新しい配列を作る
+setItems([...items, 'Remix']);
+```
+
+配列操作ごとに使うべきメソッドが異なります。
+
+追加には `[...items, newItem]`、削除には `items.filter(item => item.id !== targetId)`、変更には `items.map(item => item.id === targetId ? { ...item, done: true } : item)` を使います。いずれも元の配列を変更せず、新しい配列を返すメソッドです。
+
+### ネストしたオブジェクトの更新
+
+ネストが深いと、スプレッド構文が冗長になります。
+
+```tsx
+const [form, setForm] = useState({
+  name: 'Alice',
+  address: {
+    city: 'Tokyo',
+    zip: '100-0001',
+  },
+});
+
+// cityだけ変更する
+setForm({
+  ...form,
+  address: {
+    ...form.address,
+    city: 'Osaka',
+  },
+});
+```
+
+ネストが3階層以上になるとコードが読みにくくなります。その場合はstateの構造をフラットにするか、Immerなどのライブラリを検討してください。
+
+---
+
+## 複数のstateを分けるか、1つにまとめるか
+
+コンポーネントが複数の値を管理する場合、分け方には2つのアプローチがあります。
+
+```tsx
+// 分ける — それぞれ独立して更新する場合に向く
+const [name, setName] = useState('');
+const [age, setAge] = useState(0);
+const [isEditing, setIsEditing] = useState(false);
+
+// まとめる — 常にセットで更新する場合に向く
+const [form, setForm] = useState({ name: '', age: 0 });
+```
+
+判断基準はシンプルで、「その値は常に一緒に更新されるか」です。
+一緒に更新されるなら1つのオブジェクトにまとめた方が、set関数の呼び出しが1回で済み、更新漏れも防げます。
+独立して更新されるなら分けた方が、イミュータブル更新が楽で、コードも読みやすくなります。
+
+---
+
+## stateの設計が複雑になったら — useReducerの存在
+
+stateの更新パターンが増えてきたら（追加・削除・編集・リセットなど）、`useReducer` という選択肢があります。
+
+```tsx
+// useReducerのイメージ（詳細は別途）
+const [state, dispatch] = useReducer(reducer, initialState);
+
+// 「何をするか」をdispatchで伝える
+dispatch({ type: 'ADD_ITEM', payload: newItem });
+dispatch({ type: 'DELETE_ITEM', payload: itemId });
+```
+
+`useReducer` は本書のスコープ外ですが、「stateの更新ロジックが複雑になったらuseReducerに切り出せる」ということだけ覚えておいてください。
+
+---
+
+## まとめ
+
+`useState` はUIに影響するローカル状態の置き場所です。stateが変わるとコンポーネントが再レンダーされ、UIが新しい値に基づいて再計算されます。
+
+stateの値はコンポーネント関数自体ではなくReactのFiberツリーに保管されるため、関数が再実行されても値を引き継げます。
+
+オブジェクトや配列をstateに持つ場合は、プロパティを直接変更するのではなく、スプレッド構文や `map`・`filter` で新しいオブジェクト・配列を作って渡す必要があります。Reactは参照の同一性で変化を判定するためです。

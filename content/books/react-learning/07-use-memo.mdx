@@ -1,0 +1,237 @@
+---
+title: 'useMemo — 計算結果のメモ化'
+description: 'useMemoの仕組みと、useEffect・useRefとの比較、使うべき場面と使わなくてよい場面の判断基準を整理します。'
+order: 7
+---
+
+`useMemo` は、**依存配列の値が変わらない限り前回の計算結果を使い回す**フックです。
+コンポーネントが再レンダーされても、依存する値が変わっていなければ重い計算をスキップできます。
+
+---
+
+## 前提 — 再レンダーのたびに何が起きるか
+
+Reactではstateが変わるとコンポーネント関数が再実行されます。
+関数が再実行されるということは、関数内のすべてのコードがもう一度走るということです。
+
+```tsx
+function UserList({ users }: { users: User[] }) {
+  // 再レンダーのたびに、このソート処理が毎回走る
+  const sorted = users.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <ul>
+      {sorted.map((u) => (
+        <li key={u.id}>{u.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+ユーザーが10人程度なら毎回ソートしても問題ありません。しかし10,000人のソートを毎レンダーで走らせると、UIがもたつく原因になります。
+
+---
+
+## useMemoの基本
+
+```tsx
+import { useMemo } from 'react';
+
+function UserList({ users }: { users: User[] }) {
+  const sorted = useMemo(
+    () => users.slice().sort((a, b) => a.name.localeCompare(b.name)),
+    [users], // usersが変わったときだけ再計算する
+  );
+
+  return (
+    <ul>
+      {sorted.map((u) => (
+        <li key={u.id}>{u.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`useMemo` に渡すのは「値を返す関数」と「依存配列」です。
+依存配列の中身が前回と同じなら関数は実行されず、キャッシュされた前回の戻り値がそのまま返ります。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef check fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef skip fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef run fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A[再レンダー発生] --> B{"依存配列の値は\n前回と同じ？"}
+    B -->|同じ| C["前回の計算結果を\nそのまま返す"]
+    B -->|変わった| D["関数を実行して\n新しい結果を返す"]
+    D --> E[結果をキャッシュ]
+
+    class A,B check
+    class C skip
+    class D,E run
+
+`}
+/>
+
+---
+
+## useEffectとの比較
+
+`useMemo` と `useEffect` はどちらも依存配列を持ち、「値が変わったら何かする」という判定の仕組みは同じです。しかし「何をするか」と「いつやるか」がまったく異なります。
+
+### 実行タイミングの違い
+
+`useMemo` はレンダー中に同期的に実行されます。コンポーネント関数の実行中に「この値が今すぐ必要だから計算する。ただし依存が前回と同じならキャッシュを返す」という動きです。
+
+`useEffect` はレンダーが終わってDOMに反映されたあとに実行されます。値を返すためのものではなく、外部との同期のためのものです。
+
+```tsx
+function Example({ userId }: { userId: string }) {
+  // useMemo — レンダー中に同期的に計算。結果はすぐJSXで使える。
+  const displayName = useMemo(() => {
+    return computeExpensiveName(userId);
+  }, [userId]);
+
+  // useEffect — レンダー後に非同期で実行。結果が届くのは次の再レンダー以降。
+  useEffect(() => {
+    fetchUserProfile(userId).then(setProfile);
+  }, [userId]);
+
+  return <p>{displayName}</p>;
+}
+```
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef memo fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef effect fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef dom fill:#22c55e,color:#fff,stroke:#16a34a
+
+    subgraph "レンダーフェーズ"
+        A["コンポーネント関数実行"] --> B["useMemo 実行\n（同期的に値を返す）"]
+    end
+    subgraph "コミットフェーズ"
+        C["DOMに反映"]
+    end
+    subgraph "エフェクトフェーズ"
+        D["useEffect 実行\n（DOMに反映された後）"]
+    end
+    B --> C --> D
+
+    class A,B memo
+    class C dom
+    class D effect
+
+`}
+/>
+
+### 判断基準
+
+レンダー中に値が欲しいなら `useMemo`、レンダー後に外部と何かやりとりしたいなら `useEffect` です。
+
+---
+
+## useRefとの比較
+
+`useRef` も `useMemo` も再レンダーを起こさずに値を保持しますが、用途が違います。
+
+`useRef` は値をそのまま保持し続けます。自分で `.current` を書き換えるまで変わりません。
+`useMemo` は依存配列が変わったら自動的に再計算します。「派生データ」（元のデータから計算で得られるデータ）のキャッシュに向いています。
+
+```tsx
+// useRef — 自分で書き換えるまでずっと同じ値
+const timerIdRef = useRef<number | null>(null);
+
+// useMemo — usersが変わったら自動的にソートし直す
+const sorted = useMemo(() => sortUsers(users), [users]);
+```
+
+`useRef` は「値を保管するロッカー」、`useMemo` は「材料が変わったら自動で作り直してくれるキャッシュ」とイメージすると違いが掴みやすいです。
+
+---
+
+## useMemoで参照を安定させる
+
+06章で触れた「オブジェクトが依存配列に入るとエフェクトが毎回走る」問題を、`useMemo` で解決できます。
+
+```tsx
+function Dashboard({ filters }: { filters: { status: string } }) {
+  // useMemoなし → レンダーのたびに新しいオブジェクト
+  // → useEffectの依存配列が毎回「変わった」と判定される
+  const params = { status: filters.status, limit: 10 };
+
+  // useMemoあり → filters.statusが変わったときだけ新しいオブジェクト
+  const params = useMemo(() => ({ status: filters.status, limit: 10 }), [filters.status]);
+
+  useEffect(() => {
+    fetchData(params).then(setData);
+  }, [params]); // paramsの参照が安定する
+}
+```
+
+ただし、06章で述べたようにプリミティブ値を直接依存配列に入れる方がシンプルです。`useMemo` でオブジェクトの参照を安定させるのは、オブジェクト自体をエフェクト以外でも使う場合の選択肢です。
+
+---
+
+## 使うべきか迷ったときの判断基準
+
+`useMemo` はあくまで最適化の手段であり、正しさのためのものではありません。`useMemo` がなくてもアプリは正しく動きます。
+
+### 使う場面
+
+**計算が明らかに重い場合。** 大量データのソート、フィルタリング、集計、複雑な変換処理など。
+
+```tsx
+// 10,000件のデータをフィルタ + ソート → メモ化する価値がある
+const results = useMemo(() => {
+  return items
+    .filter((item) => item.category === selectedCategory)
+    .sort((a, b) => b.score - a.score);
+}, [items, selectedCategory]);
+```
+
+**オブジェクトや配列の参照を安定させたい場合。** `useEffect` の依存配列に入れるオブジェクト、`React.memo` された子コンポーネントに渡すpropsなど。
+
+### 使わなくてよい場面
+
+**単純な計算。** 四則演算、文字列結合、短い配列の操作などはメモ化のオーバーヘッドの方が大きい場合があります。
+
+```tsx
+// メモ化不要 — テンプレートリテラルの結合は一瞬で終わる
+const fullName = `${firstName} ${lastName}`;
+
+// メモ化不要 — 5件の配列のmapは十分高速
+const labels = items.map((item) => item.label);
+```
+
+**プリミティブ値を返す場合。** 数値や文字列は参照比較の問題がないので、参照安定化の目的では不要です。
+
+---
+
+## 「とりあえずuseMemo」が逆効果になるケース
+
+`useMemo` 自体にもコストがあります。依存配列の比較処理、前回の値の保管、そしてコードの可読性の低下です。
+
+計算コストが十分に低い場合、メモ化のオーバーヘッドが計算のやり直しより高くつくことがあります。
+
+```tsx
+// 過剰なメモ化 — 読みにくくなるだけで効果がない
+const greeting = useMemo(() => `こんにちは、${name}さん`, [name]);
+
+// そのまま書いた方がよい
+const greeting = `こんにちは、${name}さん`;
+```
+
+迷ったら「まずメモ化なしで書く → 実際に遅いと感じたら計測してボトルネックを特定 → 必要な箇所にだけ入れる」の順序で進めてください。
+
+---
+
+## まとめ
+
+`useMemo` は依存配列の値が変わらない限り前回の計算結果を使い回すフックです。レンダー中に同期的に実行される点が `useEffect` と異なり、依存が変わったら自動再計算される点が `useRef` と異なります。
+
+使うべき場面は「計算が明らかに重い」か「オブジェクトの参照を安定させたい」場合です。単純な計算やプリミティブ値にはメモ化は不要で、かえってコードが読みにくくなります。

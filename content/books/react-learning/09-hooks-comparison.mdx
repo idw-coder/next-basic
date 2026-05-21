@@ -1,0 +1,198 @@
+---
+title: 'Hooksの使い分け — 判断フローと横断比較'
+description: 'useState・useRef・useEffect・useMemo・useCallbackの5つを横断的に比較し、「どの場面でどのフックを使うか」の判断フローを整理します。'
+order: 9
+---
+
+ここまで5つのフックを個別に学んできました。
+この章では全体を俯瞰して、「この場面ではどのフックを使うべきか」を迷わず判断できるようにします。
+
+---
+
+## 5つのフックの横断比較
+
+各フックの性質を整理します。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef state fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef ref fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef effect fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef memo fill:#f59e0b,color:#fff,stroke:#d97706
+
+    subgraph "再レンダーを起こす"
+        S["useState\n状態の管理\n値の変更 → 再レンダー → UI更新"]
+    end
+    subgraph "再レンダーを起こさない"
+        R["useRef\n値の保持\n変更してもUIに影響しない"]
+        M["useMemo\n計算結果のキャッシュ\n依存が変わったら再計算"]
+        CB["useCallback\n関数のキャッシュ\n依存が変わったら再生成"]
+    end
+    subgraph "レンダー後に実行"
+        E["useEffect\n外部との同期\nDOM反映後に副作用を実行"]
+    end
+
+    class S state
+    class R ref
+    class M,CB memo
+    class E effect
+
+`}
+/>
+
+**useState** — UIに影響する値を管理する。値を変更すると再レンダーが走り、画面が更新される。
+
+**useRef** — UIに影響しない値を保持する。DOM参照、タイマーID、前回の値など。変更しても再レンダーは起きない。
+
+**useEffect** — レンダー後に外部と同期する。API呼び出し、購読、タイマーなど。クリーンアップ関数で後始末ができる。
+
+**useMemo** — 重い計算結果をキャッシュする。依存が変わらない限り前回の結果を返す。レンダー中に同期実行。
+
+**useCallback** — 関数オブジェクトをキャッシュする。useMemoの関数特化版。React.memoされた子コンポーネントへのpropsや、useEffectの依存配列で参照を安定させたいときに使う。
+
+---
+
+## 判断フローチャート
+
+「値を持ちたい」「処理を実行したい」「パフォーマンスを改善したい」という3つの出発点から、どのフックに辿り着くかを示します。
+
+### 値を持ちたい場合
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef question fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef answer fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef warn fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A["値を保持したい"] --> B{"その値は画面に\n表示されるか？"}
+    B -->|はい| C["useState を使う"]
+    B -->|いいえ| D{"他のデータから\n計算で導出できるか？"}
+    D -->|はい| E{"計算コストは\n高いか？"}
+    E -->|はい| F["useMemo を使う"]
+    E -->|いいえ| G["普通の変数で\nレンダー中に計算"]
+    D -->|いいえ| H["useRef を使う"]
+
+    class A,B,D,E question
+    class C,F,G,H answer
+
+`}
+/>
+
+### 処理を実行したい場合
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef question fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef answer fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["処理を実行したい"] --> B{"ユーザーの操作に\n対する応答か？"}
+    B -->|はい| C["イベントハンドラ\nに書く"]
+    B -->|いいえ| D{"レンダー結果として\n外部との同期が必要か？"}
+    D -->|はい| E["useEffect を使う"]
+    D -->|いいえ| F["そもそも\nエフェクトではない"]
+
+    class A,B,D question
+    class C,E,F answer
+
+`}
+/>
+
+### 子コンポーネントへの受け渡しを最適化したい場合
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef question fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef answer fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef warn fill:#ef4444,color:#fff,stroke:#b91c1c
+
+    A["子コンポーネントの\n不要な再レンダーを防ぎたい"] --> B{"子はReact.memoで\nラップされているか？"}
+    B -->|いいえ| C["まずReact.memoで\n子をラップする"]
+    C --> D{"渡しているpropsに\n関数があるか？"}
+    B -->|はい| D
+    D -->|はい| E["useCallback で\n関数をメモ化"]
+    D -->|いいえ| F{"渡しているpropsに\nオブジェクト/配列があるか？"}
+    F -->|はい| G["useMemo で\nオブジェクトをメモ化"]
+    F -->|いいえ| H["プリミティブ値だけなら\nReact.memoだけで十分"]
+
+    class A,B,D,F question
+    class C warn
+    class E,G,H answer
+
+`}
+/>
+
+---
+
+## よくある疑問
+
+### useMemoとuseCallbackはどう使い分ける？
+
+メモ化したい対象が「値」なら `useMemo`、「関数」なら `useCallback` です。`useCallback` は `useMemo` の関数特化版なので、`useMemo(() => () => { ... }, [deps])` と書けば `useCallback` と同じことができますが、意図の明確さから関数には `useCallback` を使います。
+
+### useRefとuseMemoの違いがわからない
+
+`useRef` は自分で `.current` を書き換えるまでずっと同じ値を持ち続けます。`useMemo` は依存配列が変わったら自動で再計算します。
+
+「タイマーIDを保持する」→ 自動再計算は不要 → `useRef`。
+「ユーザーリストをソートした結果を保持する」→ 元データが変わったら再計算 → `useMemo`。
+
+### useEffectとuseMemoは両方とも依存配列があるけど何が違う？
+
+実行タイミングが異なります。`useMemo` はレンダー中に同期的に実行され、すぐに値を返します。`useEffect` はレンダーが完了してDOMに反映された後に実行されます。
+
+「ソートした結果を今すぐJSXで使いたい」→ `useMemo`。
+「APIからデータを取得したい」→ `useEffect`。
+
+### useCallbackを使っているのにパフォーマンスが改善しない
+
+受け取る側の子コンポーネントが `React.memo` でラップされていない可能性が高いです。`useCallback` 単体では効果がなく、参照の安定性を活用する側（`React.memo`、`useEffect` の依存配列）があって初めて意味を持ちます。
+
+---
+
+## カスタムフックへの導線
+
+5つのフックを組み合わせた処理が複数のコンポーネントで重複するようになったら、**カスタムフック**として切り出せます。
+
+```tsx
+// useWindowSize — ウィンドウサイズを監視するカスタムフック
+function useWindowSize() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    handleResize(); // 初期値を設定
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return size;
+}
+
+// 使う側
+function Header() {
+  const { width } = useWindowSize();
+  return <header>{width < 768 ? 'モバイル' : 'デスクトップ'}</header>;
+}
+```
+
+カスタムフックは `use` で始まる関数で、中で他のフックを自由に使えます。「イベントリスナーの登録（`useEffect`）+ 値の管理（`useState`）」のような定型パターンを1つの関数にまとめられます。
+
+カスタムフック自体は本書のスコープ外ですが、5つのフックを理解していれば、既存のカスタムフックのコードを読んだときに「ああ、useEffectで購読してuseStateで値を管理しているのか」と構造がわかるようになります。
+
+---
+
+## まとめ
+
+5つのフックはそれぞれ異なる役割を持っています。
+
+`useState` はUIに影響する状態を管理し、変更時に再レンダーを引き起こします。`useRef` はUIに影響しない値を再レンダーなしに保持します。`useEffect` はレンダー後に外部との同期処理を実行します。`useMemo` は重い計算結果をキャッシュし、`useCallback` は関数オブジェクトをキャッシュします。
+
+判断の起点は「その値は画面に映るか」「その処理はレンダーの結果として必要か」「参照の安定性を受け取る側が活用するか」の3つです。
+
+これでReactのHooksの土台は固まりました。この先Next.jsなどのフレームワークに進むと、Server ComponentやApp Routerなど新しい概念が出てきますが、それらの理解もここで学んだHooksの知識が基盤になります。

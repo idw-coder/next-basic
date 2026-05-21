@@ -1,0 +1,237 @@
+---
+title: 'useRef — 再レンダーの外で値を持つ'
+description: 'useRefの仕組みとuseStateとの使い分け、DOM参照・前回値の記憶・タイマーIDの保持など典型パターンを整理します。'
+order: 4
+---
+
+前章の `useState` は、値を更新すると再レンダーが走るフックでした。
+この章で扱う `useRef` は、**値を保持するが、変更しても再レンダーを引き起こさない**フックです。
+
+---
+
+## useRefの仕組み
+
+`useRef` は `.current` プロパティを持つオブジェクトを返します。
+
+```tsx
+import { useRef } from 'react';
+
+const countRef = useRef(0);
+// countRef → { current: 0 }
+
+countRef.current = 1; // 値は変わるが、再レンダーは起きない
+```
+
+`.current` を直接書き換えられますが、Reactはその変更を監視していないので再レンダーは起きません。
+`useState` とは対照的です。
+
+```tsx
+// useState — 更新すると再レンダーが走る
+const [count, setCount] = useState(0);
+setCount(1); // → 再レンダー → UIが更新される
+
+// useRef — 更新しても再レンダーは走らない
+const countRef = useRef(0);
+countRef.current = 1; // → 何も起きない（UIはそのまま）
+```
+
+---
+
+## useStateとの使い分け
+
+判断基準は「その値がUIの表示に影響するかどうか」です。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef question fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef state fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef ref fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A["保持したい値がある"] --> B{"その値は画面に\n表示されるか？"}
+    B -->|はい| C["useState を使う\n値が変わったらUIを更新したい"]
+    B -->|いいえ| D["useRef を使う\n再レンダーのコストが不要"]
+
+    class A question
+    class B question
+    class C state
+    class D ref
+
+`}
+/>
+
+画面に表示する値は `useState`。値が変わったときに画面を更新してほしいからです。
+画面には表示しないが裏側で覚えておきたい値は `useRef`。不要な再レンダーを避けられます。
+
+---
+
+## letとの違い — なぜuseRefが必要なのか
+
+「再レンダーしないなら普通の変数（`let`）でいいのでは？」と思うかもしれません。
+しかしコンポーネント関数内の `let` は、再レンダーのたびにリセットされます。
+
+```tsx
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  // NG — 再レンダーのたびに0にリセットされる
+  let renderCount = 0;
+  renderCount++;
+  console.log(renderCount); // 常に1
+
+  return <button onClick={() => setCount((c) => c + 1)}>+1</button>;
+}
+```
+
+`useRef` なら再レンダーをまたいで値が保持されます。
+
+```tsx
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  // OK — 再レンダーしても値が保持される
+  const renderCountRef = useRef(0);
+  renderCountRef.current++;
+  console.log(renderCountRef.current); // 1, 2, 3... と増えていく
+
+  return <button onClick={() => setCount((c) => c + 1)}>+1</button>;
+}
+```
+
+この違いは「`let` はJavaScriptの関数スコープで管理される（呼び出しごとにリセット）」のに対し、「`useRef` はReactのFiberツリーで管理される（再レンダーをまたいで保持）」ことから来ています。stateと同じ保管場所を使いつつ、再レンダーだけは引き起こさないのが `useRef` です。
+
+---
+
+## 典型的な使い方
+
+### DOM要素への参照
+
+最もよく使うパターンです。JSXの `ref` 属性に渡すと、Reactがマウント時にそのDOM要素を `.current` に入れてくれます。
+
+```tsx
+function TextInput() {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleClick = () => {
+    inputRef.current?.focus();
+  };
+
+  return (
+    <>
+      <input ref={inputRef} />
+      <button onClick={handleClick}>フォーカスする</button>
+    </>
+  );
+}
+```
+
+`useRef<HTMLInputElement>(null)` の `null` は初期値です。コンポーネントがマウントされる前はDOM要素がまだ存在しないので、初期値は `null` にしておきます。マウント後、Reactが `inputRef.current` に実際のDOM要素を入れてくれます。
+
+DOM参照は、フォーカスの制御、スクロール位置の取得・設定、サードパーティライブラリとの連携（Canvas、動画プレイヤーなど）で使います。
+
+### 前回の値を覚えておく
+
+```tsx
+function PriceDisplay({ price }: { price: number }) {
+  const prevPriceRef = useRef(price);
+
+  useEffect(() => {
+    prevPriceRef.current = price; // レンダー後に「今の値」を保存
+  });
+
+  const diff = price - prevPriceRef.current;
+
+  return (
+    <p>
+      現在 {price}円
+      {diff !== 0 && (
+        <span>
+          （{diff > 0 ? '+' : ''}
+          {diff}円）
+        </span>
+      )}
+    </p>
+  );
+}
+```
+
+「前回のpropsやstate」を覚えておきたいケースです。`useEffect` のクリーンアップではなくコールバック内で保存しているのは、レンダー後に「今の値」を保存して、次のレンダーで「前回の値」として使うためです。
+
+### タイマーIDの保持
+
+```tsx
+function StopWatch() {
+  const [seconds, setSeconds] = useState(0);
+  const intervalRef = useRef<number | null>(null);
+
+  const start = () => {
+    intervalRef.current = window.setInterval(() => {
+      setSeconds((s) => s + 1);
+    }, 1000);
+  };
+
+  const stop = () => {
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+    }
+  };
+
+  return (
+    <div>
+      <p>{seconds}秒</p>
+      <button onClick={start}>開始</button>
+      <button onClick={stop}>停止</button>
+    </div>
+  );
+}
+```
+
+タイマーIDは画面に表示しないので `useState` ではなく `useRef` が適切です。
+もし `useState` で持つと、IDが変わるたびに不要な再レンダーが発生します。
+
+---
+
+## useRefの注意点
+
+### .currentの変更はレンダーに反映されない
+
+これはメリットであると同時に、間違えやすいポイントでもあります。
+
+```tsx
+function BrokenCounter() {
+  const countRef = useRef(0);
+
+  return (
+    <div>
+      {/* この表示は更新されない */}
+      <p>カウント: {countRef.current}</p>
+      <button
+        onClick={() => {
+          countRef.current++;
+        }}
+      >
+        +1
+      </button>
+    </div>
+  );
+}
+```
+
+ボタンを押すと `countRef.current` の値は確かに増えますが、再レンダーが走らないので画面の表示は変わりません。
+画面に表示したい値には必ず `useState` を使ってください。
+
+### レンダー中に.currentを読み書きしない（DOM参照以外）
+
+レンダー中（つまりコンポーネント関数の本体）で `.current` を読み書きすると、Reactの並行レンダリング機能と干渉する可能性があります。読み書きはイベントハンドラや `useEffect` の中で行うのが安全です。
+
+先ほどの `renderCountRef.current++` の例はあくまで動作の違いを説明するためのもので、実務ではエフェクト内で行います。
+
+---
+
+## まとめ
+
+`useRef` は再レンダーなしに値を保持する手段です。
+
+`useState` との使い分けの判断基準は「その値がUIに映るか」。DOM参照やタイマーID、前回の値の記憶など、画面に直接表示しないデータに使います。
+
+`let` はレンダーごとにリセットされますが、`useRef` はReactのFiberツリーに保管されるため再レンダーをまたいで保持されます。ただし `.current` を変更しても画面は更新されないので、表示用のデータには使えません。
