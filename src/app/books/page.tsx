@@ -40,7 +40,7 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeBg: 'bg-white',
     badgeText: 'text-purple-700',
   },
-  nextjs: {
+  'next-js': {
     cardBg: 'bg-zinc-100',
     iconBg: 'bg-zinc-200',
     iconText: 'text-zinc-800',
@@ -70,10 +70,10 @@ const bookThemeMap: Record<string, BookTheme> = {
 };
 
 // NEW バッジ対象の書籍（手動管理）
-const NEW_BOOK_SLUGS = new Set<string>(['unit-testing']);
+const NEW_BOOK_SLUGS = new Set<string>(['react-learning']);
 
 // 書籍の表示順（手動管理）
-const BOOK_ORDER = ['unit-testing', 'git', 'cs-basics', 'nextjs'];
+const BOOK_ORDER = ['react-learning', 'unit-testing', 'git-basic', 'cs-basics', 'next-js'];
 
 export default function BooksPage() {
   const books = getAllBooks().sort(

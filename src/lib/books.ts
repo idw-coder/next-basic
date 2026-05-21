@@ -1,14 +1,19 @@
-import { books, chapters } from '#site/content';
+import type { Book, Chapter } from '#site/content';
+import booksData from '../../.velite/books.json';
+import chaptersData from '../../.velite/chapters.json';
+
+const books = booksData as Book[];
+const chapters = chaptersData as Chapter[];
 
 /**
  * クイズカテゴリページで関連する教科書バナーを表示するために使用
  * 新しい本を追加した際はここにエントリを追加すること
  */
 const categoryToBookMap: Record<string, string> = {
-  nextjs: 'nextjs',
+  nextjs: 'next-js',
   'react-basic': 'react-learning',
   'unit-testing': 'unit-testing',
-  'git-basic': 'git',
+  'git-basic': 'git-basic',
   'cs-basic': 'cs-basics',
 };
 
