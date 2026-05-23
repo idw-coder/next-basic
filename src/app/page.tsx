@@ -18,7 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { SectionHeading } from '@/components/SectionHeading';
 import { NewsList } from '@/components/news-list';
-import { getAllBooks, getChaptersByBook } from '@/lib/books';
+import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
@@ -608,13 +608,22 @@ export default async function Home() {
         <div className="grid gap-4 sm:grid-cols-2 max-w-3xl mx-auto">
           {bookList.map((book) => {
             const chapterCount = getChaptersByBook(book.bookSlug).length;
+            const isNew = NEW_BOOK_SLUGS.has(book.bookSlug);
             return (
               <Link
                 key={book.bookSlug}
                 href={`/books/${book.bookSlug}`}
-                className="group flex items-start gap-4 rounded-md border border-border bg-card p-5 shadow-sm transition hover:shadow-md hover:border-primary/30"
+                className="group relative flex items-start gap-4 rounded-md border border-border bg-card p-5 shadow-sm transition hover:shadow-md hover:border-primary/30"
               >
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                {isNew && (
+                  <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-red-500 text-white px-2 py-0.5 text-[10px] font-black tracking-wider shadow-sm">
+                    <Sparkles className="size-3" />
+                    NEW
+                  </span>
+                )}
+                <div
+                  className={`flex size-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary ${isNew ? 'mt-4' : ''}`}
+                >
                   <BookOpen className="size-5" />
                 </div>
                 <div className="min-w-0">

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { BookOpen, Sparkles, ArrowRight } from 'lucide-react';
-import { getAllBooks, getChaptersByBook } from '@/lib/books';
+import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
 
 export const metadata: Metadata = {
   title: 'Books | ウェブエンジニア問題集',
@@ -31,6 +31,24 @@ const DEFAULT_THEME: BookTheme = {
 };
 
 const bookThemeMap: Record<string, BookTheme> = {
+  typescript: {
+    cardBg: 'bg-indigo-100',
+    iconBg: 'bg-indigo-200',
+    iconText: 'text-indigo-700',
+    accent: 'text-indigo-700',
+    accentHover: 'group-hover:text-indigo-700',
+    badgeBg: 'bg-white',
+    badgeText: 'text-indigo-700',
+  },
+  'react-learning': {
+    cardBg: 'bg-cyan-100',
+    iconBg: 'bg-cyan-200',
+    iconText: 'text-cyan-700',
+    accent: 'text-cyan-700',
+    accentHover: 'group-hover:text-cyan-700',
+    badgeBg: 'bg-white',
+    badgeText: 'text-cyan-700',
+  },
   'cs-basics': {
     cardBg: 'bg-purple-100',
     iconBg: 'bg-purple-200',
@@ -69,16 +87,8 @@ const bookThemeMap: Record<string, BookTheme> = {
   },
 };
 
-// NEW バッジ対象の書籍（手動管理）
-const NEW_BOOK_SLUGS = new Set<string>(['react-learning']);
-
-// 書籍の表示順（手動管理）
-const BOOK_ORDER = ['react-learning', 'unit-testing', 'git-basic', 'cs-basics', 'next-js'];
-
 export default function BooksPage() {
-  const books = getAllBooks().sort(
-    (a, b) => BOOK_ORDER.indexOf(a.bookSlug) - BOOK_ORDER.indexOf(b.bookSlug),
-  );
+  const books = getAllBooks();
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">

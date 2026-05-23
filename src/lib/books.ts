@@ -12,10 +12,32 @@ const chapters = chaptersData as Chapter[];
 const categoryToBookMap: Record<string, string> = {
   nextjs: 'next-js',
   'react-basic': 'react-learning',
+  'ts-general': 'typescript',
   'unit-testing': 'unit-testing',
   'git-basic': 'git-basic',
   'cs-basic': 'cs-basics',
 };
+
+/** 書籍一覧の表示順（先頭が先に表示される） */
+export const BOOK_ORDER = [
+  'typescript',
+  'react-learning',
+  'unit-testing',
+  'git-basic',
+  'cs-basics',
+  'next-js',
+] as const;
+
+/** NEW バッジを付ける書籍 */
+export const NEW_BOOK_SLUGS = new Set<string>(['typescript', 'react-learning']);
+
+function sortBooks<T extends { bookSlug: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const ai = BOOK_ORDER.indexOf(a.bookSlug as (typeof BOOK_ORDER)[number]);
+    const bi = BOOK_ORDER.indexOf(b.bookSlug as (typeof BOOK_ORDER)[number]);
+    return (ai === -1 ? Infinity : ai) - (bi === -1 ? Infinity : bi);
+  });
+}
 
 /**
  * クイズカテゴリに紐づく書籍を返す。
@@ -28,9 +50,9 @@ export function getBookForCategory(categorySlug: string) {
   return getBook(bookSlug) ?? null;
 }
 
-/** Velite が生成した全書籍データを返す。使用箇所: /books 一覧ページ */
+/** Velite が生成した全書籍データを表示順で返す。使用箇所: /books 一覧ページ・トップページ */
 export function getAllBooks() {
-  return books;
+  return sortBooks(books);
 }
 
 /** bookSlug に一致する書籍を1件返す。見つからなければ undefined */

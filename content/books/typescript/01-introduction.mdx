@@ -1,0 +1,60 @@
+---
+title: 'TypeScriptとは何か — JavaScriptに型を足す理由'
+description: 'TypeScriptの役割、JavaScriptとの関係、型付けがもたらすメリットを整理して、これからの章の土台を作ります。'
+order: 1
+---
+
+TypeScriptは、JavaScriptに **型（type）** を足した言語です。
+Microsoftが開発し、最終的には通常のJavaScript（ECMAScript）に **トランスパイル（変換）** されてブラウザやNode.jsで実行されます。
+
+つまり TypeScript は「実行環境が直接理解する別言語」ではなく、 **開発中だけ型チェックの助けを借りながらJavaScriptを書くための仕組み** です。
+
+この章では、TypeScriptを最初に触るときに迷いやすい「なぜ型が必要なのか」「JavaScriptとの関係は？」を整理します。
+
+## JavaScriptだけでは何が困るか
+
+JavaScriptは柔軟で書きやすい反面、 **実行してみないと型の不一致に気づけない** ことがあります。
+
+```js
+function greet(name) {
+  return `Hello, ${name.toUpperCase()}!`;
+}
+
+greet(42); // 実行時エラー: name.toUpperCase is not a function
+```
+
+エディタ上では問題なく見えても、本番やテスト実行のタイミングで初めて落ちる——こうした事故を減らすのが型の役割です。
+
+## TypeScriptが足すもの
+
+TypeScriptは、コードを書いている段階で型の矛盾を検出します。
+
+```ts
+function greet(name: string) {
+  return `Hello, ${name.toUpperCase()}!`;
+}
+
+greet(42); // コンパイルエラー: number は string に渡せない
+```
+
+実行前にエディタや `tsc` がエラーを出してくれるため、 **「動かして初めて分かるバグ」** をかなりの割合で防げます。
+
+## JavaScriptとの関係
+
+TypeScriptのコードは、ビルド時にJavaScriptへ変換されます。
+
+- **開発時** — `.ts` / `.tsx` を書き、型チェックを受ける
+- **実行時** — 生成された `.js` がそのまま動く（型情報は消える）
+
+ReactやNext.jsのプロジェクトでも、 `.tsx` でコンポーネントを書き、型でpropsやstateの形を明示するのが一般的です。
+
+## この本で扱うこと
+
+この入門書では、次の流れでTypeScriptの基礎を固めます。
+
+- 基本の型（string, number, boolean など）
+- 配列・オブジェクト・関数の型
+- 型推論と型注釈の使い分け
+- ユニオン型やジェネリクスの入口
+
+クイズカテゴリ「TypeScript」とあわせて読み進めると、用語と典型パターンが身につきやすくなります。
