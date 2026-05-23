@@ -1,0 +1,74 @@
+---
+title: '関数と型 — 引数・戻り値・オーバーロード'
+description: '関数の型付けパターンを整理します。オプショナル引数、デフォルト値、レストパラメータ、オーバーロード、コールバック関数の型まで。'
+order: 6
+---
+
+<Callout type="column">
+### この章は拡充予定です
+
+現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
+</Callout>
+
+この章では、関数に関する型付けパターンを整理します。02章で触れた基本に加え、実務で頻出するパターンを扱います。
+
+---
+
+## 扱うトピック
+
+### オプショナル引数とデフォルト値
+
+```tsx
+function greet(name: string, greeting?: string): string {
+  return `${greeting ?? 'こんにちは'}、${name}さん`;
+}
+
+function greetWithDefault(name: string, greeting: string = 'こんにちは'): string {
+  return `${greeting}、${name}さん`;
+}
+```
+
+`?` を付けたオプショナル引数とデフォルト値付き引数の違い、使い分けを解説予定です。
+
+### レストパラメータ
+
+```tsx
+function sum(...numbers: number[]): number {
+  return numbers.reduce((a, b) => a + b, 0);
+}
+```
+
+### コールバック関数の型
+
+```tsx
+type ClickHandler = (event: MouseEvent) => void;
+
+function registerHandler(handler: ClickHandler): void {
+  // ...
+}
+```
+
+Reactのイベントハンドラやpropsで渡すコールバックの型付けパターンを解説予定です。
+
+### 関数オーバーロード
+
+```tsx
+function format(value: string): string;
+function format(value: number): string;
+function format(value: string | number): string {
+  // 実装
+}
+```
+
+オーバーロードの書き方と、ユニオン型で代替できるケースとの使い分けを解説予定です。
+
+### 関数の型定義
+
+```tsx
+// 型エイリアスで関数の型を定義
+type Comparator<T> = (a: T, b: T) => number;
+```
+
+---
+
+この章の詳細な内容は順次追加していきます。

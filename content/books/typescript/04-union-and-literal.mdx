@@ -1,0 +1,169 @@
+---
+title: 'ユニオン型とリテラル型 — 型を絞り込む'
+description: '複数の型を許容するユニオン型と、特定の値だけを許容するリテラル型の仕組みを、実践的なパターンで学びます。'
+order: 4
+---
+
+TypeScriptの型は「1つの型だけ」に限りません。
+「文字列**または**数値」「この3つの値のどれか」のように、**複数の可能性を型で表現**できます。
+
+---
+
+## ユニオン型 — 「AまたはB」
+
+`|`（パイプ）で区切ると、複数の型のいずれかを受け入れるユニオン型になります。
+
+```tsx
+let value: string | number;
+
+value = 'hello'; // OK
+value = 42;      // OK
+value = true;    // エラー — boolean は string | number に含まれない
+```
+
+関数の引数にも使えます。
+
+```tsx
+function formatId(id: string | number): string {
+  // idはstringかnumberのどちらか
+  return `ID: ${id}`;
+}
+
+formatId('abc-123'); // OK
+formatId(456);       // OK
+```
+
+### ユニオン型を使うときの制約
+
+ユニオン型の変数は、**すべての型に共通する操作**しかそのままではできません。
+
+```tsx
+function formatId(id: string | number): string {
+  // string にも number にもある操作はOK
+  return `ID: ${id}`;
+
+  // string にしかない操作はエラー
+  return id.toUpperCase(); // エラー — number に toUpperCase はない
+}
+```
+
+特定の型にしかない操作を使うには、**型の絞り込み（Narrowing）** が必要です。これは次の章で詳しく扱います。
+
+```tsx
+function formatId(id: string | number): string {
+  if (typeof id === 'string') {
+    return id.toUpperCase(); // この中では string 確定
+  }
+  return id.toFixed(0); // この中では number 確定
+}
+```
+
+---
+
+## リテラル型 — 特定の値だけを許容する
+
+TypeScriptでは、型として**特定の値そのもの**を指定できます。
+
+```tsx
+let direction: 'north' | 'south' | 'east' | 'west';
+
+direction = 'north'; // OK
+direction = 'up';    // エラー — 'up' は許容されていない
+```
+
+文字列だけでなく、数値や真偽値のリテラル型もあります。
+
+```tsx
+type HttpStatus = 200 | 301 | 404 | 500;
+type Toggle = true | false; // boolean と同じ
+```
+
+### ユニオン型 + リテラル型 = 列挙的な型
+
+リテラル型をユニオンで組み合わせると、TypeScript版の「列挙」になります。
+これはReactコンポーネントのpropsで非常によく使うパターンです。
+
+```tsx
+type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+
+type ButtonProps = {
+  label: string;
+  variant: ButtonVariant;
+};
+
+function Button({ label, variant }: ButtonProps) {
+  return <button className={`btn-${variant}`}>{label}</button>;
+}
+
+<Button label="送信" variant="primary" />   // OK
+<Button label="送信" variant="danger" />    // エラー — 'danger' は ButtonVariant にない
+```
+
+文字列の列挙を `enum` で書く方法もありますが、TypeScriptではユニオン型のリテラルの方が軽量で、多くのプロジェクトで好まれています。
+
+---
+
+## nullとundefinedの扱い
+
+TypeScriptの `strictNullChecks`（推奨設定で有効）が有効な場合、`null` と `undefined` は他の型に含まれません。
+
+```tsx
+let name: string;
+name = null;      // エラー — string に null は代入できない
+name = undefined; // エラー — string に undefined は代入できない
+```
+
+`null` や `undefined` を許容したい場合は、ユニオン型で明示します。
+
+```tsx
+let name: string | null = null;
+
+name = 'Alice'; // OK
+name = null;    // OK
+```
+
+### 「値がないかもしれない」を型で表現する
+
+これはAPIレスポンスやオプショナルなpropsでよく出てくるパターンです。
+
+```tsx
+type User = {
+  name: string;
+  bio: string | null;      // プロフィールは設定されていないかもしれない
+  avatarUrl?: string;      // オプショナル — string | undefined と同義
+};
+```
+
+`| null` と `?`（オプショナル）の違いは微妙ですが、一般的な使い分けとして、`| null` は「値が存在しないことを明示的に表す」、`?` は「プロパティ自体が存在しないかもしれない」というニュアンスです。
+
+---
+
+## 型エイリアスで整理する
+
+ユニオン型が長くなったら、型エイリアスで名前を付けて整理します。
+
+```tsx
+// 長い
+function handleResponse(status: 'loading' | 'success' | 'error', data: unknown): void {
+  // ...
+}
+
+// 名前を付けると読みやすい
+type RequestStatus = 'loading' | 'success' | 'error';
+
+function handleResponse(status: RequestStatus, data: unknown): void {
+  // ...
+}
+```
+
+型エイリアスは「この型は何を意味するか」に名前を付ける行為なので、コードの意図が明確になります。
+
+---
+
+## まとめ
+
+ユニオン型（`A | B`）は「AまたはB」を表現し、リテラル型はとりうる値を特定の値だけに制限します。両者を組み合わせると `'primary' | 'secondary' | 'ghost'` のような列挙的な型が作れます。
+
+`strictNullChecks` 有効時、`null` と `undefined` は明示的にユニオンに含めない限り許容されません。
+
+ユニオン型の変数に対して特定の型の操作を行うには、型の絞り込み（Narrowing）が必要です。次の章で具体的な方法を見ていきます。

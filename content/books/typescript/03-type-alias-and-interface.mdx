@@ -1,0 +1,198 @@
+---
+title: '型エイリアスとインターフェース'
+description: 'typeとinterfaceの使い方、違い、どちらを使うべきかの判断基準を整理します。交差型（&）や拡張（extends）も扱います。'
+order: 3
+---
+
+前章ではオブジェクトの型をインラインで書きました。しかし実際のコードでは、同じ型を複数箇所で使うことがほとんどです。そのたびに `{ name: string; age: number }` と書くのは冗長で、変更にも弱くなります。
+
+型に名前を付ける方法が、**型エイリアス（type）** と**インターフェース（interface）** です。
+
+---
+
+## 型エイリアス — typeで名前を付ける
+
+`type` キーワードで型に名前を付けます。
+
+```tsx
+type User = {
+  name: string;
+  age: number;
+  email: string;
+};
+
+const alice: User = {
+  name: 'Alice',
+  age: 25,
+  email: 'alice@example.com',
+};
+
+function greet(user: User): string {
+  return `こんにちは、${user.name}さん`;
+}
+```
+
+型エイリアスはオブジェクト以外にも使えます。
+
+```tsx
+// プリミティブに名前を付ける
+type UserId = string;
+type Price = number;
+
+// ユニオン型（次章で詳しく扱う）
+type Status = 'loading' | 'success' | 'error';
+
+// 関数型
+type Formatter = (value: number) => string;
+```
+
+---
+
+## インターフェース — interfaceで構造を定義する
+
+`interface` キーワードでもオブジェクトの型を定義できます。
+
+```tsx
+interface User {
+  name: string;
+  age: number;
+  email: string;
+}
+
+const alice: User = {
+  name: 'Alice',
+  age: 25,
+  email: 'alice@example.com',
+};
+```
+
+使い方は型エイリアスとほぼ同じに見えますが、いくつかの違いがあります。
+
+---
+
+## 型の拡張
+
+### interfaceのextends
+
+`interface` は `extends` で別のインターフェースを拡張できます。
+
+```tsx
+interface User {
+  name: string;
+  age: number;
+}
+
+interface Admin extends User {
+  role: 'admin';
+  permissions: string[];
+}
+
+// Adminは { name: string; age: number; role: 'admin'; permissions: string[] }
+const admin: Admin = {
+  name: 'Alice',
+  age: 30,
+  role: 'admin',
+  permissions: ['read', 'write', 'delete'],
+};
+```
+
+複数のインターフェースを同時に拡張することもできます。
+
+```tsx
+interface Timestamped {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Admin extends User, Timestamped {
+  role: 'admin';
+}
+```
+
+### typeの交差型（&）
+
+型エイリアスでは `&`（交差型、intersection type）で型を組み合わせます。
+
+```tsx
+type User = {
+  name: string;
+  age: number;
+};
+
+type Timestamped = {
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type Admin = User & Timestamped & {
+  role: 'admin';
+  permissions: string[];
+};
+```
+
+`extends` と `&` は、どちらも「既存の型にプロパティを追加した新しい型を作る」という点では同じです。
+
+---
+
+## typeとinterfaceの違い
+
+両者にはいくつかの違いがありますが、実務で影響するのは主に2点です。
+
+### interfaceは宣言のマージができる
+
+同じ名前の `interface` を複数回宣言すると、自動的にマージされます。
+
+```tsx
+interface User {
+  name: string;
+}
+
+interface User {
+  age: number;
+}
+
+// マージされて { name: string; age: number } になる
+const user: User = { name: 'Alice', age: 25 };
+```
+
+`type` で同じことをするとエラーになります。
+
+```tsx
+type User = { name: string };
+type User = { age: number }; // エラー — 同じ名前のtypeは宣言できない
+```
+
+宣言のマージはライブラリの型定義を外部から拡張する場面で使われます。アプリケーションコードではあまり出番がありません。
+
+### typeはオブジェクト以外にも使える
+
+`type` はプリミティブ、ユニオン型、タプル、関数型など、あらゆる型に名前を付けられます。`interface` はオブジェクトの形状（とクラス）にしか使えません。
+
+```tsx
+// typeでしかできないこと
+type Status = 'loading' | 'success' | 'error';  // ユニオン型
+type Pair = [string, number];                     // タプル型
+type Formatter = (value: number) => string;       // 関数型
+```
+
+---
+
+## どちらを使うべきか
+
+チームやプロジェクトで統一するのが最も重要で、どちらが絶対に正しいということはありません。
+
+迷ったときの指針として、オブジェクトの型を定義するなら `interface` を基本にし、ユニオン型やプリミティブの別名など `interface` では表現できないものに `type` を使う、というスタイルが広く採用されています。
+
+逆に「すべて `type` で統一する」というスタイルも増えています。`type` はすべての型に使えるので、使い分けを考える必要がなくなるのがメリットです。
+
+本書ではどちらのスタイルも読めるように、場面に応じて使い分けます。
+
+---
+
+## まとめ
+
+`type` と `interface` はどちらもオブジェクトの型に名前を付ける手段です。`interface` は `extends` で拡張し、`type` は `&`（交差型）で組み合わせます。
+
+`interface` は宣言のマージができますが、`type` はオブジェクト以外にも使えます。チームで統一するのが最も重要で、どちらかに固執する必要はありません。
+
+次の章では、TypeScriptの強力な機能である**ユニオン型**と**リテラル型**を扱います。

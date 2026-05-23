@@ -1,60 +1,149 @@
 ---
-title: 'TypeScriptとは何か — JavaScriptに型を足す理由'
-description: 'TypeScriptの役割、JavaScriptとの関係、型付けがもたらすメリットを整理して、これからの章の土台を作ります。'
+title: 'TypeScriptとは何か — 型がある世界'
+description: 'TypeScriptがJavaScriptに何を加えるのか、なぜ型があると嬉しいのかを、導入前後の比較とともに整理します。'
 order: 1
 ---
 
-TypeScriptは、JavaScriptに **型（type）** を足した言語です。
-Microsoftが開発し、最終的には通常のJavaScript（ECMAScript）に **トランスパイル（変換）** されてブラウザやNode.jsで実行されます。
+TypeScriptは、JavaScriptに**静的な型システム**を加えた言語です。
+Microsoftが開発し、JavaScriptの完全なスーパーセット（上位互換）として設計されています。
+つまり、有効なJavaScriptコードはそのままTypeScriptとしても動きます。
 
-つまり TypeScript は「実行環境が直接理解する別言語」ではなく、 **開発中だけ型チェックの助けを借りながらJavaScriptを書くための仕組み** です。
+この章では「なぜ型があると嬉しいのか」「TypeScriptは何をしてくれるのか」を、導入前後の比較で整理します。
 
-この章では、TypeScriptを最初に触るときに迷いやすい「なぜ型が必要なのか」「JavaScriptとの関係は？」を整理します。
+---
 
-## JavaScriptだけでは何が困るか
+## JavaScriptの自由さと、その代償
 
-JavaScriptは柔軟で書きやすい反面、 **実行してみないと型の不一致に気づけない** ことがあります。
+JavaScriptは動的型付けの言語です。変数にどんな値でも入れられるし、関数にどんな引数でも渡せます。
 
 ```js
-function greet(name) {
-  return `Hello, ${name.toUpperCase()}!`;
+function greet(user) {
+  return `こんにちは、${user.name}さん`;
 }
 
-greet(42); // 実行時エラー: name.toUpperCase is not a function
+greet({ name: 'Alice' }); // "こんにちは、Aliceさん"
+greet('Alice');            // "こんにちは、undefinedさん" — 実行するまでわからない
+greet();                   // TypeError: Cannot read properties of undefined
 ```
 
-エディタ上では問題なく見えても、本番やテスト実行のタイミングで初めて落ちる——こうした事故を減らすのが型の役割です。
+この関数は `user` がオブジェクトで `name` プロパティを持つことを前提にしていますが、JavaScriptはそれをチェックしません。間違った値を渡してもエラーになるのは実行時です。
 
-## TypeScriptが足すもの
+小さなスクリプトならこの自由さは便利ですが、コードが大きくなると「この関数に何を渡せばいいのか」「この変数に何が入っているのか」がわからなくなり、バグの温床になります。
 
-TypeScriptは、コードを書いている段階で型の矛盾を検出します。
+---
 
-```ts
-function greet(name: string) {
-  return `Hello, ${name.toUpperCase()}!`;
+## TypeScriptが加えるもの
+
+TypeScriptは「この変数には文字列しか入らない」「この関数はオブジェクトを受け取って文字列を返す」といった**型の情報**をコードに書けるようにします。
+
+```tsx
+type User = {
+  name: string;
+};
+
+function greet(user: User): string {
+  return `こんにちは、${user.name}さん`;
 }
 
-greet(42); // コンパイルエラー: number は string に渡せない
+greet({ name: 'Alice' }); // OK
+greet('Alice');            // コンパイルエラー — string型はUser型に代入できない
+greet();                   // コンパイルエラー — 引数が足りない
 ```
 
-実行前にエディタや `tsc` がエラーを出してくれるため、 **「動かして初めて分かるバグ」** をかなりの割合で防げます。
+間違いが**コードを書いている時点**（エディタ上）で検出されます。実行して初めて気づくのではなく、書いている途中でエラーが表示されるので、バグを未然に防げます。
+
+---
+
+## TypeScriptの動き方
+
+TypeScriptは直接ブラウザやNode.jsで実行されるわけではありません。**コンパイル**（トランスパイル）という工程でJavaScriptに変換されてから実行されます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef ts fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef compile fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef js fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef run fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A[".tsファイル\nTypeScript"] --> B["tscコンパイラ\n型チェック + 変換"]
+    B --> C[".jsファイル\nJavaScript"]
+    C --> D["ブラウザ / Node.js\n実行"]
+
+    class A ts
+    class B compile
+    class C js
+    class D run
+
+`}
+/>
+
+コンパイル時に型の情報はすべて取り除かれます。実行されるJavaScriptには型の痕跡はありません。つまり型は「開発時の安全ネット」であり、実行時のパフォーマンスには影響しません。
+
+<Callout type="column">
+### Next.jsやViteを使っている場合
+
+Next.jsやViteなどのフレームワーク・ビルドツールを使っている場合、TypeScriptのコンパイルはビルドプロセスに組み込まれています。`tsc` を直接叩く必要はほとんどありません。`.tsx` ファイルを書けば、ビルド時に自動的にJavaScriptに変換されます。
+</Callout>
+
+---
+
+## 型があると何が嬉しいのか
+
+### エディタの補完が効く
+
+型情報があると、エディタ（VS Codeなど）が「このオブジェクトにはどんなプロパティがあるか」を知っているので、入力補完が正確になります。
+
+```tsx
+type User = {
+  name: string;
+  age: number;
+  email: string;
+};
+
+function showUser(user: User) {
+  user. // ← ここでname, age, emailが補完候補に出る
+}
+```
+
+JavaScriptでもある程度の補完は効きますが、TypeScriptの方が圧倒的に正確です。特にチーム開発で「他の人が書いた関数を使う」ときに威力を発揮します。
+
+### リファクタリングが安全になる
+
+プロパティ名を変更したり、関数の引数を変えたりしたとき、影響範囲をコンパイラが自動的に教えてくれます。
+
+```tsx
+// nameをfullNameに変更したい
+type User = {
+  fullName: string; // name → fullName に変更
+  age: number;
+};
+
+// user.name を使っているすべての箇所でコンパイルエラーが出る
+// → 修正漏れがなくなる
+```
+
+### コードがドキュメントになる
+
+型定義が「この関数は何を受け取って何を返すか」の仕様書になります。
+
+```tsx
+// 型を見れば使い方がわかる
+function formatPrice(amount: number, currency: 'JPY' | 'USD'): string {
+  // ...
+}
+```
+
+この関数は「数値と通貨コード（JPYかUSD）を受け取って文字列を返す」ことが、型を見るだけでわかります。JSDocやコメントに頼る必要がありません。
+
+---
 
 ## JavaScriptとの関係
 
-TypeScriptのコードは、ビルド時にJavaScriptへ変換されます。
+TypeScriptはJavaScriptのスーパーセットなので、JavaScriptの知識はそのまま活きます。新しい言語を一から学ぶのではなく、「JavaScriptに型の記法を足す」イメージです。
 
-- **開発時** — `.ts` / `.tsx` を書き、型チェックを受ける
-- **実行時** — 生成された `.js` がそのまま動く（型情報は消える）
+逆に言えば、TypeScript固有の機能は型に関する部分だけです。`if` や `for`、`async/await`、`Array.map` などはすべてJavaScriptと同じです。この本では、JavaScriptの構文は既に知っている前提で、TypeScriptが加える「型」の部分に集中します。
 
-ReactやNext.jsのプロジェクトでも、 `.tsx` でコンポーネントを書き、型でpropsやstateの形を明示するのが一般的です。
+---
 
-## この本で扱うこと
-
-この入門書では、次の流れでTypeScriptの基礎を固めます。
-
-- 基本の型（string, number, boolean など）
-- 配列・オブジェクト・関数の型
-- 型推論と型注釈の使い分け
-- ユニオン型やジェネリクスの入口
-
-クイズカテゴリ「TypeScript」とあわせて読み進めると、用語と典型パターンが身につきやすくなります。
+次の章では、TypeScriptの型の基本であるプリミティブ型・配列・オブジェクトの型注釈から始めます。

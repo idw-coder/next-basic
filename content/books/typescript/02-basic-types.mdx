@@ -1,0 +1,239 @@
+---
+title: '基本の型 — プリミティブ・配列・オブジェクト'
+description: 'TypeScriptの型注釈の書き方を、プリミティブ型・配列・オブジェクト・関数の基本から整理します。型推論がどこまでやってくれるかも確認します。'
+order: 2
+---
+
+TypeScriptで型を書く最も基本的な方法は**型注釈（type annotation）**です。
+変数や関数の引数・戻り値に `: 型名` を付けることで、「ここにはこの型の値しか入らない」と宣言します。
+
+---
+
+## プリミティブ型
+
+JavaScriptのプリミティブ値に対応する型です。
+
+```tsx
+const name: string = 'Alice';
+const age: number = 25;
+const isActive: boolean = true;
+```
+
+TypeScriptで使うプリミティブ型は `string`、`number`、`boolean` の3つが中心です。他に `null`、`undefined`、`bigint`、`symbol` もありますが、まずはこの3つを押さえれば十分です。
+
+<Callout type="column">
+### `String` ではなく `string`
+
+TypeScriptの型名は小文字で書きます。大文字の `String`、`Number`、`Boolean` はJavaScriptのラッパーオブジェクト型であり、別物です。型注釈には常に小文字を使ってください。
+</Callout>
+
+---
+
+## 型推論 — 書かなくても推論される
+
+実は、すべての変数に型注釈を書く必要はありません。TypeScriptは初期値から型を**推論**してくれます。
+
+```tsx
+// 型注釈あり
+const name: string = 'Alice';
+
+// 型注釈なし — TypeScriptが string と推論する
+const name = 'Alice';
+```
+
+どちらも同じ型になります。初期値がある変数は、型注釈を省略しても問題ありません。
+推論に任せた方がコードが簡潔になるので、明示が必要な場面以外は省略するのが一般的です。
+
+### 型注釈を書くべき場面
+
+型推論が効かない、または意図と異なる推論をされる場合に型注釈を書きます。
+
+```tsx
+// 初期値がないとき — 推論できないので型注釈が必要
+let result: string;
+
+// 関数の引数 — 推論されないので型注釈が必要
+function greet(name: string) {
+  return `こんにちは、${name}さん`;
+}
+
+// 推論結果を明示的に制限したいとき
+let status: 'loading' | 'success' | 'error' = 'loading';
+// 型注釈がないと string に推論されてしまう
+```
+
+---
+
+## 配列の型
+
+配列の型は `型名[]` で書きます。
+
+```tsx
+const numbers: number[] = [1, 2, 3];
+const names: string[] = ['Alice', 'Bob'];
+const flags: boolean[] = [true, false, true];
+```
+
+`Array<number>` というジェネリクス記法もありますが、`number[]` の方がよく使われます。どちらも同じ意味です。
+
+```tsx
+// この2つは同じ
+const numbers: number[] = [1, 2, 3];
+const numbers: Array<number> = [1, 2, 3];
+```
+
+配列も型推論が効きます。
+
+```tsx
+const numbers = [1, 2, 3]; // number[] と推論される
+const mixed = [1, 'hello']; // (number | string)[] と推論される
+```
+
+---
+
+## オブジェクトの型
+
+オブジェクトの型は、プロパティごとに型を指定します。
+
+```tsx
+const user: { name: string; age: number } = {
+  name: 'Alice',
+  age: 25,
+};
+```
+
+インラインで書くと長くなるので、通常は次の章で扱う**型エイリアス**や**インターフェース**で名前を付けます。
+
+### オプショナルプロパティ
+
+`?` を付けると、そのプロパティは省略可能になります。
+
+```tsx
+const user: { name: string; age?: number } = {
+  name: 'Alice',
+  // ageは省略できる
+};
+```
+
+`age?` は「`number` または `undefined`」を意味します。プロパティ自体が存在しない場合も許容されます。
+
+### readonlyプロパティ
+
+`readonly` を付けると、そのプロパティは代入で変更できなくなります。
+
+```tsx
+const user: { readonly name: string; age: number } = {
+  name: 'Alice',
+  age: 25,
+};
+
+user.name = 'Bob'; // コンパイルエラー — readonlyなので変更できない
+user.age = 26;     // OK
+```
+
+---
+
+## 関数の型
+
+関数の引数と戻り値に型を付けます。
+
+```tsx
+function add(a: number, b: number): number {
+  return a + b;
+}
+```
+
+戻り値の型は推論されるので省略できる場合が多いです。
+
+```tsx
+// 戻り値の型を省略 — TypeScriptが number と推論する
+function add(a: number, b: number) {
+  return a + b;
+}
+```
+
+ただし引数の型は推論されません。常に書く必要があります。
+
+### アロー関数の型
+
+```tsx
+const add = (a: number, b: number): number => {
+  return a + b;
+};
+
+// 1行で返せる場合
+const add = (a: number, b: number): number => a + b;
+```
+
+### 何も返さない関数 — void
+
+関数が値を返さない場合、戻り値の型は `void` です。
+
+```tsx
+function logMessage(message: string): void {
+  console.log(message);
+  // returnがない、または return; だけ
+}
+```
+
+`void` は「戻り値を使わない」という意思表示です。推論に任せても構いませんが、明示すると意図が伝わりやすくなります。
+
+---
+
+## 特殊な型
+
+### any — 型チェックを放棄する
+
+`any` はあらゆる型を受け入れます。型チェックが完全に無効になります。
+
+```tsx
+let value: any = 'hello';
+value = 42;       // OK
+value = true;     // OK
+value.foo.bar;    // コンパイルエラーにならない（実行時にエラーになる可能性あり）
+```
+
+`any` はTypeScriptの恩恵を捨てることを意味します。JavaScriptからの移行時に一時的に使うことはありますが、新規コードでは避けてください。
+
+### unknown — 安全なany
+
+`unknown` は `any` と同じくあらゆる型を受け入れますが、**使う前に型チェックを強制される**点が異なります。
+
+```tsx
+let value: unknown = 'hello';
+
+// そのままでは使えない
+value.toUpperCase(); // コンパイルエラー
+
+// 型を確認してから使う
+if (typeof value === 'string') {
+  value.toUpperCase(); // OK — この中ではstring型として扱える
+}
+```
+
+外部からのデータ（APIレスポンスなど）の型が不明な場合は `any` ではなく `unknown` を使い、型の絞り込みを行うのが安全です。型の絞り込みについては05章で詳しく扱います。
+
+### never — ありえない状態を示す
+
+`never` は「この値は存在しない」「この関数は正常に返らない」ことを示す型です。
+
+```tsx
+// 必ず例外を投げる関数
+function throwError(message: string): never {
+  throw new Error(message);
+}
+```
+
+`never` は直接使う場面は少ないですが、05章の判別可能なユニオンで「すべてのケースを網羅したか」のチェックに使えます。
+
+---
+
+## まとめ
+
+TypeScriptの型注釈は `: 型名` で書きます。プリミティブ型（`string`、`number`、`boolean`）、配列（`型名[]`）、オブジェクト（`{ プロパティ: 型 }`）が基本です。
+
+型推論により、初期値がある変数や関数の戻り値は型注釈を省略できます。引数の型は推論されないので常に書く必要があります。
+
+`any` は型チェックを無効にするので新規コードでは避け、不明な型には `unknown` を使ってください。
+
+次の章では、オブジェクトの型に名前を付ける**型エイリアス**と**インターフェース**を扱います。

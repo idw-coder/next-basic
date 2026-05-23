@@ -1,0 +1,45 @@
+---
+title: 'tsconfig.jsonの読み方'
+description: 'TypeScriptプロジェクトの設定ファイルtsconfig.jsonの主要オプションを、「なぜその設定が必要か」の観点で整理します。'
+order: 11
+---
+
+<Callout type="column">
+### この章は拡充予定です
+
+現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
+</Callout>
+
+`tsconfig.json` はTypeScriptプロジェクトの設定ファイルです。コンパイラの挙動を制御するオプションが多数あり、初見では圧倒されがちですが、実務で重要なものは限られています。
+
+---
+
+## 扱うトピック
+
+### strictモード
+
+`strict: true` が有効にするオプション群（`strictNullChecks`、`noImplicitAny`、`strictFunctionTypes` など）の個別解説予定です。
+
+### target と module
+
+コンパイル先のJavaScriptバージョンとモジュール形式の指定。ESNext、CommonJS、ES Modulesの関係を整理予定です。
+
+### moduleResolution
+
+`node`、`node16`、`bundler` の違いと、Next.jsやViteでの推奨設定を解説予定です。
+
+### paths と baseUrl
+
+パスエイリアスの設定方法。`@/` のようなエイリアスがどう解決されるかを解説予定です。
+
+### include と exclude
+
+コンパイル対象のファイルの指定方法を解説予定です。
+
+### Next.jsやViteのtsconfig
+
+フレームワークが生成するデフォルトの `tsconfig.json` の読み方を解説予定です。
+
+---
+
+この章の詳細な内容は順次追加していきます。

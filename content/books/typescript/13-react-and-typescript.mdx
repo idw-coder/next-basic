@@ -1,0 +1,93 @@
+---
+title: 'ReactとTypeScript — Props・Hooks・イベントの型付け'
+description: 'ReactコンポーネントをTypeScriptで書くときの型付けパターンを、Props・children・Hooks・イベントハンドラごとに整理します。'
+order: 13
+---
+
+<Callout type="column">
+### この章は拡充予定です
+
+現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
+</Callout>
+
+この章は「Reactを学びなおす」本との接続ポイントです。React本で学んだコンポーネント・props・Hooksを、TypeScriptでどう型付けするかを整理します。
+
+---
+
+## 扱うトピック
+
+### Propsの型付け
+
+```tsx
+type ButtonProps = {
+  label: string;
+  variant?: 'primary' | 'secondary';
+  onClick: () => void;
+};
+
+function Button({ label, variant = 'primary', onClick }: ButtonProps) {
+  return <button className={`btn-${variant}`} onClick={onClick}>{label}</button>;
+}
+```
+
+### childrenの型
+
+```tsx
+type CardProps = {
+  title: string;
+  children: React.ReactNode;
+};
+```
+
+`React.ReactNode`、`React.ReactElement`、`JSX.Element` の違いを解説予定です。
+
+### useStateの型
+
+```tsx
+const [user, setUser] = useState<User | null>(null);
+const [count, setCount] = useState(0); // number と推論される
+```
+
+ジェネリクスを明示すべき場面とそうでない場面を解説予定です。
+
+### useRefの型
+
+```tsx
+const inputRef = useRef<HTMLInputElement>(null);
+const countRef = useRef(0); // number と推論される
+```
+
+### イベントハンドラの型
+
+```tsx
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  console.log(e.target.value);
+};
+
+const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+};
+```
+
+イベント型の調べ方（エディタの補完を活用する方法）を解説予定です。
+
+### コンポーネントの型（React.FC を使うかどうか）
+
+`React.FC` の是非と、関数宣言でpropsの型を直接書くスタイルの比較を解説予定です。
+
+### ジェネリックコンポーネント
+
+```tsx
+type ListProps<T> = {
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+};
+
+function List<T>({ items, renderItem }: ListProps<T>) {
+  return <ul>{items.map(renderItem)}</ul>;
+}
+```
+
+---
+
+この章の詳細な内容は順次追加していきます。

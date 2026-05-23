@@ -1,0 +1,74 @@
+---
+title: 'ユーティリティ型 — Partial・Pick・Omit・Record'
+description: 'TypeScript組み込みのユーティリティ型を、実務でよく使うものに絞って使い方と内部の仕組みを解説します。'
+order: 9
+---
+
+<Callout type="column">
+### この章は拡充予定です
+
+現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
+</Callout>
+
+TypeScriptには、既存の型を変換して新しい型を作る**ユーティリティ型**が組み込まれています。自分で一から型を書かなくても、「この型の一部だけ使いたい」「全プロパティをオプショナルにしたい」といった変換を簡潔に書けます。
+
+---
+
+## 扱うトピック
+
+### Partial\<T\> — 全プロパティをオプショナルにする
+
+```tsx
+type User = { name: string; age: number; email: string };
+type PartialUser = Partial<User>;
+// { name?: string; age?: number; email?: string }
+```
+
+更新処理の引数で「変更したいフィールドだけ渡す」パターンを解説予定です。
+
+### Required\<T\> — 全プロパティを必須にする
+
+`Partial` の逆。オプショナルプロパティを持つ型から必須の型を作る。
+
+### Pick\<T, K\> — 特定のプロパティだけ取り出す
+
+```tsx
+type UserSummary = Pick<User, 'name' | 'email'>;
+// { name: string; email: string }
+```
+
+### Omit\<T, K\> — 特定のプロパティを除外する
+
+```tsx
+type UserWithoutEmail = Omit<User, 'email'>;
+// { name: string; age: number }
+```
+
+### Record\<K, V\> — キーと値の型を指定したオブジェクト
+
+```tsx
+type Scores = Record<string, number>;
+// { [key: string]: number }
+```
+
+### Readonly\<T\> — 全プロパティをreadonlyにする
+
+### ReturnType\<T\> — 関数の戻り値の型を取得する
+
+```tsx
+function getUser() { return { name: 'Alice', age: 25 }; }
+type User = ReturnType<typeof getUser>;
+```
+
+### 組み合わせパターン
+
+ユーティリティ型を組み合わせて使う実践例を解説予定です。
+
+```tsx
+type CreateUserInput = Omit<User, 'id' | 'createdAt'>;
+type UpdateUserInput = Partial<Omit<User, 'id'>>;
+```
+
+---
+
+この章の詳細な内容は順次追加していきます。

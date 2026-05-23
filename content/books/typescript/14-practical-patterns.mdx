@@ -1,0 +1,93 @@
+---
+title: '実践パターン集 — よくある型の書き方'
+description: '実務で繰り返し出てくるTypeScriptの型パターンを、逆引きリファレンスとして整理します。随時追加していきます。'
+order: 14
+---
+
+<Callout type="column">
+### この章は拡充予定です
+
+現在、章の構成と主要トピックを掲載しています。パターンは随時追加していきます。
+</Callout>
+
+この章は逆引きリファレンスです。「こういうことがしたいとき、型をどう書くか」を場面ごとにまとめます。
+
+---
+
+## 掲載予定のパターン
+
+### APIレスポンスの型定義
+
+```tsx
+type ApiResponse<T> = {
+  data: T;
+  meta: { total: number; page: number };
+};
+
+type ErrorResponse = {
+  error: { code: string; message: string };
+};
+
+type ApiResult<T> = ApiResponse<T> | ErrorResponse;
+```
+
+### フォームの状態管理
+
+複数フィールドを持つフォームのstate型と、フィールドごとの更新関数の型。
+
+### 環境変数の型付け
+
+`process.env` の型を安全に扱う方法。`global.d.ts` での型拡張パターン。
+
+### 配列から型を抽出する
+
+```tsx
+const statuses = ['loading', 'success', 'error'] as const;
+type Status = (typeof statuses)[number];
+// 'loading' | 'success' | 'error'
+```
+
+### オブジェクトのキーから型を作る
+
+```tsx
+const routes = {
+  home: '/',
+  about: '/about',
+  contact: '/contact',
+} as const;
+
+type RouteName = keyof typeof routes;
+// 'home' | 'about' | 'contact'
+```
+
+### 条件付きの型（Conditional Types）
+
+```tsx
+type IsString<T> = T extends string ? true : false;
+```
+
+高度なトピックだが、ライブラリの型定義を読むときに必要になる場面がある。
+
+### Mapped Types
+
+```tsx
+type Optional<T> = {
+  [K in keyof T]?: T[K];
+};
+```
+
+ユーティリティ型の内部で使われている仕組み。Partialの自作例として解説予定。
+
+### Template Literal Types
+
+```tsx
+type EventName = `on${Capitalize<string>}`;
+```
+
+### 型の網羅性チェックのパターン集
+
+判別可能なユニオンとswitch文の組み合わせバリエーション。
+
+---
+
+この章のパターンは随時追加していきます。「こういう場面の書き方を知りたい」というリクエストがあればお寄せください。

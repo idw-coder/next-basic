@@ -1,2 +1,2 @@
-title: 'TypeScriptを学びなおす'
-description: 'JavaScriptに型を足して安全にコードを書くTypeScriptの考え方から、基本の型・関数・オブジェクト型までを、ReactやNext.jsに進む前の土台として整理する入門書です。クイズカテゴリ「TypeScript」とあわせて、型の読み書きの感覚を身につけられます。'
+title: 'TypeScriptを学ぶ'
+description: 'JavaScriptに型を加えるTypeScriptの基礎から、ジェネリクス・ユーティリティ型・ReactやNext.jsで使う型付けパターンまでを段階的に学ぶ入門書です。随時コンテンツを拡充していきます。'

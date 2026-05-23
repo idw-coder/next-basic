@@ -1,0 +1,49 @@
+---
+title: 'モジュールと型のインポート/エクスポート'
+description: 'TypeScriptのモジュールシステム、型のインポート（import type）、再エクスポートなどを整理します。'
+order: 10
+---
+
+<Callout type="column">
+### この章は拡充予定です
+
+現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
+</Callout>
+
+TypeScript/JavaScriptのモジュールシステムの基本と、TypeScript固有の型のインポート・エクスポートを扱います。
+
+---
+
+## 扱うトピック
+
+### ESModulesの基本
+
+`import` / `export` の書き方、名前付きエクスポートとデフォルトエクスポートの違い。
+
+### import type — 型だけをインポートする
+
+```tsx
+import type { User } from './types';
+```
+
+`import type` を使うと、コンパイル後のJavaScriptからインポート文が完全に除去されます。バンドルサイズの最適化と意図の明示に寄与します。
+
+### 型と値の名前空間
+
+TypeScriptでは型と値が別の名前空間に存在する。同じ名前で型と値を定義できる仕組みを解説予定です。
+
+### バレルファイル（index.ts）
+
+```tsx
+// types/index.ts
+export type { User } from './user';
+export type { Product } from './product';
+```
+
+### パスエイリアス
+
+`tsconfig.json` の `paths` 設定で `@/components/Button` のようなエイリアスを使う方法を解説予定です。
+
+---
+
+この章の詳細な内容は順次追加していきます。

@@ -1,0 +1,65 @@
+---
+title: '型アサーションと型ガード'
+description: 'asによる型アサーション、ユーザー定義型ガード（is）、非nullアサーション（!）の使い方と注意点を整理します。'
+order: 8
+---
+
+<Callout type="column">
+### この章は拡充予定です
+
+現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
+</Callout>
+
+05章で学んだNarrowingは、TypeScriptが制御フローから自動的に型を絞り込む仕組みでした。この章では、開発者が**明示的に型を指定する**手法を扱います。
+
+---
+
+## 扱うトピック
+
+### 型アサーション（as）
+
+```tsx
+const input = document.getElementById('email') as HTMLInputElement;
+input.value = 'alice@example.com';
+```
+
+TypeScriptの推論結果を開発者が上書きする手段。便利だが、間違った型を指定するとランタイムエラーの原因になる。使いどころと危険性を解説予定です。
+
+### 非nullアサーション（!）
+
+```tsx
+const element = document.getElementById('app')!;
+// null の可能性を無視する
+```
+
+`null | undefined` を除外するアサーション。`getElementById` の戻り値など、「nullでないことを開発者が知っている」場面で使うが、誤用するとクラッシュの原因に。
+
+### ユーザー定義型ガード（is）
+
+```tsx
+function isUser(value: unknown): value is User {
+  return typeof value === 'object' && value !== null && 'name' in value;
+}
+```
+
+`is` キーワードを使って、関数の戻り値で型を絞り込む手法。APIレスポンスのバリデーションなどで活用するパターンを解説予定です。
+
+### constアサーション
+
+```tsx
+const config = {
+  endpoint: '/api/users',
+  method: 'GET',
+} as const;
+// { readonly endpoint: "/api/users"; readonly method: "GET" }
+```
+
+オブジェクトや配列をリテラル型として固定する `as const` の使い方を解説予定です。
+
+### 型アサーション vs 型ガード — どちらを使うべきか
+
+安全性の観点からの使い分けを解説予定です。
+
+---
+
+この章の詳細な内容は順次追加していきます。

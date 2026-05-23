@@ -1,0 +1,79 @@
+---
+title: 'ジェネリクス — 型を引数にする'
+description: '型を引数として受け取る仕組み「ジェネリクス」を、関数・型エイリアス・インターフェースそれぞれで学びます。制約（extends）も扱います。'
+order: 7
+---
+
+<Callout type="column">
+### この章は拡充予定です
+
+現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
+</Callout>
+
+ジェネリクスは、**型をパラメータとして受け取る**仕組みです。「どんな型でも受け入れるが、受け入れた型の整合性は保つ」という柔軟さと安全性を両立します。
+
+---
+
+## 扱うトピック
+
+### ジェネリクスが解決する問題
+
+`any` を使えば柔軟になるが型安全性を失う。ジェネリクスなら柔軟さを保ちつつ型を追跡できる。
+
+```tsx
+// anyだと戻り値の型がわからない
+function first(arr: any[]): any {
+  return arr[0];
+}
+
+// ジェネリクスなら戻り値の型が保たれる
+function first<T>(arr: T[]): T {
+  return arr[0];
+}
+
+first([1, 2, 3]);      // number と推論される
+first(['a', 'b', 'c']); // string と推論される
+```
+
+### 関数のジェネリクス
+
+型パラメータの宣言、型推論との関係、明示的な型引数の渡し方を解説予定です。
+
+### 型エイリアス・インターフェースのジェネリクス
+
+```tsx
+type ApiResponse<T> = {
+  data: T;
+  status: number;
+  message: string;
+};
+
+type UserResponse = ApiResponse<User>;
+type ProductResponse = ApiResponse<Product>;
+```
+
+### 制約（extends）
+
+型パラメータに制約を設けて、「少なくともこのプロパティを持つ型」に限定する方法を解説予定です。
+
+```tsx
+function getLength<T extends { length: number }>(value: T): number {
+  return value.length;
+}
+```
+
+### 複数の型パラメータ
+
+```tsx
+function map<T, U>(arr: T[], fn: (item: T) => U): U[] {
+  return arr.map(fn);
+}
+```
+
+### よく見るジェネリクスの慣例
+
+`T`（Type）、`K`（Key）、`V`（Value）、`E`（Element）など、型パラメータ名の慣例を解説予定です。
+
+---
+
+この章の詳細な内容は順次追加していきます。

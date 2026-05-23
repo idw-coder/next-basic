@@ -1,0 +1,220 @@
+---
+title: '型の絞り込み（Narrowing） — typeof・in・判別可能なユニオン'
+description: 'ユニオン型を安全に扱うための型の絞り込み手法を、typeof・instanceof・in・判別可能なユニオン・網羅性チェックまで整理します。'
+order: 5
+---
+
+前章でユニオン型を学びました。`string | number` のようなユニオン型の変数は、そのままではどちらの型か確定していないため、片方にしかない操作が使えません。
+
+型の絞り込み（Narrowing）は、条件分岐によって**ユニオン型をより具体的な型に狭めていく**仕組みです。TypeScriptのコンパイラが制御フロー（if文やswitch文）を解析して、分岐の中では型が確定していると判断してくれます。
+
+---
+
+## typeof による絞り込み
+
+最もシンプルな方法です。JavaScriptの `typeof` 演算子を使います。
+
+```tsx
+function formatValue(value: string | number): string {
+  if (typeof value === 'string') {
+    // この中では value は string 型
+    return value.toUpperCase();
+  }
+  // ここに到達する時点で value は number 型
+  return value.toFixed(2);
+}
+```
+
+TypeScriptは `if (typeof value === 'string')` の中では `value` が `string` であることを理解し、`else` やその後のコードでは残りの `number` であることを推論します。
+
+`typeof` が返す値と対応する型は、`'string'`、`'number'`、`'boolean'`、`'object'`、`'function'`、`'undefined'`、`'bigint'`、`'symbol'` です。
+
+### typeofの限界
+
+`typeof null` は `'object'` を返すため、`null` の判定には使えません。また、オブジェクト同士の区別（`User` と `Admin` など）にも使えません。
+
+```tsx
+typeof null;        // 'object' — JavaScriptの歴史的なバグ
+typeof [];          // 'object' — 配列もobject
+typeof { name: '' }; // 'object' — 区別できない
+```
+
+---
+
+## instanceof による絞り込み
+
+クラスのインスタンスを判定するには `instanceof` を使います。
+
+```tsx
+function formatDate(value: string | Date): string {
+  if (value instanceof Date) {
+    // この中では value は Date 型
+    return value.toISOString();
+  }
+  // ここでは value は string 型
+  return value;
+}
+```
+
+`instanceof` はクラスベースのオブジェクト（`Date`、`Error`、`RegExp`、独自クラスなど）に対して機能します。`type` や `interface` で定義した型には使えません。型情報はコンパイル時に消えるため、実行時には存在しないからです。
+
+---
+
+## in による絞り込み
+
+オブジェクトが特定のプロパティを持っているかで絞り込みます。
+
+```tsx
+type Fish = { swim: () => void };
+type Bird = { fly: () => void };
+
+function move(animal: Fish | Bird) {
+  if ('swim' in animal) {
+    // この中では animal は Fish 型
+    animal.swim();
+  } else {
+    // この中では animal は Bird 型
+    animal.fly();
+  }
+}
+```
+
+`'プロパティ名' in オブジェクト` で、そのプロパティが存在するかを実行時にチェックします。TypeScriptはこのチェックの結果から型を推論します。
+
+---
+
+## 判別可能なユニオン（Discriminated Union）
+
+最も強力で実用的なパターンです。ユニオンの各メンバーに**共通のリテラル型プロパティ**を持たせることで、そのプロパティの値で型を判別します。
+
+```tsx
+type LoadingState = {
+  status: 'loading';
+};
+
+type SuccessState = {
+  status: 'success';
+  data: string[];
+};
+
+type ErrorState = {
+  status: 'error';
+  message: string;
+};
+
+type RequestState = LoadingState | SuccessState | ErrorState;
+```
+
+`status` プロパティがリテラル型で定義されているので、`status` の値を見れば型が確定します。
+
+```tsx
+function renderState(state: RequestState): string {
+  switch (state.status) {
+    case 'loading':
+      // state は LoadingState
+      return '読み込み中...';
+    case 'success':
+      // state は SuccessState — data にアクセスできる
+      return `${state.data.length}件`;
+    case 'error':
+      // state は ErrorState — message にアクセスできる
+      return `エラー: ${state.message}`;
+  }
+}
+```
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef union fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef case fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef result fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["RequestState\nstatus: 'loading' | 'success' | 'error'"] --> B{"status の値は？"}
+    B -->|"'loading'"| C["LoadingState\nstatusのみ"]
+    B -->|"'success'"| D["SuccessState\ndata: string[]"]
+    B -->|"'error'"| E["ErrorState\nmessage: string"]
+
+    class A union
+    class B union
+    class C,D,E case
+
+`}
+/>
+
+このパターンはReactのstate管理やAPIレスポンスの処理で頻繁に使います。
+
+---
+
+## 網羅性チェック — never を使って漏れを検出する
+
+判別可能なユニオンで、すべてのケースを処理したかをコンパイラにチェックさせられます。
+
+```tsx
+function renderState(state: RequestState): string {
+  switch (state.status) {
+    case 'loading':
+      return '読み込み中...';
+    case 'success':
+      return `${state.data.length}件`;
+    case 'error':
+      return `エラー: ${state.message}`;
+    default: {
+      // すべてのケースを処理していれば、ここには到達しない
+      // state の型は never になる
+      const _exhaustive: never = state;
+      return _exhaustive;
+    }
+  }
+}
+```
+
+もし将来 `RequestState` に新しい状態（例: `'timeout'`）を追加したのに `case` を書き忘れると、`default` に到達する可能性が生まれ、`never` への代入でコンパイルエラーになります。型で漏れを防げるわけです。
+
+---
+
+## 真偽値チェックによる絞り込み
+
+`null` や `undefined` の可能性がある型は、真偽値チェックで絞り込めます。
+
+```tsx
+function greet(name: string | null): string {
+  if (name) {
+    // この中では name は string（null と空文字は除外される）
+    return `こんにちは、${name}さん`;
+  }
+  return 'こんにちは、ゲストさん';
+}
+```
+
+ただし、`0` や `''`（空文字）も falsy なので、数値や文字列で使うときは意図しない除外に注意してください。
+
+```tsx
+function formatCount(count: number | null): string {
+  if (count) {
+    return `${count}件`;
+  }
+  // count が 0 のときもここに来てしまう
+  return 'なし';
+}
+
+// 安全な書き方
+function formatCount(count: number | null): string {
+  if (count !== null) {
+    return `${count}件`; // 0 も正しく表示される
+  }
+  return 'なし';
+}
+```
+
+---
+
+## まとめ
+
+型の絞り込み（Narrowing）は、ユニオン型を条件分岐で具体的な型に狭める仕組みです。
+
+プリミティブの判定には `typeof`、クラスインスタンスには `instanceof`、プロパティの有無には `in` を使います。
+
+最も実用的なのは**判別可能なユニオン**で、共通のリテラル型プロパティ（`status`、`type`、`kind` など）の値で分岐することで、型安全にケースを処理できます。`never` を使った網羅性チェックで、ケースの追加漏れもコンパイル時に検出できます。
+
+ここまでの01〜05章で、TypeScriptの型システムの基礎は一通り揃いました。次の章からは、関数の型付け、ジェネリクス、ユーティリティ型といったより発展的なトピックに入ります。
