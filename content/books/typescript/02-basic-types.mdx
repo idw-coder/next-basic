@@ -4,7 +4,7 @@ description: 'TypeScriptの型注釈の書き方を、プリミティブ型・�
 order: 2
 ---
 
-TypeScriptで型を書く最も基本的な方法は**型注釈（type annotation）**です。
+TypeScriptで型を書く最も基本的な方法は **型注釈（type annotation）** です。
 変数や関数の引数・戻り値に `: 型名` を付けることで、「ここにはこの型の値しか入らない」と宣言します。
 
 ---
@@ -25,6 +25,7 @@ TypeScriptで使うプリミティブ型は `string`、`number`、`boolean` の3
 ### `String` ではなく `string`
 
 TypeScriptの型名は小文字で書きます。大文字の `String`、`Number`、`Boolean` はJavaScriptのラッパーオブジェクト型であり、別物です。型注釈には常に小文字を使ってください。
+
 </Callout>
 
 ---
@@ -128,7 +129,7 @@ const user: { readonly name: string; age: number } = {
 };
 
 user.name = 'Bob'; // コンパイルエラー — readonlyなので変更できない
-user.age = 26;     // OK
+user.age = 26; // OK
 ```
 
 ---
@@ -188,9 +189,9 @@ function logMessage(message: string): void {
 
 ```tsx
 let value: any = 'hello';
-value = 42;       // OK
-value = true;     // OK
-value.foo.bar;    // コンパイルエラーにならない（実行時にエラーになる可能性あり）
+value = 42; // OK
+value = true; // OK
+value.foo.bar; // コンパイルエラーにならない（実行時にエラーになる可能性あり）
 ```
 
 `any` はTypeScriptの恩恵を捨てることを意味します。JavaScriptからの移行時に一時的に使うことはありますが、新規コードでは避けてください。
