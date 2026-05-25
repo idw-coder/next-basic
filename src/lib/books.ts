@@ -12,6 +12,7 @@ const chapters = chaptersData as Chapter[];
 const categoryToBookMap: Record<string, string> = {
   nextjs: 'next-js',
   'react-basic': 'react-learning',
+  'javascript-basic': 'javascript',
   'ts-general': 'typescript',
   'unit-testing': 'unit-testing',
   'git-basic': 'git-basic',
@@ -20,6 +21,7 @@ const categoryToBookMap: Record<string, string> = {
 
 /** 書籍一覧の表示順（先頭が先に表示される） */
 export const BOOK_ORDER = [
+  'javascript',
   'typescript',
   'react-learning',
   'unit-testing',
@@ -29,7 +31,7 @@ export const BOOK_ORDER = [
 ] as const;
 
 /** NEW バッジを付ける書籍 */
-export const NEW_BOOK_SLUGS = new Set<string>(['typescript', 'react-learning']);
+export const NEW_BOOK_SLUGS = new Set<string>(['javascript']);
 
 function sortBooks<T extends { bookSlug: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => {

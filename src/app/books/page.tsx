@@ -31,6 +31,15 @@ const DEFAULT_THEME: BookTheme = {
 };
 
 const bookThemeMap: Record<string, BookTheme> = {
+  javascript: {
+    cardBg: 'bg-amber-100',
+    iconBg: 'bg-amber-200',
+    iconText: 'text-amber-800',
+    accent: 'text-amber-800',
+    accentHover: 'group-hover:text-amber-800',
+    badgeBg: 'bg-white',
+    badgeText: 'text-amber-800',
+  },
   typescript: {
     cardBg: 'bg-indigo-100',
     iconBg: 'bg-indigo-200',
