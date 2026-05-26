@@ -31,6 +31,15 @@ const DEFAULT_THEME: BookTheme = {
 };
 
 const bookThemeMap: Record<string, BookTheme> = {
+  'system-design': {
+    cardBg: 'bg-emerald-100',
+    iconBg: 'bg-emerald-200',
+    iconText: 'text-emerald-800',
+    accent: 'text-emerald-800',
+    accentHover: 'group-hover:text-emerald-800',
+    badgeBg: 'bg-white',
+    badgeText: 'text-emerald-800',
+  },
   javascript: {
     cardBg: 'bg-amber-100',
     iconBg: 'bg-amber-200',

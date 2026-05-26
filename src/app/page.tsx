@@ -335,9 +335,15 @@ const CATEGORY_COLORS: Record<string, { border: string; hoverBg: string }> = {
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/05/26',
+    text: '教科書「システム設計をちゃんと理解する」を公開しました',
+    isNew: true,
+    link: '/books/system-design',
+  },
+  {
     date: '2026/05/25',
     text: '教科書「JavaScriptをちゃんと理解する」を公開しました',
-    isNew: true,
+    isNew: false,
     link: '/books/javascript',
   },
   { date: '2026/04/29', text: 'SQLクイズを公開しました', isNew: false, link: '/quiz/sql-basic' },

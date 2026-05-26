@@ -21,6 +21,7 @@ const categoryToBookMap: Record<string, string> = {
 
 /** 書籍一覧の表示順（先頭が先に表示される） */
 export const BOOK_ORDER = [
+  'system-design',
   'javascript',
   'typescript',
   'react-learning',
@@ -31,7 +32,7 @@ export const BOOK_ORDER = [
 ] as const;
 
 /** NEW バッジを付ける書籍 */
-export const NEW_BOOK_SLUGS = new Set<string>(['javascript']);
+export const NEW_BOOK_SLUGS = new Set<string>(['system-design']);
 
 function sortBooks<T extends { bookSlug: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => {
