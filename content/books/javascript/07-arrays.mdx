@@ -4,4 +4,413 @@ description: 'map・filter・reduce・find・some・everyなど、配列メソ�
 order: 7
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+JavaScriptで最も触る機会が多いデータ構造は配列です。
+APIのレスポンスを加工する、フォームの入力値をまとめる、UIにリストを表示する——ほぼすべての場面で配列が登場します。
+
+この章では、配列の「メソッド」とは何かという前提から始めて、実務で頻出する `map`・`filter`・`reduce`・`find`・`some`・`every` を用途別に整理します。
+
+## 配列メソッドとは — Array インスタンスのメソッドという意味
+
+`[1, 2, 3].map(...)` のように配列に対して `.map()` を呼べるのは、配列が **`Array` コンストラクタのインスタンス**だからです。
+
+```js
+const arr = [1, 2, 3];
+
+console.log(arr instanceof Array); // true
+console.log(typeof arr); // "object"（配列もオブジェクトの一種）
+```
+
+JavaScriptでは、`[]` というリテラルで配列を作ると、内部的には `new Array()` と同等のオブジェクトが生成されます。
+そして、すべての `Array` インスタンスは **`Array.prototype`** というオブジェクトからメソッドを継承しています。
+
+```js
+// .map() は配列自体が持っているのではなく、Array.prototype から借りている
+console.log(arr.hasOwnProperty('map')); // false
+console.log(Array.prototype.hasOwnProperty('map')); // true
+```
+
+つまり `arr.map(...)` と書いたとき、JavaScriptは以下の順序でメソッドを探しています。
+
+1. `arr` 自身に `map` プロパティがあるか → ない
+2. `arr` のプロトタイプ（`Array.prototype`）に `map` があるか → ある → これを使う
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["arr = [1, 2, 3]"] -->|"__proto__"| B["Array.prototype"]
+    B -->|".map()"| B
+    B -->|".filter()"| B
+    B -->|".reduce()"| B
+    B -->|"__proto__"| C["Object.prototype"]
+`}
+/>
+
+これが「配列メソッドは `Array` インスタンスのメソッド」という意味です。
+配列っぽく見えるが `Array` インスタンスではないもの（例: `document.querySelectorAll()` の戻り値である `NodeList`）では、そのままでは `.map()` が使えません。
+
+```js
+const nodes = document.querySelectorAll('div');
+// nodes.map(...) → TypeError: nodes.map is not a function
+
+// Array.from() で本物の配列に変換すれば使える
+Array.from(nodes).map((node) => node.textContent);
+```
+
+この前提を押さえたうえで、実務で特に使用頻度の高いメソッドを見ていきます。
+
+## map — 各要素を変換して新しい配列を作る
+
+`map` は配列の各要素にコールバック関数を適用し、その戻り値で構成された**新しい配列**を返します。
+元の配列は変更されません（非破壊）。
+
+```js
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map((n) => n * 2);
+
+console.log(doubled); // [2, 4, 6, 8, 10]
+console.log(numbers); // [1, 2, 3, 4, 5]（元の配列はそのまま）
+```
+
+### コールバックの引数
+
+コールバックは最大3つの引数を受け取ります。
+
+```js
+const result = ['a', 'b', 'c'].map((element, index, array) => {
+  // element: 現在の要素（"a", "b", "c"）
+  // index:   現在のインデックス（0, 1, 2）
+  // array:   元の配列自体
+  return `${index}: ${element}`;
+});
+// ["0: a", "1: b", "2: c"]
+```
+
+実務では第1引数だけ使うケースがほとんどです。第2引数の `index` はリスト表示の `key` 生成などで使うことがあります。
+
+### 実務パターン: APIレスポンスの整形
+
+```js
+// APIから返ってきたユーザーデータ
+const users = [
+  { id: 1, first_name: '太郎', last_name: '田中' },
+  { id: 2, first_name: '花子', last_name: '佐藤' },
+];
+
+// フロントで使いやすい形に変換
+const displayUsers = users.map((user) => ({
+  id: user.id,
+  fullName: `${user.last_name} ${user.first_name}`,
+}));
+// [{ id: 1, fullName: "田中 太郎" }, { id: 2, fullName: "佐藤 花子" }]
+```
+
+### map を使うべきでない場面
+
+`map` は「変換した新しい配列が欲しいとき」に使います。
+戻り値を使わずに副作用（ログ出力、DOM操作など）だけが目的なら `forEach` を使ってください。
+
+```js
+// ❌ mapの戻り値を捨てている — forEachを使うべき
+users.map((user) => {
+  console.log(user.name);
+});
+
+// ⭕
+users.forEach((user) => {
+  console.log(user.name);
+});
+```
+
+## filter — 条件に合う要素だけを残す
+
+`filter` はコールバックが `true` を返した要素だけで構成された**新しい配列**を返します。
+元の配列は変更されません。
+
+```js
+const numbers = [1, 2, 3, 4, 5, 6];
+const evens = numbers.filter((n) => n % 2 === 0);
+
+console.log(evens); // [2, 4, 6]
+```
+
+### 実務パターン: 検索フィルタリング
+
+```js
+const products = [
+  { name: 'ノートPC', price: 120000, inStock: true },
+  { name: 'マウス', price: 3000, inStock: true },
+  { name: 'キーボード', price: 15000, inStock: false },
+  { name: 'モニター', price: 45000, inStock: true },
+];
+
+// 在庫ありで1万円以上の商品
+const result = products.filter((p) => p.inStock && p.price >= 10000);
+// [{ name: "ノートPC", ... }, { name: "モニター", ... }]
+```
+
+### filter + map のチェーン
+
+`filter` で絞り込んでから `map` で変換する、というチェーンは実務で非常によく書きます。
+
+```js
+// 在庫あり商品の名前だけを取得
+const inStockNames = products.filter((p) => p.inStock).map((p) => p.name);
+// ["ノートPC", "マウス", "モニター"]
+```
+
+### 該当なしの場合
+
+条件に合う要素がなければ空配列 `[]` が返ります。`null` や `undefined` ではありません。
+
+```js
+const result = [1, 2, 3].filter((n) => n > 10);
+console.log(result); // []
+console.log(result.length); // 0
+```
+
+## reduce — 配列を1つの値にまとめる
+
+`reduce` は配列の各要素を順に処理し、最終的に**1つの値**に集約します。
+合計値、オブジェクト、別の配列など、あらゆる形に集約できる汎用性の高いメソッドです。
+
+```js
+const numbers = [1, 2, 3, 4, 5];
+const sum = numbers.reduce((accumulator, current) => {
+  return accumulator + current;
+}, 0);
+// 0 + 1 + 2 + 3 + 4 + 5 = 15
+```
+
+### 引数の構造
+
+```js
+array.reduce((accumulator, currentValue, index, array) => {
+  // accumulator: 前回のコールバックの戻り値（初回は初期値）
+  // currentValue: 現在の要素
+  return nextAccumulator;
+}, initialValue);
+//  ^^^^^^^^^^^^^ 第2引数: 初期値（省略可能だが、常に指定するのが安全）
+```
+
+### 初期値は必ず指定する
+
+初期値を省略すると、配列の最初の要素が初期値として使われます。
+空配列に対して初期値なしで `reduce` を呼ぶと `TypeError` になるため、**初期値は常に指定する**のが安全です。
+
+```js
+// ❌ 空配列でエラー
+[].reduce((acc, cur) => acc + cur);
+// TypeError: Reduce of empty array with no initial value
+
+// ⭕ 初期値を指定すれば空配列でも安全
+[].reduce((acc, cur) => acc + cur, 0); // 0
+```
+
+### 実務パターン: グルーピング
+
+```js
+const orders = [
+  { product: 'PC', category: 'electronics' },
+  { product: 'シャツ', category: 'clothing' },
+  { product: 'マウス', category: 'electronics' },
+  { product: 'パンツ', category: 'clothing' },
+];
+
+const grouped = orders.reduce((acc, order) => {
+  const key = order.category;
+  if (!acc[key]) {
+    acc[key] = [];
+  }
+  acc[key].push(order);
+  return acc;
+}, {});
+
+// {
+//   electronics: [{ product: "PC", ... }, { product: "マウス", ... }],
+//   clothing: [{ product: "シャツ", ... }, { product: "パンツ", ... }]
+// }
+```
+
+なお、このグルーピングは ES2024 で追加された `Object.groupBy` でより簡潔に書けるようになりました。
+
+```js
+const grouped = Object.groupBy(orders, (order) => order.category);
+```
+
+### reduce を使いすぎない
+
+`reduce` は汎用的すぎるがゆえに、何をしているか読みにくくなりがちです。
+`map` + `filter` で書ける処理を無理に `reduce` で書く必要はありません。
+
+```js
+// ❌ reduceで書いているが、やっていることはfilter + map
+const result = numbers.reduce((acc, n) => {
+  if (n > 3) acc.push(n * 2);
+  return acc;
+}, []);
+
+// ⭕ 意図が明確
+const result = numbers.filter((n) => n > 3).map((n) => n * 2);
+```
+
+`reduce` の出番は「合計」「グルーピング」「オブジェクトへの変換」など、`map` / `filter` では表現できない集約処理です。
+
+## find — 条件に合う最初の1つを取得
+
+`find` はコールバックが `true` を返した**最初の要素**を返します。
+見つからなければ `undefined` です。
+
+```js
+const users = [
+  { id: 1, name: '太郎' },
+  { id: 2, name: '花子' },
+  { id: 3, name: '次郎' },
+];
+
+const user = users.find((u) => u.id === 2);
+console.log(user); // { id: 2, name: "花子" }
+
+const notFound = users.find((u) => u.id === 99);
+console.log(notFound); // undefined
+```
+
+### filter との違い
+
+| メソッド | 戻り値                           | 見つからない場合 |
+| -------- | -------------------------------- | ---------------- |
+| `find`   | 最初にマッチした**要素そのもの** | `undefined`      |
+| `filter` | マッチした**すべての要素の配列** | `[]`（空配列）   |
+
+「1つだけ欲しい」なら `find`、「全部欲しい」なら `filter` です。
+
+### findIndex
+
+要素ではなくインデックスが欲しい場合は `findIndex` を使います。見つからなければ `-1` を返します。
+
+```js
+const index = users.findIndex((u) => u.id === 2);
+console.log(index); // 1
+```
+
+## some — 1つでも条件を満たすか
+
+`some` はコールバックが `true` を返す要素が**1つでもあれば** `true` を返します。
+全要素が `false` なら `false` です。
+
+```js
+const numbers = [1, 3, 5, 8, 9];
+
+const hasEven = numbers.some((n) => n % 2 === 0);
+console.log(hasEven); // true（8が偶数）
+```
+
+### 実務パターン: 権限チェック
+
+```js
+const userRoles = ['editor', 'viewer'];
+const canEdit = userRoles.some((role) => role === 'editor' || role === 'admin');
+console.log(canEdit); // true
+```
+
+### 短絡評価する
+
+`some` は `true` を返す要素を見つけた時点で残りの要素を処理せずに終了します。大きな配列でもパフォーマンス上の問題になりにくいです。
+
+## every — すべてが条件を満たすか
+
+`every` は**すべての要素**でコールバックが `true` を返した場合に `true` を返します。
+1つでも `false` があれば即座に `false` を返します。
+
+```js
+const ages = [20, 25, 30, 18];
+
+const allAdults = ages.every((age) => age >= 20);
+console.log(allAdults); // false（18が条件を満たさない）
+```
+
+### 実務パターン: フォームバリデーション
+
+```js
+const fields = [
+  { name: 'email', value: 'test@example.com', valid: true },
+  { name: 'password', value: 'abc', valid: false },
+  { name: 'name', value: '太郎', valid: true },
+];
+
+const isFormValid = fields.every((field) => field.valid);
+console.log(isFormValid); // false（passwordが invalid）
+```
+
+### 空配列に対する every
+
+空配列に対して `every` は常に `true` を返します。
+これは論理学の「空真」（vacuous truth）に基づく仕様ですが、実務ではバグの原因になりえます。
+
+```js
+[].every((x) => x > 0); // true（！）
+```
+
+空配列の可能性がある場合は、事前に `length` をチェックしてください。
+
+## メソッドの使い分け早見表
+
+| やりたいこと                 | メソッド    | 戻り値              |
+| ---------------------------- | ----------- | ------------------- |
+| 各要素を変換する             | `map`       | 新しい配列          |
+| 条件で絞り込む               | `filter`    | 新しい配列          |
+| 1つの値にまとめる            | `reduce`    | 任意の値            |
+| 条件に合う最初の要素         | `find`      | 要素 or `undefined` |
+| 条件に合う最初のインデックス | `findIndex` | 数値 or `-1`        |
+| 1つでも条件を満たすか        | `some`      | `boolean`           |
+| すべて条件を満たすか         | `every`     | `boolean`           |
+
+## よくあるハマりどころ
+
+### 元の配列を壊すメソッドと壊さないメソッド
+
+この章で扱った `map`・`filter`・`reduce`・`find`・`some`・`every` はすべて**非破壊**（元の配列を変更しない）です。
+
+一方、以下のメソッドは**元の配列を直接変更する**（破壊的）ので注意が必要です。
+
+| 破壊的メソッド | 非破壊の代替（ES2023〜） |
+| -------------- | ------------------------ |
+| `sort()`       | `toSorted()`             |
+| `reverse()`    | `toReversed()`           |
+| `splice()`     | `toSpliced()`            |
+
+```js
+const arr = [3, 1, 2];
+
+// ❌ 元の配列が変わる
+arr.sort();
+console.log(arr); // [1, 2, 3]（元の配列が変わっている）
+
+// ⭕ 元の配列は変わらない（ES2023）
+const sorted = [3, 1, 2].toSorted();
+```
+
+### map の中で条件分岐しない
+
+`map` の中で `if` を使って一部の要素だけ変換するのは、`filter` + `map` に分けるべきサインです。
+
+```js
+// ❌ mapの中で条件分岐 → undefinedが混じる
+const result = numbers.map((n) => {
+  if (n > 3) return n * 2;
+});
+// [undefined, undefined, undefined, 8, 10]
+
+// ⭕
+const result = numbers.filter((n) => n > 3).map((n) => n * 2);
+// [8, 10]
+```
+
+## ちゃんと使うためのポイント
+
+- 配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している
+- `map` は変換、`filter` は絞り込み、`reduce` は集約——目的に応じて使い分ける
+- `find` は最初の1つ、`some` は1つでもあるか、`every` は全部かを判定する
+- `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快
+- 破壊的メソッド（`sort` / `reverse` / `splice`）と非破壊メソッドの区別を意識する
+
+次の章では、**文字列操作と正規表現**を取り上げます。実務でよく使うパターンをまとめます。
