@@ -64,7 +64,7 @@ export default function HeaderNav() {
           ${open ? "block" : "hidden sm:flex"}
         `}
       >
-        <Link href="/quiz/search" className={linkClass}>
+        <Link href="/search" className={linkClass}>
           <Search className={iconClass} />
           検索
         </Link>

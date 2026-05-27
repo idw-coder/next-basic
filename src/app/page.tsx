@@ -747,7 +747,7 @@ export default async function Home() {
           </div>
         </Link>
 
-        <Link href="/quiz/search" className="block group">
+        <Link href="/search" className="block group">
           <div className="rounded-md border-2 border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 p-5 sm:p-6 hover:border-violet-400 dark:hover:border-violet-600 transition-colors h-full">
             <div className="flex items-start gap-4">
               <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/60 group-hover:bg-violet-200 dark:group-hover:bg-violet-800/60 transition-colors">
@@ -755,10 +755,10 @@ export default async function Home() {
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-1">
-                  キーワードで問題を探す
+                  キーワードで探す
                 </h2>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-                  「Promise」「Flexbox」「XSS」など、気になるワードで全カテゴリを横断検索！
+                  クイズも教科書も横断検索。「Promise」「型ガード」「API設計」などから探せます
                 </p>
                 <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-violet-600 dark:text-violet-400">
                   検索する
