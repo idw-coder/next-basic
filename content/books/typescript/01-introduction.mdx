@@ -22,15 +22,15 @@ function greet(user) {
 }
 
 greet({ name: 'Alice' }); // "こんにちは、Aliceさん"
-greet('Alice');            // "こんにちは、undefinedさん" — 実行するまでわからない
-greet();                   // TypeError: Cannot read properties of undefined
+greet('Alice'); // "こんにちは、undefinedさん" — 実行するまでわからない
+greet(); // TypeError: Cannot read properties of undefined
 ```
 
 この関数は `user` がオブジェクトで `name` プロパティを持つことを前提にしていますが、JavaScriptはそれをチェックしません。間違った値を渡してもエラーになるのは実行時です。
 
 小さなスクリプトならこの自由さは便利ですが、コードが大きくなると「この関数に何を渡せばいいのか」「この変数に何が入っているのか」がわからなくなり、バグの温床になります。
 
----
+## <Figure src="/images/fork_suit_man_color.png" alt="悩んでいる人のイラスト" maxWidth="300px" />
 
 ## TypeScriptが加えるもの
 
@@ -46,8 +46,8 @@ function greet(user: User): string {
 }
 
 greet({ name: 'Alice' }); // OK
-greet('Alice');            // コンパイルエラー — string型はUser型に代入できない
-greet();                   // コンパイルエラー — 引数が足りない
+greet('Alice'); // コンパイルエラー — string型はUser型に代入できない
+greet(); // コンパイルエラー — 引数が足りない
 ```
 
 間違いが**コードを書いている時点**（エディタ上）で検出されます。実行して初めて気づくのではなく、書いている途中でエラーが表示されるので、バグを未然に防げます。
@@ -84,6 +84,7 @@ flowchart LR
 ### Next.jsやViteを使っている場合
 
 Next.jsやViteなどのフレームワーク・ビルドツールを使っている場合、TypeScriptのコンパイルはビルドプロセスに組み込まれています。`tsc` を直接叩く必要はほとんどありません。`.tsx` ファイルを書けば、ビルド時に自動的にJavaScriptに変換されます。
+
 </Callout>
 
 ---

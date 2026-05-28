@@ -1,45 +1,213 @@
 ---
 title: 'ジェネリクス — 型を引数にする'
-description: '型を引数として受け取る仕組み「ジェネリクス」を、関数・型エイリアス・インターフェースそれぞれで学びます。制約（extends）も扱います。'
+description: '型を引数として受け取る仕組み「ジェネリクス」を、そもそもの疑問から実践パターンまで網羅的に学びます。'
 order: 7
 ---
 
-<Callout type="column">
-### この章は拡充予定です
+## そもそもジェネリクスとは何か
 
-現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
+関数は「値」を引数として受け取りますが、ジェネリクスは「型」を引数として受け取る仕組みです。
+
+まだピンとこないと思うので、具体的な問題から見ていきます。
+
+<Callout type="column" title="値の引数と型の引数">
+  `function add(x: number)` — `x` は値の引数。呼び出し時に `add(5)` のように値を渡す。
+
+`function getFirst<T>(arr: T[])` — `T` は型の引数。呼び出し時に `getFirst<string>(...)` のように型を渡す（省略も可）。
+
+この対応関係がジェネリクスの本質です。
+
 </Callout>
 
-ジェネリクスは、**型をパラメータとして受け取る**仕組みです。「どんな型でも受け入れるが、受け入れた型の整合性は保つ」という柔軟さと安全性を両立します。
+<Figure src="/images/question_woman_04_color.png" alt="悩んでいる人のイラスト" maxWidth="120px" />
 
 ---
 
-## 扱うトピック
+## ジェネリクスがない世界
 
-### ジェネリクスが解決する問題
-
-`any` を使えば柔軟になるが型安全性を失う。ジェネリクスなら柔軟さを保ちつつ型を追跡できる。
+配列の先頭要素を返す関数を作りたいとします。
 
 ```tsx
-// anyだと戻り値の型がわからない
-function first(arr: any[]): any {
+function getFirstString(arr: string[]): string {
   return arr[0];
 }
 
-// ジェネリクスなら戻り値の型が保たれる
-function first<T>(arr: T[]): T {
+function getFirstNumber(arr: number[]): number {
   return arr[0];
 }
-
-first([1, 2, 3]);      // number と推論される
-first(['a', 'b', 'c']); // string と推論される
 ```
 
-### 関数のジェネリクス
+やっていることは同じなのに、型が違うだけで関数が増えていきます。
 
-型パラメータの宣言、型推論との関係、明示的な型引数の渡し方を解説予定です。
+### `any` で解決？
 
-### 型エイリアス・インターフェースのジェネリクス
+「じゃあ `any` にすればいいのでは？」と思うかもしれません。
+
+```tsx
+function getFirst(arr: any[]): any {
+  return arr[0];
+}
+
+const result = getFirst([1, 2, 3]);
+// result は any — number のメソッド補完が効かない
+result.toFixed(2); // 動くけど型エラーにならない
+result.toUpperCase(); // これも型エラーにならない（実行時に壊れる）
+```
+
+`any` にすると柔軟にはなりますが、戻り値の型情報が消えます。TypeScript を使う意味がなくなってしまいます。
+
+### ジェネリクスで解決する
+
+```tsx
+function getFirst<T>(arr: T[]): T {
+  return arr[0];
+}
+
+const a = getFirst(['hello', 'world']); // string
+const b = getFirst([1, 2, 3]); // number
+
+a.toUpperCase(); // OK — string のメソッド
+b.toFixed(2); // OK — number のメソッド
+b.toUpperCase(); // エラー — number に toUpperCase はない
+```
+
+1 つの関数で、型の安全性を保ったまま、どんな型の配列にも対応できるようになりました。
+
+---
+
+## `<T>` の読み方
+
+`<T>` は「型パラメータ」と呼ばれます。関数の `(x: number)` が「値の入れ物」であるのと同様に、`<T>` は「型の入れ物」です。
+
+```tsx
+//       型パラメータ
+//          ↓
+function getFirst<T>(arr: T[]): T {
+  return arr[0];
+}
+```
+
+`T` という名前に特別な意味はありません。慣習的に使われているだけで、`<Foo>` でも `<MyType>` でも動きます。ただし、1 文字の慣例が広く使われています（後述）。
+
+---
+
+## 型推論と明示的な型引数
+
+### 型推論に任せる（基本）
+
+多くの場合、TypeScript は引数から型パラメータを推論できます。
+
+```tsx
+function wrap<T>(value: T): { value: T } {
+  return { value };
+}
+
+const a = wrap(42); // { value: number }
+const b = wrap('hello'); // { value: string }
+```
+
+型引数を書かなくても、渡した値から `T` が自動的に決まります。推論が効く場合は省略するのが普通です。
+
+### 明示的に型引数を渡す
+
+引数から推論できない場合は、呼び出し側で型引数を明示します。
+
+```tsx
+async function fetchApi<T>(endpoint: string): Promise<T> {
+  const response = await fetch(endpoint);
+  return response.json() as Promise<T>;
+}
+
+type User = { id: string; name: string; email: string };
+
+// 引数は string なので、T を推論できない → 明示する
+const user = await fetchApi<User>('/api/users/1');
+user.name; // string（補完が効く）
+```
+
+<Callout type="note">
+  型引数を渡しても、実行時にデータの中身を検証するわけではありません。API
+  レスポンスが本当にその型に合っているかを保証するには、Zod
+  などのバリデーションライブラリが必要です。
+</Callout>
+
+---
+
+## 複数の型パラメータ
+
+型パラメータは複数持てます。
+
+```tsx
+function makePair<A, B>(first: A, second: B): [A, B] {
+  return [first, second];
+}
+
+const pair = makePair('age', 25); // [string, number]
+```
+
+もう少し実用的な例として、配列の変換関数を見てみます。
+
+```tsx
+function map<T, U>(arr: T[], fn: (item: T) => U): U[] {
+  return arr.map(fn);
+}
+
+const lengths = map(['hello', 'world'], (s) => s.length);
+// T = string, U = number と推論される
+```
+
+これは `Array.prototype.map` と同じシグネチャです。標準ライブラリの型定義もジェネリクスで書かれています。
+
+<Callout type="column" title="標準ライブラリを覗いてみよう">
+  VS Code で `[1,2,3].map` にカーソルを合わせると、`Array<number>.map<U>(callbackfn: ...)` のような型が表示されます。普段使っている配列メソッドの裏側にもジェネリクスがいます。
+</Callout>
+
+---
+
+## 制約（extends）
+
+型パラメータに制約をつけて、「少なくともこのプロパティを持つ型」に限定できます。
+
+```tsx
+function getLength<T extends { length: number }>(value: T): number {
+  return value.length;
+}
+
+getLength('hello'); // OK — string は length を持つ
+getLength([1, 2, 3]); // OK — 配列も length を持つ
+getLength(123); // エラー — number に length はない
+```
+
+`T extends { length: number }` は「`T` は `length` プロパティを持つ型でなければならない」という意味です。制約がないと `value.length` にアクセスした時点でコンパイルエラーになります。
+
+<Callout type="note" title="なぜ制約が必要？">
+  制約なしの `<T>` は「あらゆる型が来る可能性がある」ことを意味します。`number` が来るかもしれない以上、TypeScript は `value.length` が存在する保証がないと判断し、エラーにします。`extends` で「少なくとも `length` を持つ」と宣言することで、安全にアクセスできるようになります。
+</Callout>
+
+### `keyof` との組み合わせ
+
+オブジェクトのキーを型安全に取得するパターンです。
+
+```tsx
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+const user = { name: '太郎', age: 30 };
+getProperty(user, 'name'); // string
+getProperty(user, 'age'); // number
+getProperty(user, 'email'); // エラー — 'email' は存在しない
+```
+
+`K extends keyof T` により、`key` には `T` の実際のプロパティ名しか渡せません。タイポや存在しないキーを指定するとコンパイル時にエラーになります。
+
+---
+
+## 型エイリアス・インターフェースのジェネリクス
+
+ジェネリクスは関数だけでなく、型エイリアスやインターフェースにも使えます。
+
+### 型エイリアス
 
 ```tsx
 type ApiResponse<T> = {
@@ -48,32 +216,176 @@ type ApiResponse<T> = {
   message: string;
 };
 
-type UserResponse = ApiResponse<User>;
-type ProductResponse = ApiResponse<Product>;
+type User = { id: string; name: string };
+type Product = { id: string; price: number };
+
+type UserResponse = ApiResponse<User>; // data: User
+type ProductResponse = ApiResponse<Product>; // data: Product
 ```
 
-### 制約（extends）
-
-型パラメータに制約を設けて、「少なくともこのプロパティを持つ型」に限定する方法を解説予定です。
+### インターフェース
 
 ```tsx
-function getLength<T extends { length: number }>(value: T): number {
-  return value.length;
+interface Repository<T> {
+  findById(id: string): Promise<T | null>;
+  findAll(): Promise<T[]>;
+  save(item: T): Promise<void>;
 }
 ```
-
-### 複数の型パラメータ
-
-```tsx
-function map<T, U>(arr: T[], fn: (item: T) => U): U[] {
-  return arr.map(fn);
-}
-```
-
-### よく見るジェネリクスの慣例
-
-`T`（Type）、`K`（Key）、`V`（Value）、`E`（Element）など、型パラメータ名の慣例を解説予定です。
 
 ---
 
-この章の詳細な内容は順次追加していきます。
+## `as` キャストとの違い
+
+ジェネリクスを使わない場合、`as` でキャストする書き方になりがちです。
+
+```tsx
+// as キャスト — 戻り値を「後から別の型として扱う」
+const user = (await fetchApi('/api/users/1')) as User;
+
+// 型引数 — 「この関数はこの型を返す」と宣言する
+const user = await fetchApi<User>('/api/users/1');
+```
+
+どちらも実行時の挙動は同じですが、`as` は「型の上書き」なので、実際の値と無関係な型を指定してもコンパイルが通ってしまいます。
+
+```tsx
+// as は全然違う型でも通る
+const user = (await fetchApi('/api/users/1')) as number; // コンパイルOK、実行時に壊れる
+```
+
+型引数の方が、関数のシグネチャ（`Promise<T>` を返す）と一貫した形で型が決まるため、意図しない型の握りつぶしが起きにくくなります。
+
+<Figure
+  src="/images/usingcomputer_suit_woman_color.png"
+  alt="PCで作業をしている女性のイラスト"
+  maxWidth="220px"
+/>
+
+<Callout type="warning" title="実行時バリデーションは別途必要">
+  型引数も `as` も実行時にデータの中身を検証しません。API
+  レスポンスの実行時バリデーションが必要な場合は Zod などを使います。
+</Callout>
+
+---
+
+## デフォルト型パラメータ
+
+関数の引数にデフォルト値を設定できるように、型パラメータにもデフォルトを設定できます。
+
+```tsx
+type ApiResponse<T = unknown> = {
+  data: T;
+  status: number;
+};
+
+// 型引数を省略すると T = unknown
+const res: ApiResponse = { data: 'something', status: 200 };
+
+// 明示すれば上書き
+const userRes: ApiResponse<User> = { data: user, status: 200 };
+```
+
+---
+
+## ユーティリティ型と Pick
+
+TypeScript の組み込みユーティリティ型（`Pick`, `Omit`, `Partial` など）はジェネリクスで実現されています。
+
+### Pick で必要なフィールドだけ抽出する
+
+外部ライブラリが提供する大きな型から、実際に使うフィールドだけを取り出せます。
+
+```tsx
+// ライブラリが提供する型（大量のプロパティ）
+type LibraryItem = {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata: Record<string, unknown>;
+  // ... 他にも多数
+};
+
+// 実際に使うフィールドだけを抽出
+type ItemSummary = Pick<LibraryItem, 'id' | 'title'>;
+// { id: string; title: string }
+```
+
+アプリ固有のフィールドを足したい場合は、交差型（`&`）で合成します。
+
+```tsx
+type AppItem = Pick<LibraryItem, 'id' | 'title'> & {
+  isFavorite: boolean;
+};
+```
+
+自分で全プロパティの型を書き直すよりも、ライブラリの型定義が更新されたときに追従しやすくなります。
+
+<Callout type="info">
+  `Pick` はコンパイル時の型操作です。API
+  レスポンスが実際にその構造を満たしているかの実行時バリデーションには Zod
+  などのライブラリを使います。
+</Callout>
+
+---
+
+## よくある疑問
+
+### `T` じゃないとダメ？
+
+ダメではありません。ただし以下の慣例が広く使われています。
+
+| 名前 | 由来    | 使われる場面                     |
+| ---- | ------- | -------------------------------- |
+| `T`  | Type    | 最も一般的。単一の型パラメータ   |
+| `U`  | —       | 2 つ目の型パラメータ（`T` の次） |
+| `K`  | Key     | オブジェクトのキーを表す         |
+| `V`  | Value   | オブジェクトの値を表す           |
+| `E`  | Element | コレクションの要素を表す         |
+
+1 文字だと読みにくい場合は、意味のある名前を使うこともあります。
+
+```tsx
+function fetchAndTransform<TRaw, TResult>(
+  fetcher: () => Promise<TRaw>,
+  transform: (raw: TRaw) => TResult,
+): Promise<TResult> {
+  return fetcher().then(transform);
+}
+```
+
+### いつジェネリクスを使うべき？
+
+以下のどれかに当てはまるときに検討してください。
+
+- 型だけが違う同じ処理を、複数の型に対して書いている
+- 関数の戻り値の型が、引数の型に依存する
+- `any` や `unknown` を使っているが、本当は型を追跡したい
+- ライブラリやユーティリティ関数など、再利用性の高いコードを書いている
+
+逆に、特定の 1 つの型しか扱わない関数にジェネリクスを使う必要はありません。
+
+### `<T>` はどこに書く？
+
+```tsx
+// 関数宣言
+function fn<T>(arg: T): T { ... }
+
+// アロー関数
+const fn = <T>(arg: T): T => { ... };
+
+// TSX ファイルでのアロー関数（<T> が JSX タグと紛らわしいので extends をつける）
+const fn = <T extends unknown>(arg: T): T => { ... };
+
+// 型エイリアス
+type Box<T> = { value: T };
+
+// インターフェース
+interface Box<T> { value: T }
+```
+
+<Callout type="warning" title="TSX ファイルでの注意">
+  `.tsx` ファイルでは `<T>` が JSX のタグと区別できないため、`<T extends unknown>` のようにダミーの制約をつける必要があります。`.ts` ファイルではこの問題は起きません。
+</Callout>

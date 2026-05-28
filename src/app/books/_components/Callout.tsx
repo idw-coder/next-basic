@@ -1,5 +1,5 @@
 interface CalloutProps {
-  type?: 'note' | 'warning' | 'column';
+  type?: 'note' | 'info' | 'warning' | 'column';
   title?: string;
   children: React.ReactNode;
 }
@@ -9,6 +9,11 @@ const styles = {
     defaultTitle: 'NOTE',
     labelBg: 'bg-blue-500',
     border: 'border-blue-300 dark:border-blue-700',
+  },
+  info: {
+    defaultTitle: 'INFO',
+    labelBg: 'bg-sky-500',
+    border: 'border-sky-300 dark:border-sky-700',
   },
   warning: {
     defaultTitle: 'WARNING',
