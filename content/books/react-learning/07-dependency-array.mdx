@@ -1,7 +1,7 @@
 ---
 title: '依存配列を正しく書く — exhaustive-depsの読み方'
 description: 'ESLintのexhaustive-depsルールが何をチェックしているか、警告を無視するとどうなるか（stale closure）、正しい対処法を具体例で解説します。'
-order: 6
+order: 7
 ---
 
 前章で依存配列の基本を学びました。
@@ -184,13 +184,13 @@ function SearchResults({ query }: { query: string }) {
 }
 ```
 
-`useCallback` については08章で詳しく扱います。
+`useCallback` については09章で詳しく扱います。
 
 ---
 
 ## オブジェクトや関数が依存配列に入るとエフェクトが毎回走る
 
-03章で学んだ「参照比較」の問題が、依存配列でも出てきます。
+04章で学んだ「参照比較」の問題が、依存配列でも出てきます。
 
 ```tsx
 function UserList({ filters }: { filters: { status: string } }) {

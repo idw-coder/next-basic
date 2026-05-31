@@ -1,7 +1,7 @@
 ---
 title: 'useMemo — 計算結果のメモ化'
 description: 'useMemoの仕組みと、useEffect・useRefとの比較、使うべき場面と使わなくてよい場面の判断基準を整理します。'
-order: 7
+order: 8
 ---
 
 `useMemo` は、**依存配列の値が変わらない限り前回の計算結果を使い回す（メモ化）**フックです。
@@ -156,7 +156,7 @@ const sorted = useMemo(() => sortUsers(users), [users]);
 
 ## useMemoで参照を安定させる
 
-06章で触れた「オブジェクトが依存配列に入るとエフェクトが毎回走る」問題を、`useMemo` で解決できます。
+07章で触れた「オブジェクトが依存配列に入るとエフェクトが毎回走る」問題を、`useMemo` で解決できます。
 
 ```tsx
 function Dashboard({ filters }: { filters: { status: string } }) {
@@ -173,7 +173,7 @@ function Dashboard({ filters }: { filters: { status: string } }) {
 }
 ```
 
-ただし、06章で述べたようにプリミティブ値を直接依存配列に入れる方がシンプルです。`useMemo` でオブジェクトの参照を安定させるのは、オブジェクト自体をエフェクト以外でも使う場合の選択肢です。
+ただし、07章で述べたようにプリミティブ値を直接依存配列に入れる方がシンプルです。`useMemo` でオブジェクトの参照を安定させるのは、オブジェクト自体をエフェクト以外でも使う場合の選択肢です。
 
 ---
 
