@@ -4,4 +4,453 @@ description: '比較演算子（==と===）、論理演算子の短絡評価、N
 order: 3
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+JavaScriptの演算子には、他の言語とは少し違う挙動をするものがいくつかあります。
+特に `==` と `===`、そして `&&` や `||` を使った短絡評価は、実務コードで頻繁に登場するにもかかわらず、誤解されがちなポイントです。
+
+この章では「なぜそう動くのか」を理解することで、コードを書くときに迷わなくなることを目指します。
+
+---
+
+## 等価比較：`==` と `===` の違い
+
+JavaScriptには等価演算子が2種類あります。
+
+```js
+console.log(1 == '1'); // true
+console.log(1 === '1'); // false
+```
+
+### `==`（抽象的等価比較）
+
+`==` は比較の前に**型強制（Type Coercion）**を行います。
+型が違う場合、JavaScriptが自動的に片方の型を変換してから比較します。
+
+```js
+console.log(0 == false); // true  — false が 0 に変換される
+console.log('' == false); // true  — どちらも 0 に変換される
+console.log(null == undefined); // true  — 特別ルール
+console.log(null == 0); // false — null は null/undefined としか == で true にならない
+console.log([] == false); // true  — [] → '' → 0、false → 0
+```
+
+型強制のルールは複雑で、人間の直感に反する結果になることが多いです。
+
+<Callout type="warning" title="== の型強制は予測しにくい">
+  `[] == false` が `true` になるのは、`[]` → `''` → `0`
+  というように複数ステップの変換が行われるためです。このような変換ルールをすべて暗記することは現実的ではありません。
+</Callout>
+
+### `===`（厳格等価比較）
+
+`===` は型強制を行わず、**型も値も完全に一致する場合のみ `true`** を返します。
+
+```js
+console.log(1 === 1); // true
+console.log(1 === '1'); // false — 型が違う
+console.log(null === null); // true
+console.log(null === undefined); // false — 型が違う
+```
+
+`==` の比較フローを図で整理します。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef start fill:#6366f1,color:#fff,stroke:#4f46e5
+    classDef check fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef yes fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef no fill:#ef4444,color:#fff,stroke:#dc2626
+
+    A["a == b を評価"] --> B{"型は同じ？"}
+    B -- "はい" --> C["=== と同じ比較"]
+    B -- "いいえ" --> D["型強制ルールを適用\nnull/undefined/number/string/boolean..."]
+    D --> E["変換後に再比較"]
+    E --> F{"一致？"}
+    F -- "true" --> G["✓ true"]
+    F -- "false" --> H["✗ false"]
+    C --> F
+
+    class A start
+    class B,F check
+    class G yes
+    class H no
+
+`}
+/>
+
+実務では `==` を使う理由はほぼなく、**常に `===` を使う**のがベストプラクティスです。唯一の例外は `null` チェックで、`null == undefined` が `true` になる性質を意図的に使うケースがあります。
+
+```js
+// null と undefined のどちらも弾きたい場合のみ == を使う例外的なパターン
+if (value == null) {
+  // value が null または undefined のときに入る
+}
+
+// 上と同じ意味（こちらの方が明示的）
+if (value === null || value === undefined) {
+  // ...
+}
+```
+
+<Callout type="note">
+  ESLintの `eqeqeq` ルールを有効にすると、プロジェクト全体で `==`
+  の使用を禁止できます。チーム開発ではこのルールを入れておくと安全です。
+</Callout>
+
+---
+
+## 論理演算子と短絡評価
+
+`&&`（AND）と `||`（OR）は単なる真偽値チェックではなく、**値をそのまま返す**という重要な性質があります。
+
+### `&&`：左辺が falsy なら左辺を、truthy なら右辺を返す
+
+```js
+console.log(0 && 'hello'); // 0      — 左辺が falsy なので左辺を返す
+console.log(1 && 'hello'); // 'hello' — 左辺が truthy なので右辺を返す
+console.log('' && 'hello'); // ''     — 左辺が falsy
+console.log('foo' && 'bar'); // 'bar'  — 左辺が truthy なので右辺を返す
+```
+
+右辺まで評価しないことを**短絡評価（short-circuit evaluation）**と呼びます。
+左辺が `false` と確定した時点で、右辺は実行されません。
+
+```js
+// 右辺の関数はログが false のとき実行されない
+const isLoggedIn = false;
+isLoggedIn && console.log('ようこそ'); // 何も出力されない
+
+// React でよく見るパターン：条件付きレンダリング
+function UserGreeting({ user }) {
+  return <div>{user && <span>こんにちは、{user.name}さん</span>}</div>;
+}
+```
+
+<Callout type="warning" title="0 や '' を条件に使うときは注意">
+  `count && <Component />` と書くと、`count` が `0` のとき `false` ではなく `0` がレンダリングされます。React では `0` が画面に表示されてしまいます。`count > 0 && <Component />` または `!!count && <Component />` のように書くのが安全です。
+</Callout>
+
+### `||`：左辺が falsy なら右辺を、truthy なら左辺を返す
+
+```js
+console.log(0 || 'デフォルト'); // 'デフォルト' — 左辺が falsy
+console.log('hello' || 'デフォルト'); // 'hello'  — 左辺が truthy
+console.log(null || 'フォールバック'); // 'フォールバック'
+```
+
+デフォルト値のフォールバックパターンとしてよく使われます。
+
+```js
+function greet(name) {
+  const displayName = name || '名無し';
+  return `こんにちは、${displayName}さん`;
+}
+
+greet('Alice'); // "こんにちは、Aliceさん"
+greet(''); // "こんにちは、名無しさん" — 空文字は falsy
+greet(null); // "こんにちは、名無しさん"
+```
+
+<Figure src="/images/planning_suit_man_color.png" alt="考えている男性のイラスト" maxWidth="200px" />
+
+---
+
+## Nullish Coalescing：`??`
+
+`||` のデフォルト値パターンには落とし穴があります。`0` や `''` も falsy として扱われるため、意図しないフォールバックが起きることがあります。
+
+```js
+const config = {
+  timeout: 0, // タイムアウトなし（意図的な 0）
+  label: '', // 空ラベル（意図的な空文字）
+};
+
+// || を使うと意図しない結果に
+const timeout = config.timeout || 5000; // 5000 になってしまう（0 は falsy）
+const label = config.label || '未設定'; // '未設定' になってしまう
+```
+
+`??`（Nullish Coalescing）は `null` または `undefined` のときだけフォールバックし、`0` や `''` は**falsy でもそのまま左辺を返す**演算子です。
+
+```js
+console.log(0 ?? 'デフォルト'); // 0     — 0 は nullish ではない
+console.log('' ?? 'デフォルト'); // ''    — '' は nullish ではない
+console.log(null ?? 'デフォルト'); // 'デフォルト'
+console.log(undefined ?? 'デフォルト'); // 'デフォルト'
+```
+
+先ほどの例を `??` で書き直すと意図通りになります。
+
+```js
+const timeout = config.timeout ?? 5000; // 0 のまま
+const label = config.label ?? '未設定'; // '' のまま
+```
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef op fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef check fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef ret fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["a ?? b"] --> B{"a は null\nまたは undefined？"}
+    B -- "はい" --> C["b を返す"]
+    B -- "いいえ" --> D["a を返す\n（0 や '' もそのまま）"]
+
+    class A op
+    class B check
+    class C,D ret
+
+`}
+/>
+
+<Callout type="column" title="|| vs ?? の使い分け">
+  - **`||`**：`0`・`''`・`false` も「無効な値」として扱い、フォールバックしたいとき
+  - **`??`**：`null` / `undefined` のときだけフォールバックしたいとき（`0` や `''` は有効な値として扱う）
+
+実務では `??` の方が意図を明確に表せることが多いです。
+
+</Callout>
+
+---
+
+## オプショナルチェーン：`?.`
+
+ネストされたオブジェクトのプロパティにアクセスするとき、途中が `null` や `undefined` だとエラーになります。
+
+```js
+const user = null;
+
+console.log(user.profile.name);
+// TypeError: Cannot read properties of null (reading 'profile')
+```
+
+従来は `&&` を使って防御的に書く必要がありました。
+
+```js
+const name = user && user.profile && user.profile.name;
+// 冗長で読みにくい
+```
+
+`?.`（オプショナルチェーン）を使うと、途中が `null` または `undefined` の場合に**エラーを投げず `undefined` を返す**ようになります。
+
+```js
+const user = null;
+console.log(user?.profile?.name); // undefined（エラーにならない）
+
+const user2 = { profile: { name: 'Alice' } };
+console.log(user2?.profile?.name); // 'Alice'
+```
+
+### メソッド呼び出しにも使える
+
+```js
+const callback = null;
+callback?.(); // エラーにならず undefined を返す
+
+const arr = null;
+arr?.map((x) => x * 2); // undefined（エラーにならない）
+```
+
+### ブラケット記法にも使える
+
+```js
+const data = null;
+console.log(data?.['key']); // undefined
+```
+
+### `??` との組み合わせ
+
+`?.` で `undefined` が返ってきた場合のフォールバックに `??` を組み合わせるパターンは非常によく使われます。
+
+```js
+const user = { profile: null };
+
+const name = user?.profile?.name ?? '名前未設定';
+const country = user?.address?.country ?? '国籍不明';
+
+console.log(name); // '名前未設定'
+console.log(country); // '国籍不明'
+```
+
+<Figure src="/images/relief_man_color.png" alt="ほっとしている男性のイラスト" maxWidth="200px" />
+
+<Callout type="note" title="?.  はエラーを隠すことがある">
+  `?.` を多用すると、本来はエラーになるべき「想定外の null」も静かに `undefined`
+  として流れてしまうことがあります。「null が来てもよい場所」に限定して使うのが健全な使い方です。
+</Callout>
+
+---
+
+## 論理代入演算子
+
+ES2021 で追加された演算子です。論理演算と代入を組み合わせた省略記法です。
+
+```js
+// &&= : 左辺が truthy のときだけ右辺を代入
+let a = 1;
+a &&= 10; // a は truthy なので 10 が代入される → 10
+let b = 0;
+b &&= 10; // b は falsy なので代入されない → 0
+
+// ||= : 左辺が falsy のときだけ右辺を代入
+let c = null;
+c ||= 'デフォルト'; // c は falsy なので代入される → 'デフォルト'
+let d = 'hello';
+d ||= 'デフォルト'; // d は truthy なので代入されない → 'hello'
+
+// ??= : 左辺が null/undefined のときだけ右辺を代入
+let e = 0;
+e ??= 99; // 0 は nullish ではないので代入されない → 0
+let f = null;
+f ??= 99; // null なので代入される → 99
+```
+
+<Callout type="column" title="??= の実務例">
+  オブジェクトのキャッシュ初期化によく使われます。
+
+```js
+const cache = {};
+
+function getUser(id) {
+  cache[id] ??= fetchUserFromDB(id);
+  return cache[id];
+}
+```
+
+`cache[id]` が `null` / `undefined` のときだけ DB 問い合わせが走り、それ以外はキャッシュを返します。
+
+</Callout>
+
+---
+
+## 演算子の優先順位と括弧
+
+`&&` は `||` より優先順位が高いです。
+
+```js
+// && が先に評価される
+true ||
+  (false &&
+    false(
+      // → true || (false && false)
+      // → true || false
+      // → true
+
+      // 意図を明確にするなら括弧を使う
+      true || false,
+    ) &&
+    false); // → false
+```
+
+`??` は `&&` や `||` と混在させることができません（優先順位が曖昧なため、構文エラーになります）。
+
+```js
+// エラー
+null || undefined ?? 'デフォルト'; // SyntaxError
+
+// 括弧で明示する
+(null || undefined) ?? 'デフォルト'; // 'デフォルト'
+null || (undefined ?? 'デフォルト'); // 'デフォルト'
+```
+
+<Callout type="warning" title="?? と || / && を混在させるときは括弧が必須">
+  `??` と `||` または `&&`
+  を同一式で混在させると構文エラーになります。意図を括弧で明示してください。
+</Callout>
+
+---
+
+## よくある疑問
+
+### `falsy` な値はどれ？
+
+JavaScriptで「偽として扱われる」値（falsy）は6種類だけです。
+
+| 値          | 型        | 備考                        |
+| ----------- | --------- | --------------------------- |
+| `false`     | boolean   | 真偽値の false              |
+| `0`         | number    | ゼロ（`-0` と `0n` も含む） |
+| `''`        | string    | 空文字列                    |
+| `null`      | null      | 値がないことを明示          |
+| `undefined` | undefined | 未定義                      |
+| `NaN`       | number    | 非数                        |
+
+それ以外はすべて truthy です。`[]`（空配列）や `{}`（空オブジェクト）も truthy です。
+
+```js
+console.log([] == false); // true  — == の型強制で変換されるから
+if ([]) {
+  console.log('空配列は truthy'); // こちらが実行される
+}
+```
+
+<Figure
+  src="/images/question_woman_04_color.png"
+  alt="疑問を持っている女性のイラスト"
+  maxWidth="180px"
+/>
+
+### `NaN` の比較
+
+`NaN` は自分自身とも等しくないという特殊な値です。
+
+```js
+console.log(NaN === NaN); // false — NaN は自分自身とも一致しない
+console.log(NaN == NaN); // false
+
+// 正しいチェック方法
+console.log(Number.isNaN(NaN)); // true
+console.log(Number.isNaN(undefined)); // false（isNaN() と挙動が異なる）
+```
+
+<Callout type="note" title="isNaN() と Number.isNaN() の違い">
+  古い `isNaN()` はまず引数を数値に変換してからチェックするため、`isNaN('hello')` が `true`
+  になります。 `Number.isNaN()` は型変換を行わず、値が厳密に `NaN` であるときのみ `true`
+  を返します。 `Number.isNaN()` の方を使うようにしましょう。
+</Callout>
+
+---
+
+## まとめ
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef topic fill:#6366f1,color:#fff,stroke:#4f46e5
+    classDef rule fill:#0ea5e9,color:#fff,stroke:#0284c7
+    classDef warn fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A["等価比較"] --> B["=== を使う\n型強制なし・予測通り"]
+    A --> C["== は避ける\nnull チェックの例外のみ"]
+
+    D["デフォルト値"] --> E["|| : falsy をフォールバック"]
+    D --> F["?? : null/undefined のみフォールバック\n0 や '' を有効値として扱う"]
+
+    G["ネストアクセス"] --> H["?. : null/undefined を安全にスキップ"]
+    H --> I["?? と組み合わせてフォールバック"]
+
+    class A,D,G topic
+    class B,E,F,H,I rule
+    class C warn
+
+`}
+/>
+
+| 演算子 | 用途                           | 注意点                       |
+| ------ | ------------------------------ | ---------------------------- |
+| `===`  | 等価比較（推奨）               | 型も値も比較                 |
+| `==`   | 基本使わない                   | 型強制が発生                 |
+| `&&`   | 条件付き実行・レンダリング     | 左辺が `0` のとき `0` が返る |
+| `\|\|` | falsy フォールバック           | `0` や `''` も上書きされる   |
+| `??`   | null/undefined フォールバック  | `0` や `''` は上書きされない |
+| `?.`   | ネストした null セーフアクセス | 過度な使用は null を隠す     |
+| `??=`  | null/undefined のときだけ代入  | キャッシュ初期化などに便利   |
+
+<Figure
+  src="/images/stepup_suit_man_color-1.png"
+  alt="ステップアップしている男性のイラスト"
+  maxWidth="200px"
+/>
+
+次の章では制御構文（`if`・`switch`・ループ）の実務パターンを見ていきます。
