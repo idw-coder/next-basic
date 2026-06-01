@@ -4,71 +4,405 @@ description: 'TypeScript組み込みのユーティリティ型を、実務で�
 order: 9
 ---
 
-<Callout type="column">
-### この章は拡充予定です
-
-現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
-</Callout>
-
 TypeScriptには、既存の型を変換して新しい型を作る**ユーティリティ型**が組み込まれています。自分で一から型を書かなくても、「この型の一部だけ使いたい」「全プロパティをオプショナルにしたい」といった変換を簡潔に書けます。
+
+この章では、実務で使用頻度の高いユーティリティ型に絞って、使い方と内部の仕組みを解説します。
+
+## <Figure src="/images/planning_suit_man_color.png" alt="型の変換パターンを整理するイラスト" maxWidth="300px" />
 
 ---
 
-## 扱うトピック
+## ベースとなる型
 
-### Partial\<T\> — 全プロパティをオプショナルにする
+この章のコード例では、以下の `User` 型をベースに使います。
 
 ```tsx
-type User = { name: string; age: number; email: string };
-type PartialUser = Partial<User>;
-// { name?: string; age?: number; email?: string }
+type User = {
+  id: string;
+  name: string;
+  age: number;
+  email: string;
+  createdAt: Date;
+};
 ```
 
-更新処理の引数で「変更したいフィールドだけ渡す」パターンを解説予定です。
+ユーティリティ型は「この型を土台にして、こう変換した型がほしい」という場面で使います。変換のパターンを1つずつ見ていきます。
 
-### Required\<T\> — 全プロパティを必須にする
+---
 
-`Partial` の逆。オプショナルプロパティを持つ型から必須の型を作る。
+## Partial\<T\> — 全プロパティをオプショナルにする
 
-### Pick\<T, K\> — 特定のプロパティだけ取り出す
+`Partial<T>` は、型 `T` のすべてのプロパティに `?` を付けてオプショナルにします。
+
+```tsx
+type PartialUser = Partial<User>;
+// {
+//   id?: string;
+//   name?: string;
+//   age?: number;
+//   email?: string;
+//   createdAt?: Date;
+// }
+```
+
+### 実務での使いどころ — 更新APIの引数
+
+最もよく使う場面は、更新処理の引数です。「変更したいフィールドだけ渡す」パターンを型で表現できます。
+
+```tsx
+function updateUser(id: string, fields: Partial<User>) {
+  // fieldsには変更したいプロパティだけ入っている
+  // 例: { name: 'Bob' } だけでもOK、{ age: 30, email: 'new@example.com' } でもOK
+}
+
+updateUser('user-1', { name: 'Bob' }); // OK — nameだけ更新
+updateUser('user-1', { age: 30, email: 'new@example.com' }); // OK
+updateUser('user-1', { unknownField: 'x' }); // エラー — Userに存在しないプロパティ
+```
+
+`Partial` を使わない場合、更新用の型を別途定義する必要があります。`Partial` を使えば、元の型との整合性が自動的に保たれます。
+
+<Callout type="column">
+### Partialの内部実装
+
+`Partial` の内部実装は非常にシンプルです。07章のジェネリクスと Mapped Types を使っています。
+
+```tsx
+type Partial<T> = {
+  [P in keyof T]?: T[P];
+};
+```
+
+`keyof T` で型 `T` のすべてのプロパティ名を取得し、各プロパティに `?` を付けているだけです。ユーティリティ型は特別な組み込み機能ではなく、TypeScriptの型システムで定義された型エイリアスです。
+
+</Callout>
+
+---
+
+## Required\<T\> — 全プロパティを必須にする
+
+`Required<T>` は `Partial` の逆で、すべてのオプショナルプロパティを必須にします。
+
+```tsx
+type FormInput = {
+  name: string;
+  age?: number;
+  email?: string;
+};
+
+type CompleteFormInput = Required<FormInput>;
+// {
+//   name: string;
+//   age: number;     ← ?が消えて必須になった
+//   email: string;   ← ?が消えて必須になった
+// }
+```
+
+フォームの入力値で「途中まではオプショナルだが、送信時にはすべて必須」というパターンで使えます。
+
+```tsx
+// 入力中は部分的でもOK
+function saveFormDraft(input: FormInput) {
+  /* ... */
+}
+
+// 送信時にはすべて埋まっている必要がある
+function submitForm(input: Required<FormInput>) {
+  /* ... */
+}
+```
+
+---
+
+## <Figure src="/images/fork_suit_man_color.png" alt="PickとOmitどちらを使うか考えるイラスト" maxWidth="300px" />
+
+## Pick\<T, K\> — 特定のプロパティだけ取り出す
+
+`Pick<T, K>` は、型 `T` から指定したプロパティだけを取り出した新しい型を作ります。
 
 ```tsx
 type UserSummary = Pick<User, 'name' | 'email'>;
 // { name: string; email: string }
 ```
 
-### Omit\<T, K\> — 特定のプロパティを除外する
+### 実務での使いどころ — 表示用・一覧用の型
+
+APIから取得した完全なデータ型から、画面表示に必要なプロパティだけを抜き出すパターンです。
 
 ```tsx
-type UserWithoutEmail = Omit<User, 'email'>;
-// { name: string; age: number }
+// 一覧画面ではid・name・emailだけ使う
+type UserListItem = Pick<User, 'id' | 'name' | 'email'>;
+
+function UserCard({ id, name, email }: UserListItem) {
+  return (
+    <div>
+      <p>{name}</p>
+      <p>{email}</p>
+    </div>
+  );
+}
 ```
 
-### Record\<K, V\> — キーと値の型を指定したオブジェクト
+元の `User` 型にプロパティが追加されても、`UserListItem` は影響を受けません。必要なプロパティだけを明示的に選んでいるので、意図しないデータが紛れ込むことを防げます。
+
+---
+
+## Omit\<T, K\> — 特定のプロパティを除外する
+
+`Omit<T, K>` は `Pick` の逆で、指定したプロパティを**除外**した型を作ります。
 
 ```tsx
-type Scores = Record<string, number>;
-// { [key: string]: number }
+type UserWithoutTimestamp = Omit<User, 'createdAt'>;
+// { id: string; name: string; age: number; email: string }
 ```
 
-### Readonly\<T\> — 全プロパティをreadonlyにする
+### 実務での使いどころ — 作成APIの引数
 
-### ReturnType\<T\> — 関数の戻り値の型を取得する
-
-```tsx
-function getUser() { return { name: 'Alice', age: 25 }; }
-type User = ReturnType<typeof getUser>;
-```
-
-### 組み合わせパターン
-
-ユーティリティ型を組み合わせて使う実践例を解説予定です。
+データ作成時に「IDやタイムスタンプはサーバーが自動生成するので、クライアントからは渡さない」というパターンです。
 
 ```tsx
 type CreateUserInput = Omit<User, 'id' | 'createdAt'>;
-type UpdateUserInput = Partial<Omit<User, 'id'>>;
+// { name: string; age: number; email: string }
+
+async function createUser(input: CreateUserInput): Promise<User> {
+  const response = await fetch('/api/users', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return response.json();
+}
+
+// idとcreatedAtは渡さない
+createUser({ name: 'Alice', age: 25, email: 'alice@example.com' });
+```
+
+<Callout type="column">
+### PickとOmitの使い分け
+
+「少数のプロパティを**使う**」なら `Pick`、「少数のプロパティを**除く**」なら `Omit` を使います。使いたいプロパティと除きたいプロパティのどちらが少ないかで判断すると自然です。
+
+たとえばUser型に10個のプロパティがあって、そのうち8個を使いたい場合は、2個を `Omit` する方が簡潔です。
+
+</Callout>
+
+---
+
+## Record\<K, V\> — キーと値の型を指定したオブジェクト
+
+`Record<K, V>` は、キーの型が `K`、値の型が `V` であるオブジェクト型を作ります。
+
+```tsx
+type Scores = Record<string, number>;
+// { [key: string]: number } と同じ
+
+const scores: Scores = {
+  math: 90,
+  english: 85,
+  science: 92,
+};
+```
+
+### リテラル型と組み合わせる
+
+`Record` の真価は、キーにリテラル型のユニオンを使ったときに発揮されます。すべてのキーに対応する値を持つことが強制されます。
+
+```tsx
+type Role = 'admin' | 'editor' | 'viewer';
+
+type RolePermissions = Record<Role, string[]>;
+
+const permissions: RolePermissions = {
+  admin: ['read', 'write', 'delete'],
+  editor: ['read', 'write'],
+  viewer: ['read'],
+  // 3つのロールすべてを書かないとエラーになる
+};
+```
+
+キーを `string` にすると任意のキーを受け付けますが、リテラル型のユニオンにすると「すべてのケースを網羅しているか」をコンパイラがチェックしてくれます。
+
+```tsx
+type Theme = 'light' | 'dark';
+
+// すべてのThemeに対して色を定義する必要がある
+const bgColors: Record<Theme, string> = {
+  light: '#ffffff',
+  dark: '#1a1a1a',
+  // 'dark' を忘れるとコンパイルエラー
+};
 ```
 
 ---
 
-この章の詳細な内容は順次追加していきます。
+## Readonly\<T\> — 全プロパティをreadonlyにする
+
+`Readonly<T>` は、すべてのプロパティに `readonly` を付けます。プロパティへの再代入がコンパイルエラーになります。
+
+```tsx
+type ReadonlyUser = Readonly<User>;
+
+const user: ReadonlyUser = {
+  id: 'user-1',
+  name: 'Alice',
+  age: 25,
+  email: 'alice@example.com',
+  createdAt: new Date(),
+};
+
+user.name = 'Bob'; // コンパイルエラー — readonlyなので変更できない
+```
+
+Reactのpropsは仕組み上immutableですが、`Readonly` で明示すると意図がより明確になります。関数の引数に渡したオブジェクトが内部で書き換えられないことを型で保証したい場合にも有用です。
+
+<Callout type="column">
+### Readonlyの注意点 — シャローコピー
+
+`Readonly` は浅い（shallow）変換です。ネストしたオブジェクトの中身までは `readonly` になりません。
+
+```tsx
+type Config = {
+  db: { host: string; port: number };
+};
+
+const config: Readonly<Config> = {
+  db: { host: 'localhost', port: 5432 },
+};
+
+config.db = { host: 'other', port: 3000 }; // エラー — dbは readonly
+config.db.host = 'other'; // OK — ネストの中身は readonly ではない
+```
+
+深い `Readonly` が必要な場合は、自前で再帰的な型を定義するか、ライブラリを使います。
+
+</Callout>
+
+---
+
+## ReturnType\<T\> — 関数の戻り値の型を取得する
+
+`ReturnType<T>` は、関数型 `T` の戻り値の型を取り出します。
+
+```tsx
+function getUser() {
+  return { name: 'Alice', age: 25, email: 'alice@example.com' };
+}
+
+type UserFromFn = ReturnType<typeof getUser>;
+// { name: string; age: number; email: string }
+```
+
+`typeof` と組み合わせて使うのがポイントです。`ReturnType` に渡すのは**型**なので、関数の値そのもの（`getUser`）ではなく、その型（`typeof getUser`）を渡します。
+
+### 実務での使いどころ — ライブラリやAPIの戻り値
+
+外部ライブラリの関数やAPIクライアントの戻り値の型が明示的にexportされていない場合に、`ReturnType` で型を抽出できます。
+
+```tsx
+import { fetchUserProfile } from './api';
+
+// fetchUserProfileの戻り値の型を取り出す
+type UserProfile = Awaited<ReturnType<typeof fetchUserProfile>>;
+// asyncの場合はPromiseの中身を取り出すためAwaitedで包む
+```
+
+---
+
+## ユーティリティ型の組み合わせ
+
+ユーティリティ型は組み合わせることで、複雑な型変換を簡潔に表現できます。
+
+### CRUDパターン
+
+APIのCRUD操作で使う型を、1つのベース型から派生させるパターンです。
+
+```tsx
+type User = {
+  id: string;
+  name: string;
+  age: number;
+  email: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// 作成時 — idとタイムスタンプはサーバーが付与する
+type CreateUserInput = Omit<User, 'id' | 'createdAt' | 'updatedAt'>;
+
+// 更新時 — 変更したいフィールドだけ渡す（idは変更不可）
+type UpdateUserInput = Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>;
+
+// 一覧表示 — 表示に必要なフィールドだけ
+type UserListItem = Pick<User, 'id' | 'name' | 'email'>;
+```
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef base fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef derived fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef combo fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A["User\nid, name, age, email,\ncreatedAt, updatedAt"] --> B["Omit&lt;User, 'id' | 'createdAt' | 'updatedAt'&gt;\n→ CreateUserInput"]
+    A --> C["Pick&lt;User, 'id' | 'name' | 'email'&gt;\n→ UserListItem"]
+    A --> D["Omit → Partial\n→ UpdateUserInput"]
+
+    class A base
+    class B,C derived
+    class D combo
+
+`}
+/>
+
+こうすることで、`User` 型のプロパティ名や型を変更したとき、派生型すべてに自動的に反映されます。手動で同期する必要がなくなり、不整合が起きません。
+
+### Reactコンポーネントでの応用
+
+コンポーネントのpropsでもユーティリティ型の組み合わせは頻出です。
+
+```tsx
+type ButtonProps = {
+  label: string;
+  variant: 'primary' | 'secondary';
+  size: 'sm' | 'md' | 'lg';
+  disabled: boolean;
+  onClick: () => void;
+};
+
+// アイコンボタン — labelの代わりにiconを使う
+type IconButtonProps = Omit<ButtonProps, 'label'> & {
+  icon: React.ReactNode;
+  ariaLabel: string;
+};
+
+// リンクボタン — onClickの代わりにhrefを使う
+type LinkButtonProps = Omit<ButtonProps, 'onClick'> & {
+  href: string;
+  target?: '_blank' | '_self';
+};
+```
+
+`Omit` で不要なプロパティを外してから `&`（交差型）で新しいプロパティを追加するパターンは、コンポーネントの派生バリエーションを作るときに便利です。交差型については03章で解説しています。
+
+---
+
+## ユーティリティ型の早見表
+
+| ユーティリティ型 | 変換内容                     | 主な用途                       |
+| ---------------- | ---------------------------- | ------------------------------ |
+| `Partial<T>`     | 全プロパティをオプショナルに | 更新APIの引数                  |
+| `Required<T>`    | 全プロパティを必須に         | フォーム送信時のバリデーション |
+| `Pick<T, K>`     | 指定プロパティだけ取り出す   | 一覧表示用の型                 |
+| `Omit<T, K>`     | 指定プロパティを除外         | 作成APIの引数                  |
+| `Record<K, V>`   | キーと値の型を指定           | マッピングオブジェクト         |
+| `Readonly<T>`    | 全プロパティをreadonlyに     | 不変データの保証               |
+| `ReturnType<T>`  | 関数の戻り値型を取得         | ライブラリの型抽出             |
+
+---
+
+## まとめ
+
+ユーティリティ型は、既存の型を変換して新しい型を作る仕組みです。`Partial`・`Pick`・`Omit`・`Record` の4つが最も使用頻度が高く、これらを組み合わせるとCRUD操作やコンポーネントのprops定義を1つのベース型から一貫して派生させられます。
+
+ユーティリティ型を使う最大のメリットは、ベース型を変更したときに派生型すべてに自動反映される点です。型定義を手動で同期する必要がなくなり、型の不整合によるバグを防げます。
+
+次の章では、TypeScriptのモジュールシステムと `import` / `export` の型を扱います。
