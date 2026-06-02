@@ -391,9 +391,9 @@ export default async function Home() {
   const totalCount = Object.values(counts).reduce((sum, c) => sum + c, 0);
   const bookList = getAllBooks();
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 md:py-16">
+    <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
       {/* ヒーロー */}
-      <section className="mb-16 md:mb-20 relative">
+      <section className="mb-12 md:mb-16 relative">
         <svg
           className="absolute left-1/2 top-0 -translate-x-1/2 w-screen h-full pointer-events-none select-none"
           aria-hidden="true"
@@ -529,11 +529,11 @@ export default async function Home() {
       </section>
 
       {/* 特徴 */}
-      <section className="mb-16 md:mb-20 bg-muted/40 rounded-md px-5 py-10 md:px-8">
-        <SectionHeading className="mb-8" icon={<Sparkles className="size-5 text-red-400" />}>
+      <section className="mb-12 md:mb-16 bg-muted/40 rounded-md px-5 py-8 md:px-8">
+        <SectionHeading className="mb-6" icon={<Sparkles className="size-5 text-red-400" />}>
           このサイトの特徴
         </SectionHeading>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
           {[
             {
               icon: BadgeCheck,
@@ -561,8 +561,8 @@ export default async function Home() {
             },
           ].map((f) => (
             <div key={f.title} className="text-center">
-              <div className="mx-auto mb-3 flex size-16 items-center justify-center rounded-full bg-primary/10">
-                <f.icon className={`size-8 ${f.color}`} />
+              <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-primary/10">
+                <f.icon className={`size-6 ${f.color}`} />
               </div>
               <p className="font-semibold text-foreground text-sm mb-1">{f.title}</p>
               <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
@@ -574,12 +574,12 @@ export default async function Home() {
       </section>
 
       {/* 学習カテゴリ */}
-      <section id="categories" className="mb-16 md:mb-20 relative py-10 md:py-14 overflow-hidden">
-        <SectionHeading className="mb-8 md:mb-10" subtitle="16カテゴリの問題に挑戦しよう">
+      <section id="categories" className="mb-12 md:mb-16 relative py-8 md:py-10 overflow-hidden">
+        <SectionHeading className="mb-6 md:mb-8" subtitle="16カテゴリの問題に挑戦しよう">
           クイズカテゴリ
         </SectionHeading>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-5 sm:gap-7 lg:gap-9 justify-items-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {CATEGORIES.map((cat) => {
             const count = counts[cat.slug] ?? 0;
             const colors = CATEGORY_COLORS[cat.slug];
@@ -587,25 +587,24 @@ export default async function Home() {
               <Link
                 key={cat.slug}
                 href={`/quiz/${cat.slug}`}
-                className="group flex flex-col items-center gap-1.5 sm:gap-2"
+                className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 sm:p-4 transition hover:shadow-md hover:border-primary/30"
               >
                 <div
                   className={`
-                    w-[76px] h-[76px] sm:w-[100px] sm:h-[100px] lg:w-[116px] lg:h-[116px]
-                    rounded-full border-[3px] ${colors?.border ?? 'border-gray-300'}
-                    flex items-center justify-center bg-white
-                    ${colors?.hoverBg ?? ''}
-                    group-hover:scale-105 group-hover:shadow-md
-                    transition-all duration-200
+                    size-3 shrink-0
+                    rounded-full border-2 ${colors?.border ?? 'border-gray-300'}
+                    ${cat.bgColor}
                   `}
-                >
-                  <span className="text-[11px] sm:text-sm lg:text-[15px] font-bold text-gray-700">
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                     {cat.name}
-                  </span>
+                  </p>
+                  {count > 0 && (
+                    <p className="text-[11px] text-muted-foreground">{count}問</p>
+                  )}
                 </div>
-                {count > 0 && (
-                  <span className="text-[10px] sm:text-xs text-muted-foreground">{count}問</span>
-                )}
+                <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-primary shrink-0 transition-colors" />
               </Link>
             );
           })}
@@ -613,8 +612,8 @@ export default async function Home() {
       </section>
 
       {/* 教科書 */}
-      <section id="books" className="mb-16 md:mb-20">
-        <SectionHeading className="mb-8 md:mb-10" subtitle="基礎から体系的に学べる技術書コンテンツ">
+      <section id="books" className="mb-12 md:mb-16">
+        <SectionHeading className="mb-6 md:mb-8" subtitle="基礎から体系的に学べる技術書コンテンツ">
           教科書
         </SectionHeading>
         <div className="grid gap-4 sm:grid-cols-2 max-w-3xl mx-auto">
@@ -662,14 +661,14 @@ export default async function Home() {
       </section>
 
       {/* 会員登録CTA */}
-      <section className="mb-16 md:mb-20 bg-blue-50/50 dark:bg-blue-950/20 rounded-md px-5 py-10 md:px-8">
+      <section className="mb-12 md:mb-16 bg-blue-50/50 dark:bg-blue-950/20 rounded-md px-5 py-8 md:px-8">
         <SectionHeading
-          className="mb-8"
+          className="mb-6"
           subtitle="登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。"
         >
           無料会員登録で学習をもっと便利に
         </SectionHeading>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 max-w-3xl mx-auto mb-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 max-w-3xl mx-auto mb-6">
           {[
             {
               icon: Target,
@@ -724,7 +723,7 @@ export default async function Home() {
       </section>
 
       {/* ランダムクイズ & キーワード検索 CTA */}
-      <section className="mb-16 md:mb-20 grid gap-4 sm:grid-cols-2">
+      <section className="mb-12 md:mb-16 grid gap-4 sm:grid-cols-2">
         <Link href="/quiz/random" className="block group">
           <div className="rounded-md border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-5 sm:p-6 hover:border-blue-400 dark:hover:border-blue-600 transition-colors h-full">
             <div className="flex items-start gap-4">
@@ -771,9 +770,9 @@ export default async function Home() {
       </section>
 
       {/* 学習のすすめ方 */}
-      <section className="mb-16 md:mb-20 bg-muted/40 rounded-md px-5 py-10 md:px-8">
-        <SectionHeading className="mb-8">学習のすすめ方</SectionHeading>
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-5">
+      <section className="mb-12 md:mb-16 bg-muted/40 rounded-md px-5 py-8 md:px-8">
+        <SectionHeading className="mb-6">学習のすすめ方</SectionHeading>
+        <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-5 sm:gap-4">
           {[
             {
               step: 1,
@@ -805,17 +804,24 @@ export default async function Home() {
               title: 'コードを書いて実践',
               desc: '問題で学んだ知識を、実際にコードを書いて理解を深めましょう。',
             },
-          ].map((s) => (
-            <div key={s.step} className="text-center">
-              <div
-                className={`mx-auto mb-2 sm:mb-3 flex size-8 sm:size-10 items-center justify-center rounded-full ${s.color} text-white font-bold text-xs sm:text-sm shadow-sm`}
-              >
-                {s.step}
+          ].map((s, i) => (
+            <div key={s.step} className="flex sm:flex-col items-start sm:items-center gap-3 sm:gap-0 sm:text-center">
+              <div className="flex sm:flex-col items-center gap-3 sm:gap-0 shrink-0">
+                <div
+                  className={`flex size-8 sm:size-9 items-center justify-center rounded-full ${s.color} text-white font-bold text-xs sm:text-sm shadow-sm`}
+                >
+                  {s.step}
+                </div>
+                {i < 4 && (
+                  <div className="hidden sm:block w-px h-4 bg-gray-300 mx-auto" />
+                )}
               </div>
-              <p className="font-semibold text-foreground text-xs sm:text-sm mb-1">{s.title}</p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
-                {s.desc}
-              </p>
+              <div className="sm:mt-1">
+                <p className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">{s.title}</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                  {s.desc}
+                </p>
+              </div>
             </div>
           ))}
         </div>
