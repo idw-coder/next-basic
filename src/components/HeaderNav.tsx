@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Menu, X, BookOpen, Bell, User as UserIcon, LogIn, Wrench, Search, CreditCard, Library } from "lucide-react";
+import { Menu, X, BookOpen, Bell, User as UserIcon, LogIn, Wrench, Search, CreditCard, Library, Shield } from "lucide-react";
 import { createAvatar } from "@dicebear/core";
 import { identicon } from "@dicebear/collection";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 export default function HeaderNav() {
   const [open, setOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showTech, setShowTech] = useState(false);
   const pathname = usePathname();
@@ -29,9 +30,12 @@ export default function HeaderNav() {
     setIsLoggedIn(!!localStorage.getItem("token"));
     try {
       const stored = localStorage.getItem("user");
-      setUserEmail(stored ? JSON.parse(stored)?.email ?? null : null);
+      const parsed = stored ? JSON.parse(stored) : null;
+      setUserEmail(parsed?.email ?? null);
+      setIsAdmin(parsed?.role === "admin");
     } catch {
       setUserEmail(null);
+      setIsAdmin(false);
     }
   }, [pathname]);
 
@@ -89,6 +93,12 @@ export default function HeaderNav() {
           <Link href="/about/tech" className={linkClass}>
             <Wrench className={iconClass} />
             技術構成
+          </Link>
+        )}
+        {isAdmin && (
+          <Link href="/admin" className={linkClass}>
+            <Shield className={iconClass} />
+            管理
           </Link>
         )}
         {isLoggedIn ? (
