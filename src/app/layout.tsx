@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import Script from 'next/script';
 import './globals.css';
 import GoogleAdSense, { HideAdsForEntry } from '@/components/GoogleAdSense';
 import HeaderNav from '@/components/HeaderNav';
@@ -56,10 +57,10 @@ export default function RootLayout({
       </head>
       <body>
         {clientId && !isDevelopment && (
-          <script
-            async
+          <Script
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientId}`}
             crossOrigin="anonymous"
+            strategy="afterInteractive"
           />
         )}
         <HideAdsForEntry />
