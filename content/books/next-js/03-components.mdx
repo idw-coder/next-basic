@@ -122,6 +122,29 @@ export default function Counter() {
 
 このように、ページ全体はServer Componentで構成し、インタラクティブな部分（ここでは`Counter`）だけをClient Componentとして切り出すのが推奨パターンです。
 
+## 生HTMLの描画
+
+Server Componentsでは、CMSから返ってきたHTML文字列やMarkdownのパース結果をそのまま描画したい場面が出てきます。
+Reactの `dangerouslySetInnerHTML` を使えば描画は可能ですが、XSSリスクがあるため信頼できるソースに限定する必要があります。
+
+```tsx
+// Server Componentでfetchした記事HTMLを描画する例
+export default async function ArticlePage() {
+  const article = await fetchArticle();
+
+  return (
+    <article
+      className="prose"
+      dangerouslySetInnerHTML={{ __html: article.bodyHtml }}
+    />
+  );
+}
+```
+
+<Callout type="info" title="React側の解説">
+`dangerouslySetInnerHTML` の基本とXSSの注意点は「[JSXとコンポーネント — propsで部品をつなぐ](/books/react-learning/02-jsx-and-components)」で解説しています。
+</Callout>
+
 ## まとめ
 
 - App Routerではデフォルトで **Server Components**

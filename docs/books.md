@@ -10,13 +10,13 @@
 
 ## 技術スタック
 
-| ライブラリ | 用途 |
-|---|---|
-| `velite` (dev) | MDX/YAML の処理、型生成、ビルド時コンテンツ変換 |
-| `rehype-pretty-code` (dev) | shiki ベースのシンタックスハイライト（テーマ: `github-dark`） |
-| `rehype-slug` (dev) | 見出し要素への ID 自動付与 |
-| `rehype-autolink-headings` (dev) | 見出しへのアンカーリンク自動挿入 |
-| `@tailwindcss/typography` (dev) | `prose` クラスによる本文の読みやすいスタイリング |
+| ライブラリ                       | 用途                                                          |
+| -------------------------------- | ------------------------------------------------------------- |
+| `velite` (dev)                   | MDX/YAML の処理、型生成、ビルド時コンテンツ変換               |
+| `rehype-pretty-code` (dev)       | shiki ベースのシンタックスハイライト（テーマ: `github-dark`） |
+| `rehype-slug` (dev)              | 見出し要素への ID 自動付与                                    |
+| `rehype-autolink-headings` (dev) | 見出しへのアンカーリンク自動挿入                              |
+| `@tailwindcss/typography` (dev)  | `prose` クラスによる本文の読みやすいスタイリング              |
 
 ---
 
@@ -35,8 +35,8 @@ content/
 ### 本のメタデータ（`index.yaml`）
 
 ```yaml
-title: "Next.jsからはじめよう"
-description: "Reactベースのフレームワーク..."
+title: 'Next.jsからはじめよう'
+description: 'Reactベースのフレームワーク...'
 ```
 
 `bookSlug` はディレクトリ名から自動導出される（例: `content/books/nextjs/` → `bookSlug: "nextjs"`）。
@@ -45,17 +45,17 @@ description: "Reactベースのフレームワーク..."
 
 ```yaml
 ---
-title: "Next.jsとは何か"
-description: "Next.jsの概要と..."   # 任意
-order: 1                            # 章の並び順
+title: 'Next.jsとは何か'
+description: 'Next.jsの概要と...' # 任意
+order: 1 # 章の並び順
 ---
 ```
 
-| フィールド | 型 | 必須 | 説明 |
-|---|---|---|---|
-| `title` | string | はい | 章のタイトル |
+| フィールド    | 型     | 必須   | 説明                               |
+| ------------- | ------ | ------ | ---------------------------------- |
+| `title`       | string | はい   | 章のタイトル                       |
 | `description` | string | いいえ | 章の概要（メタデータ・目次で使用） |
-| `order` | number | はい | 表示順序（昇順ソート） |
+| `order`       | number | はい   | 表示順序（昇順ソート）             |
 
 ファイル名がそのまま `chapterSlug` になる（例: `01-introduction.mdx` → `chapterSlug: "01-introduction"`）。
 
@@ -145,7 +145,7 @@ Velite は `.velite/` ディレクトリに以下を生成する。
 `tsconfig.json` で `#site/content` → `.velite` のパスエイリアスを設定しており、アプリケーションコードからは以下のようにインポートする。
 
 ```ts
-import { books, chapters } from "#site/content";
+import { books, chapters } from '#site/content';
 ```
 
 `.velite/` は `.gitignore` に追加済み。ビルドごとに再生成される。
@@ -164,11 +164,11 @@ rehype プラグインはこのコンパイル時に適用される。
 
 ## ルーティングとページ構成
 
-| パス | ファイル | 種別 | 説明 |
-|---|---|---|---|
-| `/books` | `src/app/books/page.tsx` | Static | 本の一覧ページ |
-| `/books/{bookSlug}` | `src/app/books/[bookSlug]/page.tsx` | SSG | 本のトップ（目次 + 読みはじめるボタン） |
-| `/books/{bookSlug}/{chapterSlug}` | `src/app/books/[bookSlug]/[chapterSlug]/page.tsx` | SSG | 章の本文 |
+| パス                              | ファイル                                          | 種別   | 説明                                    |
+| --------------------------------- | ------------------------------------------------- | ------ | --------------------------------------- |
+| `/books`                          | `src/app/books/page.tsx`                          | Static | 本の一覧ページ                          |
+| `/books/{bookSlug}`               | `src/app/books/[bookSlug]/page.tsx`               | SSG    | 本のトップ（目次 + 読みはじめるボタン） |
+| `/books/{bookSlug}/{chapterSlug}` | `src/app/books/[bookSlug]/[chapterSlug]/page.tsx` | SSG    | 章の本文                                |
 
 `[bookSlug]/page.tsx` と `[chapterSlug]/page.tsx` には `generateStaticParams` を定義しており、ビルド時にすべてのパスを静的生成する。
 
@@ -187,14 +187,14 @@ rehype プラグインはこのコンパイル時に適用される。
 
 `src/lib/books.ts` に定義。
 
-| 関数 | 戻り値 | 説明 |
-|---|---|---|
-| `getAllBooks()` | `Book[]` | 全書籍の一覧 |
-| `getBook(bookSlug)` | `Book \| undefined` | スラッグで書籍を取得 |
-| `getChaptersByBook(bookSlug)` | `Chapter[]` | 書籍の全章を `order` 昇順で取得 |
-| `getChapter(bookSlug, chapterSlug)` | `Chapter \| undefined` | 特定の章を取得 |
-| `getAdjacentChapters(bookSlug, chapterSlug)` | `{ prev, next }` | 前後の章を取得（先頭・末尾は `null`） |
-| `getBookForCategory(categorySlug)` | `Book \| null` | クイズカテゴリに紐づく書籍を取得 |
+| 関数                                         | 戻り値                 | 説明                                  |
+| -------------------------------------------- | ---------------------- | ------------------------------------- |
+| `getAllBooks()`                              | `Book[]`               | 全書籍の一覧                          |
+| `getBook(bookSlug)`                          | `Book \| undefined`    | スラッグで書籍を取得                  |
+| `getChaptersByBook(bookSlug)`                | `Chapter[]`            | 書籍の全章を `order` 昇順で取得       |
+| `getChapter(bookSlug, chapterSlug)`          | `Chapter \| undefined` | 特定の章を取得                        |
+| `getAdjacentChapters(bookSlug, chapterSlug)` | `{ prev, next }`       | 前後の章を取得（先頭・末尾は `null`） |
+| `getBookForCategory(categorySlug)`           | `Book \| null`         | クイズカテゴリに紐づく書籍を取得      |
 
 ---
 
@@ -204,8 +204,8 @@ rehype プラグインはこのコンパイル時に適用される。
 
 ```ts
 const categoryToBookMap: Record<string, string> = {
-  nextjs: "nextjs",
-  "react-basic": "nextjs",
+  nextjs: 'nextjs',
+  'react-basic': 'nextjs',
 };
 ```
 
@@ -227,8 +227,8 @@ content/books/nextjs/04-routing.mdx   ← 追加
 
 ```yaml
 ---
-title: "ルーティングの仕組み"
-description: "App Router のファイルベースルーティングを解説します。"
+title: 'ルーティングの仕組み'
+description: 'App Router のファイルベースルーティングを解説します。'
 order: 4
 ---
 ```
@@ -258,39 +258,31 @@ content/books/typescript/
 
 補足・注意書きなどを目立たせるボックス。
 
-| prop | 型 | デフォルト | 説明 |
-|---|---|---|---|
-| `type` | `'note' \| 'info' \| 'warning' \| 'column'` | `'note'` | スタイルの種類 |
-| `title` | `string` | type に応じた既定値 | ラベルテキスト（省略時は `NOTE` / `INFO` / `WARNING` / `COLUMN`） |
+| prop    | 型                                          | デフォルト          | 説明                                                              |
+| ------- | ------------------------------------------- | ------------------- | ----------------------------------------------------------------- |
+| `type`  | `'note' \| 'info' \| 'warning' \| 'column'` | `'note'`            | スタイルの種類                                                    |
+| `title` | `string`                                    | type に応じた既定値 | ラベルテキスト（省略時は `NOTE` / `INFO` / `WARNING` / `COLUMN`） |
 
 **type の使い分けガイド:**
 
-| type | 用途 | 使いどころの例 |
-|---|---|---|
-| `note` | 補足知識・知っておくと便利な情報 | 「Tailwindも内部でCSS変数を使っています」 |
-| `info` | 具体的なTips・ツールの操作方法 | 「Figmaで色をコピーするとHEX値が取得できます」 |
-| `warning` | ハマりやすい落とし穴・NG例・破壊的操作 | 「!importantの連鎖はCSSを管理不能にします」 |
-| `column` | 本題から少し外れた背景知識・歴史・コラム | 「マージンの相殺はテキスト文書の段落のために生まれた仕様です」 |
+| type      | 用途                                     | 使いどころの例                                                 |
+| --------- | ---------------------------------------- | -------------------------------------------------------------- |
+| `note`    | 補足知識・知っておくと便利な情報         | 「Tailwindも内部でCSS変数を使っています」                      |
+| `info`    | 具体的なTips・ツールの操作方法           | 「Figmaで色をコピーするとHEX値が取得できます」                 |
+| `warning` | ハマりやすい落とし穴・NG例・破壊的操作   | 「!importantの連鎖はCSSを管理不能にします」                    |
+| `column`  | 本題から少し外れた背景知識・歴史・コラム | 「マージンの相殺はテキスト文書の段落のために生まれた仕様です」 |
 
 ```mdx
-<Callout type="note">
-知っておくと便利な補足情報を書きます。
-</Callout>
+<Callout type="note">知っておくと便利な補足情報を書きます。</Callout>
 
-<Callout type="info">
-具体的なツールの使い方や実務Tipsを書きます。
-</Callout>
+<Callout type="info">具体的なツールの使い方や実務Tipsを書きます。</Callout>
 
-<Callout type="warning">
-やりがちなミスや注意が必要な操作について書きます。
-</Callout>
+<Callout type="warning">やりがちなミスや注意が必要な操作について書きます。</Callout>
 
-<Callout type="column">
-本題からは逸れるが知っておくと面白い背景知識やコラムを書きます。
-</Callout>
+<Callout type="column">本題からは逸れるが知っておくと面白い背景知識やコラムを書きます。</Callout>
 
 <Callout type="info" title="準備中">
-title を指定するとラベルを自由に変えられます。執筆中コンテンツの通知などに。
+  title を指定するとラベルを自由に変えられます。執筆中コンテンツの通知などに。
 </Callout>
 ```
 
@@ -299,23 +291,26 @@ title を指定するとラベルを自由に変えられます。執筆中コ�
 Mermaid 記法の図を描画する。
 
 ```mdx
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart LR
     A["作業"] -->|add| B["ステージング"]
     B -->|commit| C["リポジトリ"]
-`} />
+`}
+/>
 ```
 
 #### `<Figure>`
 
 キャプション付きの画像を表示する。
+画像はpublic/imagesにあるので、内容に合うものを選んでください。文章ばかり続く時は意識的にイラストを入れてください。
 
-| prop | 型 | 必須 | 説明 |
-|---|---|---|---|
-| `src` | `string` | はい | 画像パス |
-| `alt` | `string` | いいえ | alt テキスト |
+| prop       | 型       | 必須   | 説明                    |
+| ---------- | -------- | ------ | ----------------------- |
+| `src`      | `string` | はい   | 画像パス                |
+| `alt`      | `string` | いいえ | alt テキスト            |
 | `maxWidth` | `string` | いいえ | 最大幅（例: `"400px"`） |
-| `caption` | `string` | いいえ | キャプションテキスト |
+| `caption`  | `string` | いいえ | キャプションテキスト    |
 
 ```mdx
 <Figure src="/images/example.png" alt="例の図" caption="図1: アーキテクチャ概要" maxWidth="600px" />
@@ -326,7 +321,7 @@ flowchart LR
 `src/components/mdx-content.tsx` の `sharedComponents` オブジェクトに登録すると、すべての MDX で使用可能になる。
 
 ```tsx
-import NewComponent from "@/app/books/_components/NewComponent";
+import NewComponent from '@/app/books/_components/NewComponent';
 
 const sharedComponents = {
   MermaidDiagram,
@@ -362,25 +357,25 @@ const sharedComponents = {
 
 #### 毎回必須（仕様理解用）
 
-| ファイル | パス例 | 用途 |
-|---|---|---|
-| 仕様書 | `docs/books.md`（本ファイル） | 本機能の全体仕様 |
-| Velite設定 | `velite.config.ts` | frontmatterスキーマ確認 |
+| ファイル          | パス例                           | 用途                                                   |
+| ----------------- | -------------------------------- | ------------------------------------------------------ |
+| 仕様書            | `docs/books.md`（本ファイル）    | 本機能の全体仕様                                       |
+| Velite設定        | `velite.config.ts`               | frontmatterスキーマ確認                                |
 | MDXコンポーネント | `src/components/mdx-content.tsx` | 使えるカスタムコンポーネント（MermaidDiagram等）の把握 |
 
 #### サンプル（トーン参考用）
 
-| ファイル | 用途 |
-|---|---|
-| 既存本の `index.yaml` 1つ | メタデータのトーン |
-| 既存本のMDX 1〜2章 | 本文のトーン・構成・粒度 |
+| ファイル                  | 用途                     |
+| ------------------------- | ------------------------ |
+| 既存本の `index.yaml` 1つ | メタデータのトーン       |
+| 既存本のMDX 1〜2章        | 本文のトーン・構成・粒度 |
 
 #### 任意（SEO戦略を考えてもらう場合）
 
-| ファイル | 用途 |
-|---|---|
-| `src/lib/books.ts` | categoryToBookMap の現状確認 |
-| サイトURL | カテゴリ構成・既存の本のラインナップ確認 |
+| ファイル           | 用途                                     |
+| ------------------ | ---------------------------------------- |
+| `src/lib/books.ts` | categoryToBookMap の現状確認             |
+| サイトURL          | カテゴリ構成・既存の本のラインナップ確認 |
 
 ---
 
@@ -411,8 +406,6 @@ const sharedComponents = {
 - H1は本文に書かない（H2始まり）
 - frontmatterは title / description / order の3つ
 - MermaidDiagramが使える（<-->は使わず-->のみ、ラベルは短く）
-- 既存本と同じ「ですます調・実務目線」で
-- 各章末に「ちゃんと使うためのポイント」でまとめ
 - 次章への橋渡し文で締める
 
 # 添付ファイル
@@ -440,9 +433,6 @@ const sharedComponents = {
 - docs/books.md（本ファイル）
 - velite.config.ts
 
-# 守ってほしい制約
-既存章と同じトーン・構成で書く
-（H2始まり、「ちゃんと使うためのポイント」で締める、次章への橋渡し等）
 ```
 
 ---
@@ -478,8 +468,8 @@ const sharedComponents = {
 
 ```yaml
 ---
-title: "章タイトル（SEO意識・検索クエリとして成立する形）"
-description: "1〜2文の説明"
+title: '章タイトル（SEO意識・検索クエリとして成立する形）'
+description: '1〜2文の説明'
 order: 1
 ---
 ```
@@ -510,6 +500,7 @@ order: 1
 ### Mermaidの安全な書き方
 
 使える構文:
+
 - `flowchart TB` / `flowchart LR`
 - `gitGraph`
 - 矢印は `-->` と `---` のみ
@@ -517,6 +508,7 @@ order: 1
 - エッジラベル: `A -->|ラベル| B`
 
 避けるもの:
+
 - `<-->` などの双方向矢印（MDXがJSXと誤認識する）
 - 長い日本語ラベル（改行や崩れの原因）
 - 深いsubgraphネスト
@@ -524,11 +516,13 @@ order: 1
 ### 記述例
 
 ```mdx
-<MermaidDiagram chart={`
+<MermaidDiagram
+  chart={`
 flowchart LR
     A["作業"] -->|add| B["ステージング"]
     B -->|commit| C["リポジトリ"]
-`} />
+`}
+/>
 ```
 
 ---
@@ -541,8 +535,8 @@ flowchart LR
 const categoryToBookMap: Record<string, string> = {
   nextjs: 'nextjs',
   'react-basic': 'nextjs',
-  'git-basic': 'git',           // 追加例
-  'ts-general': 'typescript',   // 追加例
+  'git-basic': 'git', // 追加例
+  'ts-general': 'typescript', // 追加例
 };
 ```
 

