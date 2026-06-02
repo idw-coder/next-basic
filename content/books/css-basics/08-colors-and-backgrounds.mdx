@@ -1,0 +1,123 @@
+---
+title: '色と背景の指定方法 — CSSカラーシステムを理解する'
+description: 'hex・rgb・hsl・oklchなど色の指定形式と、背景色・グラデーション・backgroundプロパティの使い方を解説します。'
+order: 8
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+CSSの色指定には複数の形式があります。それぞれの特徴を知り、プロジェクトに合った使い方を選びましょう。
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="カラーシステムを使いこなしてデザインが上達するイメージ" maxWidth="260px" />
+
+---
+
+## 色の指定形式
+
+### HEX（16進数）
+
+```css
+color: #2563eb;        /* 不透明 */
+color: #2563eb80;      /* 透明度50%（8桁） */
+color: #fff;           /* 3桁省略形 */
+```
+
+デザインツール（Figmaなど）からコピーしてそのまま使えるので実務でよく使われます。
+
+<Callout type="info">
+FigmaでカラーをコピーするとHEX値で取得できます。CSSにそのまま貼り付けるだけなので、デザイナーとのやり取りがスムーズになります。
+</Callout>
+
+### RGB / RGBA
+
+```css
+color: rgb(37, 99, 235);
+color: rgba(37, 99, 235, 0.5); /* 透明度50% */
+
+/* 新しい記法（スペース区切り、/で透明度） */
+color: rgb(37 99 235 / 50%);
+```
+
+### HSL
+
+```css
+/* 色相(0-360) 彩度(%) 明度(%) */
+color: hsl(220, 80%, 53%);
+color: hsl(220 80% 53% / 0.5); /* 透明度付き */
+```
+
+「少し暗くしたい」「彩度を下げたい」といった調整が直感的にできます。
+
+### currentColor
+
+```css
+.icon {
+  color: #2563eb;
+  border: 1px solid currentColor; /* colorと同じ値が使われる */
+}
+```
+
+---
+
+## background-color
+
+```css
+.card {
+  background-color: #f8fafc;
+  background-color: transparent; /* 透明 */
+}
+```
+
+---
+
+## background-image / グラデーション
+
+```css
+/* 線形グラデーション */
+.hero {
+  background-image: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+/* 上から下（デフォルト） */
+background-image: linear-gradient(#f0f9ff, #e0f2fe);
+
+/* 放射状グラデーション */
+background-image: radial-gradient(circle at center, #fff, #f1f5f9);
+```
+
+---
+
+## 背景画像
+
+```css
+.hero {
+  background-image: url('/images/hero.jpg');
+  background-size: cover;       /* 領域をすべて覆う */
+  background-position: center;  /* 中央基準 */
+  background-repeat: no-repeat; /* 繰り返さない */
+}
+```
+
+---
+
+## opacity と透明度
+
+```css
+/* 要素全体の透明度（子要素も含む） */
+.overlay { opacity: 0.5; }
+
+/* 色の透明度だけ変えたい場合は rgba / hsl を使う */
+.overlay { background-color: rgb(0 0 0 / 50%); }
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- 実務ではHEXが最も使いやすく、デザインツールとの親和性も高い
+- 透明度を使いたいときは `rgba()` か HEX 8桁
+- グラデーションはCSS変数と組み合わせるとテーマ管理がしやすい
+
+次の章では、**トランジションとアニメーション**を学びます。

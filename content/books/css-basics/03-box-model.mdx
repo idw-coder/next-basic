@@ -1,0 +1,210 @@
+---
+title: 'ボックスモデル — margin・padding・borderの仕組み'
+description: 'すべてのHTML要素が持つボックスモデルを理解し、余白・枠線・サイズの制御を正確に行う方法を学びます。'
+order: 3
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+CSSでレイアウトを組むうえで最も重要な概念が**ボックスモデル**です。すべてのHTML要素は長方形の「箱（ボックス）」として扱われ、その箱は4つの領域で構成されています。
+
+<Figure src="/images/question_woman_04_color.png" alt="ボックスモデルを理解しようとしているイメージ" maxWidth="260px" />
+
+---
+
+## ボックスモデルの4層構造
+
+<MermaidDiagram chart={`
+flowchart TB
+    A["margin（外側の余白）"]
+    B["border（枠線）"]
+    C["padding（内側の余白）"]
+    D["content（コンテンツ領域）"]
+    A --> B --> C --> D
+`} />
+
+```
+┌─────────────── margin ────────────────┐
+│  ┌──────────── border ──────────────┐ │
+│  │  ┌─────── padding ─────────┐    │ │
+│  │  │  ┌── content ─────┐     │    │ │
+│  │  │  │  テキスト・画像  │     │    │ │
+│  │  │  └────────────────┘     │    │ │
+│  │  └─────────────────────────┘    │ │
+│  └──────────────────────────────────┘ │
+└───────────────────────────────────────┘
+```
+
+| 層 | 説明 |
+|---|---|
+| **content** | テキストや画像が入るコンテンツ領域。`width` / `height` で指定 |
+| **padding** | コンテンツと枠線の間の余白。背景色が適用される |
+| **border** | 枠線。太さ・スタイル・色を指定できる |
+| **margin** | 要素の外側の余白。背景色は透明 |
+
+---
+
+## width と height
+
+```css
+.box {
+  width: 300px;
+  height: 200px;
+}
+```
+
+デフォルトでは `width` / `height` は**content領域のみ**のサイズです。paddingとborderを加えると要素全体のサイズが大きくなります。
+
+---
+
+## box-sizing の落とし穴
+
+```css
+.box {
+  width: 300px;
+  padding: 20px;
+  border: 2px solid black;
+}
+```
+
+このとき要素の実際の幅は？
+
+- `box-sizing: content-box`（デフォルト）: 300 + 20×2 + 2×2 = **344px**
+- `box-sizing: border-box`: 常に **300px**（paddingとborderを内側に収める）
+
+実務では `border-box` の方が直感的なので、全要素に適用するのが一般的です。
+
+```css
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+```
+
+<Callout type="warning">
+`box-sizing: border-box` を設定し忘れると、paddingやborderを追加するたびに要素が予想より大きくなります。プロジェクトの最初に必ずリセットに含めましょう。
+</Callout>
+
+---
+
+## padding（内側の余白）
+
+```css
+/* 個別指定 */
+padding-top: 16px;
+padding-right: 24px;
+padding-bottom: 16px;
+padding-left: 24px;
+
+/* ショートハンド：上下 左右 */
+padding: 16px 24px;
+
+/* ショートハンド：上 右 下 左（時計回り） */
+padding: 8px 16px 24px 12px;
+
+/* 四辺同じ */
+padding: 16px;
+```
+
+---
+
+## margin（外側の余白）
+
+```css
+/* paddingと同じ記法 */
+margin: 16px;
+margin: 16px 24px;
+
+/* 中央寄せ（block要素、widthが設定されている場合） */
+margin: 0 auto;
+```
+
+### マージンの相殺（Margin Collapsing）
+
+縦方向に隣接する要素のmarginは**合算ではなく大きい方が採用**されます。
+
+```css
+.section-a { margin-bottom: 24px; }
+.section-b { margin-top: 16px; }
+/* 実際の間隔は 24 + 16 = 40px ではなく max(24, 16) = 24px */
+```
+
+横方向では相殺は起きません。Flexbox / Gridコンテナ内でも相殺は起きません。
+
+<Callout type="column">
+マージンの相殺はCSSの歴史的な仕様で、テキストドキュメントの段落間隔を自然にするために生まれました。モダンなレイアウト（Flexbox/Grid）では起きないので、これらを使うほど相殺で悩む場面は減ります。
+</Callout>
+
+---
+
+## border（枠線）
+
+```css
+/* 太さ スタイル 色 */
+border: 1px solid #ccc;
+
+/* 個別指定 */
+border-width: 2px;
+border-style: dashed; /* solid / dashed / dotted / none など */
+border-color: #2563eb;
+
+/* 特定の辺だけ */
+border-bottom: 2px solid #e5e7eb;
+
+/* 角丸 */
+border-radius: 8px;
+border-radius: 50%; /* 円形にする */
+```
+
+---
+
+## display プロパティ
+
+ボックスの振る舞いを決めます。
+
+| 値 | 説明 |
+|---|---|
+| `block` | 横幅いっぱいに広がり、前後で改行。`div`, `p`, `h1`〜`h6` など |
+| `inline` | コンテンツの幅だけ。width/height 指定不可。`span`, `a`, `strong` など |
+| `inline-block` | インライン配置だが width/height を指定できる |
+| `none` | 非表示（スペースも消える） |
+| `flex` | Flexboxコンテナになる（次々章で解説） |
+| `grid` | Gridコンテナになる |
+
+```css
+/* インライン要素をボタンのようにする */
+a.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+}
+```
+
+---
+
+## よくあるハマりどころ
+
+### paddingを足したら崩れた
+
+`box-sizing: border-box` を設定していないと、paddingを増やすたびに要素が大きくなります。Reset CSSで全要素に `border-box` を設定しておくのが実務の定石です。
+
+### marginが効かない
+
+`inline` 要素は上下のmarginが効きません。`display: inline-block` か `block` に変えましょう。
+
+### 上下のmarginが消えた
+
+マージンの相殺が起きています。Flexboxコンテナに入れるか、paddingで代替するか、状況に応じて対処します。
+
+---
+
+## ちゃんと使うためのポイント
+
+- 全体に `box-sizing: border-box` を設定するのが実務の標準
+- `margin` は要素間の余白、`padding` は要素内部の余白と使い分ける
+- マージン相殺は縦方向でのみ起きる
+- `display` の違い（block / inline / inline-block）でwidth/heightの有効無効が変わる
+
+次の章では、横並びレイアウトを直感的に組める**Flexbox**を学びます。ナビゲーションやカードリストなど、実務で最もよく使うレイアウト手法です。

@@ -1,0 +1,156 @@
+---
+title: 'トランジションとアニメーション — 動きをCSSで作る'
+description: 'transition・animationプロパティの使い方と、パフォーマンスを意識したCSSアニメーションの作り方を解説します。'
+order: 9
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+動きはUIに生命を吹き込みます。ボタンのホバー、モーダルのフェードイン——適切なアニメーションはUXを向上させます。CSSには `transition` と `animation` の2つの仕組みがあります。
+
+<Figure src="/images/relief_man_color.png" alt="滑らかなアニメーションが完成したときの安心感" maxWidth="260px" />
+
+---
+
+## transition（状態変化の補間）
+
+プロパティの変化を滑らかにします。`:hover` などの状態変化と組み合わせます。
+
+```css
+.btn {
+  background-color: #2563eb;
+  transform: scale(1);
+  transition: background-color 200ms ease, transform 150ms ease;
+}
+
+.btn:hover {
+  background-color: #1d4ed8;
+  transform: scale(1.02);
+}
+```
+
+### transition の構文
+
+```css
+transition: プロパティ名 時間 タイミング関数 遅延;
+
+/* 例 */
+transition: all 300ms ease;
+transition: opacity 200ms ease-in-out;
+transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+```
+
+| タイミング関数 | 特徴 |
+|---|---|
+| `ease` | 最初ゆっくり→加速→最後ゆっくり（デフォルト） |
+| `linear` | 一定速度 |
+| `ease-in` | 最初ゆっくり |
+| `ease-out` | 最後ゆっくり（自然な減速感） |
+| `ease-in-out` | 両端がゆっくり |
+
+---
+
+## animation（キーフレームアニメーション）
+
+`@keyframes` でアニメーションの中間状態を定義し、要素に `animation` で適用します。
+
+```css
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal {
+  animation: fadeIn 300ms ease-out forwards;
+}
+```
+
+### animation の構文
+
+```css
+animation: 名前 時間 タイミング関数 遅延 繰り返し回数 方向 fill-mode;
+
+/* よく使う例 */
+animation: spin 1s linear infinite;  /* くるくる回す */
+animation: pulse 2s ease-in-out infinite; /* 点滅 */
+```
+
+---
+
+## パフォーマンスに優しいプロパティ
+
+GPUで処理できるプロパティを使うと滑らかに動きます。
+
+```css
+/* 推奨：GPUで処理される */
+transform: translateX() translateY() scale() rotate();
+opacity: 0 → 1;
+
+/* 避けたい：レイアウト再計算が発生する */
+width / height / margin / padding / top / left
+```
+
+要素を動かしたいときは `margin-left` を変えるのではなく `transform: translateX()` を使います。
+
+<Callout type="warning">
+`width` / `height` / `margin` / `top` / `left` をアニメーションさせると、ブラウザが毎フレームでレイアウト再計算を行い、カクつきの原因になります。動かすプロパティは `transform` と `opacity` に限定するのがベストプラクティスです。
+</Callout>
+
+---
+
+## よく使うアニメーションパターン
+
+```css
+/* ローディングスピナー */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+/* フェードイン */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* スライドイン */
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+```
+
+---
+
+## アクセシビリティ：動きを減らす設定への対応
+
+```css
+/* ユーザーが「動きを減らす」設定をしている場合 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- 短いインタラクションは `transition`、繰り返しや複雑な動きは `animation`
+- `transform` と `opacity` だけを動かすとパフォーマンスが高い
+- アニメーション時間は 100〜300ms が自然に感じる（長すぎるとストレス）
+- `prefers-reduced-motion` を考慮するのがアクセシブルな実装
+
+次の章では、テーマカラーや余白をまとめて管理できる**CSS変数（カスタムプロパティ）**を学びます。

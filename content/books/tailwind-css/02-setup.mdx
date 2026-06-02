@@ -1,0 +1,124 @@
+---
+title: 'Tailwind CSSのセットアップ — Next.js・Viteへの導入方法'
+description: 'Next.js・ViteプロジェクトへのTailwind CSSインストールと基本設定、tailwind.config.tsの構造を解説します。'
+order: 2
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+Tailwind CSS v4 から設定ファイルの仕組みが大きく変わりました。この章ではv4系（2024年以降の標準）のセットアップを中心に説明します。
+
+<Figure src="/images/usingcomputer_suit_woman_color.png" alt="Tailwindをセットアップしているイメージ" maxWidth="260px" />
+
+---
+
+## Next.jsへの導入（v4）
+
+### create-next-app で最初から入れる
+
+```bash
+npx create-next-app@latest my-app
+# "Would you like to use Tailwind CSS?" → Yes
+```
+
+これだけで設定が完了します。
+
+### 既存プロジェクトへの追加
+
+```bash
+npm install tailwindcss @tailwindcss/vite
+```
+
+`app/globals.css`（または `styles/globals.css`）に追記します。
+
+```css
+@import "tailwindcss";
+```
+
+v4 では `tailwind.config.js` は不要で、CSS の `@import` だけで有効になります。
+
+<Callout type="note">
+v4ではPostCSSの設定も不要になりました。Viteプラグインを使うか、CSS内の `@import "tailwindcss"` だけで動作します。v3から移行する場合は公式のアップグレードガイドを参照してください。
+</Callout>
+
+---
+
+## Viteへの導入（v4）
+
+```bash
+npm install tailwindcss @tailwindcss/vite
+```
+
+`vite.config.ts` にプラグインを追加します。
+
+```ts
+import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineConfig({
+  plugins: [
+    tailwindcss(),
+  ],
+})
+```
+
+`src/index.css` などのCSSエントリーに追記します。
+
+```css
+@import "tailwindcss";
+```
+
+---
+
+## v3系のセットアップ（参考）
+
+v3以前では `tailwind.config.js` が必要でした。
+
+```bash
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+```
+
+```js
+// tailwind.config.js
+module.exports = {
+  content: ['./src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+```css
+/* globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+---
+
+## VSCode拡張：Tailwind CSS IntelliSense
+
+Tailwindを使うなら必須の拡張機能です。
+
+- クラス名の補完
+- ホバーでCSSの内容をプレビュー
+- 未知のクラスの警告
+
+```
+拡張機能ID: bradlc.vscode-tailwindcss
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- v4は `@import "tailwindcss"` だけで動く（設定ファイル不要）
+- v3は `content` の設定を忘れると本番ビルドでスタイルが消える
+- VSCode拡張 Tailwind IntelliSense は実務では必須レベル
+
+次の章では、Flexboxとグリッドのレイアウトユーティリティを学びます。

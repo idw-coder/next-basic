@@ -1,0 +1,117 @@
+---
+title: '状態修飾子 — hover・focus・active・disabled'
+description: 'hover:・focus:・active:などの状態修飾子を使い、インタラクティブなUIを作る方法を解説します。'
+order: 8
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+Tailwindでは `:hover` や `:focus` などの擬似クラスもプレフィックスで表現します。
+
+<Figure src="/images/relief_man_color.png" alt="ホバーやフォーカスのインタラクションが完成したときの安心感" maxWidth="260px" />
+
+---
+
+## hover:
+
+```html
+<!-- ホバーで色変更 -->
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+  ボタン
+</button>
+
+<!-- ホバーで下線 -->
+<a class="text-blue-600 hover:underline">リンク</a>
+
+<!-- ホバーで影 -->
+<div class="shadow hover:shadow-lg transition-shadow">カード</div>
+```
+
+---
+
+## focus: / focus-visible:
+
+```html
+<!-- フォーカス時にリングを表示 -->
+<input
+  class="border border-gray-300 rounded px-3 py-2
+         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+/>
+
+<!-- キーボードフォーカスのみ（クリックでは表示しない） -->
+<button class="focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
+  ボタン
+</button>
+```
+
+<Callout type="note">
+`focus:` はクリックでもフォーカスリングが出ますが、`focus-visible:` はキーボード操作時のみ表示されます。ボタンには `focus-visible:` を使うのがモダンなプラクティスです。
+</Callout>
+
+---
+
+## active:
+
+```html
+<button class="bg-blue-600 active:scale-95 transition-transform">
+  クリック時に縮む
+</button>
+```
+
+---
+
+## disabled:
+
+```html
+<button
+  class="bg-blue-600 text-white px-4 py-2 rounded
+         disabled:opacity-50 disabled:cursor-not-allowed"
+  disabled
+>
+  送信
+</button>
+```
+
+---
+
+## group / group-hover:
+
+親要素のホバーに連動して子要素のスタイルを変えます。
+
+```html
+<div class="group border rounded p-4 hover:bg-blue-50 transition-colors">
+  <h3 class="font-semibold group-hover:text-blue-600 transition-colors">
+    タイトル
+  </h3>
+  <p class="text-gray-500 group-hover:text-gray-700">
+    説明テキスト
+  </p>
+</div>
+```
+
+---
+
+## peer / peer-checked:
+
+兄弟要素の状態に応じてスタイルを変えます。カスタムチェックボックスやトグルUIに使います。
+
+```html
+<label class="flex items-center gap-2 cursor-pointer">
+  <input type="checkbox" class="peer sr-only" />
+  <div class="w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-600 transition-colors">
+  </div>
+  <span>通知を受け取る</span>
+</label>
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- `hover:` と `transition-` を組み合わせると滑らかなインタラクションになる
+- フォームには必ず `focus:ring-*` を実装してアクセシビリティを確保する
+- `group-hover:` はカードのホバーエフェクトで非常によく使う
+
+次の章では、**ダークモード**対応を学びます。

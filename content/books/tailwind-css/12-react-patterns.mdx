@@ -1,0 +1,156 @@
+---
+title: 'ReactとTailwindの組み合わせ実践'
+description: 'Reactコンポーネントでのクラス管理、cvaによるバリアント設計、cn()ユーティリティの活用など、実務で使うパターンをまとめます。'
+order: 12
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+TailwindとReactを組み合わせると、長いクラス列の問題がコンポーネント化で解決できます。この章では実務でよく使うパターンをまとめます。
+
+<Figure src="/images/relief_man_color.png" alt="ReactとTailwindをうまく使いこなせたイメージ" maxWidth="260px" />
+
+---
+
+## cn()：クラスの条件付き結合
+
+`clsx` と `tailwind-merge` を組み合わせた `cn()` 関数は、条件付きクラス指定と競合解決を同時に行えます。
+
+```bash
+npm install clsx tailwind-merge
+```
+
+```ts
+// lib/utils.ts
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+```
+
+```tsx
+import { cn } from '@/lib/utils'
+
+function Button({ disabled, className }: { disabled?: boolean; className?: string }) {
+  return (
+    <button
+      className={cn(
+        'px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold transition-colors',
+        disabled && 'opacity-50 cursor-not-allowed',
+        className,
+      )}
+    >
+      送信
+    </button>
+  )
+}
+```
+
+---
+
+## cva：バリアント管理
+
+`class-variance-authority` でコンポーネントのバリアントを型安全に管理できます。
+
+```bash
+npm install class-variance-authority
+```
+
+```tsx
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
+
+const buttonVariants = cva(
+  // ベースクラス
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:opacity-50 disabled:cursor-not-allowed',
+  {
+    variants: {
+      variant: {
+        primary:  'bg-blue-600 hover:bg-blue-700 text-white focus-visible:ring-blue-500',
+        outline:  'border border-blue-600 text-blue-600 hover:bg-blue-50 focus-visible:ring-blue-500',
+        ghost:    'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+        danger:   'bg-red-600 hover:bg-red-700 text-white focus-visible:ring-red-500',
+      },
+      size: {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-4 py-2 text-sm',
+        lg: 'px-5 py-2.5 text-base',
+      },
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md',
+    },
+  }
+)
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants>
+
+export function Button({ variant, size, className, ...props }: ButtonProps) {
+  return (
+    <button
+      className={cn(buttonVariants({ variant, size }), className)}
+      {...props}
+    />
+  )
+}
+```
+
+```tsx
+// 使い方
+<Button variant="primary" size="lg">送信</Button>
+<Button variant="outline" size="sm">キャンセル</Button>
+<Button variant="danger">削除</Button>
+```
+
+---
+
+## 動的クラスの注意点
+
+TailwindはCSSのビルド時にHTMLやJSXをスキャンしてクラスを収集します。そのため、動的に文字列を組み立てると認識されません。
+
+```tsx
+// NG：動的に組み立てると未収集になる
+const color = 'blue'
+<div className={`bg-${color}-600`}>NG</div>
+
+// OK：クラス名を完全な文字列で書く
+const colorMap = {
+  blue: 'bg-blue-600',
+  red:  'bg-red-600',
+}
+<div className={colorMap[color]}>OK</div>
+```
+
+<Callout type="warning">
+Tailwindはビルド時にソースコード内の完全なクラス名文字列をスキャンして収集します。テンプレートリテラルで組み立てた `bg-${color}-600` は「完全な文字列」として認識されないため、CSSに含まれません。
+</Callout>
+
+---
+
+## shadcn/ui との組み合わせ
+
+[shadcn/ui](https://ui.shadcn.com/) はTailwind + Radix UIをベースにしたコンポーネントライブラリです。コンポーネントのソースコードを直接プロジェクトに追加するため、自由にカスタマイズできます。
+
+```bash
+npx shadcn@latest init
+npx shadcn@latest add button card dialog
+```
+
+`cn()` と `cva` を内部で使っており、本章の知識がそのまま活きます。
+
+---
+
+## ちゃんと使うためのポイント
+
+- `cn()` はTailwindをReactで使うなら必ず導入する
+- バリアントが増えたら `cva` でまとめて管理する
+- クラス名は完全な文字列で書く（動的な文字列結合は避ける）
+- shadcn/ui はカスタマイズ性が高くおすすめのコンポーネントベース
+
+TailwindとReactを組み合わせることで、型安全かつ保守しやすいコンポーネント指向のスタイリングが実現できます。引き続きクイズで知識を定着させましょう。

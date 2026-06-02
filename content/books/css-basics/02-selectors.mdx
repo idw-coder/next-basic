@@ -1,0 +1,247 @@
+---
+title: 'CSSセレクタの種類と使い分け — 要素を正確に指定する'
+description: 'タグ・クラス・ID・属性・擬似クラスなど、CSSセレクタの種類と適切な使い方を整理します。'
+order: 2
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+セレクタは「どのHTML要素にスタイルを当てるか」を指定する記法です。セレクタを正確に書けると、特定の要素だけをピンポイントでスタイリングできます。
+
+<Figure src="/images/question_woman_04_color.png" alt="どのセレクタを使えばいいか考えているイメージ" maxWidth="260px" />
+
+---
+
+## タイプセレクタ
+
+HTMLタグ名を直接指定します。
+
+```css
+/* すべての h2 に適用 */
+h2 {
+  font-size: 1.5rem;
+}
+
+/* すべての p に適用 */
+p {
+  line-height: 1.8;
+}
+```
+
+シンプルですが、ページ内の同じタグがすべて影響を受けます。
+
+---
+
+## クラスセレクタ
+
+最もよく使うセレクタです。HTMLの `class` 属性に対して `.クラス名` で指定します。
+
+```html
+<p class="lead">リード文です。</p>
+<p>通常の段落です。</p>
+```
+
+```css
+.lead {
+  font-size: 1.25rem;
+  color: #555;
+}
+```
+
+同じクラスを複数の要素に付けられるので、**再利用性**が高いです。実務ではほとんどのスタイリングをクラスで行います。
+
+### 複数クラスの組み合わせ
+
+```html
+<button class="btn btn-primary">送信</button>
+<button class="btn btn-secondary">キャンセル</button>
+```
+
+```css
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-color: #2563eb;
+  color: white;
+}
+
+.btn-secondary {
+  background-color: #e5e7eb;
+  color: #111;
+}
+```
+
+共通スタイルは `.btn`、差分だけ `.btn-primary` に分けるパターンが実務の基本です。
+
+---
+
+## IDセレクタ
+
+HTMLの `id` 属性に対して `#ID名` で指定します。
+
+```html
+<header id="site-header">...</header>
+```
+
+```css
+#site-header {
+  height: 60px;
+  background: #fff;
+}
+```
+
+IDはページ内で**一意**（1つしか使えない）という制約があります。詳細度も高いため、スタイリングではクラスを優先し、IDはJavaScriptや `href="#id"` などに使うことが多いです。
+
+<Callout type="warning">
+IDセレクタの詳細度は `(0,1,0)` と高く、クラスセレクタ `(0,0,1)` で上書きできません。スタイリングにIDを使うと後から変更が困難になるため、基本的にはクラスを使いましょう。
+</Callout>
+
+---
+
+## 属性セレクタ
+
+HTML属性の値に基づいてスタイルを当てられます。
+
+```css
+/* type="text" の input に適用 */
+input[type="text"] {
+  border: 1px solid #ccc;
+}
+
+/* href が https で始まるリンク */
+a[href^="https"] {
+  color: #16a34a;
+}
+
+/* .pdf で終わるリンク */
+a[href$=".pdf"]::after {
+  content: " (PDF)";
+}
+```
+
+フォーム要素のスタイリングでよく使います。
+
+---
+
+## 擬似クラス
+
+要素の**状態**に応じてスタイルを当てます。
+
+```css
+/* マウスオーバー時 */
+a:hover {
+  text-decoration: underline;
+}
+
+/* フォーカス時（キーボード操作・クリック） */
+input:focus {
+  outline: 2px solid #2563eb;
+}
+
+/* リンク：未訪問・訪問済み */
+a:link    { color: #2563eb; }
+a:visited { color: #7c3aed; }
+
+/* 最初の子要素 */
+li:first-child { font-weight: bold; }
+
+/* 奇数番目の行 */
+tr:nth-child(odd) { background: #f9fafb; }
+```
+
+`:hover` や `:focus` はインタラクションのスタイリングに必須です。
+
+---
+
+## 擬似要素
+
+要素の**一部**に対してスタイルを当てます。
+
+```css
+/* 最初の1文字 */
+p::first-letter {
+  font-size: 2em;
+  float: left;
+}
+
+/* 要素の前後にコンテンツを挿入 */
+.required::after {
+  content: " *";
+  color: red;
+}
+```
+
+`::before` と `::after` はデコレーション目的でよく使われます。
+
+---
+
+## 結合子（コンビネータ）
+
+セレクタを組み合わせて関係性で指定します。
+
+```css
+/* 子孫セレクタ：nav の中のすべての a */
+nav a {
+  text-decoration: none;
+}
+
+/* 子セレクタ：直接の子要素のみ */
+ul > li {
+  list-style: none;
+}
+
+/* 隣接セレクタ：直後の兄弟要素 */
+h2 + p {
+  margin-top: 0;
+}
+
+/* 一般兄弟セレクタ：後続のすべての兄弟 */
+h2 ~ p {
+  color: #555;
+}
+```
+
+子孫セレクタ（スペース）は柔軟ですが、深くネストすると詳細度が上がりすぎるので注意が必要です。
+
+---
+
+## よくあるハマりどころ
+
+### クラス名のタイポ
+
+```html
+<div class="contaner">...</div> <!-- typo: contaner -->
+```
+
+```css
+.container { ... } /* 当たらない */
+```
+
+スタイルが当たらないときは、まずクラス名の綴りを確認します。
+
+### 詳細度の競合
+
+```css
+.card p { color: red; }   /* 詳細度: (0,1,1) */
+p { color: blue; }         /* 詳細度: (0,0,1) */
+```
+
+後に書いても詳細度が低いと負けます。詳細度の仕組みは後の章で解説します。
+
+---
+
+## ちゃんと使うためのポイント
+
+- スタイリングは**クラスセレクタ**を中心に組み立てる
+- IDセレクタは詳細度が高く後から上書きしにくいので、スタイルには使わない方が安全
+- 子孫セレクタは便利だが、深いネストは詳細度問題を起こしやすい
+- `:hover` / `:focus` などの擬似クラスはUXに直結するので積極的に使う
+
+次の章では、CSS最重要概念の一つ「**ボックスモデル**」を学びます。margin・padding・borderの関係を正しく理解することで、レイアウトへの理解が一段と深まります。

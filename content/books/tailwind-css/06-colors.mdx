@@ -1,0 +1,123 @@
+---
+title: 'カラーシステムとデザイントークン'
+description: 'Tailwindのカラーパレットの構造、bg・text・border系クラスの使い方、テーマカラーのカスタマイズ方法を解説します。'
+order: 6
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+Tailwindは豊富なカラーパレットを標準で持っています。色の指定に迷わず、デザインの一貫性を保てます。
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="カラーパレットを使いこなしてデザインがレベルアップするイメージ" maxWidth="260px" />
+
+---
+
+## カラーパレットの構造
+
+Tailwindの色は `{色名}-{数値}` の形式です。数値は 50〜950 で、大きいほど暗くなります。
+
+```html
+<!-- bg（背景色） -->
+<div class="bg-blue-50">薄いブルー背景</div>
+<div class="bg-blue-500">ミドルブルー背景</div>
+<div class="bg-blue-900">濃いブルー背景</div>
+
+<!-- text（文字色） -->
+<p class="text-gray-500">グレーテキスト</p>
+<p class="text-red-600">エラーテキスト</p>
+<p class="text-green-600">成功テキスト</p>
+
+<!-- border（枠線色） -->
+<div class="border border-gray-200">薄い枠線</div>
+<div class="border-2 border-blue-500">ブルーの枠線</div>
+```
+
+---
+
+## 標準カラーパレット
+
+| 色名 | 主な用途例 |
+|---|---|
+| `slate` | UI背景・テキスト（寒色系グレー） |
+| `gray` | 汎用グレー |
+| `zinc` | ニュートラルグレー |
+| `red` | エラー・危険 |
+| `orange` | 警告 |
+| `yellow` | 注意 |
+| `green` | 成功・肯定 |
+| `blue` | プライマリ・リンク |
+| `indigo` | プライマリ代替 |
+| `purple` | アクセント |
+| `pink` | アクセント |
+
+---
+
+## 透明度の修飾子
+
+v3.1以降、色の透明度をスラッシュで指定できます。
+
+```html
+<div class="bg-blue-500/20">20%透明のブルー背景</div>
+<div class="bg-black/50">50%透明の黒背景（オーバーレイ）</div>
+<p class="text-gray-900/70">70%不透明なテキスト</p>
+```
+
+<Callout type="note">
+`/` の後の数値は透明度（0〜100）です。`bg-black/50` は `background-color: rgb(0 0 0 / 50%)` と同等。モーダルのオーバーレイや薄いホバー背景に非常によく使います。
+</Callout>
+
+---
+
+## v4 のカスタムカラー
+
+v4 では CSS 変数でテーマカラーを定義します。
+
+```css
+/* globals.css */
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #2563eb;
+  --color-brand-dark: #1d4ed8;
+  --color-surface: #f8fafc;
+}
+```
+
+```html
+<!-- @theme で定義した色を使う -->
+<button class="bg-brand text-white hover:bg-brand-dark">ボタン</button>
+<div class="bg-surface">サーフェス</div>
+```
+
+---
+
+## v3 のカスタムカラー（参考）
+
+```js
+// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          DEFAULT: '#2563eb',
+          dark: '#1d4ed8',
+          light: '#dbeafe',
+        },
+      },
+    },
+  },
+}
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- 同じ色の薄い版（`-50` / `-100`）はホバー背景・バッジ背景によく使う
+- `bg-black/50` でモーダルのオーバーレイを作れる
+- プロジェクトのブランドカラーは必ずテーマに定義して `bg-brand` のように使う
+
+次の章では、**レスポンシブデザイン**のブレークポイントモディファイアを学びます。

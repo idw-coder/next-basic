@@ -1,0 +1,210 @@
+---
+title: 'Flexboxで横並びレイアウトを作る'
+description: 'display: flex を起点に、主軸・交差軸の概念からよく使うプロパティまでFlexboxレイアウトの全体像を整理します。'
+order: 4
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+**Flexbox**（Flexible Box Layout）は、横並び・縦並びのレイアウトを直感的に組める仕組みです。ナビゲーションバー・カード一覧・フォームの入力欄とボタンの並びなど、UIのあらゆる場面で活躍します。
+
+<Figure src="/images/usingcomputer_suit_woman_color.png" alt="Flexboxでレイアウトを組んでいるイメージ" maxWidth="260px" />
+
+---
+
+## 基本の使い方
+
+親要素に `display: flex` を付けるだけで、子要素が横並びになります。
+
+```html
+<div class="container">
+  <div class="item">A</div>
+  <div class="item">B</div>
+  <div class="item">C</div>
+</div>
+```
+
+```css
+.container {
+  display: flex;
+}
+```
+
+`display: flex` を付けた要素を**Flexコンテナ**、その直接の子要素を**Flexアイテム**と呼びます。
+
+---
+
+## 主軸と交差軸
+
+Flexboxは2つの軸を使って配置を制御します。
+
+<MermaidDiagram chart={`
+flowchart LR
+    A["flex-direction: row（デフォルト）"]
+    B["主軸 → 水平方向"]
+    C["交差軸 ↓ 垂直方向"]
+    A --> B
+    A --> C
+`} />
+
+| プロパティ | 説明 |
+|---|---|
+| 主軸（main axis） | アイテムが並ぶ方向。`flex-direction` で変更 |
+| 交差軸（cross axis） | 主軸と垂直の方向 |
+
+---
+
+## flex-direction
+
+アイテムを並べる方向を決めます。
+
+```css
+.container {
+  display: flex;
+  flex-direction: row;         /* →（デフォルト） */
+  /* flex-direction: row-reverse; */  /* ← */
+  /* flex-direction: column;  */      /* ↓ */
+  /* flex-direction: column-reverse; */ /* ↑ */
+}
+```
+
+---
+
+## justify-content（主軸方向の配置）
+
+```css
+.container {
+  display: flex;
+  justify-content: flex-start;    /* 左寄せ（デフォルト） */
+  /* justify-content: flex-end;   */  /* 右寄せ */
+  /* justify-content: center;     */  /* 中央寄せ */
+  /* justify-content: space-between; */ /* 両端 + 均等 */
+  /* justify-content: space-around;  */ /* 均等（端も半分の余白） */
+  /* justify-content: space-evenly;  */ /* すべて均等 */
+}
+```
+
+ナビゲーションのロゴと項目を両端に配置するときは `space-between` がよく使われます。
+
+---
+
+## align-items（交差軸方向の配置）
+
+```css
+.container {
+  display: flex;
+  align-items: stretch;    /* 交差軸いっぱいに伸びる（デフォルト） */
+  /* align-items: flex-start; */ /* 上寄せ */
+  /* align-items: flex-end;   */ /* 下寄せ */
+  /* align-items: center;     */ /* 中央寄せ */
+  /* align-items: baseline;   */ /* テキストのベースライン揃え */
+}
+```
+
+高さが違う要素を縦方向に中央揃えするには `align-items: center` が便利です。
+
+---
+
+## gap（アイテム間の間隔）
+
+```css
+.container {
+  display: flex;
+  gap: 16px;        /* 行・列すべてに 16px */
+  /* gap: 8px 16px; */ /* 行方向 列方向 */
+}
+```
+
+昔は `margin` で調整していましたが、`gap` の方がシンプルです。
+
+<Callout type="info">
+`gap` はIE11では使えませんが、モダンブラウザでは問題なくサポートされています。IE対応が不要なプロジェクト（2024年以降のほとんど）では積極的に使いましょう。
+</Callout>
+
+---
+
+## flex（アイテムの伸縮）
+
+Flexアイテム側のプロパティです。
+
+```css
+.item {
+  flex: 1; /* 余白を均等に分け合う */
+}
+
+/* 個別指定 */
+.item {
+  flex-grow: 1;   /* 余白を伸びて埋める比率 */
+  flex-shrink: 1; /* はみ出した時に縮む比率 */
+  flex-basis: 0;  /* 基準サイズ */
+}
+```
+
+`flex: 1` にすると全アイテムが等幅になります。
+
+---
+
+## 実務でよく使うパターン
+
+### ナビゲーションバー
+
+```css
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  height: 60px;
+}
+```
+
+### カードの横並び
+
+```css
+.card-list {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap; /* 折り返しを許可 */
+}
+
+.card {
+  flex: 1;
+  min-width: 200px; /* 折り返しの基準 */
+}
+```
+
+### 垂直・水平中央揃え
+
+```css
+.centered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* ビューポート全体 */
+}
+```
+
+---
+
+## よくあるハマりどころ
+
+### 子要素が縮まってしまう
+
+`flex-shrink` のデフォルトは `1`（縮む）です。縮ませたくない場合は `flex-shrink: 0` を設定します。
+
+### flex-wrap を忘れて横にはみ出す
+
+デフォルトは `flex-wrap: nowrap` で折り返しません。カードリストなど折り返しが必要なときは `flex-wrap: wrap` を付けます。
+
+---
+
+## ちゃんと使うためのポイント
+
+- `display: flex` はコンテナに付ける。アイテムへの指定（`flex`, `align-self` など）は子要素
+- 主軸方向は `justify-content`、交差軸方向は `align-items` と覚える
+- アイテム間の余白は `gap` でまとめて指定するのがシンプル
+- 折り返しが必要なレイアウトには `flex-wrap: wrap` を忘れずに
+
+次の章では、より複雑な2次元レイアウトに対応できる**CSS Grid**を学びます。

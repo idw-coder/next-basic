@@ -1,0 +1,110 @@
+---
+title: 'ダークモード対応 — dark:修飾子の使い方'
+description: 'Tailwindのdark:プレフィックスを使ったダークモード実装と、OS設定連動・手動切り替えの両対応方法を解説します。'
+order: 9
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+Tailwindは `dark:` プレフィックスでダークモードのスタイルを指定できます。
+
+<Figure src="/images/usingcomputer_suit_woman_color.png" alt="ダークモードのUIを確認しているイメージ" maxWidth="260px" />
+
+---
+
+## 基本の使い方
+
+```html
+<div class="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <p>テキスト</p>
+  <button class="bg-blue-600 dark:bg-blue-500 text-white">
+    ボタン
+  </button>
+</div>
+```
+
+---
+
+## OSの設定に連動（デフォルト）
+
+デフォルトでは `prefers-color-scheme: dark` メディアクエリに連動します。ユーザーのOS設定が「ダーク」のときに `dark:` クラスが有効になります。
+
+<Callout type="info">
+macOSでは「システム設定 > 外観モード > ダーク」、Windowsでは「設定 > 個人用設定 > 色 > ダーク」でOS側のダークモードを切り替えられます。開発時のテストに活用しましょう。
+</Callout>
+
+```html
+<!-- OS設定がダークのとき自動でダークモード -->
+<body class="bg-white dark:bg-gray-950">
+  ...
+</body>
+```
+
+---
+
+## 手動切り替え（クラスベース）
+
+ボタンでテーマを切り替えたい場合は、`html` 要素に `dark` クラスを付け外しします。
+
+**v4 の設定：**
+
+```css
+/* globals.css */
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+```
+
+**v3 の設定：**
+
+```js
+// tailwind.config.js
+module.exports = {
+  darkMode: 'class',
+  // ...
+}
+```
+
+**React でのトグル実装：**
+
+```tsx
+function ThemeToggle() {
+  const toggleDark = () => {
+    document.documentElement.classList.toggle('dark')
+  }
+  return <button onClick={toggleDark}>テーマ切り替え</button>
+}
+```
+
+---
+
+## 実践：ダークモード対応カード
+
+```html
+<div class="
+  bg-white dark:bg-gray-800
+  border border-gray-200 dark:border-gray-700
+  rounded-xl p-6
+  shadow-sm dark:shadow-none
+">
+  <h2 class="text-gray-900 dark:text-gray-100 font-semibold text-lg">
+    カードタイトル
+  </h2>
+  <p class="text-gray-500 dark:text-gray-400 mt-2">
+    説明テキスト
+  </p>
+</div>
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- `dark:` クラスはライト用クラスと並べて書く（`bg-white dark:bg-gray-900`）
+- OS連動で十分な場合はデフォルト設定のまま使う
+- ボタンで切り替えるなら `darkMode: 'class'`（v3）または `@variant dark`（v4）を設定
+- 色の選択はライト・ダーク両方で確認する
+
+次の章では、コンポーネントのパターンを効率よく組み立てる方法を学びます。

@@ -1,0 +1,116 @@
+---
+title: 'スペーシング — margin・padding・サイズの指定'
+description: 'Tailwindのスペーシングスケールの仕組みと、p・m・w・h系ユーティリティの使い方を解説します。'
+order: 4
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+TailwindのスペーシングはデフォルトでRemベースのスケールを使います。数値の意味を理解すると、一貫性のある余白を素早く指定できます。
+
+<Figure src="/images/question_woman_04_color.png" alt="スペーシングの数値を確認しているイメージ" maxWidth="260px" />
+
+---
+
+## スペーシングスケール
+
+Tailwindの数値は **`1 = 0.25rem = 4px`** が基準です。
+
+| クラス | rem | px相当 |
+|---|---|---|
+| `p-1` | 0.25rem | 4px |
+| `p-2` | 0.5rem | 8px |
+| `p-4` | 1rem | 16px |
+| `p-6` | 1.5rem | 24px |
+| `p-8` | 2rem | 32px |
+| `p-12` | 3rem | 48px |
+| `p-16` | 4rem | 64px |
+
+---
+
+## padding
+
+```html
+<!-- 四辺すべて -->
+<div class="p-4">...</div>
+
+<!-- 上下・左右 -->
+<div class="py-2 px-4">...</div>
+
+<!-- 個別 -->
+<div class="pt-4 pr-6 pb-4 pl-6">...</div>
+
+<!-- 左右のみ（水平方向） -->
+<div class="px-6">...</div>
+
+<!-- 上下のみ（垂直方向） -->
+<div class="py-3">...</div>
+```
+
+---
+
+## margin
+
+```html
+<!-- 中央揃え（水平） -->
+<div class="mx-auto w-full max-w-xl">...</div>
+
+<!-- 上に余白 -->
+<p class="mt-4">...</p>
+
+<!-- 下に余白 -->
+<h2 class="mb-2">...</h2>
+
+<!-- 負のmargin -->
+<div class="-mt-2">...</div>
+```
+
+---
+
+## サイズ（width / height）
+
+```html
+<!-- 固定幅 -->
+<div class="w-32">128px</div>    <!-- 8rem -->
+<div class="w-64">256px</div>    <!-- 16rem -->
+
+<!-- パーセント -->
+<div class="w-1/2">50%</div>
+<div class="w-full">100%</div>
+
+<!-- ビューポート -->
+<div class="w-screen h-screen">画面全体</div>
+
+<!-- 最大・最小 -->
+<div class="max-w-sm">最大384px</div>
+<div class="max-w-prose">最大65ch（読みやすい本文幅）</div>
+<div class="min-h-screen">最低でも画面の高さ</div>
+```
+
+---
+
+## 任意の値
+
+スケール外の値を使うには角括弧で指定します。
+
+```html
+<div class="w-[480px] h-[360px]">...</div>
+<div class="mt-[72px]">...</div>
+<div class="p-[clamp(1rem,3vw,2rem)]">...</div>
+```
+
+<Callout type="warning">
+任意値（`[]`）を多用する場合、デザインの一貫性が崩れている可能性があります。頻繁に使う値は `@theme`（v4）や `tailwind.config`（v3）に追加して、名前付きユーティリティとして使う方がベターです。
+</Callout>
+
+---
+
+## ちゃんと使うためのポイント
+
+- `1 = 4px` のスケールを覚えると `p-4`（16px）や `gap-6`（24px）が直感的に使える
+- `mx-auto` + `max-w-*` でコンテンツの中央揃えと幅制限を同時にできる
+- スケール外の値は任意値（`[]`）で対応できる
+
+次の章では、**テキストとフォント**のユーティリティを学びます。

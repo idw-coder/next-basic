@@ -1,0 +1,123 @@
+---
+title: 'CSS変数（カスタムプロパティ）でテーマを管理する'
+description: 'var()とカスタムプロパティを使ってデザイントークンを定義し、テーマカラーや余白の一元管理と、ダークモード対応の方法を解説します。'
+order: 10
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+**CSS変数（カスタムプロパティ）**を使うと、色・サイズ・余白などの値を一箇所で定義して使い回せます。テーマの変更やダークモード対応が格段に楽になります。
+
+<Figure src="/images/planning_suit_man_color.png" alt="CSS変数でデザイントークンを設計しているイメージ" maxWidth="260px" />
+
+---
+
+## 基本の書き方
+
+変数は `--` で始まる名前で定義し、`var()` で参照します。
+
+```css
+/* :root に定義するとページ全体で使える */
+:root {
+  --color-primary: #2563eb;
+  --color-text: #1a1a2e;
+  --color-bg: #ffffff;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --radius-md: 8px;
+}
+
+.btn {
+  background-color: var(--color-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+}
+```
+
+---
+
+## デフォルト値
+
+変数が未定義のときのフォールバックを指定できます。
+
+```css
+.card {
+  background-color: var(--card-bg, #ffffff); /* 未定義なら #ffffff */
+}
+```
+
+---
+
+## スコープ
+
+CSS変数はスコープを持ちます。特定のコンポーネントだけで有効な変数を作れます。
+
+```css
+:root {
+  --btn-bg: #2563eb;
+}
+
+.btn-danger {
+  --btn-bg: #dc2626; /* このクラス内だけ上書き */
+  background-color: var(--btn-bg);
+}
+```
+
+---
+
+## ダークモード対応
+
+```css
+:root {
+  --color-bg: #ffffff;
+  --color-text: #1a1a2e;
+  --color-surface: #f8fafc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f172a;
+    --color-text: #f1f5f9;
+    --color-surface: #1e293b;
+  }
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+```
+
+変数の値を切り替えるだけで、全コンポーネントのテーマが一気に変わります。
+
+<Callout type="note">
+Tailwind CSSやshadcn/uiなどのモダンなフレームワークも、内部的にCSS変数を活用してテーマカラーを管理しています。CSS変数を理解しておくと、フレームワークのカスタマイズも容易になります。
+</Callout>
+
+---
+
+## JavaScriptとの連携
+
+CSS変数はJavaScriptから読み書きできます。
+
+```js
+// 読み取り
+const primary = getComputedStyle(document.documentElement)
+  .getPropertyValue('--color-primary');
+
+// 書き込み（動的なテーマ切り替えなど）
+document.documentElement.style.setProperty('--color-primary', '#10b981');
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- デザイントークン（色・余白・角丸など）はCSS変数で一元管理する
+- `:root` に基本テーマ変数を定義し、ダークモードは `@media (prefers-color-scheme: dark)` で上書き
+- コンポーネント固有の変数はそのコンポーネントのクラスに定義してスコープを絞る
+
+次の章では、スタイルが当たらない・意図せず上書きされる原因となる**詳細度とカスケード**を学びます。

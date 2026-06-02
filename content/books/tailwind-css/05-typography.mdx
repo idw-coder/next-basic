@@ -1,0 +1,99 @@
+---
+title: 'テキストとフォントのユーティリティ'
+description: 'Tailwindのtext・font系クラスを使って、読みやすく美しいテキストスタイリングを行う方法を解説します。'
+order: 5
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+<Figure src="/images/usingcomputer_suit_woman_color.png" alt="テキストのスタイリングを確認しているイメージ" maxWidth="260px" />
+
+---
+
+## font-size
+
+```html
+<p class="text-sm">14px（0.875rem）</p>
+<p class="text-base">16px（1rem）デフォルト</p>
+<p class="text-lg">18px（1.125rem）</p>
+<p class="text-xl">20px（1.25rem）</p>
+<p class="text-2xl">24px（1.5rem）</p>
+<p class="text-3xl">30px（1.875rem）</p>
+<p class="text-4xl">36px（2.25rem）</p>
+```
+
+---
+
+## font-weight
+
+```html
+<p class="font-normal">通常（400）</p>
+<p class="font-medium">やや太め（500）</p>
+<p class="font-semibold">セミボールド（600）</p>
+<p class="font-bold">ボールド（700）</p>
+```
+
+---
+
+## line-height
+
+```html
+<p class="leading-tight">行間狭い（1.25）— 見出し向け</p>
+<p class="leading-normal">通常（1.5）</p>
+<p class="leading-relaxed">ゆとりあり（1.625）— 本文向け</p>
+<p class="leading-loose">広め（2）</p>
+```
+
+---
+
+## text-align / text-color
+
+```html
+<p class="text-center">中央揃え</p>
+<p class="text-right">右揃え</p>
+
+<p class="text-gray-600">グレーテキスト</p>
+<p class="text-blue-600">ブルーテキスト</p>
+<p class="text-red-500">エラーカラー</p>
+```
+
+---
+
+## テキスト省略
+
+```html
+<!-- 1行で省略 -->
+<p class="truncate">長いテキストが...で省略されます</p>
+
+<!-- 複数行で省略 -->
+<p class="line-clamp-2">2行で省略されるテキスト...</p>
+<p class="line-clamp-3">3行で省略されるテキスト...</p>
+```
+
+---
+
+## @tailwindcss/typography プラグイン
+
+マークダウン・ブログ記事など長文コンテンツには `prose` クラスが便利です。
+
+```bash
+npm install @tailwindcss/typography
+```
+
+```html
+<article class="prose prose-lg max-w-none">
+  <!-- 見出し・段落・リスト・コードが美しくスタイリングされる -->
+</article>
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- 見出しには `text-2xl font-bold leading-tight`、本文には `text-base leading-relaxed` が基本形
+- `line-clamp-*` でカードのテキスト溢れを防ぐ
+- 長文コンテンツには `@tailwindcss/typography` の `prose` が強力
+
+次の章では、**カラーシステム**を学びます。

@@ -1,0 +1,153 @@
+---
+title: 'テーマカスタマイズ — @themeとtailwind.config'
+description: 'Tailwindのデフォルト値を拡張・上書きして、プロジェクト固有のデザインシステムを構築する方法を解説します。'
+order: 11
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+Tailwindのデフォルト設定は実務に即して変更できます。v4とv3で設定方法が異なります。
+
+<Figure src="/images/fork_suit_man_color.png" alt="設定ファイルのカスタマイズに悩んでいるイメージ" maxWidth="260px" />
+
+---
+
+## v4：@themeでCSS変数を定義
+
+v4 ではCSSファイルの中に `@theme` ブロックを書きます。
+
+```css
+/* globals.css */
+@import "tailwindcss";
+
+@theme {
+  /* カスタムカラー */
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-brand-light: #dbeafe;
+
+  /* カスタムフォント */
+  --font-sans: 'Noto Sans JP', sans-serif;
+
+  /* カスタム間隔 */
+  --spacing-18: 4.5rem;
+
+  /* カスタムブレークポイント */
+  --breakpoint-xs: 480px;
+
+  /* カスタムアニメーション */
+  --animate-fade-in: fadeIn 300ms ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+```
+
+```html
+<!-- 定義したテーマを使う -->
+<div class="bg-brand text-white">ブランドカラー</div>
+<p class="font-sans">Noto Sans JP</p>
+<div class="mt-18">カスタム間隔</div>
+<div class="animate-fade-in">フェードイン</div>
+```
+
+---
+
+## v3：tailwind.config.js での設定
+
+```js
+// tailwind.config.js
+const { fontFamily } = require('tailwindcss/defaultTheme')
+
+module.exports = {
+  content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          DEFAULT: '#2563eb',
+          hover: '#1d4ed8',
+          light: '#dbeafe',
+        },
+      },
+      fontFamily: {
+        sans: ['Noto Sans JP', ...fontFamily.sans],
+      },
+      spacing: {
+        18: '4.5rem',
+        22: '5.5rem',
+      },
+      borderRadius: {
+        '4xl': '2rem',
+      },
+      animation: {
+        'fade-in': 'fadeIn 300ms ease-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+    },
+  },
+  plugins: [
+    require('@tailwindcss/typography'),
+    require('@tailwindcss/forms'),
+  ],
+}
+```
+
+---
+
+## @apply（ユーティリティの抽出）
+
+繰り返しの長いクラス列はCSSに抽出できます。ただし多用は避けます。
+
+```css
+/* globals.css */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700
+           text-white font-semibold rounded-lg transition-colors
+           focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none;
+  }
+}
+```
+
+```html
+<button class="btn-primary">送信</button>
+```
+
+Reactを使う場合は、コンポーネント化の方がより推奨されます。
+
+<Callout type="warning">
+`@apply` の多用はTailwindの利点（ユーティリティの直接適用）を打ち消し、従来のCSS設計と変わらなくなります。使うとしても、`btn-primary` のような本当にグローバルで繰り返すパターンに限定しましょう。
+</Callout>
+
+---
+
+## よく使うプラグイン
+
+| プラグイン | 用途 |
+|---|---|
+| `@tailwindcss/typography` | `prose` クラスで長文を美しく整形 |
+| `@tailwindcss/forms` | フォーム要素のデフォルトスタイルをリセット |
+| `@tailwindcss/aspect-ratio` | アスペクト比を維持するユーティリティ |
+| `tailwind-merge` (twMerge) | クラスの重複・競合を解決するライブラリ |
+| `clsx` / `cva` | 条件付きクラス結合ライブラリ |
+
+---
+
+## ちゃんと使うためのポイント
+
+- プロジェクト固有の色・フォントは必ずテーマに定義する（ハードコードしない）
+- `@apply` は使いすぎないこと。コンポーネント化の方がメンテナンスしやすい
+- v3の `extend` vs ルートキー：`extend` は追加、ルートキーへの直接定義はデフォルトを**全置換**するので注意
+
+次の章では、Reactとの組み合わせで実践的なTailwindの使い方を学びます。

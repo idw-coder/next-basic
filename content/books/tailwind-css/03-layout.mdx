@@ -1,0 +1,139 @@
+---
+title: 'レイアウトユーティリティ — FlexboxとGrid'
+description: 'Tailwindのflex・grid系クラスを使って横並び・グリッドレイアウトを素早く組む方法を解説します。'
+order: 3
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+TailwindのFlexbox・Gridユーティリティを使うと、横並びや複雑なレイアウトをHTMLだけで素早く組めます。
+
+<Figure src="/images/planning_suit_man_color.png" alt="Tailwindでレイアウトを設計しているイメージ" maxWidth="260px" />
+
+---
+
+## Flexbox
+
+`flex` クラスで Flexbox コンテナになります。
+
+```html
+<!-- 基本の横並び -->
+<div class="flex gap-4">
+  <div>A</div>
+  <div>B</div>
+  <div>C</div>
+</div>
+
+<!-- 両端に配置 -->
+<div class="flex justify-between items-center">
+  <span>ロゴ</span>
+  <nav>メニュー</nav>
+</div>
+
+<!-- 中央揃え -->
+<div class="flex justify-center items-center h-screen">
+  <p>画面中央</p>
+</div>
+```
+
+### よく使うFlexクラス一覧
+
+| クラス | CSS |
+|---|---|
+| `flex` | `display: flex` |
+| `flex-col` | `flex-direction: column` |
+| `flex-wrap` | `flex-wrap: wrap` |
+| `items-center` | `align-items: center` |
+| `items-start` | `align-items: flex-start` |
+| `justify-center` | `justify-content: center` |
+| `justify-between` | `justify-content: space-between` |
+| `justify-end` | `justify-content: flex-end` |
+| `gap-4` | `gap: 1rem` |
+| `flex-1` | `flex: 1 1 0%` |
+| `flex-none` | `flex: none` |
+| `grow` | `flex-grow: 1` |
+| `shrink-0` | `flex-shrink: 0` |
+
+<Callout type="info">
+`shrink-0` は画像やアイコンなど「縮んでほしくない要素」によく使います。Flex内でロゴやアバターが潰れてしまうときはこれを付けましょう。
+</Callout>
+
+---
+
+## CSS Grid
+
+`grid` クラスでGridコンテナになります。
+
+```html
+<!-- 3列グリッド -->
+<div class="grid grid-cols-3 gap-6">
+  <div>1</div>
+  <div>2</div>
+  <div>3</div>
+</div>
+
+<!-- レスポンシブグリッド -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  <!-- カード -->
+</div>
+
+<!-- 2列、左が固定・右が可変 -->
+<div class="grid grid-cols-[240px_1fr] gap-6">
+  <aside>サイドバー</aside>
+  <main>メインコンテンツ</main>
+</div>
+```
+
+### よく使うGridクラス一覧
+
+| クラス | CSS |
+|---|---|
+| `grid` | `display: grid` |
+| `grid-cols-3` | `grid-template-columns: repeat(3, minmax(0, 1fr))` |
+| `grid-cols-[240px_1fr]` | カスタム値（任意の値） |
+| `col-span-2` | `grid-column: span 2` |
+| `col-span-full` | 全幅にまたがる |
+| `gap-4` | `gap: 1rem` |
+| `gap-x-4` | `column-gap: 1rem` |
+| `gap-y-8` | `row-gap: 2rem` |
+
+---
+
+## コンテナ
+
+```html
+<!-- 最大幅を制限して中央揃え -->
+<div class="container mx-auto px-4">
+  コンテンツ
+</div>
+```
+
+`container` クラスは各ブレークポイントで `max-width` を設定します。
+
+---
+
+## position 系
+
+```html
+<!-- 固定ヘッダー -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-white">
+  ナビゲーション
+</header>
+
+<!-- 親要素に対して絶対配置 -->
+<div class="relative">
+  <span class="absolute top-2 right-2 text-xs">バッジ</span>
+</div>
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- `flex items-center gap-4` の組み合わせは非常によく使う
+- グリッドのカラム数はブレークポイントと組み合わせてレスポンシブにする
+- 任意の値は `grid-cols-[240px_1fr]` のように角括弧で指定できる
+
+次の章では、余白（margin・padding）のスペーシングユーティリティを学びます。

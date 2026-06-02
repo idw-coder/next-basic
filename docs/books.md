@@ -1,4 +1,4 @@
-# 教科書（Books）機能 仕様書
+# 教科書（Books）機能 仕様書 & コンテンツ作成ガイド
 
 ## 概要
 
@@ -250,15 +250,89 @@ content/books/typescript/
 
 クイズカテゴリとの連携が必要であれば、`src/lib/books.ts` の `categoryToBookMap` にエントリを追加する。
 
-### カスタム MDX コンポーネントを追加する
+### 利用可能なカスタム MDX コンポーネント
 
-`src/components/mdx-content.tsx` の `sharedComponents` オブジェクトにコンポーネントを登録すると、すべての MDX ファイル内で `<ComponentName />` として使用可能になる。
+`src/components/mdx-content.tsx` の `sharedComponents` に登録されているコンポーネントは、すべての MDX ファイル内でそのまま使える。
+
+#### `<Callout>`
+
+補足・注意書きなどを目立たせるボックス。
+
+| prop | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `type` | `'note' \| 'info' \| 'warning' \| 'column'` | `'note'` | スタイルの種類 |
+| `title` | `string` | type に応じた既定値 | ラベルテキスト（省略時は `NOTE` / `INFO` / `WARNING` / `COLUMN`） |
+
+**type の使い分けガイド:**
+
+| type | 用途 | 使いどころの例 |
+|---|---|---|
+| `note` | 補足知識・知っておくと便利な情報 | 「Tailwindも内部でCSS変数を使っています」 |
+| `info` | 具体的なTips・ツールの操作方法 | 「Figmaで色をコピーするとHEX値が取得できます」 |
+| `warning` | ハマりやすい落とし穴・NG例・破壊的操作 | 「!importantの連鎖はCSSを管理不能にします」 |
+| `column` | 本題から少し外れた背景知識・歴史・コラム | 「マージンの相殺はテキスト文書の段落のために生まれた仕様です」 |
+
+```mdx
+<Callout type="note">
+知っておくと便利な補足情報を書きます。
+</Callout>
+
+<Callout type="info">
+具体的なツールの使い方や実務Tipsを書きます。
+</Callout>
+
+<Callout type="warning">
+やりがちなミスや注意が必要な操作について書きます。
+</Callout>
+
+<Callout type="column">
+本題からは逸れるが知っておくと面白い背景知識やコラムを書きます。
+</Callout>
+
+<Callout type="info" title="準備中">
+title を指定するとラベルを自由に変えられます。執筆中コンテンツの通知などに。
+</Callout>
+```
+
+#### `<MermaidDiagram>`
+
+Mermaid 記法の図を描画する。
+
+```mdx
+<MermaidDiagram chart={`
+flowchart LR
+    A["作業"] -->|add| B["ステージング"]
+    B -->|commit| C["リポジトリ"]
+`} />
+```
+
+#### `<Figure>`
+
+キャプション付きの画像を表示する。
+
+| prop | 型 | 必須 | 説明 |
+|---|---|---|---|
+| `src` | `string` | はい | 画像パス |
+| `alt` | `string` | いいえ | alt テキスト |
+| `maxWidth` | `string` | いいえ | 最大幅（例: `"400px"`） |
+| `caption` | `string` | いいえ | キャプションテキスト |
+
+```mdx
+<Figure src="/images/example.png" alt="例の図" caption="図1: アーキテクチャ概要" maxWidth="600px" />
+```
+
+#### 新しいコンポーネントを追加する
+
+`src/components/mdx-content.tsx` の `sharedComponents` オブジェクトに登録すると、すべての MDX で使用可能になる。
 
 ```tsx
-import { Callout } from "@/components/Callout";
+import NewComponent from "@/app/books/_components/NewComponent";
 
 const sharedComponents = {
+  MermaidDiagram,
+  Figure,
   Callout,
+  NewComponent, // 追加
 };
 ```
 
@@ -277,6 +351,202 @@ const sharedComponents = {
 ### インラインコード
 
 `.prose :not(pre) > code` セレクタで、`var(--muted)` 背景のスタイルを適用している。
+
+---
+
+## AIによるコンテンツ作成ガイド
+
+ウェブエンジニア問題集（study.ntorelabo.com）の教科書を、AIに作成・追加してもらうときに使うプロンプトと添付ファイルのリスト。
+
+### 添付ファイルのリスト
+
+#### 毎回必須（仕様理解用）
+
+| ファイル | パス例 | 用途 |
+|---|---|---|
+| 仕様書 | `docs/books.md`（本ファイル） | 本機能の全体仕様 |
+| Velite設定 | `velite.config.ts` | frontmatterスキーマ確認 |
+| MDXコンポーネント | `src/components/mdx-content.tsx` | 使えるカスタムコンポーネント（MermaidDiagram等）の把握 |
+
+#### サンプル（トーン参考用）
+
+| ファイル | 用途 |
+|---|---|
+| 既存本の `index.yaml` 1つ | メタデータのトーン |
+| 既存本のMDX 1〜2章 | 本文のトーン・構成・粒度 |
+
+#### 任意（SEO戦略を考えてもらう場合）
+
+| ファイル | 用途 |
+|---|---|
+| `src/lib/books.ts` | categoryToBookMap の現状確認 |
+| サイトURL | カテゴリ構成・既存の本のラインナップ確認 |
+
+---
+
+### パターンA: 新しい本をゼロから作る
+
+```
+ウェブエンジニア問題集（https://study.ntorelabo.com/）の教科書コンテンツを
+新規で1冊作りたい。
+
+# 前提
+- サイトはクイズ中心の学習サイト、教科書はクイズのインプット教材
+- 想定読者は駆け出しエンジニア
+- SEOはロングテール狙い（章タイトル=具体的な検索クエリ）
+- 添付ファイルは本機能の仕様書・Velite設定・既存本のサンプル
+
+# 作りたい本
+テーマ: [ここに書く、例: TypeScript入門]
+対応クイズカテゴリ: [ここに書く、例: ts-general]
+章数: [ここに書く、例: 10章]
+
+# 進め方
+1. 本のタイトル案を複数出して
+2. 章構成（各章のfrontmatterのtitleをロングテール意識で）を提示して
+3. 承認したら執筆開始
+4. まず1章だけ書いて、トーン確認後に残りを書く
+
+# 守ってほしい制約
+- H1は本文に書かない（H2始まり）
+- frontmatterは title / description / order の3つ
+- MermaidDiagramが使える（<-->は使わず-->のみ、ラベルは短く）
+- 既存本と同じ「ですます調・実務目線」で
+- 各章末に「ちゃんと使うためのポイント」でまとめ
+- 次章への橋渡し文で締める
+
+# 添付ファイル
+- docs/books.md（本ファイル）
+- velite.config.ts
+- mdx-content.tsx
+- 既存本のindex.yaml 1つ
+- 既存本のMDX 1〜2章（トーン参考）
+```
+
+---
+
+### パターンB: 既存の本に章を追加する
+
+```
+既存の本に章を1つ追加したい。
+
+# 対象の本
+- bookSlug: [例: git]
+- 追加したい章のテーマ: [例: git cherry-pickの使い方]
+- 章番号: [例: order: 11]
+
+# 添付ファイル
+- 追加先の本の既存章MDX 2〜3個（トーン合わせ用）
+- docs/books.md（本ファイル）
+- velite.config.ts
+
+# 守ってほしい制約
+既存章と同じトーン・構成で書く
+（H2始まり、「ちゃんと使うためのポイント」で締める、次章への橋渡し等）
+```
+
+---
+
+### パターンC: テーマ選定から相談したい
+
+```
+ウェブエンジニア問題集（https://study.ntorelabo.com/）に新しい教科書を追加したい。
+テーマは決まっていないので、SEO観点で勝ちやすいテーマを提案してほしい。
+
+# 前提
+- 現在ある本: [例: Next.js、Git]
+- 狙いたいSEO戦略: [ロングテール / ビッグワード / 内部回遊重視]
+- 避けたい領域: [例: 既に書いたテーマと被るもの]
+
+# やってほしいこと
+1. サイトの既存カテゴリを確認（URL渡すので見て）
+2. 競合状況を調査
+3. 候補テーマを3つ程度、根拠付きで提案
+4. 選んだテーマで章構成を設計
+
+# 添付ファイル
+- docs/books.md（本ファイル）
+- books.ts（categoryToBookMap確認用）
+- 既存本のMDX（トーン参考）
+```
+
+---
+
+## MDX記述ルール
+
+### frontmatter
+
+```yaml
+---
+title: "章タイトル（SEO意識・検索クエリとして成立する形）"
+description: "1〜2文の説明"
+order: 1
+---
+```
+
+### 本文の構成パターン
+
+```
+（本文先頭、H1なし）
+導入の1〜2段落
+
+## H2見出し1
+（本文・コード・表）
+
+## H2見出し2
+（本文・Mermaid図）
+
+...
+
+## よくあるハマりどころ
+（実務で遭遇するトラブル集）
+
+## ちゃんと使うためのポイント
+- 箇条書きで重要点をまとめ
+
+次の章への橋渡し文
+```
+
+### Mermaidの安全な書き方
+
+使える構文:
+- `flowchart TB` / `flowchart LR`
+- `gitGraph`
+- 矢印は `-->` と `---` のみ
+- ノード: `A["短いラベル"]`
+- エッジラベル: `A -->|ラベル| B`
+
+避けるもの:
+- `<-->` などの双方向矢印（MDXがJSXと誤認識する）
+- 長い日本語ラベル（改行や崩れの原因）
+- 深いsubgraphネスト
+
+### 記述例
+
+```mdx
+<MermaidDiagram chart={`
+flowchart LR
+    A["作業"] -->|add| B["ステージング"]
+    B -->|commit| C["リポジトリ"]
+`} />
+```
+
+---
+
+## デプロイ後の作業
+
+新しい本を追加したら、`src/lib/books.ts` の `categoryToBookMap` に対応するクイズカテゴリを追加する。
+
+```ts
+const categoryToBookMap: Record<string, string> = {
+  nextjs: 'nextjs',
+  'react-basic': 'nextjs',
+  'git-basic': 'git',           // 追加例
+  'ts-general': 'typescript',   // 追加例
+};
+```
+
+これでクイズカテゴリページに教科書バナーが自動表示される。
 
 ---
 

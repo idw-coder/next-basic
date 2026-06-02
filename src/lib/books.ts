@@ -17,6 +17,8 @@ const categoryToBookMap: Record<string, string> = {
   'unit-testing': 'unit-testing',
   'git-basic': 'git-basic',
   'cs-basic': 'cs-basics',
+  'css-basic': 'css-basics',
+  'tailwind-css': 'tailwind-css',
 };
 
 /** 書籍一覧の表示順（先頭が先に表示される） */
@@ -25,6 +27,8 @@ export const BOOK_ORDER = [
   'javascript',
   'typescript',
   'react-learning',
+  'css-basics',
+  'tailwind-css',
   'unit-testing',
   'git-basic',
   'cs-basics',

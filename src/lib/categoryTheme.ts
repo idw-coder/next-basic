@@ -59,6 +59,15 @@ const categoryThemeMap: Record<string, CategoryTheme> = {
     cardBgClass: 'bg-indigo-200',
     decoTextClass: 'text-indigo-700/70',
   },
+  'tailwind-css': {
+    slug: 'tailwind-css',
+    label: 'Tailwind CSS',
+    badgeClass: WHITE_BADGE,
+    accentClass: 'text-violet-700',
+    ringClass: 'ring-violet-300',
+    cardBgClass: 'bg-violet-200',
+    decoTextClass: 'text-violet-700/70',
+  },
   'react-basic': {
     slug: 'react-basic',
     label: 'React',

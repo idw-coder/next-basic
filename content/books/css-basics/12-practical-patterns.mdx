@@ -1,0 +1,239 @@
+---
+title: '実務で使うCSSパターン集'
+description: 'ナビゲーション・カード・モーダル・フォームなど、実務でよく登場するUIコンポーネントのCSSパターンをまとめます。'
+order: 12
+---
+
+<Callout type="info" title="準備中">
+この教科書は現在執筆中です。内容は随時追加・改善されます。
+</Callout>
+
+この章では、実務で頻繁に登場するUIパターンのCSSをまとめます。コピー&ペーストして使えるように、それぞれの「なぜそう書くか」も添えています。
+
+<Figure src="/images/pc-work-woman01.png" alt="実務でCSSを書いているイメージ" maxWidth="280px" />
+
+---
+
+## ナビゲーションバー
+
+```css
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  height: 60px;
+  background-color: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #374151;
+  font-weight: 500;
+  transition: color 150ms ease;
+}
+
+.nav-links a:hover {
+  color: #2563eb;
+}
+```
+
+---
+
+## カードコンポーネント
+
+```css
+.card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  transform: translateY(-2px);
+}
+```
+
+---
+
+## ボタン
+
+```css
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 100ms ease;
+  text-decoration: none;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background-color: #2563eb;
+  color: #fff;
+}
+
+.btn-primary:hover { background-color: #1d4ed8; }
+
+.btn-outline {
+  background-color: transparent;
+  color: #2563eb;
+  border: 1.5px solid #2563eb;
+}
+
+.btn-outline:hover { background-color: #eff6ff; }
+```
+
+---
+
+## フォーム入力
+
+```css
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-input {
+  padding: 10px 14px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: #111;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 20%);
+}
+
+.form-input:invalid {
+  border-color: #dc2626;
+}
+```
+
+<Callout type="info">
+これらのパターンはコピーして使えますが、Reactなどのコンポーネントフレームワークを使う場合は、Tailwind CSS + shadcn/ui などのコンポーネントライブラリを使う方が効率的です。
+</Callout>
+
+---
+
+## モーダルオーバーレイ
+
+```css
+.modal-overlay {
+  position: fixed;
+  inset: 0; /* top:0 right:0 bottom:0 left:0 の一括指定 */
+  background-color: rgb(0 0 0 / 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 200ms ease;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 250ms ease;
+}
+
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+```
+
+---
+
+## トースト通知
+
+```css
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 2000;
+}
+
+.toast {
+  padding: 14px 20px;
+  border-radius: 10px;
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: 0.9375rem;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
+  animation: slideIn 300ms ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+```
+
+---
+
+## レスポンシブコンテナ
+
+```css
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 640px)  { .container { padding: 0 24px; } }
+@media (min-width: 1024px) { .container { padding: 0 32px; } }
+```
+
+---
+
+## ちゃんと使うためのポイント
+
+- フォーカスリング（`:focus-visible`）はアクセシビリティのために必ず実装する
+- アニメーションは `transform` と `opacity` に絞るとパフォーマンスが高い
+- `position: sticky` のナビゲーションは `z-index` を明示的に設定する
+- モーダルの `inset: 0` は `top/right/bottom/left: 0` の一括指定で、モダンブラウザで使える
+
+CSSの基礎を学んだら、ユーティリティファーストのアプローチである**Tailwind CSS**を使うと、これらのパターンをより速く実装できます。
