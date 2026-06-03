@@ -1,0 +1,199 @@
+---
+title: 'ヘッダーとCookie — リクエスト/レスポンスに含まれる情報'
+description: 'HTTPヘッダーの役割と主要なヘッダーの種類、Cookieの仕組みとセキュリティ属性を整理します。'
+order: 4
+---
+
+HTTPリクエストとレスポンスは、**ボディ**（本文）だけでなく **ヘッダー** という付加情報を持っています。認証トークン、コンテンツの形式、キャッシュの制御、Cookieなど、HTTP通信の重要な制御情報はすべてヘッダーでやりとりされます。
+
+この章では、主要なHTTPヘッダーの役割と、Web開発で特に重要な **Cookie** の仕組みを整理します。
+
+---
+
+## HTTPメッセージの構造
+
+リクエストもレスポンスも、**スタートライン + ヘッダー + 空行 + ボディ** という共通の構造です。
+
+```
+POST /api/users HTTP/1.1          ← スタートライン（メソッド、パス、バージョン）
+Host: api.example.com             ← ヘッダー（複数行）
+Content-Type: application/json
+Authorization: Bearer eyJhbG...
+                                  ← 空行（ヘッダーとボディの区切り）
+{"name": "Alice"}                 ← ボディ
+```
+
+レスポンスも同様です。
+
+```
+HTTP/1.1 200 OK                   ← スタートライン（バージョン、ステータスコード）
+Content-Type: application/json
+Set-Cookie: session=abc123
+
+{"id": 1, "name": "Alice"}
+```
+
+---
+
+## よく使うリクエストヘッダー
+
+<Figure src="/images/planning_suit_man_color.png" alt="計画を立てている男性のイラスト" maxWidth="300px" />
+
+| ヘッダー | 役割 | 例 |
+|---|---|---|
+| `Host` | リクエスト先のホスト名 | `api.example.com` |
+| `Content-Type` | ボディのデータ形式 | `application/json` |
+| `Authorization` | 認証情報 | `Bearer eyJhbG...` |
+| `Accept` | 受け取りたいレスポンスの形式 | `application/json` |
+| `User-Agent` | クライアントの情報 | ブラウザ名やバージョン |
+| `Cookie` | 保存済みCookieの送信 | `session=abc123` |
+
+### Content-Typeの重要性
+
+`Content-Type` はサーバーが「ボディをどう解釈するか」を決めるヘッダーです。これが間違っていると、サーバーがボディを正しくパースできません。
+
+```
+// JSON形式で送る場合
+Content-Type: application/json
+
+// フォームデータで送る場合
+Content-Type: application/x-www-form-urlencoded
+
+// ファイルアップロードの場合
+Content-Type: multipart/form-data
+```
+
+<Callout type="warning">
+### Content-Typeの付け忘れ
+
+`fetch` でPOSTリクエストを送る際、`Content-Type: application/json` を付け忘れてサーバーが `{}` を受け取れない、というのはよくあるミスです。リクエストライブラリ（axios等）は自動で付けてくれることが多いですが、素の `fetch` では明示的に指定が必要です。
+
+</Callout>
+
+---
+
+## よく使うレスポンスヘッダー
+
+| ヘッダー | 役割 | 例 |
+|---|---|---|
+| `Content-Type` | レスポンスのデータ形式 | `application/json; charset=utf-8` |
+| `Set-Cookie` | Cookieの設定 | `session=abc123; HttpOnly; Secure` |
+| `Cache-Control` | キャッシュの制御 | `max-age=3600` |
+| `Location` | リダイレクト先 | `/api/users/42` |
+| `Access-Control-Allow-Origin` | CORS許可 | `https://example.com` |
+
+---
+
+## キャッシュ制御
+
+`Cache-Control` ヘッダーは、ブラウザや中間プロキシに「このレスポンスをどの程度キャッシュしていいか」を指示します。
+
+```
+// 1時間キャッシュしてよい
+Cache-Control: max-age=3600
+
+// キャッシュしてはいけない
+Cache-Control: no-store
+
+// キャッシュしてよいが、使う前に再検証すること
+Cache-Control: no-cache
+```
+
+| ディレクティブ | 意味 |
+|---|---|
+| `max-age=N` | N秒間キャッシュしてよい |
+| `no-store` | 一切キャッシュしない |
+| `no-cache` | キャッシュするが毎回再検証 |
+| `private` | ブラウザのみキャッシュ可（CDNは不可） |
+| `public` | CDNを含めキャッシュ可 |
+
+<Callout type="column">
+### no-cacheとno-storeの違い
+
+名前が紛らわしいですが、`no-cache` は「キャッシュするな」ではなく「キャッシュしてもいいけど使う前にサーバーに確認して」という意味です。キャッシュを完全に禁止したい場合は `no-store` を使います。
+
+</Callout>
+
+---
+
+## Cookieの仕組み
+
+**Cookie** は、サーバーがブラウザに「この値を覚えておいて、次のリクエストで送り返して」と依頼する仕組みです。HTTPは本来ステートレス（状態を持たない）ですが、Cookieによって「ログイン状態」のような状態管理が可能になります。
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant B as ブラウザ
+    participant S as サーバー
+    B->>S: POST /login (ID+パスワード)
+    S-->>B: 200 OK + Set-Cookie: session=abc123
+    Note over B: Cookieを保存
+    B->>S: GET /dashboard + Cookie: session=abc123
+    S-->>B: 200 OK (ログイン済みの画面)
+`} />
+
+### Cookieの流れ
+
+1. サーバーがレスポンスに `Set-Cookie` ヘッダーを含める
+2. ブラウザがその値を保存する
+3. 以降、同じドメインへのリクエストに `Cookie` ヘッダーとして自動送信する
+
+---
+
+## Cookieのセキュリティ属性
+
+Cookieには付加属性があり、セキュリティ上の制御に使います。
+
+```
+Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400
+```
+
+| 属性 | 意味 | 設定しないリスク |
+|---|---|---|
+| `HttpOnly` | JavaScriptからアクセスできない | XSSでCookieを盗まれる |
+| `Secure` | HTTPS接続でのみ送信 | 平文HTTP経由で盗聴される |
+| `SameSite` | クロスサイトリクエストでの送信を制御 | CSRF攻撃を受けやすい |
+| `Path` | 指定パス以下でのみ送信 | 不要な範囲にCookieが飛ぶ |
+| `Max-Age` | 有効期限（秒数） | ブラウザ終了時に消える |
+
+### SameSiteの3つの値
+
+| 値 | 挙動 |
+|---|---|
+| `Strict` | 他サイトからのリクエストにはCookieを送らない |
+| `Lax` | 他サイトからのGETリクエスト（リンククリック）には送る |
+| `None` | 常に送る（`Secure` 属性が必須） |
+
+<Callout type="warning">
+### セッションCookieには必ずHttpOnly + Secure
+
+セッションIDをCookieに入れる場合、`HttpOnly` と `Secure` は必ず付けます。`HttpOnly` がないと、XSS脆弱性があった場合にJavaScriptからセッションIDを抜き取られます。`Secure` がないと、HTTP通信でセッションIDが平文で流れます。
+
+</Callout>
+
+---
+
+## CookieとlocalStorageの使い分け
+
+ブラウザでデータを保存する方法はCookieだけではありません。よく比較されるのが `localStorage` です。
+
+| | Cookie | localStorage |
+|---|---|---|
+| サーバーへの送信 | **自動で送信される** | 送信されない |
+| 容量 | 約4KB | 約5MB |
+| 有効期限 | 設定可能 | 永続（手動削除まで） |
+| JavaScript | HttpOnlyで保護可 | 常にアクセス可能 |
+| 用途 | セッション管理、認証 | UI設定、一時データ |
+
+セッション管理にはCookie（HttpOnly）、UIの状態保持にはlocalStorage、というのが一般的な使い分けです。
+
+---
+
+## まとめ
+
+- HTTPメッセージは **スタートライン + ヘッダー + ボディ** で構成される
+- `Content-Type` はボディの解釈方法を伝える重要なヘッダー
+- `Cache-Control` でキャッシュの有無と期間を制御する。`no-cache` と `no-store` の意味は違う
+- **Cookie** はサーバーがブラウザに状態を保持させる仕組み。セッション管理の基盤
+- セッションCookieには **HttpOnly + Secure + SameSite** を必ず設定する
+
+次の章では、Web APIの設計パターンとして最も普及している **REST API** の考え方と命名規則を見ていきます。

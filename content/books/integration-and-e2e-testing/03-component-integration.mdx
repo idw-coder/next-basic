@@ -1,0 +1,252 @@
+---
+title: 'コンポーネント結合テスト — UIパーツを組み合わせて検証する'
+description: 'Testing Libraryを使ったコンポーネント結合テストの書き方、ユーザー操作のシミュレーション、MSWによるAPIモックを整理します。'
+order: 3
+---
+
+フロントエンド開発では、複数のコンポーネントを組み合わせて一つの機能を構成します。フォーム入力、バリデーション、API呼び出し、結果表示 — これらが連携して正しく動くかを確認するのがコンポーネント結合テストです。
+
+この章では、**Testing Library** と **MSW（Mock Service Worker）** を使ったコンポーネント結合テストの実践パターンを見ていきます。
+
+---
+
+## Testing Libraryの考え方
+
+Testing Libraryは「**ユーザーがUIをどう使うか**」の視点でテストを書くためのライブラリです。内部の状態やpropsではなく、画面に表示されるテキストやアクセシブルなロール（role）を使って要素を取得します。
+
+```ts
+// NG — 内部実装に依存したセレクタ
+const input = container.querySelector('.form-input__email');
+
+// OK — ユーザーに見えるラベルで取得
+const input = screen.getByLabelText('メールアドレス');
+
+// OK — ロールで取得
+const button = screen.getByRole('button', { name: '送信' });
+```
+
+<Callout type="note">
+### なぜ実装の詳細に依存しないのか
+
+CSSクラス名やコンポーネントの内部構造は頻繁に変わります。テストがそれに依存していると、機能は壊れていないのにテストだけ壊れる — という無駄な作業が発生します。ユーザーに見える情報（テキスト、ラベル、ロール）に基づくテストは、リファクタリング耐性が高くなります。
+
+</Callout>
+
+---
+
+## 基本的な結合テストの構造
+
+コンポーネント結合テストは **Arrange → Act → Assert** の3段階で構成します。
+
+```ts
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+test('検索フォームに入力すると結果が表示される', async () => {
+  const user = userEvent.setup();
+
+  // Arrange — コンポーネントをレンダリング
+  render(<SearchPage />);
+
+  // Act — ユーザー操作をシミュレート
+  const input = screen.getByRole('searchbox');
+  await user.type(input, 'React');
+  await user.click(screen.getByRole('button', { name: '検索' }));
+
+  // Assert — 結果を確認
+  await waitFor(() => {
+    expect(screen.getByText('React入門')).toBeInTheDocument();
+  });
+});
+```
+
+<Figure src="/images/pc-work-woman01.png" alt="PCで作業する女性のイラスト" maxWidth="300px" />
+
+---
+
+## ユーザー操作のシミュレーション
+
+`@testing-library/user-event` は、実際のユーザー操作に近いイベントを発生させます。`fireEvent` よりも推奨されます。
+
+### テキスト入力
+
+```ts
+const user = userEvent.setup();
+const input = screen.getByLabelText('名前');
+await user.type(input, 'Alice');
+```
+
+### クリック
+
+```ts
+await user.click(screen.getByRole('button', { name: '保存' }));
+```
+
+### セレクトボックス
+
+```ts
+await user.selectOptions(
+  screen.getByRole('combobox', { name: '都道府県' }),
+  '東京都'
+);
+```
+
+### フォーム入力 → 送信の一連の流れ
+
+```ts
+test('ユーザー登録フォームが正しく送信される', async () => {
+  const user = userEvent.setup();
+  render(<RegistrationForm />);
+
+  await user.type(screen.getByLabelText('名前'), 'Alice');
+  await user.type(screen.getByLabelText('メールアドレス'), 'alice@example.com');
+  await user.type(screen.getByLabelText('パスワード'), 'securePass123');
+  await user.click(screen.getByRole('button', { name: '登録' }));
+
+  await waitFor(() => {
+    expect(screen.getByText('登録が完了しました')).toBeInTheDocument();
+  });
+});
+```
+
+---
+
+## MSWでAPIをモックする
+
+コンポーネントがAPIを呼び出す場合、実際のサーバーを立てる代わりに **MSW（Mock Service Worker）** でAPIレスポンスをモックします。MSWはブラウザやNode.jsの環境でネットワークリクエストをインターセプトし、定義したレスポンスを返します。
+
+### セットアップ
+
+```ts
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
+
+const handlers = [
+  http.get('/api/users', () => {
+    return HttpResponse.json([
+      { id: 1, name: 'Alice', email: 'alice@example.com' },
+      { id: 2, name: 'Bob', email: 'bob@example.com' },
+    ]);
+  }),
+
+  http.post('/api/users', async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json(
+      { id: 3, ...body },
+      { status: 201 }
+    );
+  }),
+];
+
+const server = setupServer(...handlers);
+
+beforeAll(() => server.listen());
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+```
+
+### エラーレスポンスのテスト
+
+テストごとにハンドラーを上書きして、エラーケースも検証できます。
+
+```ts
+test('API エラー時にエラーメッセージが表示される', async () => {
+  // このテストだけハンドラーを上書き
+  server.use(
+    http.get('/api/users', () => {
+      return HttpResponse.json(
+        { error: 'Internal Server Error' },
+        { status: 500 }
+      );
+    })
+  );
+
+  render(<UserList />);
+
+  await waitFor(() => {
+    expect(screen.getByText('データの取得に失敗しました')).toBeInTheDocument();
+  });
+});
+```
+
+<Callout type="info">
+### MSWの利点
+
+MSWはfetchやXMLHttpRequestをネットワークレベルでインターセプトするため、テスト対象のコードを一切変更する必要がありません。プロダクションコードが `fetch('/api/users')` を呼ぶなら、MSWはそのリクエストを横取りしてモックレスポンスを返します。
+
+</Callout>
+
+---
+
+## 非同期処理の待機パターン
+
+コンポーネント結合テストでは非同期処理が頻出します。Testing Libraryには3つの待機パターンがあります。
+
+| パターン | 使い方 | 用途 |
+|---|---|---|
+| `findBy*` | `await screen.findByText('Alice')` | 要素が現れるのを待つ |
+| `waitFor` | `await waitFor(() => expect(...))` | 条件が満たされるのを待つ |
+| `waitForElementToBeRemoved` | `await waitForElementToBeRemoved(...)` | 要素が消えるのを待つ |
+
+```ts
+// ローディング → データ表示 の流れを検証
+test('ローディング後にデータが表示される', async () => {
+  render(<UserList />);
+
+  // ローディング中の表示を確認
+  expect(screen.getByText('読み込み中...')).toBeInTheDocument();
+
+  // ローディングが消えるのを待つ
+  await waitForElementToBeRemoved(() => screen.queryByText('読み込み中...'));
+
+  // データが表示されていることを確認
+  expect(screen.getByText('Alice')).toBeInTheDocument();
+});
+```
+
+<Callout type="warning">
+### setTimeout で待たない
+
+`await new Promise(r => setTimeout(r, 2000))` のような固定時間の待機は、テストを遅くし、環境によって不安定になります。Testing Libraryの `findBy` / `waitFor` は、条件を満たした瞬間に先に進むので、速くて安定します。
+
+</Callout>
+
+---
+
+## テストの整理パターン
+
+テストが増えてきたら、`describe` でグループ化し、共通のセットアップをまとめます。
+
+```ts
+describe('UserList', () => {
+  beforeEach(() => {
+    server.resetHandlers();
+  });
+
+  describe('データ取得成功時', () => {
+    test('ユーザー名が一覧表示される', async () => { ... });
+    test('メールアドレスが表示される', async () => { ... });
+  });
+
+  describe('データ取得失敗時', () => {
+    test('エラーメッセージが表示される', async () => { ... });
+    test('リトライボタンが表示される', async () => { ... });
+  });
+
+  describe('空データ時', () => {
+    test('「ユーザーがいません」と表示される', async () => { ... });
+  });
+});
+```
+
+---
+
+## まとめ
+
+- コンポーネント結合テストは **複数のUIパーツの連携** を検証する
+- Testing Libraryは **ユーザー視点のセレクタ**（ラベル、ロール、テキスト）を使う
+- **MSW** でAPIレスポンスをモックし、ネットワーク越しの連携を再現する
+- 非同期の待機は `findBy` / `waitFor` を使い、`setTimeout` は避ける
+- テストシナリオは **ユーザーの操作フロー** を起点に書く
+
+次の章では、フロントエンドからバックエンドAPIまでを通す **API結合テスト** のパターンを見ていきます。

@@ -1,0 +1,254 @@
+---
+title: 'REST API設計 — エンドポイントの考え方と命名規則'
+description: 'RESTの基本原則、リソース指向のURL設計、命名規則、よくあるアンチパターンを整理します。'
+order: 5
+---
+
+Web APIの設計パターンとして最も広く使われているのが **REST（Representational State Transfer）** です。RESTは「HTTPの仕組みをそのまま活かしてAPIを設計する」アプローチで、特別なプロトコルやツールは不要です。
+
+この章では、REST APIの基本的な考え方と、実務で使えるURL設計のルールを整理します。
+
+---
+
+## RESTの基本的な考え方
+
+RESTは、Webの仕組みをそのまま活用する設計スタイルです。核となる考え方は3つあります。
+
+**1. リソース指向** — APIが操作する対象を「リソース」として定義する。ユーザー、記事、注文など。
+
+**2. HTTPメソッドで操作を表現** — リソースに対する操作はURLではなくメソッドで区別する。
+
+**3. ステートレス** — サーバーはリクエスト間の状態を持たない。必要な情報はすべてリクエストに含める。
+
+<MermaidDiagram chart={`
+flowchart LR
+    classDef resource fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef method fill:#22c55e,color:#fff,stroke:#16a34a
+
+    R["リソース: /users"] --> G["GET: 一覧取得"]
+    R --> P["POST: 新規作成"]
+    R2["リソース: /users/1"] --> G2["GET: 詳細取得"]
+    R2 --> U["PUT: 更新"]
+    R2 --> D["DELETE: 削除"]
+
+    class R,R2 resource
+    class G,P,G2,U,D method
+`} />
+
+---
+
+## URL設計の基本ルール
+
+### リソースは名詞・複数形
+
+URLにはリソースの名前を **名詞の複数形** で書きます。動詞は使いません。
+
+```
+// 良い例 — 名詞・複数形
+GET /api/users
+GET /api/articles
+GET /api/orders
+
+// 悪い例 — 動詞を含んでいる
+GET /api/getUsers
+GET /api/fetchArticles
+POST /api/createOrder
+```
+
+操作の種類はHTTPメソッドが表現するので、URLに動詞を入れる必要がありません。
+
+### 個別リソースはIDで指定
+
+```
+GET /api/users          → ユーザー一覧
+GET /api/users/42       → ID 42のユーザー
+PUT /api/users/42       → ID 42のユーザーを更新
+DELETE /api/users/42    → ID 42のユーザーを削除
+```
+
+### ネストでリソースの関係を表現
+
+リソースに親子関係がある場合、URLのネストで表現します。
+
+```
+GET /api/users/42/posts         → ユーザー42の投稿一覧
+GET /api/users/42/posts/7       → ユーザー42の投稿7
+POST /api/users/42/posts        → ユーザー42の新しい投稿を作成
+```
+
+<Callout type="warning">
+### ネストは2階層まで
+
+`/api/users/42/posts/7/comments/3` のように深くネストすると、URLが長くなり扱いにくくなります。3階層以上になる場合は、フラットにする方が扱いやすいです。
+
+```
+// 深すぎるネスト
+GET /api/users/42/posts/7/comments/3
+
+// フラットにする
+GET /api/comments/3
+```
+
+</Callout>
+
+---
+
+## CRUD操作のパターン
+
+REST APIの基本パターンを一覧にまとめます。
+
+| 操作 | メソッド | URL | ステータス | レスポンス |
+|---|---|---|---|---|
+| 一覧取得 | GET | `/users` | 200 | 配列 |
+| 詳細取得 | GET | `/users/:id` | 200 | オブジェクト |
+| 新規作成 | POST | `/users` | 201 | 作成されたオブジェクト |
+| 全体更新 | PUT | `/users/:id` | 200 | 更新されたオブジェクト |
+| 部分更新 | PATCH | `/users/:id` | 200 | 更新されたオブジェクト |
+| 削除 | DELETE | `/users/:id` | 204 | なし |
+
+<Figure src="/images/usingcomputer_suit_woman_color.png" alt="PCを使う女性のイラスト" maxWidth="300px" />
+
+---
+
+## クエリパラメータの使い方
+
+リソースのフィルタリング、ソート、ページネーションにはクエリパラメータを使います。
+
+```
+// ページネーション
+GET /api/articles?page=2&limit=20
+
+// フィルタリング
+GET /api/articles?status=published&author=alice
+
+// ソート
+GET /api/articles?sort=createdAt&order=desc
+
+// 複数条件の組み合わせ
+GET /api/articles?status=published&sort=createdAt&order=desc&page=1&limit=10
+```
+
+パスが「どのリソースか」を表し、クエリが「どう絞り込むか」を表す、という役割分担です。
+
+---
+
+## レスポンスの設計
+
+### 一覧レスポンス
+
+一覧取得では、データ配列だけでなく**ページネーション情報**を含めると使いやすくなります。
+
+```json
+{
+  "data": [
+    { "id": 1, "name": "Alice" },
+    { "id": 2, "name": "Bob" }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 48
+  }
+}
+```
+
+### エラーレスポンス
+
+エラーレスポンスも統一したフォーマットにします。
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "指定されたユーザーが見つかりません"
+  }
+}
+```
+
+<Callout type="info">
+### レスポンスの一貫性
+
+成功時もエラー時も、レスポンスの構造を統一するとフロントエンドが扱いやすくなります。「成功時は `data` フィールド、エラー時は `error` フィールド」のように決めておくと、レスポンスのハンドリングがシンプルになります。
+
+</Callout>
+
+---
+
+## 命名規則
+
+| 要素 | 規則 | 例 |
+|---|---|---|
+| URLパス | ケバブケース（小文字 + ハイフン） | `/api/blog-posts` |
+| クエリパラメータ | キャメルケース | `?sortBy=createdAt` |
+| JSONのキー | キャメルケース | `{ "firstName": "Alice" }` |
+
+URLに大文字は使いません。複数単語はハイフンで区切ります。
+
+```
+// 良い例
+GET /api/blog-posts
+GET /api/user-settings
+
+// 悪い例
+GET /api/blogPosts
+GET /api/blog_posts
+GET /api/BlogPosts
+```
+
+---
+
+## よくあるアンチパターン
+
+### 1. URLに動詞を入れる
+
+```
+// NG
+POST /api/users/create
+GET /api/users/delete/42
+
+// OK
+POST /api/users
+DELETE /api/users/42
+```
+
+### 2. すべてPOSTで処理する
+
+```
+// NG — RPC風
+POST /api/getUser     { "id": 42 }
+POST /api/deleteUser  { "id": 42 }
+POST /api/listUsers   { "page": 1 }
+```
+
+HTTPメソッドを使い分けないと、URLだけでは何のAPIかわからなくなります。
+
+### 3. 単数形と複数形の混在
+
+```
+// NG — 統一されていない
+GET /api/user/42
+GET /api/articles
+
+// OK — 複数形に統一
+GET /api/users/42
+GET /api/articles
+```
+
+<Callout type="column">
+### 完璧なRESTにこだわりすぎない
+
+RESTは厳密な仕様ではなく設計スタイルです。「パスワード変更」や「メール送信」のように、CRUDに綺麗に当てはまらない操作もあります。その場合は `POST /api/users/42/change-password` のようなアクション指向のエンドポイントも許容されます。一貫性と分かりやすさのバランスが大事です。
+
+</Callout>
+
+---
+
+## まとめ
+
+- REST APIは **リソース指向** の設計スタイル。操作はHTTPメソッドで表現する
+- URLは **名詞・複数形** で、動詞を入れない
+- **パスでリソースを特定し、クエリで絞り込む** という役割分担
+- ネストは2階層まで。深くなりすぎたらフラットにする
+- レスポンスの構造を統一すると、フロントエンドのコードがシンプルになる
+
+次の章では、HTTPでやりとりするデータ形式、特に **JSON** の基本と扱い方を見ていきます。

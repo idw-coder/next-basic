@@ -1,0 +1,302 @@
+---
+title: 'Playwrightの導入と基本操作'
+description: 'Playwrightのインストール、設定ファイル、基本的なテストの書き方、UIモードによるデバッグ方法を整理します。'
+order: 6
+---
+
+前章でE2Eテストのツールとして **Playwright** を選んだ理由を整理しました。この章では、実際にPlaywrightをプロジェクトに導入し、テストを書いて動かすまでの流れを実践します。
+
+---
+
+## インストール
+
+```bash
+npm init playwright@latest
+```
+
+このコマンドで以下が自動的にセットアップされます。
+
+- `playwright.config.ts` — 設定ファイル
+- `tests/` — テストディレクトリ
+- `tests-examples/` — サンプルテスト
+- ブラウザのダウンロード（Chromium, Firefox, WebKit）
+
+<Callout type="info">
+### 既存プロジェクトへの追加
+
+既存のプロジェクトに追加する場合も同じコマンドです。TypeScript、テストディレクトリの場所、GitHub Actions の設定を対話的に選べます。
+
+</Callout>
+
+---
+
+## 設定ファイル
+
+`playwright.config.ts` の主要な設定項目です。
+
+```ts
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+
+  reporter: 'html',
+
+  use: {
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+  },
+
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+  ],
+
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
+
+### 主要な設定
+
+| 設定 | 意味 |
+|---|---|
+| `testDir` | テストファイルの場所 |
+| `fullyParallel` | テストを並列実行するか |
+| `retries` | 失敗時のリトライ回数 |
+| `baseURL` | `page.goto('/')` のベースURL |
+| `trace` | トレース（操作の記録）の取得タイミング |
+| `webServer` | テスト前にサーバーを起動するコマンド |
+
+<Callout type="note">
+### webServerの設定
+
+`webServer` を設定すると、テスト実行前に自動でサーバーが起動し、テスト後に停止します。`reuseExistingServer: true` にすると、すでに起動済みのサーバーがあればそれを使います。開発中は手動でサーバーを起動しておく方が効率的です。
+
+</Callout>
+
+---
+
+## テストの書き方
+
+### 基本構造
+
+```ts
+import { test, expect } from '@playwright/test';
+
+test('ページタイトルが正しい', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveTitle(/サイト名/);
+});
+```
+
+### 要素の取得方法
+
+Playwrightはアクセシビリティを基準にした **ロケーター** で要素を取得します。
+
+```ts
+// ロールで取得（推奨）
+page.getByRole('button', { name: '送信' })
+page.getByRole('textbox', { name: 'メールアドレス' })
+page.getByRole('link', { name: 'ホーム' })
+
+// ラベルで取得
+page.getByLabel('パスワード')
+
+// テキストで取得
+page.getByText('ログインに成功しました')
+
+// プレースホルダーで取得
+page.getByPlaceholder('検索...')
+
+// テストIDで取得（他の方法で取れない場合の最終手段）
+page.getByTestId('user-avatar')
+```
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="ステップアップする男性のイラスト" maxWidth="300px" />
+
+### ユーザー操作
+
+```ts
+// クリック
+await page.getByRole('button', { name: '送信' }).click();
+
+// テキスト入力
+await page.getByLabel('メールアドレス').fill('alice@example.com');
+
+// セレクトボックス
+await page.getByLabel('都道府県').selectOption('東京都');
+
+// チェックボックス
+await page.getByLabel('利用規約に同意する').check();
+
+// キーボード操作
+await page.keyboard.press('Enter');
+```
+
+### アサーション
+
+```ts
+// 要素が表示されている
+await expect(page.getByText('成功')).toBeVisible();
+
+// 要素が表示されていない
+await expect(page.getByText('エラー')).not.toBeVisible();
+
+// URLが正しい
+await expect(page).toHaveURL('/dashboard');
+
+// 入力値が正しい
+await expect(page.getByLabel('名前')).toHaveValue('Alice');
+
+// 要素の数
+await expect(page.getByRole('listitem')).toHaveCount(5);
+```
+
+---
+
+## 自動待機（Auto-waiting）
+
+Playwrightの大きな特徴が **自動待機** です。操作対象の要素が準備できるまで自動で待ちます。
+
+```ts
+// Playwrightが自動で待つこと:
+// 1. 要素がDOMに存在する
+// 2. 要素が表示されている（visible）
+// 3. 要素が安定している（アニメーション中でない）
+// 4. 要素がクリック可能（他の要素に覆われていない）
+await page.getByRole('button', { name: '送信' }).click();
+```
+
+この自動待機があるため、`sleep` や `waitForTimeout` を使う必要がほとんどありません。テストが安定し、かつ不要な待ち時間がなくなります。
+
+---
+
+## UIモードでテストを視覚的に確認する
+
+Playwrightの **UIモード** は、テストの実行をブラウザ上で視覚的に確認できる機能です。
+
+```bash
+npx playwright test --ui
+```
+
+UIモードでは以下のことができます。
+
+- **テストの実行状況をリアルタイムで確認** — どのステップが今実行されているかが画面上でわかる
+- **各ステップのスクリーンショット** — テストの各操作時点での画面状態を確認
+- **タイムトラベル** — 任意のステップに戻って、その時点の画面状態を確認
+- **DOMのインスペクト** — 各時点でのDOM構造を確認
+- **ネットワークリクエスト** — テスト中に発生したリクエストを確認
+
+<MermaidDiagram chart={`
+flowchart LR
+    classDef ui fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef feature fill:#8b5cf6,color:#fff,stroke:#7c3aed
+
+    A["UIモード"] --> B["リアルタイム実行"]
+    A --> C["スクリーンショット"]
+    A --> D["タイムトラベル"]
+    A --> E["DOMインスペクト"]
+
+    class A ui
+    class B,C,D,E feature
+`} />
+
+テストが失敗したとき、UIモードで実行すると「どのステップで何が起きたか」を視覚的に確認できるため、デバッグが格段に楽になります。
+
+---
+
+## コード生成（Codegen）
+
+Playwrightにはブラウザ上の操作からテストコードを自動生成する **Codegen** 機能があります。
+
+```bash
+npx playwright codegen http://localhost:3000
+```
+
+ブラウザが起動し、操作するとリアルタイムでテストコードが生成されます。生成されたコードをそのまま使うのではなく、**テストの骨組みを素早く作るための出発点** として活用します。
+
+<Callout type="info">
+### Codegenの活用法
+
+Codegenが生成するコードはセレクタが冗長になりがちです。生成後にロケーターを `getByRole` や `getByLabel` に書き換え、不要な操作を削除するのが実践的な使い方です。
+
+</Callout>
+
+---
+
+## テストの実行
+
+```bash
+# 全テストを実行
+npx playwright test
+
+# 特定のファイルを実行
+npx playwright test tests/login.spec.ts
+
+# 特定のブラウザで実行
+npx playwright test --project=chromium
+
+# UIモードで実行
+npx playwright test --ui
+
+# ヘッドモード（ブラウザ表示あり）で実行
+npx playwright test --headed
+
+# テストレポートを表示
+npx playwright show-report
+```
+
+### テストレポート
+
+`reporter: 'html'` の設定で、テスト結果がHTMLレポートとして生成されます。失敗したテストのスクリーンショット、トレース、エラーメッセージが確認できます。
+
+---
+
+## トレースビューア
+
+`trace: 'on-first-retry'` の設定で、リトライ時にトレースが記録されます。トレースには操作の一つ一つのスクリーンショット、ネットワークリクエスト、コンソールログが含まれます。
+
+```bash
+npx playwright show-trace trace.zip
+```
+
+CIで失敗したテストのトレースをダウンロードして確認する、というワークフローが定番です。
+
+<Callout type="warning">
+### トレースのサイズに注意
+
+`trace: 'on'` にすると全テストでトレースが記録されますが、ファイルサイズが大きくなります。CIでは `on-first-retry`（リトライ時のみ）にするのが実用的です。
+
+</Callout>
+
+---
+
+## まとめ
+
+- `npm init playwright@latest` で導入できる。設定ファイル、ブラウザ、サンプルテストが自動生成される
+- `playwright.config.ts` で `baseURL`、`webServer`、`trace` などを設定
+- ロケーターは **`getByRole`、`getByLabel`** を優先。`getByTestId` は最終手段
+- **自動待機** により `sleep` が不要。テストが安定し高速
+- **UIモード** でテストの実行を視覚的に確認。タイムトラベルでデバッグ
+- **Codegen** でブラウザ操作からテストの骨組みを自動生成
+
+次の章では、E2Eテストの **シナリオ設計** — 何をどの粒度でテストするかの考え方を整理します。

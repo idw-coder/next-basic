@@ -1,0 +1,283 @@
+---
+title: 'API結合テスト — フロントからバックエンドまで通して確認する'
+description: 'APIエンドポイントの結合テスト、テストデータの管理、認証が絡むテスト、フロントとAPIを通しで検証するパターンを整理します。'
+order: 4
+---
+
+前章ではUIコンポーネント同士の結合テストを見ました。この章では、もう一段広い範囲 — **フロントエンドからバックエンドAPIまで** を通して検証する結合テストを扱います。
+
+実務で「結合テスト」と呼ばれるテストの多くは、このレベルを指しています。フォームに入力してAPIを叩き、データベースに保存され、正しいレスポンスが返る — という一連のフローを確認します。
+
+---
+
+## APIテストの2つのアプローチ
+
+API結合テストには大きく2つのアプローチがあります。
+
+<MermaidDiagram chart={`
+flowchart TD
+    classDef approach fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef detail fill:#8b5cf6,color:#fff,stroke:#7c3aed
+
+    A["API結合テスト"] --> B["HTTPリクエストベース"]
+    A --> C["アプリ内部から呼び出し"]
+    B --> B1["実際のHTTPリクエストを送信\nsupertest / fetch"]
+    C --> C1["ルートハンドラーを直接呼び出し\nNext.jsのテストヘルパー等"]
+
+    class A approach
+    class B,C approach
+    class B1,C1 detail
+`} />
+
+### 1. HTTPリクエストベース
+
+実際のHTTPリクエストをAPIサーバーに送信し、レスポンスを検証します。`supertest` がNode.jsでは定番です。
+
+```ts
+import request from 'supertest';
+import { app } from '../src/app';
+
+test('GET /api/users はユーザー一覧を返す', async () => {
+  const response = await request(app)
+    .get('/api/users')
+    .expect(200)
+    .expect('Content-Type', /json/);
+
+  expect(response.body).toHaveLength(2);
+  expect(response.body[0]).toHaveProperty('name');
+});
+```
+
+### 2. ルートハンドラーの直接呼び出し
+
+Next.jsのRoute Handlersなど、フレームワークが提供する仕組みを使ってハンドラーを直接テストする方法もあります。
+
+```ts
+import { GET } from '@/app/api/users/route';
+import { NextRequest } from 'next/server';
+
+test('GET /api/users はユーザー一覧を返す', async () => {
+  const request = new NextRequest('http://localhost/api/users');
+  const response = await GET(request);
+  const data = await response.json();
+
+  expect(response.status).toBe(200);
+  expect(data).toHaveLength(2);
+});
+```
+
+<Callout type="info">
+### どちらを選ぶか
+
+HTTPリクエストベースのテストは、ミドルウェア（認証、CORS、レート制限など）も含めて検証できるため、本番環境に近い挙動が確認できます。ルートハンドラーの直接呼び出しは、高速に動き、ハンドラーのロジックに集中できます。両方を使い分けるのも有効です。
+
+</Callout>
+
+---
+
+## CRUDのテストパターン
+
+APIの基本的なCRUD操作をテストする典型的なパターンです。
+
+### 取得（GET）
+
+```ts
+test('ユーザーをIDで取得できる', async () => {
+  const response = await request(app)
+    .get('/api/users/1')
+    .expect(200);
+
+  expect(response.body).toMatchObject({
+    id: 1,
+    name: 'Alice',
+    email: 'alice@example.com',
+  });
+});
+
+test('存在しないIDは404を返す', async () => {
+  await request(app)
+    .get('/api/users/9999')
+    .expect(404);
+});
+```
+
+### 作成（POST）
+
+```ts
+test('ユーザーを新規作成できる', async () => {
+  const response = await request(app)
+    .post('/api/users')
+    .send({
+      name: 'Charlie',
+      email: 'charlie@example.com',
+    })
+    .expect(201);
+
+  expect(response.body).toMatchObject({
+    name: 'Charlie',
+    email: 'charlie@example.com',
+  });
+  expect(response.body.id).toBeDefined();
+});
+```
+
+### バリデーションエラー
+
+```ts
+test('メールアドレスが空なら400を返す', async () => {
+  const response = await request(app)
+    .post('/api/users')
+    .send({ name: 'Charlie' }) // emailがない
+    .expect(400);
+
+  expect(response.body.error).toBeDefined();
+});
+```
+
+---
+
+## テストデータの管理
+
+<Figure src="/images/planning_suit_man_color.png" alt="計画を立てている男性のイラスト" maxWidth="300px" />
+
+API結合テストで最も手間がかかるのが **テストデータの準備と後片付け** です。
+
+### アプローチ1: テストごとにリセット
+
+各テストの前にデータベースをリセットし、必要なデータを投入します。
+
+```ts
+beforeEach(async () => {
+  // テーブルをクリアして初期データを投入
+  await db.execute('DELETE FROM users');
+  await db.execute(
+    "INSERT INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com')"
+  );
+});
+```
+
+### アプローチ2: トランザクションでロールバック
+
+各テストをトランザクション内で実行し、テスト後にロールバックします。データの後片付けが不要です。
+
+```ts
+let transaction;
+
+beforeEach(async () => {
+  transaction = await db.beginTransaction();
+});
+
+afterEach(async () => {
+  await transaction.rollback();
+});
+```
+
+### アプローチ3: テスト用データベース
+
+テスト専用のデータベースを用意し、テストスイートの前後でマイグレーションとシードを実行します。
+
+```ts
+beforeAll(async () => {
+  await runMigrations(testDb);
+  await seedTestData(testDb);
+});
+
+afterAll(async () => {
+  await testDb.close();
+});
+```
+
+<Callout type="warning">
+### テスト間の依存を避ける
+
+テストAが作成したデータにテストBが依存する、という構造は避けます。テストの実行順序が変わったり、テストAが失敗したりすると、テストBも連鎖的に失敗します。各テストは独立して動くように設計します。
+
+</Callout>
+
+---
+
+## 認証が絡むテスト
+
+認証が必要なAPIをテストする場合、テスト用のトークンやセッションを準備します。
+
+### ヘルパー関数で認証を共通化
+
+```ts
+async function authenticatedRequest(app) {
+  const agent = request.agent(app);
+
+  // ログインしてセッションを取得
+  await agent
+    .post('/api/auth/login')
+    .send({ email: 'alice@example.com', password: 'password123' });
+
+  return agent; // 以降のリクエストにCookieが含まれる
+}
+
+test('認証済みユーザーはプロフィールを取得できる', async () => {
+  const agent = await authenticatedRequest(app);
+
+  const response = await agent
+    .get('/api/profile')
+    .expect(200);
+
+  expect(response.body.name).toBe('Alice');
+});
+
+test('未認証だと401を返す', async () => {
+  await request(app)
+    .get('/api/profile')
+    .expect(401);
+});
+```
+
+---
+
+## フロント＋APIの通しテスト
+
+前章のコンポーネント結合テストでは、APIをMSWでモックしました。ここではさらに踏み込んで、**実際のAPIサーバーを起動して** フロントからAPIまで通すテストを考えます。
+
+```ts
+// テスト用のAPIサーバーを起動してテスト
+let server;
+
+beforeAll(async () => {
+  server = await startTestServer({ port: 4000 });
+});
+
+afterAll(async () => {
+  await server.close();
+});
+
+test('フォームから送信したデータがAPIに保存される', async () => {
+  const user = userEvent.setup();
+  render(<CreateUserPage apiBase="http://localhost:4000" />);
+
+  await user.type(screen.getByLabelText('名前'), 'Charlie');
+  await user.type(screen.getByLabelText('メールアドレス'), 'charlie@example.com');
+  await user.click(screen.getByRole('button', { name: '作成' }));
+
+  // 成功メッセージが表示される
+  await waitFor(() => {
+    expect(screen.getByText('作成しました')).toBeInTheDocument();
+  });
+
+  // 実際にDBに保存されたか確認
+  const response = await fetch('http://localhost:4000/api/users?email=charlie@example.com');
+  const data = await response.json();
+  expect(data[0].name).toBe('Charlie');
+});
+```
+
+このレベルのテストはE2Eに近く、セットアップの手間がかかりますが、MSWでは見つけられない「実際のAPIとの不整合」を検出できます。
+
+---
+
+## まとめ
+
+- API結合テストは **HTTPリクエストベース** と **ルートハンドラー直接呼び出し** の2つのアプローチがある
+- テストデータは **テストごとにリセット** するのが基本。テスト間の依存は避ける
+- 認証が絡むテストは **ヘルパー関数で共通化** する
+- フロント＋APIの通しテストはE2Eに近いが、**MSWでは見つけられない不整合** を検出できる
+
+次の章では、テストの粒度をさらに広げて、ブラウザを使った **E2Eテスト** の基本を見ていきます。
