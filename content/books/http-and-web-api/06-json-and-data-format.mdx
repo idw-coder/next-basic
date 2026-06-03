@@ -1,0 +1,226 @@
+---
+title: 'JSONとデータ形式 — APIでやりとりするデータの基本'
+description: 'JSONの構文ルール、データ型、フロントエンドでの扱い方、よくあるハマりどころを整理します。'
+order: 6
+---
+
+Web APIでやりとりするデータ形式として、現在最も広く使われているのが **JSON（JavaScript Object Notation）** です。名前にJavaScriptとありますが、言語に依存しない汎用的なデータ形式で、あらゆるプログラミング言語で扱えます。
+
+この章では、JSONの基本的な構文、データ型、実務でのハマりどころを整理します。
+
+---
+
+## JSONの基本構文
+
+JSONは **キーと値のペア** で構成されるテキスト形式です。
+
+```json
+{
+  "id": 1,
+  "name": "Alice",
+  "email": "alice@example.com",
+  "age": 28,
+  "isAdmin": false,
+  "tags": ["frontend", "react"],
+  "address": {
+    "city": "Tokyo",
+    "zip": "100-0001"
+  }
+}
+```
+
+構文のルールはシンプルです。
+
+- キーは **ダブルクォート** で囲む（シングルクォートは不可）
+- 文字列は **ダブルクォート** で囲む
+- 末尾のカンマ（trailing comma）は **不可**
+- コメントは **書けない**
+
+```json
+// NG — JSONでよくある構文エラー
+{
+  'name': 'Alice',          // シングルクォートはダメ
+  "age": 28,                // この行のカンマは問題ない
+  "isAdmin": false,         // ← 末尾のカンマ（trailing comma）はダメ
+}
+```
+
+<Callout type="note">
+### JSONとJavaScriptオブジェクトの違い
+
+JavaScriptのオブジェクトリテラルでは、キーにクォートを省略でき、シングルクォートも使え、末尾カンマも許容されます。しかしJSONは厳密で、これらは構文エラーになります。`JSON.parse()` でパースエラーが出たら、まずこの違いを疑います。
+
+</Callout>
+
+---
+
+## JSONのデータ型
+
+JSONで使えるデータ型は6つだけです。
+
+| データ型 | 例 | 備考 |
+|---|---|---|
+| **文字列** | `"hello"` | ダブルクォート必須 |
+| **数値** | `42`, `3.14` | 整数も小数も同じ |
+| **真偽値** | `true`, `false` | 小文字のみ |
+| **null** | `null` | 値がないことを表す |
+| **配列** | `[1, 2, 3]` | 順序付きリスト |
+| **オブジェクト** | `{"key": "value"}` | キーと値のペア |
+
+JSONに **存在しない型** として、`undefined`、`Date`、`関数`、`BigInt`、`NaN`、`Infinity` があります。これらを `JSON.stringify()` すると消えたり `null` に変換されたりします。
+
+```js
+JSON.stringify({ a: undefined, b: NaN, c: new Date() })
+// '{"b":null,"c":"2024-01-15T09:00:00.000Z"}'
+// ← undefinedは消え、NaNはnull、Dateは文字列に
+```
+
+---
+
+## JavaScriptでのJSON操作
+
+### JSON.parse() — 文字列をオブジェクトに
+
+```js
+const text = '{"name": "Alice", "age": 28}';
+const data = JSON.parse(text);
+console.log(data.name); // "Alice"
+```
+
+### JSON.stringify() — オブジェクトを文字列に
+
+```js
+const user = { name: 'Alice', age: 28 };
+const json = JSON.stringify(user);
+console.log(json); // '{"name":"Alice","age":28}'
+
+// 見やすく整形する（デバッグ用）
+const pretty = JSON.stringify(user, null, 2);
+```
+
+<Figure src="/images/pc-work-woman01.png" alt="PCで作業する女性のイラスト" maxWidth="300px" />
+
+---
+
+## fetchでJSONを扱う
+
+ブラウザの `fetch` APIでJSONを送受信する典型的なパターンです。
+
+### GETでJSONを受け取る
+
+```js
+const response = await fetch('/api/users/1');
+const user = await response.json(); // レスポンスボディをJSONとしてパース
+console.log(user.name);
+```
+
+### POSTでJSONを送る
+
+```js
+const response = await fetch('/api/users', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json', // ← これが必要
+  },
+  body: JSON.stringify({
+    name: 'Alice',
+    email: 'alice@example.com',
+  }),
+});
+
+const created = await response.json();
+```
+
+<Callout type="warning">
+### response.json() は一度しか呼べない
+
+`response.json()` は内部でストリームを消費するため、2回呼ぶとエラーになります。デバッグでレスポンスを確認したい場合は、一度変数に入れてから使います。
+
+```js
+const data = await response.json();
+console.log(data);      // デバッグ
+processUser(data);       // 処理
+```
+
+</Callout>
+
+---
+
+## JSON以外のデータ形式
+
+JSONが主流ですが、場面によっては他の形式も使われます。
+
+| 形式 | 特徴 | 使われる場面 |
+|---|---|---|
+| **JSON** | 軽量・人間にも読みやすい | Web APIの標準 |
+| **XML** | タグベース・冗長だが表現力が高い | SOAP API、設定ファイル、レガシーAPI |
+| **FormData** | フォーム送信の形式 | ファイルアップロード |
+| **Protocol Buffers** | バイナリ形式・高速・型安全 | gRPC、マイクロサービス間通信 |
+| **CSV** | カンマ区切りテキスト | データエクスポート、バッチ処理 |
+
+```
+// JSON
+{"name": "Alice", "age": 28}
+
+// XML
+<user><name>Alice</name><age>28</age></user>
+
+// URL-encoded (FormData)
+name=Alice&age=28
+```
+
+<Callout type="column">
+### なぜJSONが勝ったのか
+
+2000年代はXMLベースのSOAP APIが主流でしたが、JSONはXMLに比べて構文がシンプルで、JavaScriptとの相性が良く、データサイズも小さいため、REST APIの普及とともにWeb APIの標準フォーマットになりました。現在、新規のWeb APIでXMLを採用することはほぼありません。
+
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### 1. 日付の扱い
+
+JSONには日付型がないため、文字列として表現します。ISO 8601形式が標準です。
+
+```json
+{
+  "createdAt": "2024-01-15T09:00:00.000Z",
+  "updatedAt": "2024-01-15T12:30:00.000Z"
+}
+```
+
+受け取る側で `new Date()` に変換する必要があります。
+
+```js
+const data = await response.json();
+const createdAt = new Date(data.createdAt);
+```
+
+### 2. 数値の精度
+
+JSONの数値は浮動小数点で表現されるため、非常に大きな整数は精度が落ちます。
+
+```js
+JSON.parse('{"id": 9007199254740993}');
+// → { id: 9007199254740992 } ← 1ずれる
+```
+
+IDに大きな整数を使うAPIでは、文字列として返すことがあります。
+
+### 3. Content-Typeの不一致
+
+サーバーが `Content-Type: text/html` でJSONを返す、またはクライアントが `Content-Type` を付けずにJSONを送る、という不一致でパースが失敗するケースがあります。送信側と受信側でContent-Typeを揃えることが基本です。
+
+---
+
+## まとめ
+
+- JSONは **キーと値のペア** で構成されるテキスト形式。Web APIの標準フォーマット
+- キーはダブルクォート必須、末尾カンマ不可、コメント不可
+- `JSON.parse()` で文字列→オブジェクト、`JSON.stringify()` でオブジェクト→文字列
+- `fetch` でJSONを送る際は **`Content-Type: application/json`** を明示する
+- JSONには日付型がないため、**ISO 8601文字列** で表現するのが標準
+
+この本の後半（準備中）では、認証と認可、CORSとセキュリティ、APIのテストとツール、GraphQLなどを扱う予定です。

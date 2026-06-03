@@ -1,0 +1,241 @@
+---
+title: 'テストシナリオ設計 — 何をどの粒度でテストするか'
+description: 'E2Eテストのシナリオ設計、クリティカルパスの特定、テストケースの粒度の決め方、ページオブジェクトパターンを整理します。'
+order: 7
+---
+
+Playwrightの使い方がわかったところで、次に重要なのは「**何をテストするか**」の設計です。E2Eテストは書くほどコストが積み上がるため、闇雲に増やすのではなく、戦略的にシナリオを選ぶ必要があります。
+
+この章では、テストシナリオの設計方法と、テストコードを保守しやすくするためのパターンを整理します。
+
+---
+
+## クリティカルパスを特定する
+
+E2Eテストで最初に書くべきは **クリティカルパス** — 壊れたらビジネスに直接影響する操作フローです。
+
+<Figure src="/images/planning_suit_man_color.png" alt="計画を立てている男性のイラスト" maxWidth="300px" />
+
+### クリティカルパスの例
+
+| アプリの種類 | クリティカルパス |
+|---|---|
+| ECサイト | 商品検索 → カートに追加 → 購入 |
+| SaaS | 登録 → ログイン → コア機能の操作 |
+| ブログ | 記事の作成 → 公開 → 表示確認 |
+| 学習サイト | ログイン → 教科書を読む → クイズに回答 |
+
+### クリティカルパスの特定手順
+
+1. **ユーザーが最もよく行う操作フロー** を洗い出す
+2. **壊れたときの影響が大きい** 順に並べる
+3. **上位5〜10個** をE2Eテストの対象にする
+
+<MermaidDiagram chart={`
+flowchart TD
+    classDef critical fill:#ef4444,color:#fff,stroke:#b91c1c
+    classDef important fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef nice fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["ログイン・認証"] --> B["コア機能の操作"]
+    B --> C["データの保存・更新"]
+    C --> D["表示の確認"]
+
+    E["設定変更"] --> F["通知"]
+    G["プロフィール編集"]
+
+    class A,B,C critical
+    class D,E important
+    class F,G nice
+`} />
+
+赤い部分が最優先。すべてのフローをE2Eで書くのではなく、「これが壊れたらユーザーが使えない」ものに集中します。
+
+---
+
+## シナリオの書き方
+
+### ユーザーストーリーからシナリオを導く
+
+テストシナリオはユーザーストーリーから自然に導けます。
+
+```
+ユーザーストーリー:
+  ユーザーとして、ログインして自分のダッシュボードにアクセスしたい
+
+テストシナリオ:
+  1. ログインページにアクセスする
+  2. メールアドレスとパスワードを入力する
+  3. ログインボタンをクリックする
+  4. ダッシュボードが表示される
+  5. ユーザー名が正しく表示されている
+```
+
+```ts
+test('ユーザーがログインしてダッシュボードにアクセスできる', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('メールアドレス').fill('alice@example.com');
+  await page.getByLabel('パスワード').fill('password123');
+  await page.getByRole('button', { name: 'ログイン' }).click();
+
+  await expect(page).toHaveURL('/dashboard');
+  await expect(page.getByText('Alice')).toBeVisible();
+});
+```
+
+### 正常系と異常系のバランス
+
+E2Eテストでは **正常系（ハッピーパス）を優先** します。異常系は結合テストや単体テストでカバーします。
+
+| パターン | テストレベル | 例 |
+|---|---|---|
+| ログイン成功 | **E2E** | メール + パスワード → ダッシュボード |
+| ログイン失敗（パスワード間違い） | 結合テスト | エラーメッセージが表示される |
+| メールアドレスのバリデーション | 単体テスト | 形式チェックのロジック |
+
+E2Eで異常系を書くとすれば、「**ログインしていない状態で保護ページにアクセスすると、ログインページにリダイレクトされる**」のような、複数のシステムが絡む異常系です。
+
+---
+
+## テストの粒度を決める
+
+### 1テストで1つのフローを完結させる
+
+```ts
+// 良い — 1つのフローが完結している
+test('新規ユーザーが登録してプロフィールを設定できる', async ({ page }) => {
+  await page.goto('/register');
+  await page.getByLabel('メールアドレス').fill('new@example.com');
+  await page.getByLabel('パスワード').fill('securePass123');
+  await page.getByRole('button', { name: '登録' }).click();
+
+  await expect(page).toHaveURL('/onboarding');
+  await page.getByLabel('表示名').fill('NewUser');
+  await page.getByRole('button', { name: '完了' }).click();
+
+  await expect(page).toHaveURL('/dashboard');
+});
+```
+
+```ts
+// 悪い — 細かすぎる（E2Eの意味がない）
+test('登録ボタンが表示される', async ({ page }) => {
+  await page.goto('/register');
+  await expect(page.getByRole('button', { name: '登録' })).toBeVisible();
+});
+```
+
+<Callout type="column">
+### テストの独立性
+
+E2Eテストの各テストケースは独立して動くようにします。「テストAでログインして、テストBでその状態を使って操作する」のような依存関係は、テストの実行順序に依存するため壊れやすくなります。各テストの中でログインから始めるか、認証状態をセットアップするヘルパーを用意します。
+
+</Callout>
+
+---
+
+## ページオブジェクトパターン
+
+テストコードが増えてくると、画面操作のコードが重複しがちです。**ページオブジェクトパターン** は、各ページの操作をクラスにまとめて再利用性を高めるパターンです。
+
+### ページオブジェクトの定義
+
+```ts
+// pages/login-page.ts
+import { Page, expect } from '@playwright/test';
+
+export class LoginPage {
+  constructor(private page: Page) {}
+
+  async goto() {
+    await this.page.goto('/login');
+  }
+
+  async login(email: string, password: string) {
+    await this.page.getByLabel('メールアドレス').fill(email);
+    await this.page.getByLabel('パスワード').fill(password);
+    await this.page.getByRole('button', { name: 'ログイン' }).click();
+  }
+
+  async expectError(message: string) {
+    await expect(this.page.getByText(message)).toBeVisible();
+  }
+}
+```
+
+### テストでの利用
+
+```ts
+import { LoginPage } from './pages/login-page';
+
+test('ログインしてダッシュボードにアクセスできる', async ({ page }) => {
+  const loginPage = new LoginPage(page);
+  await loginPage.goto();
+  await loginPage.login('alice@example.com', 'password123');
+
+  await expect(page).toHaveURL('/dashboard');
+});
+```
+
+### ページオブジェクトのメリット
+
+- **UIが変わってもテストの修正箇所が1か所** — セレクタをページオブジェクトに集約
+- **テストコードが読みやすい** — 「何をしているか」が明確
+- **操作の再利用** — ログインのような共通操作を何度も書かなくてよい
+
+---
+
+## 認証状態の共有
+
+多くのテストが「ログイン済み」の状態を前提とします。毎回ログインフローを実行するのは時間の無駄なので、**認証状態をファイルに保存して再利用** します。
+
+### セットアップ
+
+```ts
+// auth.setup.ts
+import { test as setup } from '@playwright/test';
+
+setup('認証', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('メールアドレス').fill('alice@example.com');
+  await page.getByLabel('パスワード').fill('password123');
+  await page.getByRole('button', { name: 'ログイン' }).click();
+  await expect(page).toHaveURL('/dashboard');
+
+  // 認証状態をファイルに保存
+  await page.context().storageState({ path: '.auth/user.json' });
+});
+```
+
+### 設定
+
+```ts
+// playwright.config.ts
+export default defineConfig({
+  projects: [
+    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
+  ],
+});
+```
+
+これで、各テストはログイン済みの状態から始まります。
+
+---
+
+## まとめ
+
+- E2Eテストは **クリティカルパス** に集中する。上位5〜10個のフローを特定
+- シナリオは **正常系を優先**。異常系は結合テストや単体テストでカバー
+- 1テストで **1つのフローを完結** させる。細かすぎるテストはE2Eに不向き
+- **ページオブジェクトパターン** でUI操作を集約し、保守性を高める
+- **認証状態の共有** でログインの繰り返しを省略し、テスト実行を高速化
+
+次の章では、E2Eテストを **CIで運用し、長期的に保守する** ための実践的なノウハウを整理します。

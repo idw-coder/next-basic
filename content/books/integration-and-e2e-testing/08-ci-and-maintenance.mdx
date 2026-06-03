@@ -1,0 +1,284 @@
+---
+title: 'CIでの運用と保守 — 壊れにくいテストを維持する'
+description: 'E2Eテストのci設定、Flaky Testの対処、テストの保守戦略、チームでの運用のコツを整理します。'
+order: 8
+---
+
+E2Eテストを書くことよりも難しいのは、**書いたテストを維持し続けること** です。テストスイートが成長するにつれ、実行時間が伸び、不安定なテスト（Flaky Test）が発生し、UIの変更に追従する作業が発生します。
+
+この章では、E2EテストをCIに組み込み、長期的に健全な状態で運用するための実践的なノウハウを整理します。
+
+---
+
+## CIでPlaywrightを動かす
+
+### GitHub Actionsの設定
+
+```yaml
+name: E2E Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run E2E tests
+        run: npx playwright test
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+```
+
+<Callout type="note">
+### ブラウザのキャッシュ
+
+Playwrightのブラウザは `~/.cache/ms-playwright` にインストールされます。CIでインストール時間を短縮するには、このディレクトリをキャッシュします。ただし、Playwrightのバージョンが変わるとキャッシュが無効になるため、`package-lock.json` をキャッシュキーに含めます。
+
+</Callout>
+
+---
+
+## テスト実行の最適化
+
+### 並列実行
+
+Playwrightはデフォルトで **テストを並列実行** します。CIでは環境のCPUコア数に応じてワーカー数を調整します。
+
+```ts
+// playwright.config.ts
+export default defineConfig({
+  workers: process.env.CI ? 2 : undefined,
+});
+```
+
+### シャーディング
+
+テストが多い場合、複数のCI jobに **分散実行（シャーディング）** できます。
+
+```yaml
+jobs:
+  e2e:
+    strategy:
+      matrix:
+        shard: [1/3, 2/3, 3/3]
+    steps:
+      - run: npx playwright test --shard=${{ matrix.shard }}
+```
+
+3つのジョブに均等にテストが分配され、全体の実行時間が約1/3になります。
+
+<MermaidDiagram chart={`
+flowchart LR
+    classDef shard fill:#3b82f6,color:#fff,stroke:#2563eb
+
+    A["テストスイート\n30件"] --> B["Shard 1\n10件"]
+    A --> C["Shard 2\n10件"]
+    A --> D["Shard 3\n10件"]
+
+    class B,C,D shard
+`} />
+
+---
+
+## Flaky Testへの対処
+
+**Flaky Test（不安定なテスト）** は、コードに変更がないのに成功したり失敗したりするテストです。E2Eテストで最もよくある問題であり、放置するとテスト結果への信頼が失われます。
+
+### Flaky Testの原因
+
+| 原因 | 例 |
+|---|---|
+| **タイミングの問題** | アニメーション完了前にクリック、API応答前にアサーション |
+| **テストデータの競合** | 並列実行でテスト同士がデータを書き換え合う |
+| **環境依存** | ローカルでは速いがCIでは遅い |
+| **外部サービスへの依存** | サードパーティAPIが不安定 |
+
+### 対処法
+
+**1. 自動待機を活用する**
+
+Playwrightの自動待機を信頼し、明示的な `waitForTimeout` は避けます。
+
+```ts
+// NG — 固定時間の待機
+await page.waitForTimeout(3000);
+await page.click('#submit');
+
+// OK — Playwrightが自動で待つ
+await page.getByRole('button', { name: '送信' }).click();
+```
+
+**2. リトライを設定する**
+
+CIでは `retries: 2` を設定し、一時的な不安定さを吸収します。
+
+```ts
+export default defineConfig({
+  retries: process.env.CI ? 2 : 0,
+});
+```
+
+**3. テストデータの独立性を保つ**
+
+各テストが独自のデータを使い、他のテストのデータに依存しないようにします。
+
+```ts
+test('ユーザーを作成できる', async ({ page }) => {
+  const uniqueEmail = `test-${Date.now()}@example.com`;
+  // このテスト専用のデータを使う
+});
+```
+
+<Callout type="warning">
+### Flaky Testを放置しない
+
+Flaky Testが増えると「また不安定なテストか」とチームが結果を無視するようになります。定期的にFlaky Testを特定し、修正するか削除するかを判断します。Playwrightの `--reporter=json` でリトライ回数の多いテストを抽出できます。
+
+</Callout>
+
+---
+
+## テストの保守戦略
+
+### セレクタの安定性
+
+UIの変更でテストが壊れる最大の原因は **セレクタの脆さ** です。
+
+```ts
+// 壊れやすい — CSSクラスやDOM構造に依存
+page.locator('.btn-primary.submit-form');
+page.locator('div > form > button:nth-child(2)');
+
+// 壊れにくい — ユーザーに見える情報に依存
+page.getByRole('button', { name: '送信' });
+page.getByLabel('メールアドレス');
+```
+
+**安定性の優先順位:**
+
+1. `getByRole` — アクセシビリティロール（最も安定）
+2. `getByLabel` — フォームラベル
+3. `getByText` — 表示テキスト
+4. `getByTestId` — `data-testid` 属性（UIが不安定な場合の保険）
+
+### テストの定期的な棚卸し
+
+四半期に一度くらいの頻度で、テストスイートを棚卸しします。
+
+- **価値のないテストを削除** — 他のテストとほぼ同じフローを通るもの
+- **Flaky Testを修正** — リトライ頻度が高いものを特定
+- **実行時間の長いテストを最適化** — 不要なナビゲーションを省略
+- **カバーすべきフローの追加** — 新機能のクリティカルパスを追加
+
+<Figure src="/images/relief_man_color.png" alt="安心している男性のイラスト" maxWidth="300px" />
+
+---
+
+## テスト実行のタイミング
+
+すべてのPRでフルのE2Eテストを実行すると、CIが遅くなります。タイミングを使い分けます。
+
+| タイミング | 実行するテスト | 理由 |
+|---|---|---|
+| **PR作成時** | クリティカルパスのみ（5〜10件） | フィードバックを速く |
+| **mainブランチマージ後** | 全E2Eテスト | 網羅的な確認 |
+| **定期実行（毎晩）** | 全E2E + マルチブラウザ | 環境依存の問題を検出 |
+
+```ts
+// playwright.config.ts — タグでテストを分類
+// クリティカルパスには @critical タグを付ける
+```
+
+```ts
+test('ログインできる @critical', async ({ page }) => { ... });
+test('プロフィール画像を変更できる', async ({ page }) => { ... });
+```
+
+```bash
+# CriticalだけPRで実行
+npx playwright test --grep @critical
+
+# 全テストはマージ後に実行
+npx playwright test
+```
+
+---
+
+## テストレポートの活用
+
+PlaywrightのHTMLレポートには、失敗したテストのスクリーンショット、トレース、エラーメッセージが含まれます。
+
+### 失敗テストの調査手順
+
+1. **テストレポート** を開き、失敗したテストを確認
+2. **スクリーンショット** で失敗時の画面を確認
+3. **トレース** をダウンロードし、ステップごとの画面状態を確認
+4. 原因を特定し、コードまたはテストを修正
+
+```bash
+# CIでアップロードされたレポートをダウンロードして確認
+npx playwright show-report ./downloaded-report
+```
+
+<Callout type="info">
+### トレースビューアの活用
+
+トレースビューアでは、テストの各ステップでの画面状態、ネットワークリクエスト、コンソールログを確認できます。CIで失敗したテストのデバッグには、ローカルで再現するより先にトレースを確認する方が効率的なことが多いです。
+
+</Callout>
+
+---
+
+## チームでの運用のコツ
+
+### テストの所有権
+
+- E2Eテストは **機能を開発した人が書く** のが基本
+- 専任のQAチームがある場合は、開発者が骨組みを書き、QAがシナリオを拡充する分担もある
+
+### テストファーストの判断
+
+- 新機能開発時にE2Eテストを先に書くのは、**UIが固まってから** の方が効率的
+- APIの結合テストはテストファーストで書くと設計の指針になる
+
+### 失敗したテストの扱い
+
+- テスト失敗は **プロダクションコードのバグと同じ緊急度** で扱う
+- `test.skip()` で一時的に無効にする場合は、**issueを作成して期限を決める**
+
+---
+
+## まとめ
+
+- CIでは GitHub Actions + Playwright の設定がシンプルに組める
+- **並列実行とシャーディング** で実行時間を短縮
+- Flaky Testは **自動待機の活用、データの独立性、リトライ設定** で対処
+- セレクタは **`getByRole` > `getByLabel` > `getByText` > `getByTestId`** の優先順位
+- PR時はクリティカルパスのみ、マージ後にフルテストを実行する **段階的な戦略**
+- テストの **定期的な棚卸し** で、テストスイートの健全性を維持する
+
+この本では、テストの粒度の考え方から、結合テスト・E2Eテストの実践、Playwrightの活用、CIでの運用までを一通り整理しました。単体テスト本と合わせて、テスト戦略全体の地図として活用してください。

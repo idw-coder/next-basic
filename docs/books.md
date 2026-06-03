@@ -529,14 +529,76 @@ flowchart LR
 
 ## デプロイ後の作業
 
-新しい本を追加したら、`src/lib/books.ts` の `categoryToBookMap` に対応するクイズカテゴリを追加する。
+新しい本を追加したら、以下の3つの設定を更新する。コンテンツファイル（`content/books/`）の追加だけではVeliteが自動検出するが、テーマや表示順はコード側の設定が必要。
+
+### 1. テーマカラーの設定（`src/app/books/page.tsx`）
+
+`bookThemeMap` に新しい本のスラッグとテーマカラーを追加する。未設定の場合は `DEFAULT_THEME`（amber）が使われる。
+
+```ts
+const bookThemeMap: Record<string, BookTheme> = {
+  // ... 既存のテーマ
+  'new-book-slug': {
+    cardBg: 'bg-orange-100',      // カードの背景色
+    iconBg: 'bg-orange-200',      // アイコンの背景色
+    iconText: 'text-orange-700',  // アイコンのテキスト色
+    accent: 'text-orange-700',    // アクセント色（「読む →」など）
+    accentHover: 'group-hover:text-orange-700',
+    badgeBg: 'bg-white',          // 「全N章」バッジの背景
+    badgeText: 'text-orange-700', // 「全N章」バッジのテキスト色
+  },
+};
+```
+
+**使用済みの色と対応する本:**
+
+| 色 | Tailwind | 使用中の本 |
+|---|---|---|
+| 緑 | `emerald` | system-design |
+| 黄 | `amber` | javascript |
+| 紺 | `indigo` | typescript |
+| 水色 | `cyan` | react-learning |
+| 青 | `blue` | css-basics |
+| 紫 | `violet` | tailwind-css |
+| 濃紫 | `purple` | cs-basics |
+| グレー | `zinc` | next-js |
+| ピンク | `rose` | git-basic |
+| スレート | `slate` | unit-testing |
+| オレンジ | `orange` | http-and-web-api |
+| ティール | `teal` | integration-and-e2e-testing |
+
+新しい本を追加する場合は、上記と被らない色を選ぶ。候補: `red`, `lime`, `sky`, `fuchsia`, `pink` など。
+
+### 2. 表示順の設定（`src/lib/books.ts`）
+
+`BOOK_ORDER` 配列に新しい本のスラッグを追加する。配列の順番がそのまま `/books` ページの表示順になる。未登録の本は末尾に表示される。
+
+```ts
+export const BOOK_ORDER = [
+  'system-design',
+  'http-and-web-api',
+  'javascript',
+  // ... 追加したい位置に挿入
+] as const;
+```
+
+### 3. NEW バッジ（`src/lib/books.ts`）
+
+`NEW_BOOK_SLUGS` に追加すると、`/books` ページのカードに NEW バッジ（赤いパルスアニメーション付き）が表示される。一定期間経ったら外す。
+
+```ts
+export const NEW_BOOK_SLUGS = new Set<string>(['new-book-slug']);
+```
+
+### 4. クイズカテゴリとの連携（`src/lib/books.ts`）
+
+対応するクイズカテゴリがある場合は `categoryToBookMap` に追加する。
 
 ```ts
 const categoryToBookMap: Record<string, string> = {
-  nextjs: 'nextjs',
-  'react-basic': 'nextjs',
-  'git-basic': 'git', // 追加例
-  'ts-general': 'typescript', // 追加例
+  nextjs: 'next-js',
+  'react-basic': 'react-learning',
+  'new-quiz-category': 'new-book-slug', // 追加例
 };
 ```
 
