@@ -23,15 +23,15 @@ const categoryToBookMap: Record<string, string> = {
 
 /** 書籍一覧の表示順（先頭が先に表示される） */
 export const BOOK_ORDER = [
-  'system-design',
   'http-and-web-api',
+  'integration-and-e2e-testing',
+  'system-design',
   'javascript',
   'typescript',
   'react-learning',
   'css-basics',
   'tailwind-css',
   'unit-testing',
-  'integration-and-e2e-testing',
   'git-basic',
   'cs-basics',
   'next-js',
