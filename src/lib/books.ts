@@ -24,19 +24,21 @@ const categoryToBookMap: Record<string, string> = {
 /** 書籍一覧の表示順（先頭が先に表示される） */
 export const BOOK_ORDER = [
   'system-design',
+  'http-and-web-api',
   'javascript',
   'typescript',
   'react-learning',
   'css-basics',
   'tailwind-css',
   'unit-testing',
+  'integration-and-e2e-testing',
   'git-basic',
   'cs-basics',
   'next-js',
 ] as const;
 
 /** NEW バッジを付ける書籍 */
-export const NEW_BOOK_SLUGS = new Set<string>(['system-design']);
+export const NEW_BOOK_SLUGS = new Set<string>(['system-design', 'http-and-web-api', 'integration-and-e2e-testing']);
 
 function sortBooks<T extends { bookSlug: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => {

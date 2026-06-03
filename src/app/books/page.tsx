@@ -121,6 +121,24 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeBg: 'bg-white',
     badgeText: 'text-slate-700',
   },
+  'http-and-web-api': {
+    cardBg: 'bg-orange-100',
+    iconBg: 'bg-orange-200',
+    iconText: 'text-orange-700',
+    accent: 'text-orange-700',
+    accentHover: 'group-hover:text-orange-700',
+    badgeBg: 'bg-white',
+    badgeText: 'text-orange-700',
+  },
+  'integration-and-e2e-testing': {
+    cardBg: 'bg-teal-100',
+    iconBg: 'bg-teal-200',
+    iconText: 'text-teal-700',
+    accent: 'text-teal-700',
+    accentHover: 'group-hover:text-teal-700',
+    badgeBg: 'bg-white',
+    badgeText: 'text-teal-700',
+  },
 };
 
 export default function BooksPage() {
