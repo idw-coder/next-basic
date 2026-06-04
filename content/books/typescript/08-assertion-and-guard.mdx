@@ -79,6 +79,72 @@ const s = String(n); // sは文字列（String）の "123" に変換される
 
 ### 非nullアサーション（!）
 
+非nullアサーションは、変数の後ろに `!` を付けることで「この値は `null` や `undefined` ではない」とコンパイラに断言する記法です。
+
+値が `null` または `undefined` になりうる型（例：`string | null`）に対して、開発者が「ここでは絶対に値が存在する」と保証することで、`null` チェックなしでプロパティやメソッドにアクセスできるようになります。
+
+```tsx
+function getLength(text: string | null) {
+  // ① text は null の可能性があるため、そのまま .length にアクセスするとエラー
+  // console.log(text.length); // ❌ 'text' is possibly 'null'.
+
+  // ② ! を付けて「null ではない」と断言すると、エラーにならずアクセスできる
+  console.log(text!.length);
+}
+```
+
+よく使われるのは、DOM要素の取得結果のように「存在するはずだが、型の上では `null` の可能性が残る」ケースです。
+
+```tsx
+// getElementById の戻り値は HTMLElement | null
+const button = document.getElementById('submit')!;
+// ! を付けることで HTMLElement として扱える
+button.addEventListener('click', () => {});
+```
+
+<Callout type="column">
+### 「!」は実行時の安全を保証しない
+
+非nullアサーションも型アサーション（`as`）と同じく、**コンパイラのチェックを黙らせるだけ**で、実際に値が `null` でないことを保証するわけではありません。
+
+もし実行時に本当に `null` や `undefined` だった場合、`Cannot read properties of null` のような**実行時エラー**で落ちてしまいます。コンパイラが警告してくれていた危険を、プログラマが強制的に押し切る行為だという点を忘れないでください。
+
+</Callout>
+
+そのため、可能な限り `!` ではなく、より安全な代替手段を優先します。
+
+| 手段                            | 例                          | 特徴                                                   |
+| ------------------------------- | --------------------------- | ------------------------------------------------------ |
+| **オプショナルチェーン（?.）**  | `text?.length`              | `null` / `undefined` なら処理を中断し `undefined` を返す |
+| **Null合体演算子（??）**        | `text ?? '初期値'`          | `null` / `undefined` のときに既定値を使う              |
+| **型ガード（if文によるチェック）** | `if (text !== null) { ... }` | 実行時に確認するため最も安全                            |
+
+`!` は「他に手段がなく、かつ値が存在することが確実に分かっている」場合の最後の手段として使うのが鉄則です。
+
+<Callout type="column">
+### 「!」は TypeScript 専用、「?.」「??」は JavaScript の機能
+
+代替手段として挙げた3つは、由来が異なります。
+
+- **非nullアサーション（`!`）** は TypeScript 独自の構文です。コンパイル時にコンパイラへ型を伝えるだけで、JavaScript にトランスパイルされると**消えてなくなります**。そのため実行時には一切影響しません。
+- 一方、**オプショナルチェーン（`?.`）** と **Null合体演算子（`??`）** は JavaScript の演算子（ES2020〜）です。コンパイル後も残り、実行時に実際に `null` / `undefined` を判定して動作します。
+
+```tsx
+// TypeScript（コンパイル前）
+console.log(text!.length); // 非nullアサーション
+console.log(text?.length); // オプショナルチェーン
+```
+
+```js
+// JavaScript（コンパイル後）
+console.log(text.length); // ! は消える
+console.log(text?.length); // ?. はそのまま残る
+```
+
+つまり `!` だけが「型の世界だけの存在」で、`?.` と `??` は「実行時にも生きている本物の処理」だという違いがあります。
+
+</Callout>
+
 ## 型ガードで型安全を保証する
 
 型ガード（Type Guard）とは、
