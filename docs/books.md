@@ -303,7 +303,7 @@ flowchart LR
 #### `<Figure>`
 
 キャプション付きの画像を表示する。
-画像はpublic/imagesにあるので、内容に合うものを選んでください。文章ばかり続く時は意識的にイラストを入れてください。
+画像はpublic/imagesにあるので、内容に合うものを選んでください。文章ばかり続く時は意識的にイラストを入れてください。でも多少内容に合っていなくてもいいので、同じ画像で偏らないようにしてください
 
 | prop       | 型       | 必須   | 説明                    |
 | ---------- | -------- | ------ | ----------------------- |
@@ -314,6 +314,26 @@ flowchart LR
 
 ```mdx
 <Figure src="/images/example.png" alt="例の図" caption="図1: アーキテクチャ概要" maxWidth="600px" />
+```
+
+#### `<SpeechBubble>`
+
+キャラクター画像付きの吹き出し。会話形式で初心者の疑問や補足を挟みたいときに使う。`<Callout>` よりカジュアルな印象で、文章が続くときの箸休めにも向く。
+
+| prop        | 型                  | デフォルト | 説明                                          |
+| ----------- | ------------------- | ---------- | --------------------------------------------- |
+| `character` | `string`            | なし       | キャラ画像のパス（`public/images` 配下）。省略可 |
+| `name`      | `string`            | なし       | 話し手の名前（画像の下に小さく表示）。省略可  |
+| `side`      | `'left' \| 'right'` | `'left'`   | 吹き出しを左右どちらに出すか                  |
+
+```mdx
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+  JSXってHTMLみたいだけど、ブラウザはこれをそのまま読めるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  いい質問！実はビルド時にただのJavaScriptへ変換されているんだ。
+</SpeechBubble>
 ```
 
 #### 新しいコンポーネントを追加する
@@ -327,6 +347,7 @@ const sharedComponents = {
   MermaidDiagram,
   Figure,
   Callout,
+  SpeechBubble,
   NewComponent, // 追加
 };
 ```
@@ -539,12 +560,12 @@ flowchart LR
 const bookThemeMap: Record<string, BookTheme> = {
   // ... 既存のテーマ
   'new-book-slug': {
-    cardBg: 'bg-orange-100',      // カードの背景色
-    iconBg: 'bg-orange-200',      // アイコンの背景色
-    iconText: 'text-orange-700',  // アイコンのテキスト色
-    accent: 'text-orange-700',    // アクセント色（「読む →」など）
+    cardBg: 'bg-orange-100', // カードの背景色
+    iconBg: 'bg-orange-200', // アイコンの背景色
+    iconText: 'text-orange-700', // アイコンのテキスト色
+    accent: 'text-orange-700', // アクセント色（「読む →」など）
     accentHover: 'group-hover:text-orange-700',
-    badgeBg: 'bg-white',          // 「全N章」バッジの背景
+    badgeBg: 'bg-white', // 「全N章」バッジの背景
     badgeText: 'text-orange-700', // 「全N章」バッジのテキスト色
   },
 };
@@ -552,20 +573,20 @@ const bookThemeMap: Record<string, BookTheme> = {
 
 **使用済みの色と対応する本:**
 
-| 色 | Tailwind | 使用中の本 |
-|---|---|---|
-| 緑 | `emerald` | system-design |
-| 黄 | `amber` | javascript |
-| 紺 | `indigo` | typescript |
-| 水色 | `cyan` | react-learning |
-| 青 | `blue` | css-basics |
-| 紫 | `violet` | tailwind-css |
-| 濃紫 | `purple` | cs-basics |
-| グレー | `zinc` | next-js |
-| ピンク | `rose` | git-basic |
-| スレート | `slate` | unit-testing |
-| オレンジ | `orange` | http-and-web-api |
-| ティール | `teal` | integration-and-e2e-testing |
+| 色       | Tailwind  | 使用中の本                  |
+| -------- | --------- | --------------------------- |
+| 緑       | `emerald` | system-design               |
+| 黄       | `amber`   | javascript                  |
+| 紺       | `indigo`  | typescript                  |
+| 水色     | `cyan`    | react-learning              |
+| 青       | `blue`    | css-basics                  |
+| 紫       | `violet`  | tailwind-css                |
+| 濃紫     | `purple`  | cs-basics                   |
+| グレー   | `zinc`    | next-js                     |
+| ピンク   | `rose`    | git-basic                   |
+| スレート | `slate`   | unit-testing                |
+| オレンジ | `orange`  | http-and-web-api            |
+| ティール | `teal`    | integration-and-e2e-testing |
 
 新しい本を追加する場合は、上記と被らない色を選ぶ。候補: `red`, `lime`, `sky`, `fuchsia`, `pink` など。
 

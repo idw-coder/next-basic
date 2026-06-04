@@ -7,6 +7,176 @@ order: 2
 JSXは、JavaScriptの構文拡張であり、**見た目に近い形でUIツリーを書ける記法**です。
 ビルド時に `React.createElement` 呼び出しへ変換され、ブラウザが理解できる形になります。
 
+## そもそもJSXとは何か — `React.createElement` の糖衣構文
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+さっきから `<h1>` みたいなタグをJavaScriptの中に書いてるけど、これってブラウザがそのまま読めるの？HTMLでもないよね…？
+</SpeechBubble>
+
+とても良い疑問です。結論から言うと、**ブラウザはJSXをそのまま読めません。**
+
+ブラウザが理解できるのは HTML・CSS・JavaScript の3つだけです。JSX（`<h1>こんにちは</h1>` のような書き方）はReact独自の記法なので、そのままでは動きません。
+
+ではどうしているかというと、**ビルド（プログラムを動かす前の準備）のタイミングで、JSXをただのJavaScriptに「翻訳」している**のです。この翻訳されたあとのJavaScriptがブラウザに渡されて動きます。
+
+つまりJSXの正体は、**`React.createElement` という関数を呼び出すための、人間にとって読みやすい書き方（糖衣構文 / シンタックスシュガー）** だと言えます。
+
+### ステップ1: JSXは「関数の呼び出し」に翻訳される
+
+実際にどう翻訳されるのか、一番シンプルな例で見てみましょう。
+
+```tsx
+// 私たちが書くJSX（人間に読みやすい）
+const element = <h1 className="title">こんにちは</h1>;
+
+// ↓ ビルド時にこう翻訳される（これがブラウザが実際に動かすコード）
+const element = React.createElement('h1', { className: 'title' }, 'こんにちは');
+```
+
+上下のコードは**まったく同じ意味**です。`<h1 className="title">こんにちは</h1>` と書くのも、`React.createElement('h1', { className: 'title' }, 'こんにちは')` と書くのも、Reactにとっては同じこと。私たちが楽をできるよう、見やすいJSXで書かせてくれているだけなのです。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+JSXは「見た目の皮」で、中身はただの関数呼び出し。まずはこのイメージを持っておけばOK！
+</SpeechBubble>
+
+### ステップ2: `React.createElement` の3つの引数
+
+翻訳先の `React.createElement` は、次の3つの情報を順番に受け取ります。
+
+```tsx
+React.createElement(
+  タグ名またはコンポーネント, // 第1引数: 'h1' や 'div'、自作の <Card> など
+  props, // 第2引数: className や onClick などの属性（なければ null）
+  ...子要素, // 第3引数以降: タグの中身（テキストや別の要素）
+);
+```
+
+先ほどの例に当てはめると、
+
+- 第1引数 `'h1'` … どのタグを作るか
+- 第2引数 `{ className: 'title' }` … そのタグに付ける属性
+- 第3引数 `'こんにちは'` … タグの中身
+
+となります。HTMLの `<h1 class="title">こんにちは</h1>` を、関数の引数としてバラバラに渡し直しているイメージです。
+
+### ステップ3: 返ってくるのは「ただのオブジェクト」
+
+<Figure src="/images/deta_man_color.png" alt="データ（オブジェクト）を表すイメージ" maxWidth="120px" />
+
+ここが一番大事なポイントです。`React.createElement` は、**呼び出してもまだ画面には何も表示しません。** 代わりに「どんなUIを作りたいか」をメモしただけの、**ただのJavaScriptオブジェクト**を返します。
+
+```tsx
+// React.createElement('h1', { className: 'title' }, 'こんにちは') の戻り値（イメージ）
+{
+  type: 'h1',          // どのタグか
+  props: {
+    className: 'title',
+    children: 'こんにちは', // 中身
+  },
+  // ...ほかにReactが内部で使う情報
+}
+```
+
+このオブジェクトを **React要素** と呼びます。いわば「UIの設計図」です。
+
+React要素を組み合わせたツリー全体が、よく聞く「**仮想DOM**」の正体です。そして最後に **ReactDOM** がこの設計図（オブジェクト）を読み取って、本物のDOM（＝実際に画面に映るもの）を組み立てます。
+
+```
+JSXを書く → React.createElement に翻訳 → オブジェクト（React要素）を作る → ReactDOMが本物の画面にする
+```
+
+### ネストすると `createElement` も入れ子になる
+
+要素の中に要素を入れると、`React.createElement` も同じように入れ子になります。
+
+```tsx
+// JSX
+<section>
+  <h2>タイトル</h2>
+  <p>本文</p>
+</section>;
+
+// ↓ 翻訳後（子要素が入れ子の createElement になる）
+React.createElement(
+  'section',
+  null, // 属性がないので null
+  React.createElement('h2', null, 'タイトル'),
+  React.createElement('p', null, '本文'),
+);
+```
+
+<Callout type="column" title="なぜJSXという書き方が用意されているのか">
+上の「翻訳後」のコードを見てください。たった3つの要素でも、`React.createElement` を手書きすると括弧だらけで、どんな画面なのか直感的に読み取れません。要素が増えるほど、この読みにくさは膨らんでいきます。
+
+一方JSXなら、HTMLとほぼ同じ見た目で書けるので「どんな画面を作っているか」が一目で分かります。だから**実際の開発ではJSXだけを書き、`React.createElement` を自分で書くことはまずありません。** それでも「裏側ではこう翻訳されている」と知っておくと、エラーメッセージやReactの挙動がぐっと理解しやすくなります。
+</Callout>
+
+## いまどきのReactは `React.createElement` を書かない — 新しいJSX変換
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="Reactの進化のイメージ" maxWidth="120px" />
+
+ここまで「JSXは `React.createElement` に翻訳される」と説明してきました。実はこれは少し前のReactの話で、**今のReactでは翻訳先が変わっています。** 古い解説記事やサンプルコードとの違いに戸惑わないよう、ここでしっかり押さえておきましょう。
+
+### 昔は `import React` が必須だった
+
+React 16以前は、JSXを使うファイルの先頭で**必ず `React` を読み込む**必要がありました。
+
+```tsx
+import React from 'react'; // これが無いとエラーになった
+
+function Title() {
+  return <h1>こんにちは</h1>;
+}
+```
+
+理由はシンプルです。JSXは `React.createElement(...)` に翻訳されるため、`React` という変数がそのファイルに存在しないと、翻訳後のコードが動かなかったからです。
+
+```tsx
+// JSX
+return <h1>こんにちは</h1>;
+
+// ↓ 翻訳後。React.createElement の "React" を使うので import が必要だった
+return React.createElement('h1', null, 'こんにちは');
+```
+
+`import React` を書き忘れて `React is not defined` というエラーに悩まされるのは、初心者の通過儀礼のようなものでした。
+
+### React 17 から「自動変換」になった
+
+2020年のReact 17で **「新しいJSX変換（automatic runtime）」** が導入され、状況が変わりました。
+
+JSXの翻訳先が、`React.createElement` から **`react/jsx-runtime` という専用モジュールの `jsx()` 関数** に変わったのです。しかもこの関数は、ビルドツールが**自動で読み込んでくれる**ようになりました。
+
+その結果、**`import React` を自分で書く必要がなくなりました。**
+
+```tsx
+// 今のReact（React 17以降）。import React が無くても動く
+function Title() {
+  return <h1>こんにちは</h1>;
+}
+
+// ↓ 翻訳後（イメージ）。jsx を自動で読み込んでくれる
+import { jsx as _jsx } from 'react/jsx-runtime';
+return _jsx('h1', { children: 'こんにちは' });
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+え、じゃあ今まで習った `React.createElement` の話はもう古いの…？覚え直し？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+大丈夫、安心して。変わったのは「翻訳先の関数の名前」だけ。「JSX → 関数呼び出し → オブジェクト（React要素）を返す」という本質はまったく同じだよ。
+</SpeechBubble>
+
+<Callout type="note" title="まとめ：仕組みの本質は変わっていない">
+
+- **昔**: JSX → `React.createElement(...)` ／ `import React` が必須
+- **今（React 17〜）**: JSX → `react/jsx-runtime` の `jsx(...)` ／ `import React` は不要
+
+変わったのは翻訳先の関数名と import の手間だけで、**「JSXは関数呼び出しに翻訳され、React要素オブジェクトを返す」という根っこの仕組みは同じ**です。だから `React.createElement` を理解しておく価値は今でも十分あります。本書でも、仕組みの説明では分かりやすさを優先して、引き続き `React.createElement` を使って解説します。
+
+</Callout>
+
 ## JSXのルール
 
 **1つのルート要素で返す**
