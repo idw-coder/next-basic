@@ -7,6 +7,12 @@ order: 4
 TypeScriptの型は「1つの型だけ」に限りません。
 「文字列**または**数値」「この3つの値のどれか」のように、**複数の可能性を型で表現**できます。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+1つの変数に「文字列 or 数値」みたいに複数の型を持たせられるの？それに「この3つの値だけ」って指定もできるの？
+</SpeechBubble>
+
+その2つを叶えるのが、これから学ぶ**ユニオン型**と**リテラル型**です。実際のアプリ開発で毎日のように使う、TypeScriptの主役級の機能です。
+
 ---
 
 ## ユニオン型 — 「AまたはB」
@@ -61,6 +67,8 @@ function formatId(id: string | number): string {
 ---
 
 ## リテラル型 — 特定の値だけを許容する
+
+<Figure src="/images/pc-work-woman01.png" alt="決められた値だけを受け付けるリテラル型のイメージ" maxWidth="120px" />
 
 TypeScriptでは、型として**特定の値そのもの**を指定できます。
 
@@ -135,6 +143,15 @@ type User = {
 ```
 
 `| null` と `?`（オプショナル）の違いは微妙ですが、一般的な使い分けとして、`| null` は「値が存在しないことを明示的に表す」、`?` は「プロパティ自体が存在しないかもしれない」というニュアンスです。
+
+<Callout type="note" title="`| null` と `?` の違い">
+
+- `bio: string | null` … **プロパティは必ず存在する**が、その値が `null` のことがある（例: プロフィール未設定）
+- `avatarUrl?: string` … **プロパティ自体が存在しないことがある**（`string | undefined` と同義）
+
+「キーはあるが中身が空」なら `| null`、「キーごと無いかもしれない」なら `?`、と覚えると迷いません。
+
+</Callout>
 
 ---
 

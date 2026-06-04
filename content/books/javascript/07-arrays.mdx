@@ -9,6 +9,12 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 
 この章では、配列の「メソッド」とは何かという前提から始めて、実務で頻出する `map`・`filter`・`reduce`・`find`・`some`・`every` を用途別に整理します。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`map` とか `filter` とか、名前は聞くけど…結局どれをいつ使えばいいのか毎回迷っちゃう。
+</SpeechBubble>
+
+この章を読めば「変換は `map`、絞り込みは `filter`、集約は `reduce`」のように、**やりたいことから逆引きで**選べるようになります。
+
 ## 配列メソッドとは — Array インスタンスのメソッドという意味
 
 `[1, 2, 3].map(...)` のように配列に対して `.map()` を呼べるのは、配列が **`Array` コンストラクタのインスタンス**だからです。
@@ -59,6 +65,8 @@ Array.from(nodes).map((node) => node.textContent);
 この前提を押さえたうえで、実務で特に使用頻度の高いメソッドを見ていきます。
 
 ## map — 各要素を変換して新しい配列を作る
+
+<Figure src="/images/boomerang_woman_color.png" alt="mapが変換結果を新しい配列として返すイメージ" maxWidth="120px" />
 
 `map` は配列の各要素にコールバック関数を適用し、その戻り値で構成された**新しい配列**を返します。
 元の配列は変更されません（非破壊）。
@@ -180,6 +188,14 @@ const sum = numbers.reduce((accumulator, current) => {
 }, 0);
 // 0 + 1 + 2 + 3 + 4 + 5 = 15
 ```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`reduce` だけ急に難しい…！`accumulator` って何者…？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`accumulator`（アキュムレータ）は「途中経過を入れておく箱」。要素を1つ処理するたびに箱の中身を更新して、最後にその箱を返す——そうイメージすると一気にわかりやすくなるよ。
+</SpeechBubble>
 
 ### 引数の構造
 
@@ -365,6 +381,8 @@ console.log(isFormValid); // false（passwordが invalid）
 | すべて条件を満たすか         | `every`     | `boolean`           |
 
 ## よくあるハマりどころ
+
+<Figure src="/images/deskwork_check_man_color.png" alt="配列メソッドのハマりどころを確認するイメージ" maxWidth="120px" />
 
 ### 元の配列を壊すメソッドと壊さないメソッド
 

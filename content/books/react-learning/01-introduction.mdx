@@ -10,6 +10,10 @@ Meta（旧Facebook）が開発し、**「宣言的な記述」** と **「コン
 
 この章では、Reactを最初に触るときに迷いやすい「何ができるツールなのか」「他の技術との関係は？」を整理します。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Reactって名前はよく聞くけど、そもそも何をしてくれるツールなの？HTMLやJavaScriptとは何が違うんだろう？
+</SpeechBubble>
+
 ## 命令的 vs 宣言的
 
 Webアプリケーションの画面は、HTML・CSS・JavaScriptの3つで成り立ちます。
@@ -40,6 +44,10 @@ function Counter() {
 
 開発者は「いまのデータなら画面はこうあるべき」と書くことに集中でき、
 DOM操作の手順を逐一書く必要がなくなります。
+
+<Callout type="note" title="レストランでたとえると">
+**命令的**は、自分でキッチンに入って「鍋を火にかけて、塩を入れて、3分茹でて…」と手順を全部指示するスタイル。**宣言的**は、店員さんに「パスタください」と“欲しい結果”だけを伝えるスタイルです。Reactでは「こういう画面が欲しい」と宣言すれば、調理（＝DOM操作）はReactが引き受けてくれます。
+</Callout>
 
 ## コンポーネントとは
 
@@ -72,6 +80,8 @@ flowchart TD
 コンポーネントに分割することで、同じ構造のUIを部品として使い回せる、ファイルや関数の責務が分かれて変更箇所が追いやすい、部品単位でテストができる、といったメリットが生まれます。
 
 ## ライブラリとフレームワークの違い
+
+<Figure src="/images/planning_suit_man_color.png" alt="Reactと周辺ライブラリ・フレームワークの関係のイメージ" maxWidth="120px" />
 
 Reactそのものは **UIレイヤに特化したライブラリ** です。
 ルーティングやデータ取得の標準は別パッケージ（React Router、TanStack Queryなど）やフレームワーク（Next.js、Remixなど）に任せる設計になっています。
