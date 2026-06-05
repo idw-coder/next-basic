@@ -4,13 +4,17 @@ description: 'Tailwindのdark:プレフィックスを使ったダークモー�
 order: 9
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
+Tailwindは `dark:` プレフィックスでダークモードのスタイルを指定できます。[状態修飾子（`hover:` など）](/books/tailwind-css/08-state-modifiers)と同じプレフィックス方式なので、考え方はそのまま応用できます。
 
-Tailwindは `dark:` プレフィックスでダークモードのスタイルを指定できます。
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ダークモードって、全部のページに自分でCSSを書き足すのかと思ってた…。Tailwindだと簡単にできるの？
+</SpeechBubble>
 
-<Figure src="/images/usingcomputer_suit_woman_color.png" alt="ダークモードのUIを確認しているイメージ" maxWidth="260px" />
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ライト用クラスの隣に `dark:` 付きを足すだけ。`bg-white dark:bg-gray-900` のようにね。OS設定との連動も標準でできるよ。
+</SpeechBubble>
+
+<Figure src="/images/relief_man_color.png" alt="ダークモードのUIを確認しているイメージ" maxWidth="220px" />
 
 ---
 
@@ -107,4 +111,4 @@ function ThemeToggle() {
 - ボタンで切り替えるなら `darkMode: 'class'`（v3）または `@variant dark`（v4）を設定
 - 色の選択はライト・ダーク両方で確認する
 
-次の章では、コンポーネントのパターンを効率よく組み立てる方法を学びます。
+次の章では、[コンポーネントのパターン](/books/tailwind-css/10-components)を効率よく組み立てる方法を学びます。

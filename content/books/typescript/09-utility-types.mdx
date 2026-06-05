@@ -6,9 +6,13 @@ order: 9
 
 TypeScriptには、既存の型を変換して新しい型を作る**ユーティリティ型**が組み込まれています。自分で一から型を書かなくても、「この型の一部だけ使いたい」「全プロパティをオプショナルにしたい」といった変換を簡潔に書けます。
 
-この章では、実務で使用頻度の高いユーティリティ型に絞って、使い方と内部の仕組みを解説します。
+この章では、実務で使用頻度の高いユーティリティ型に絞って、使い方と内部の仕組みを解説します。これらはすべて[ジェネリクス](/books/typescript/07-generics)で実装されているので、ジェネリクスを先に押さえておくと中身まで理解しやすくなります。
 
-## <Figure src="/images/planning_suit_man_color.png" alt="型の変換パターンを整理するイラスト" maxWidth="300px" />
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`Partial` とか `Pick` とか、名前は見かけるけど使いどころが分からない…。自分で型を書くのと何が違うの？
+</SpeechBubble>
+
+<Figure src="/images/planning_suit_man_color.png" alt="型の変換パターンを整理するイラスト" maxWidth="300px" />
 
 ---
 

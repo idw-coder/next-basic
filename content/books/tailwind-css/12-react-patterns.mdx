@@ -4,13 +4,17 @@ description: 'Reactコンポーネントでのクラス管理、cvaによるバ�
 order: 12
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
+TailwindとReactを組み合わせると、長いクラス列の問題がコンポーネント化で解決できます。この章では実務でよく使うパターン（`cn()`・`cva`・動的クラスの注意点）をまとめます。
 
-TailwindとReactを組み合わせると、長いクラス列の問題がコンポーネント化で解決できます。この章では実務でよく使うパターンをまとめます。
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ボタンの色やサイズをpropsで切り替えたいけど、クラスを条件分岐で組み立てると `undefined` が混ざったり競合したり…うまくいかない。
+</SpeechBubble>
 
-<Figure src="/images/relief_man_color.png" alt="ReactとTailwindをうまく使いこなせたイメージ" maxWidth="260px" />
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そこで登場するのが `cn()` と `cva`。条件付きのクラス結合と、バリアントの型安全な管理を任せられるんだ。この章で一気に解決しよう。
+</SpeechBubble>
+
+<Figure src="/images/relief_man_color.png" alt="ReactとTailwindをうまく使いこなせたイメージ" maxWidth="220px" />
 
 ---
 
@@ -153,4 +157,4 @@ npx shadcn@latest add button card dialog
 - クラス名は完全な文字列で書く（動的な文字列結合は避ける）
 - shadcn/ui はカスタマイズ性が高くおすすめのコンポーネントベース
 
-TailwindとReactを組み合わせることで、型安全かつ保守しやすいコンポーネント指向のスタイリングが実現できます。引き続きクイズで知識を定着させましょう。
+TailwindとReactを組み合わせることで、型安全かつ保守しやすいコンポーネント指向のスタイリングが実現できます。Reactそのものをさらに深めたい場合は[React入門](/books/react-learning)もあわせてどうぞ。引き続きクイズでも知識を定着させましょう。

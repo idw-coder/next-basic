@@ -4,13 +4,17 @@ description: 'Next.js・ViteプロジェクトへのTailwind CSSインストー�
 order: 2
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
-
 Tailwind CSS v4 から設定ファイルの仕組みが大きく変わりました。この章ではv4系（2024年以降の標準）のセットアップを中心に説明します。
 
-<Figure src="/images/usingcomputer_suit_woman_color.png" alt="Tailwindをセットアップしているイメージ" maxWidth="260px" />
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ネットの記事だと `tailwind.config.js` を作れって書いてあるのに、最近作ったプロジェクトには無い…。どっちが正しいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+それはバージョン差だね。v4から設定方法が大きく変わって `tailwind.config.js` は基本不要になったんだ。古い記事はv3前提のことが多いから注意しよう。
+</SpeechBubble>
+
+<Figure src="/images/deskwork_check_man_color.png" alt="Tailwindをセットアップしているイメージ" maxWidth="220px" />
 
 ---
 
@@ -121,4 +125,4 @@ Tailwindを使うなら必須の拡張機能です。
 - v3は `content` の設定を忘れると本番ビルドでスタイルが消える
 - VSCode拡張 Tailwind IntelliSense は実務では必須レベル
 
-次の章では、Flexboxとグリッドのレイアウトユーティリティを学びます。
+次の章では、[Flexboxとグリッドのレイアウトユーティリティ](/books/tailwind-css/03-layout)を学びます。

@@ -1,23 +1,60 @@
 ---
-title: '状態修飾子 — hover・focus・active・disabled'
-description: 'hover:・focus:・active:などの状態修飾子を使い、インタラクティブなUIを作る方法を解説します。'
+title: '状態修飾子 — hover・focus・active・disabled・group・peer'
+description: 'hover:・focus:・active:・disabled:・group・peerなどTailwindの状態修飾子（擬似クラス）を、仕組みから実践パターン・早見表・ハマりどころまで網羅的に解説します。'
 order: 8
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
+ボタンにマウスを乗せたら色が変わる、入力欄を選択したら枠が光る——こうした「状態に応じた見た目の変化」を、Tailwindでは**状態修飾子（state modifiers）** で表現します。
 
-Tailwindでは `:hover` や `:focus` などの擬似クラスもプレフィックスで表現します。
+CSSでいう `:hover` や `:focus` などの**擬似クラス**を、`hover:` `focus:` のような**プレフィックス**としてクラス名の先頭に付けるだけで使えます。
 
-<Figure src="/images/relief_man_color.png" alt="ホバーやフォーカスのインタラクションが完成したときの安心感" maxWidth="260px" />
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ホバーで色を変えたいだけなのに、わざわざCSSファイルに `:hover` を書くのは面倒だなあ…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSファイルを開かずにHTML（JSX）の中で完結するよ。
+</SpeechBubble>
+
+<Figure src="/images/relief_man_color.png" alt="ホバーやフォーカスのインタラクションが完成したときの安心感" maxWidth="220px" />
 
 ---
 
-## hover:
+## 状態修飾子の仕組み — `修飾子:ユーティリティ`
+
+状態修飾子は **`修飾子:ユーティリティ`** という形で書きます。コロン（`:`）の前が「いつ適用するか」、後ろが「何を適用するか」です。
 
 ```html
-<!-- ホバーで色変更 -->
+<!--  hover:    bg-blue-700                          -->
+<!--  ↑いつ     ↑何を（ホバー中だけ背景を blue-700 に） -->
+<button class="bg-blue-600 hover:bg-blue-700">ボタン</button>
+```
+
+これはビルド時に、次のようなCSSへ変換されます。
+
+```css
+.bg-blue-600 {
+  background-color: #2563eb;
+}
+.hover\:bg-blue-700:hover {
+  background-color: #1d4ed8;
+}
+```
+
+つまり Tailwind が裏側で `:hover` 付きのCSSを生成してくれているわけです。自分でセレクタを書く必要はありません。同じ要領で、`focus:` `active:` `disabled:` などあらゆる状態に対応できます。
+
+<Callout type="note" title="ベース → 状態の順で書く">
+`bg-blue-600 hover:bg-blue-700` のように、**通常時のスタイルを先、状態時のスタイルを後**に書くのが読みやすい慣例です。CSSの詳細度ではなく記述順で上書きされるわけではありませんが、人間が読むときに「通常はこう、ホバーでこう変わる」と追いやすくなります。
+</Callout>
+
+---
+
+## hover: — マウスを乗せたとき
+
+最もよく使う修飾子です。色・影・下線・拡大など、ホバー時の変化に使います。
+
+```html
+<!-- ホバーで背景色を変える -->
 <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
   ボタン
 </button>
@@ -25,13 +62,19 @@ Tailwindでは `:hover` や `:focus` などの擬似クラスもプレフィッ�
 <!-- ホバーで下線 -->
 <a class="text-blue-600 hover:underline">リンク</a>
 
-<!-- ホバーで影 -->
+<!-- ホバーで影を強調 -->
 <div class="shadow hover:shadow-lg transition-shadow">カード</div>
 ```
 
+<Callout type="warning" title="hover: はタッチ端末では効きにくい">
+スマホやタブレットには「マウスを乗せる」操作がありません。`hover:` だけに頼った重要な情報の出し分け（ホバーで初めて表示されるメニューなど）は、タッチユーザーが操作できなくなります。重要な操作は `hover:` 以外でも到達できるように設計しましょう。
+</Callout>
+
 ---
 
-## focus: / focus-visible:
+## focus: / focus-visible: — フォーカスされたとき
+
+入力欄やボタンが選択された状態です。**フォームのアクセシビリティに必須**の修飾子です。
 
 ```html
 <!-- フォーカス時にリングを表示 -->
@@ -40,29 +83,33 @@ Tailwindでは `:hover` や `:focus` などの擬似クラスもプレフィッ�
          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 />
 
-<!-- キーボードフォーカスのみ（クリックでは表示しない） -->
+<!-- キーボード操作時のみリングを表示 -->
 <button class="focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none">
   ボタン
 </button>
 ```
 
-<Callout type="note">
-`focus:` はクリックでもフォーカスリングが出ますが、`focus-visible:` はキーボード操作時のみ表示されます。ボタンには `focus-visible:` を使うのがモダンなプラクティスです。
+<Callout type="note" title="focus: と focus-visible: の違い">
+`focus:` は**クリックでもフォーカスリングが出ます**。`focus-visible:` は**キーボード操作時のみ**表示されます。マウスクリックのたびにリングが出ると煩わしいので、ボタンには `focus-visible:` を使うのがモダンなプラクティスです。一方、入力欄は `focus:` でもよいでしょう（クリックで選択したことが視覚的にわかるため）。
 </Callout>
 
 ---
 
-## active:
+## active: — クリックしている瞬間
+
+押している間だけ適用されます。`scale` と組み合わせると「押し込んだ」感触を出せます。
 
 ```html
 <button class="bg-blue-600 active:scale-95 transition-transform">
-  クリック時に縮む
+  クリックで縮む
 </button>
 ```
 
 ---
 
-## disabled:
+## disabled: — 無効状態
+
+`disabled` 属性が付いた要素に適用されます。操作不可であることを見た目で伝えます。
 
 ```html
 <button
@@ -76,9 +123,27 @@ Tailwindでは `:hover` や `:focus` などの擬似クラスもプレフィッ�
 
 ---
 
-## group / group-hover:
+## first: / last: / odd: / even: — 構造に応じたスタイル
 
-親要素のホバーに連動して子要素のスタイルを変えます。
+リストやテーブルの行に対して、「最初」「最後」「奇数番目」「偶数番目」だけスタイルを変えられます。**ストライプ（縞模様）テーブル**などでよく使います。
+
+```html
+<ul>
+  <!-- 偶数行だけ背景をグレーに（ゼブラストライプ） -->
+  <li class="px-4 py-2 even:bg-gray-100">行1</li>
+  <li class="px-4 py-2 even:bg-gray-100">行2</li>
+  <li class="px-4 py-2 even:bg-gray-100">行3</li>
+</ul>
+
+<!-- 最後の行だけ下線を消す -->
+<li class="border-b last:border-b-0">項目</li>
+```
+
+---
+
+## group / group-hover: — 親要素のホバーに連動
+
+親要素にマウスを乗せたとき、**子要素**のスタイルを変えたいケースです。親に `group` を付け、子で `group-hover:` を使います。カードのホバーエフェクトの定番です。
 
 ```html
 <div class="group border rounded p-4 hover:bg-blue-50 transition-colors">
@@ -86,32 +151,131 @@ Tailwindでは `:hover` や `:focus` などの擬似クラスもプレフィッ�
     タイトル
   </h3>
   <p class="text-gray-500 group-hover:text-gray-700">
-    説明テキスト
+    親カードにホバーすると、この文字色も一緒に変わる
   </p>
+</div>
+```
+
+`group-hover:` 以外にも `group-focus:` `group-disabled:` など、`group-*` の形で各状態に対応できます。
+
+---
+
+## peer / peer-checked: — 兄弟要素の状態に連動
+
+**兄弟要素**の状態に応じてスタイルを変えます。`peer` を付けた要素より**後ろにある**兄弟要素で `peer-*` が使えます。カスタムチェックボックスやトグルスイッチの定番パターンです。
+
+```html
+<label class="flex items-center gap-2 cursor-pointer">
+  <input type="checkbox" class="peer sr-only" />
+  <!-- チェックされたらトグルの背景を青に -->
+  <div class="w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
+  <span>通知を受け取る</span>
+</label>
+```
+
+<Callout type="note" title="group と peer の違い">
+- **group** … 「**親**にホバー/フォーカスしたら**子**を変える」（入れ子の関係）
+- **peer** … 「ある要素の状態に応じて**兄弟**を変える」（並びの関係。`peer` は対象より前に置く）
+</Callout>
+
+---
+
+## focus-within: — 子要素がフォーカスされたとき
+
+要素の**内側のどこか**がフォーカスされたら、その要素自身のスタイルを変えます。入力欄を含むフォーム枠全体を強調するときに便利です。
+
+```html
+<div class="border rounded p-2 focus-within:ring-2 focus-within:ring-blue-500">
+  <input class="outline-none" placeholder="入力するとこの枠が光る" />
 </div>
 ```
 
 ---
 
-## peer / peer-checked:
+## aria-* / data-* 修飾子 — 属性に応じたスタイル
 
-兄弟要素の状態に応じてスタイルを変えます。カスタムチェックボックスやトグルUIに使います。
+モダンなTailwindでは、`aria-*` 属性や `data-*` 属性の値に応じてスタイルを切り替えられます。アクセシビリティ対応や、状態を `data-*` で管理するUIライブラリ（Radix UIなど）との相性が良い機能です。
 
 ```html
-<label class="flex items-center gap-2 cursor-pointer">
-  <input type="checkbox" class="peer sr-only" />
-  <div class="w-10 h-6 bg-gray-300 rounded-full peer-checked:bg-blue-600 transition-colors">
-  </div>
-  <span>通知を受け取る</span>
-</label>
+<!-- aria-expanded="true" のときだけ回転 -->
+<button aria-expanded="true" class="aria-expanded:rotate-180 transition-transform">
+  ▼
+</button>
+
+<!-- data-state="active" のとき下線 -->
+<div data-state="active" class="data-[state=active]:underline">タブ</div>
 ```
+
+---
+
+## 修飾子は組み合わせて重ねられる
+
+修飾子はチェーンできます。「`md` 以上の画面で、かつホバー時」のように条件を重ねられます。レスポンシブ修飾子（[レスポンシブデザイン](/books/tailwind-css/07-responsive)）やダークモード（[ダークモード](/books/tailwind-css/09-dark-mode)）とも自由に組み合わせ可能です。
+
+```html
+<!-- md以上の画面でホバーしたときだけ背景を変える -->
+<button class="bg-blue-600 md:hover:bg-blue-700">ボタン</button>
+
+<!-- ダークモードでホバーしたとき -->
+<a class="text-gray-700 dark:text-gray-300 dark:hover:text-white">リンク</a>
+```
+
+---
+
+## よくある状態修飾子 早見表
+
+| 修飾子            | 適用されるタイミング                 | 対応するCSS擬似クラス |
+| ----------------- | ------------------------------------ | --------------------- |
+| `hover:`          | マウスを乗せている間                 | `:hover`              |
+| `focus:`          | フォーカスされている間               | `:focus`              |
+| `focus-visible:`  | キーボードでフォーカスされた間       | `:focus-visible`      |
+| `focus-within:`   | 内側の要素がフォーカスされた間       | `:focus-within`       |
+| `active:`         | クリック/タップしている瞬間          | `:active`             |
+| `disabled:`       | `disabled` 属性が付いているとき      | `:disabled`           |
+| `checked:`        | チェックされているとき               | `:checked`            |
+| `first:` / `last:`| 最初の / 最後の子要素                | `:first-child` 等     |
+| `odd:` / `even:`  | 奇数番目 / 偶数番目                  | `:nth-child(odd)` 等  |
+| `group-hover:`    | 親（`group`）にホバーしたとき        | `.group:hover &`      |
+| `peer-checked:`   | 兄弟（`peer`）がチェックされたとき    | `.peer:checked ~ &`   |
+
+---
+
+## よくあるハマりどころ
+
+<Figure src="/images/deskwork_check_man_color.png" alt="状態修飾子のハマりどころを確認するイメージ" maxWidth="120px" />
+
+**1. `transition-` を付け忘れてカクつく**
+
+`hover:` で色やサイズを変えても、`transition-colors` や `transition-transform` を付けないと一瞬で切り替わってしまいます。滑らかにするには通常時のクラスに `transition-*` を足します。
+
+```html
+<!-- ❌ パッと切り替わる -->
+<button class="bg-blue-600 hover:bg-blue-700">ボタン</button>
+
+<!-- ⭕ 滑らかに変化 -->
+<button class="bg-blue-600 hover:bg-blue-700 transition-colors">ボタン</button>
+```
+
+**2. `group-hover:` が効かない**
+
+親要素に `group` クラスを付け忘れているケースがほとんどです。`group-*` は必ず `group` を付けた親とセットで使います。
+
+**3. `peer` の位置が逆**
+
+`peer-*` は、`peer` を付けた要素より**後ろの兄弟**にしか効きません。スタイルを変えたい要素を `peer` より後ろに置く必要があります。
+
+**4. `hover:` をタッチ端末の主要動線に使っている**
+
+前述のとおり、タッチ端末では `hover:` が機能しません。重要な操作はタップでも到達できるようにします。
 
 ---
 
 ## ちゃんと使うためのポイント
 
-- `hover:` と `transition-` を組み合わせると滑らかなインタラクションになる
-- フォームには必ず `focus:ring-*` を実装してアクセシビリティを確保する
-- `group-hover:` はカードのホバーエフェクトで非常によく使う
+- 状態修飾子は `修飾子:ユーティリティ` の形。裏側で擬似クラス付きのCSSが生成される
+- `hover:` と `transition-*` はセットで使うと滑らかなインタラクションになる
+- フォームには必ず `focus:ring-*` / `focus-visible:ring-*` を実装してアクセシビリティを確保する
+- カードのホバーは `group` + `group-hover:`、トグルUIは `peer` + `peer-checked:` が定番
+- 修飾子はレスポンシブ（`md:`）やダークモード（`dark:`）と重ねられる
 
-次の章では、**ダークモード**対応を学びます。
+次の章では、`dark:` 修飾子を使った **[ダークモード](/books/tailwind-css/09-dark-mode)** 対応を学びます。コンポーネントとして組み立てる実践は **[コンポーネント設計](/books/tailwind-css/10-components)** で扱います。

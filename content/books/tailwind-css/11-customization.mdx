@@ -4,13 +4,17 @@ description: 'Tailwindのデフォルト値を拡張・上書きして、プロ�
 order: 11
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
+Tailwindのデフォルト設定は実務に即して変更できます。ブランドカラーや独自フォントを「名前付きユーティリティ」として登録すると、プロジェクト全体で一貫して使えます。v4とv3で設定方法が異なります。
 
-Tailwindのデフォルト設定は実務に即して変更できます。v4とv3で設定方法が異なります。
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+会社のブランドカラーを使いたいんだけど、毎回 `bg-[#2563eb]` って書くの…？さすがに面倒だなあ。
+</SpeechBubble>
 
-<Figure src="/images/fork_suit_man_color.png" alt="設定ファイルのカスタマイズに悩んでいるイメージ" maxWidth="260px" />
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+テーマに一度登録すれば `bg-brand` のように名前で呼べるよ。v4なら `@theme`、v3なら `tailwind.config` で設定する。
+</SpeechBubble>
+
+<Figure src="/images/fork_suit_man_color.png" alt="設定ファイルのカスタマイズに悩んでいるイメージ" maxWidth="220px" />
 
 ---
 
@@ -150,4 +154,4 @@ Reactを使う場合は、コンポーネント化の方がより推奨されま
 - `@apply` は使いすぎないこと。コンポーネント化の方がメンテナンスしやすい
 - v3の `extend` vs ルートキー：`extend` は追加、ルートキーへの直接定義はデフォルトを**全置換**するので注意
 
-次の章では、Reactとの組み合わせで実践的なTailwindの使い方を学びます。
+次の章では、[Reactとの組み合わせ](/books/tailwind-css/12-react-patterns)で実践的なTailwindの使い方を学びます。

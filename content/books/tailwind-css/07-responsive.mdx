@@ -4,13 +4,17 @@ description: 'sm:・md:・lg:などのブレークポイントプレフィック
 order: 7
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
-
 Tailwindのレスポンシブ対応は、クラス名に**プレフィックス**を付けるだけです。
 
-<Figure src="/images/pc-work-woman01.png" alt="様々な画面幅でレスポンシブを確認しているイメージ" maxWidth="280px" />
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+スマホとPCで見た目を変えたいけど、メディアクエリをCSSに書くのが面倒で…。Tailwindだと楽になる？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`md:flex` のように幅のプレフィックスを付けるだけ。メディアクエリを手書きせずにレスポンシブが組めるよ。
+</SpeechBubble>
+
+<Figure src="/images/pc-work-woman01.png" alt="様々な画面幅でレスポンシブを確認しているイメージ" maxWidth="240px" />
 
 ---
 
@@ -101,4 +105,4 @@ v3.2以降、`max-md:` のように上限を指定できます。
 - `sm:` / `md:` / `lg:` のどれか2〜3つを一貫して使えばほとんどのケースに対応できる
 - `hidden md:block` でスマートフォン非表示は頻出パターン
 
-次の章では、ホバー・フォーカスなどの**状態修飾子**を学びます。
+次の章では、ホバー・フォーカスなどの**[状態修飾子](/books/tailwind-css/08-state-modifiers)**を学びます。

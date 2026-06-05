@@ -4,11 +4,13 @@ description: 'Tailwindのスペーシングスケールの仕組みと、p・m�
 order: 4
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
-
 TailwindのスペーシングはデフォルトでRemベースのスケールを使います。数値の意味を理解すると、一貫性のある余白を素早く指定できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`p-4` の「4」って何の数字…？px？それとも別の単位なの？
+</SpeechBubble>
+
+その疑問はこの章の冒頭で解消します。結論から言うと **`1 = 4px`**。まずはこの基準を押さえましょう。
 
 <Figure src="/images/question_woman_04_color.png" alt="スペーシングの数値を確認しているイメージ" maxWidth="260px" />
 
@@ -113,4 +115,4 @@ Tailwindの数値は **`1 = 0.25rem = 4px`** が基準です。
 - `mx-auto` + `max-w-*` でコンテンツの中央揃えと幅制限を同時にできる
 - スケール外の値は任意値（`[]`）で対応できる
 
-次の章では、**テキストとフォント**のユーティリティを学びます。
+次の章では、**[テキストとフォント](/books/tailwind-css/05-typography)**のユーティリティを学びます。

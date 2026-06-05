@@ -8,6 +8,10 @@ order: 5
 
 型の絞り込み（Narrowing）は、条件分岐によって**ユニオン型をより具体的な型に狭めていく**仕組みです。TypeScriptのコンパイラが制御フロー（if文やswitch文）を解析して、分岐の中では型が確定していると判断してくれます。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`string | number` のままだと `.toUpperCase()` でエラーになる…。どうやって「今は string」って分からせればいいの？
+</SpeechBubble>
+
 ---
 
 ## typeof による絞り込み

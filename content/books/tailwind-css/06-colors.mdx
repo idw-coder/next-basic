@@ -4,11 +4,13 @@ description: 'Tailwindのカラーパレットの構造、bg・text・border系�
 order: 6
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
-
 Tailwindは豊富なカラーパレットを標準で持っています。色の指定に迷わず、デザインの一貫性を保てます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`blue-500` の「500」って何の数字？大きいほど濃いの？それとも薄いの？
+</SpeechBubble>
+
+数値は **50〜950 で、大きいほど暗く**なります。まずはこのパレットの読み方から見ていきましょう。
 
 <Figure src="/images/stepup_suit_man_color-1.png" alt="カラーパレットを使いこなしてデザインがレベルアップするイメージ" maxWidth="260px" />
 
@@ -120,4 +122,4 @@ module.exports = {
 - `bg-black/50` でモーダルのオーバーレイを作れる
 - プロジェクトのブランドカラーは必ずテーマに定義して `bg-brand` のように使う
 
-次の章では、**レスポンシブデザイン**のブレークポイントモディファイアを学びます。
+次の章では、**[レスポンシブデザイン](/books/tailwind-css/07-responsive)**のブレークポイントモディファイアを学びます。

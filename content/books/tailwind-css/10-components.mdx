@@ -4,13 +4,17 @@ description: 'ボタン・カード・バッジ・フォームなど、Tailwind�
 order: 10
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
+この章では実務でよく使うUIパターンをTailwindで実装する方法をまとめます。コピペで使えるボタン・カード・フォームなどの実装例を集めました。
 
-この章では実務でよく使うUIパターンをTailwindで実装する方法をまとめます。
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+同じボタンを何度も書いていると、クラスの羅列をコピペするのが大変…。これって毎回書くものなの？
+</SpeechBubble>
 
-<Figure src="/images/pc-work-woman01.png" alt="Tailwindでコンポーネントを組んでいるイメージ" maxWidth="280px" />
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+よく使うUIはReactコンポーネントに切り出して、クラスを中に閉じ込めるのが基本だよ。まずこの章で「型」を覚えて、次の章でコンポーネント化を学ぼう。
+</SpeechBubble>
+
+<Figure src="/images/pc-work-woman01.png" alt="Tailwindでコンポーネントを組んでいるイメージ" maxWidth="240px" />
 
 ---
 
@@ -136,4 +140,4 @@ order: 10
 - 繰り返し使うパターンはコンポーネント化して `cn()` (clsx) でクラスを管理する
 - バリアントはpropsで切り替えると再利用性が高まる
 
-次の章では、テーマカスタマイズの方法を学びます。
+次の章では、[テーマカスタマイズ](/books/tailwind-css/11-customization)の方法を学びます。

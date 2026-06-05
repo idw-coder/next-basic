@@ -4,11 +4,17 @@ description: 'Tailwindのtext・font系クラスを使って、読みやすく�
 order: 5
 ---
 
-<Callout type="info" title="準備中">
-この教科書は現在執筆中です。内容は随時追加・改善されます。
-</Callout>
+テキストの大きさ・太さ・行間・色——読みやすさを左右する要素は、Tailwindでは `text-*` `font-*` `leading-*` といったユーティリティで指定します。
 
-<Figure src="/images/usingcomputer_suit_woman_color.png" alt="テキストのスタイリングを確認しているイメージ" maxWidth="260px" />
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+文字まわりのクラスが多すぎて、どれを使えば「それっぽく」なるのか分からない…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+まずは2つの型だけ。見出しは `text-2xl font-bold leading-tight`、本文は `text-base leading-relaxed`。これだけで一気に整って見えるよ。
+</SpeechBubble>
+
+<Figure src="/images/pc-work-woman01.png" alt="テキストのスタイリングを確認しているイメージ" maxWidth="220px" />
 
 ---
 
@@ -96,4 +102,4 @@ npm install @tailwindcss/typography
 - `line-clamp-*` でカードのテキスト溢れを防ぐ
 - 長文コンテンツには `@tailwindcss/typography` の `prose` が強力
 
-次の章では、**カラーシステム**を学びます。
+次の章では、**[カラーシステム](/books/tailwind-css/06-colors)**を学びます。
