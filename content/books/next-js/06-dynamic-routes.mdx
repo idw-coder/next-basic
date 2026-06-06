@@ -1,0 +1,159 @@
+---
+title: "動的ルーティング — [slug]・paramsとgenerateStaticParamsでページを量産する"
+description: "Next.js App Routerの動的ルーティング（[slug]）の作り方、async paramsの受け取り、generateStaticParamsによる静的生成、catch-allセグメントまでを解説します。"
+order: 6
+---
+
+ブログ記事、商品ページ、ユーザープロフィール——「URLの一部だけが違う、同じ形のページ」は無数にあります。これらを1ページずつ手で作るのは現実的ではありません。Next.jsの**動的ルーティング**を使えば、**1つのファイルで何百・何千ページ分**をまかなえます。
+
+この章では、`[slug]` という動的セグメントの作り方、`params` の受け取り方、そして静的生成（SSG）につなぐ `generateStaticParams` までを押さえます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+記事が100本あったら、`page.tsx` を100個作るの…？さすがに無理だよね。
+</SpeechBubble>
+
+## 動的セグメント — フォルダ名を [ ] で囲む
+
+URLの一部を変数として扱いたいときは、**フォルダ名を角かっこ `[ ]` で囲みます**。これを動的セグメントと呼びます。
+
+```
+app/
+└── blog/
+    └── [slug]/
+        └── page.tsx      → /blog/任意の文字列
+```
+
+この1ファイルで、`/blog/hello`・`/blog/nextjs-tips`・`/blog/2026-summary` などすべてに対応できます。`[slug]` の部分（`hello` など）は `params` 経由で受け取れます。
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="1つのテンプレートから多数のページが生まれるイメージ" maxWidth="120px" />
+
+## params の受け取り方（Next.js 15以降）
+
+動的セグメントの値は、ページコンポーネントの `params` から取り出します。**Next.js 15以降、`params` は Promise（非同期）**になったため、`await` して受け取ります。
+
+**props の構造：**
+
+| プロパティ | 型 | 説明 |
+| ---------- | -- | ---- |
+| `params` | `Promise<{ [key]: string }>` | 動的セグメントの値。`[slug]` なら `{ slug: "..." }` |
+| `searchParams` | `Promise<{ [key]: string }>` | `?key=value` のクエリ文字列（詳細は[第7章](/books/next-js/07-data-fetching)） |
+
+```tsx
+// src/app/blog/[slug]/page.tsx
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params; // ← await で取り出す
+
+  return <h1>記事: {slug}</h1>;
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+フォルダ名 `[slug]` の「slug」が、そのまま `params.slug` のキー名になる。`[id]` なら `params.id`、`[category]` なら `params.category` だよ。
+</SpeechBubble>
+
+<Callout type="warning" title="params の await を忘れずに">
+Next.js 15で `params` は Promise になりました。`const { slug } = params` のように `await` を忘れると正しく値を取り出せません。古い記事やAIの回答では同期的に書かれていることがあるので注意してください。
+</Callout>
+
+## 実例 — IDから記事を取得して表示
+
+`params` で受け取ったIDを使って、データを取得するのが典型的な流れです。データ取得（`fetch`）は[第7章](/books/next-js/07-data-fetching)で詳しく扱います。
+
+```tsx
+// src/app/blog/[slug]/page.tsx
+import { notFound } from "next/navigation";
+
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const res = await fetch(`https://api.example.com/posts/${slug}`);
+
+  if (!res.ok) {
+    notFound(); // 記事が無ければ404へ（第8章で解説）
+  }
+
+  const post = await res.json();
+
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.body}</p>
+    </article>
+  );
+}
+```
+
+## generateStaticParams — ビルド時にページを静的生成する
+
+動的ルーティングは、デフォルトではアクセスのたびにサーバーでページを生成します。しかし**ブログ記事のように内容が頻繁に変わらないページ**は、ビルド時にあらかじめHTMLを作っておく（静的生成・SSG）方が高速で、SEOにも有利です。
+
+そのために使うのが `generateStaticParams` です。「どんな `params` の組み合わせを事前に生成すべきか」を返します。
+
+**戻り値：** `params` オブジェクトの**配列**（各要素が1ページに対応）
+
+```tsx
+// src/app/blog/[slug]/page.tsx
+
+// ビルド時に「どのslugを生成するか」を返す
+export async function generateStaticParams() {
+  const posts = await fetch("https://api.example.com/posts").then((r) => r.json());
+
+  return posts.map((post: { slug: string }) => ({
+    slug: post.slug, // { slug: "hello" }, { slug: "nextjs-tips" }, ...
+  }));
+}
+
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  // ...
+}
+```
+
+これで、ビルド時に全記事のHTMLが生成され、`/blog/hello` などへ即座に応答できるようになります。
+
+<Callout type="info" title="この仕組みは実際にこのサイトでも使われています">
+あなたが今読んでいる教科書ページも、`generateStaticParams` で全章のパスをビルド時に静的生成しています。「動的ルーティング × 静的生成」は、コンテンツ系サイトの定番構成です。
+</Callout>
+
+## catch-all セグメント — 複数階層をまとめて受け取る
+
+`[slug]` は1階層分ですが、`/docs/a/b/c` のように**階層数が決まっていないURL**を1ファイルで受けたいこともあります。その場合は `[...slug]`（catch-all）を使います。
+
+| 書き方 | マッチするURL | params |
+| ------ | ------------- | ------ |
+| `[slug]` | `/docs/a` | `{ slug: "a" }` |
+| `[...slug]` | `/docs/a/b/c` | `{ slug: ["a", "b", "c"] }`（配列） |
+| `[[...slug]]` | `/docs` も `/docs/a/b` も | 省略時は空。任意の階層 |
+
+```tsx
+// src/app/docs/[...slug]/page.tsx
+export default async function DocsPage({
+  params,
+}: {
+  params: Promise<{ slug: string[] }>;
+}) {
+  const { slug } = await params; // ["guide", "intro"] など配列で届く
+  return <p>パス: {slug.join(" / ")}</p>;
+}
+```
+
+## まとめ
+
+- フォルダ名を `[slug]` のように `[ ]` で囲むと**動的セグメント**になり、1ファイルで多数のURLに対応できる
+- 値は `params` から取り出す。**Next.js 15以降は `await params`**（Promise）
+- フォルダ名（`[id]` の `id`）がそのまま `params` のキー名になる
+- `generateStaticParams` で、ビルド時にどのページを静的生成するかを指定できる（SSG）
+- 階層数が不定のURLは `[...slug]`（catch-all）で配列として受け取る
+
+次の章では、ここで何度か登場した **[データ取得とキャッシュ](/books/next-js/07-data-fetching)** を本格的に扱います。`fetch` の結果をどうキャッシュし、いつ再取得するか——Next.jsならではの仕組みを理解しましょう。

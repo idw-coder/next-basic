@@ -1,0 +1,129 @@
+---
+title: "Server Actionsとフォーム — 'use server'でデータを更新する実践入門"
+description: "Next.js App RouterのServer Actionsを使い、'use server'によるフォーム送信・データ更新、useActionStateやuseFormStatusでの状態管理、revalidatePathまで実践的に解説します。"
+order: 10
+---
+
+ここまでは主に「データを取得して表示する」読み取り側を扱ってきました。最後は逆の「**データを更新する**」書き込み側です。App Routerの **Server Actions** を使うと、APIエンドポイント（`route.ts`）を別途作らなくても、**サーバー側の処理を関数として直接呼び出せます**。
+
+この章では、`"use server"` の使い方、フォームとの連携、送信中の状態管理、更新後の再検証までを押さえます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+フォームの送信って、いつもAPIを作って `fetch` で叩いてた…。Next.jsだともっと簡単になるの？
+</SpeechBubble>
+
+## Server Actions とは — サーバーで動く関数
+
+Server Actionは、関数の中（またはファイルの先頭）に **`"use server"`** と書いた、**サーバー側で実行される関数**です。クライアントのコンポーネントから呼び出すと、Next.jsが裏側で通信を行い、サーバーで関数を実行してくれます。
+
+```tsx
+// src/app/actions.ts
+"use server";
+
+export async function createTodo(formData: FormData) {
+  const title = formData.get("title");
+  // サーバー側でDBに保存するなどの処理
+  await db.todo.create({ data: { title: String(title) } });
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ポイントは「APIのURLを設計しなくていい」こと。関数をそのまま呼ぶ感覚で、サーバーの処理を実行できる。データ更新の定型作業がぐっと減るんだ。
+</SpeechBubble>
+
+<Figure src="/images/fork_suit_man_color.png" alt="クライアントからサーバーの処理を直接呼び出すイメージ" maxWidth="120px" />
+
+## フォームと連携する — form の action に渡す
+
+Server Actionは、`<form>` の `action` 属性に**そのまま渡せます**。送信されると、入力内容が `FormData` としてアクションに届きます。JavaScriptで `onSubmit` を書く必要はありません。
+
+```tsx
+// src/app/page.tsx — Server Component
+import { createTodo } from "./actions";
+
+export default function Page() {
+  return (
+    <form action={createTodo}>
+      <input type="text" name="title" />
+      <button type="submit">追加</button>
+    </form>
+  );
+}
+```
+
+<Callout type="info" title="name 属性が FormData のキーになる">
+`formData.get("title")` の `"title"` は、`<input name="title">` の `name` です。フォームの各入力に `name` を付けておけば、アクション側でその名前で値を取り出せます。
+</Callout>
+
+## 更新後に画面を最新化する — revalidatePath
+
+データを更新したら、表示も新しくしたいものです。[第7章](/books/next-js/07-data-fetching)で見たとおりNext.jsは `fetch` をキャッシュするため、更新しただけでは画面が古いままになることがあります。そこで `revalidatePath` でキャッシュを破棄し、再取得させます。
+
+| 関数 | 役割 |
+| ---- | ---- |
+| `revalidatePath(path)` | 指定パスのキャッシュを破棄し、次回アクセス時に再取得させる |
+| `revalidateTag(tag)` | `fetch` に付けたタグ単位でキャッシュを破棄する |
+| `redirect(path)` | 処理後に別ページへ遷移させる |
+
+```tsx
+// src/app/actions.ts
+"use server";
+
+import { revalidatePath } from "next/cache";
+
+export async function createTodo(formData: FormData) {
+  await db.todo.create({ data: { title: String(formData.get("title")) } });
+  revalidatePath("/todos"); // 一覧ページを最新化
+}
+```
+
+## 送信中の状態を扱う — useActionState / useFormStatus
+
+「送信中はボタンを無効化したい」「エラーメッセージを出したい」といったUIには、Client Component側でフックを使います。
+
+`useActionState` は、アクションの実行結果（戻り値）と送信中フラグを管理できます。
+
+```tsx
+"use client";
+
+import { useActionState } from "react";
+import { createTodo } from "./actions";
+
+export default function TodoForm() {
+  const [state, formAction, isPending] = useActionState(createTodo, null);
+
+  return (
+    <form action={formAction}>
+      <input type="text" name="title" />
+      <button type="submit" disabled={isPending}>
+        {isPending ? "追加中..." : "追加"}
+      </button>
+      {state?.error && <p>{state.error}</p>}
+    </form>
+  );
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`isPending` で送信中が分かるのが便利！二重送信も防げそう。
+</SpeechBubble>
+
+送信ボタンだけを別コンポーネントに切り出して、その中で送信中状態を扱いたい場合は `useFormStatus` が使えます。フォームの送信状態を子コンポーネントから読み取れます。
+
+## セキュリティの注意点
+
+Server Actionは「公開されたエンドポイント」と同じだと考えてください。クライアントから呼び出せる以上、**渡ってくる値を信用しない**のが鉄則です。
+
+<Callout type="warning" title="必ずサーバー側で検証・認可する">
+Server Actionの中では、(1) 入力値のバリデーション（型・必須・長さなど）と、(2) 「この操作を行う権限があるユーザーか」の認可チェックを**必ずサーバー側で**行ってください。クライアントのチェックは回避できるため、信頼の境界はあくまでサーバーにあります。入力検証は [Zod](https://zod.dev/) などのライブラリと組み合わせるのが定番です。
+</Callout>
+
+## まとめ
+
+- Server Actionは `"use server"` を付けた**サーバーで実行される関数**。APIルートを別途作らずにデータ更新できる
+- `<form action={アクション}>` に渡すと、入力が `FormData` として届く（`name` がキー）
+- 更新後は `revalidatePath` / `revalidateTag` でキャッシュを破棄して画面を最新化、`redirect` で遷移
+- 送信中の状態やエラーは `useActionState`（Client Component）で扱う
+- Server Actionは公開エンドポイントと同じ。**入力検証と認可は必ずサーバー側で**
+
+これで本書のApp Router入門は一区切りです。ルーティング・レイアウト・データ取得・更新まで、モダンなWebアプリの骨格を一通り扱いました。さらに学ぶなら、土台となる **[Reactのコンポーネントとhooks](/books/react-learning/01-introduction)** や、通信の基礎を扱う **[Webの仕組み（HTTPとWeb API）](/books/http-and-web-api/01-how-web-works)** へ進むと、理解がいっそう深まります。

@@ -1,0 +1,175 @@
+---
+title: "ルーティングとページ — App Routerのファイルベースルーティング入門"
+description: "Next.js App Routerのファイルベースルーティングの仕組みを、ページの作り方・特別なファイル名・Linkによる画面遷移まで実践的に解説します。"
+order: 4
+---
+
+Webアプリには必ず「URLと画面の対応づけ」＝ルーティングが必要です。Next.js（App Router）の最大の特徴は、この対応づけを設定ファイルではなく**フォルダとファイルの配置だけ**で表現できることです。
+
+この章では、`app/` 配下のディレクトリ構成がそのままURLになる仕組みと、`<Link>` による画面遷移までを押さえます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ルーティングって、ライブラリを入れて設定ファイルに書くものだと思ってた。フォルダを作るだけでURLになるの…？
+</SpeechBubble>
+
+## ファイルベースルーティングの仕組み
+
+App Routerでは、`app/` ディレクトリの中の**フォルダがURLの区切り（セグメント）**になり、そのフォルダに置いた **`page.tsx` がそのURLで表示される画面**になります。
+
+```
+src/app/
+├── page.tsx          → /         （トップページ）
+├── about/
+│   └── page.tsx      → /about
+└── blog/
+    └── page.tsx      → /blog
+```
+
+つまり「`/about` というページを作りたい」なら、`app/about/page.tsx` を作るだけです。
+
+```tsx
+// src/app/about/page.tsx
+export default function AboutPage() {
+  return <h1>このサイトについて</h1>;
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+フォルダ名＝URL、`page.tsx`＝そのURLの中身。この2つの対応さえ掴めば、ルーティングの8割は理解したも同然だよ。
+</SpeechBubble>
+
+<Figure src="/images/plan_selection_man_color.png" alt="フォルダ構成がそのままURLになるイメージ" maxWidth="130px" />
+
+### 階層（ネスト）もフォルダで表現
+
+フォルダを入れ子にすれば、URLも階層になります。
+
+```
+app/
+└── blog/
+    ├── page.tsx          → /blog
+    └── settings/
+        └── page.tsx      → /blog/settings
+```
+
+## URLにならないフォルダ — page.tsx の有無がカギ
+
+重要なルールがあります。**`page.tsx` を置いたフォルダだけが、アクセス可能なURLになります**。`page.tsx` のないフォルダは、URLの一部にはなっても単体ではアクセスできません（コンポーネントやユーティリティを置く置き場として使えます）。
+
+```
+app/
+└── dashboard/
+    ├── page.tsx          → /dashboard（アクセス可能）
+    ├── DashboardChart.tsx ← page.tsxではないのでURLにならない（部品置き場）
+    └── settings/
+        └── page.tsx      → /dashboard/settings（アクセス可能）
+```
+
+## 特別な意味を持つファイル名
+
+App Routerでは、いくつかのファイル名が**予約**されており、それぞれ決まった役割を持ちます。本書で扱う主要なものをまとめます。
+
+| ファイル | 役割 | 解説する章 |
+| -------- | ---- | ---------- |
+| `page.tsx` | そのURLで表示される画面 | 本章 |
+| `layout.tsx` | 配下のページで共有される枠 | [第5章](/books/next-js/05-layouts) |
+| `loading.tsx` | 読み込み中に表示するUI | [第8章](/books/next-js/08-loading-and-error) |
+| `error.tsx` | エラー発生時に表示するUI | [第8章](/books/next-js/08-loading-and-error) |
+| `not-found.tsx` | 404のときに表示するUI | [第8章](/books/next-js/08-loading-and-error) |
+| `route.ts` | APIエンドポイント（画面ではなくデータ） | — |
+
+<Callout type="info" title="まずは page と layout から">
+予約ファイルは多く見えますが、最初に覚えるべきは `page.tsx`（画面）と `layout.tsx`（共通の枠）の2つだけです。残りは必要になったときに足していけば十分です。
+</Callout>
+
+## ページ間を移動する — Link コンポーネント
+
+ページ間の遷移には、`next/link` の `<Link>` を使います。HTMLの `<a>` タグの代わりに使うことで、**ページ全体を再読み込みせずに高速に画面を切り替え**られます（クライアントサイドナビゲーション）。
+
+```tsx
+import Link from "next/link";
+
+export default function Nav() {
+  return (
+    <nav>
+      <Link href="/">ホーム</Link>
+      <Link href="/about">このサイトについて</Link>
+      <Link href="/blog">ブログ</Link>
+    </nav>
+  );
+}
+```
+
+**主な props：**
+
+| prop | 型 | 説明 |
+| ---- | -- | ---- |
+| `href` | `string`（必須） | 遷移先のパス（`/about` など） |
+| `prefetch` | `boolean` | リンクを画面内に表示した時点で遷移先を先読みするか（既定で有効） |
+| `replace` | `boolean` | 履歴を「追加」せず「置き換え」る（戻るボタンの挙動が変わる） |
+| `scroll` | `boolean` | 遷移後にページ先頭へスクロールするか（既定 `true`） |
+
+<Callout type="warning" title="サイト内リンクに生の <a> を使わない">
+サイト内のページ移動で `<a href="/about">` を使うと、ページ全体がリロードされ、Next.jsの高速遷移や先読みの恩恵を受けられません。**内部リンクは必ず `<Link>`** を使い、`<a>` は外部サイトへのリンクに限定しましょう。
+</Callout>
+
+### 現在のページを判定する — usePathname
+
+ナビゲーションで「今いるページ」を強調表示したいときは、`usePathname` で現在のパスを取得します。フックなので**Client Component**（`"use client"`）で使います。
+
+```tsx
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+export default function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
+  return (
+    <Link href={href} className={isActive ? "font-bold text-blue-600" : "text-gray-600"}>
+      {children}
+    </Link>
+  );
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`usePathname` はなんで `"use client"` が要るの？
+</SpeechBubble>
+
+`usePathname` は「今ブラウザがどのURLにいるか」を読むフックで、ブラウザ側でしか動きません。フック全般がそうであるように、Client Componentでのみ使えます。この区別は[第3章](/books/next-js/03-components)で扱った Server/Client の考え方そのものです。
+
+### コードから遷移する — useRouter
+
+ボタンのクリックや処理完了後にプログラムから遷移したいときは、`useRouter` を使います（こちらもClient Component専用）。
+
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+
+export default function LoginButton() {
+  const router = useRouter();
+
+  async function handleLogin() {
+    await login();
+    router.push("/dashboard"); // ログイン後にダッシュボードへ
+  }
+
+  return <button onClick={handleLogin}>ログイン</button>;
+}
+```
+
+`router.push(path)` で遷移、`router.replace(path)` で履歴を置き換えて遷移、`router.back()` で戻る、といった操作ができます。
+
+## まとめ
+
+- App Routerは**フォルダ＝URL、`page.tsx`＝その画面**というファイルベースルーティング
+- `page.tsx` を置いたフォルダだけがアクセス可能なURLになる
+- `layout.tsx` / `loading.tsx` / `error.tsx` などのファイル名は予約されており、決まった役割を持つ
+- 内部リンクは `<Link>`（高速遷移＋先読み）。`<a>` は外部リンク用
+- 現在地の判定は `usePathname`、コードからの遷移は `useRouter`（どちらもClient Component）
+
+次の章では、複数のページで共通のヘッダーやサイドバーを表示する **[レイアウトと共通UI](/books/next-js/05-layouts)** を扱います。`layout.tsx` の役割を理解すると、サイト全体の骨組みが作れるようになります。

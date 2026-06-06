@@ -1,0 +1,141 @@
+---
+title: "ローディングとエラー処理 — loading.tsx・error.tsx・not-foundの使い方"
+description: "Next.js App Routerのloading.tsx（読み込み中UI）、error.tsx（エラー画面）、not-found.tsx（404）の使い方とSuspenseの関係を実践的に解説します。"
+order: 8
+---
+
+データ取得には「待ち時間」と「失敗」がつきものです。読み込み中に真っ白な画面を見せたり、エラーでアプリ全体が落ちたりしては、良いユーザー体験になりません。App Routerでは、**特別なファイルを置くだけ**でローディング表示・エラー画面・404ページを宣言的に用意できます。
+
+この章では、`loading.tsx`・`error.tsx`・`not-found.tsx` の3つを押さえます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`fetch` を待ってる間ってどうすればいいの？ `useState` でローディング管理するのは面倒だなあ…。
+</SpeechBubble>
+
+## loading.tsx — 読み込み中のUI
+
+フォルダに `loading.tsx` を置くと、そのページのデータ取得が終わるまでの間、**自動でそのUIが表示**されます。`useState` でローディングフラグを管理する必要はありません。
+
+```tsx
+// src/app/posts/loading.tsx
+export default function Loading() {
+  return <p>読み込み中...</p>;
+}
+```
+
+```
+app/
+└── posts/
+    ├── page.tsx       ← データ取得に時間がかかるページ
+    └── loading.tsx    ← その間に表示される（自動）
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+裏側ではReactの **Suspense** が使われていて、Next.jsが `page.tsx` を自動でSuspenseで包んでくれている。だから君は `loading.tsx` を置くだけでいいんだ。
+</SpeechBubble>
+
+<Figure src="/images/relief_man_color.png" alt="待ち時間にローディングUIを見せて安心させるイメージ" maxWidth="120px" />
+
+<Callout type="info" title="スケルトンUIで体感速度を上げる">
+`loading.tsx` には「読み込み中...」のテキストだけでなく、実際のレイアウトに似たグレーの枠（スケルトン）を置くのが定番です。完成形に近い見た目を先に見せることで、体感的な速さが大きく向上します。
+</Callout>
+
+## error.tsx — エラー時のUI
+
+データ取得や描画中にエラーが投げられたとき、`error.tsx` を置いておくと**アプリ全体を巻き込まず、その範囲だけ**エラーUIに差し替えられます。
+
+`error.tsx` には2つの決まりがあります。
+
+- 必ず **`"use client"`**（Client Component）にする
+- `error`（発生したエラー）と `reset`（再試行用の関数）を props で受け取れる
+
+**props の構造：**
+
+| prop | 型 | 説明 |
+| ---- | -- | ---- |
+| `error` | `Error` | 発生したエラーオブジェクト（`error.message` など） |
+| `reset` | `() => void` | その範囲を**再レンダリングして復帰を試みる**関数 |
+
+```tsx
+// src/app/posts/error.tsx
+"use client";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div>
+      <p>エラーが発生しました: {error.message}</p>
+      <button onClick={() => reset()}>もう一度試す</button>
+    </div>
+  );
+}
+```
+
+<Callout type="warning" title="error.tsx は同じ階層の page を守るが layout は守らない">
+`error.tsx` は**同じフォルダの `page.tsx`** で起きたエラーを捕捉しますが、**同じフォルダの `layout.tsx`** のエラーは捕捉できません（レイアウトはエラー境界の外側にあるため）。レイアウトのエラーまで捕まえたい場合は、1つ上の階層に `error.tsx` を置きます。
+</Callout>
+
+## not-found.tsx と notFound() — 404ページ
+
+「指定された記事が存在しない」ようなケースでは、404を返したいものです。App Routerでは2つを組み合わせます。
+
+- `not-found.tsx`：404のときに表示するUI
+- `notFound()`：コード中から「これは404だ」と宣言する関数（`next/navigation`）
+
+```tsx
+// src/app/blog/[slug]/page.tsx
+import { notFound } from "next/navigation";
+
+export default async function Post({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const res = await fetch(`https://api.example.com/posts/${slug}`);
+
+  if (!res.ok) {
+    notFound(); // ← ここで処理を中断し、not-found.tsx を表示
+  }
+
+  const post = await res.json();
+  return <h1>{post.title}</h1>;
+}
+```
+
+```tsx
+// src/app/blog/[slug]/not-found.tsx
+export default function NotFound() {
+  return <p>記事が見つかりませんでした。</p>;
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`notFound()` を呼ぶと、その後の処理は実行されないの？
+</SpeechBubble>
+
+はい。`notFound()` は内部的に特別な例外を投げて処理を中断し、最も近い `not-found.tsx` を表示します。`return` を書かなくてもそこで止まるため、「無ければ404、あれば表示」がすっきり書けます。
+
+## 3つのファイルの関係
+
+これまでの予約ファイルを、表示されるタイミングで整理します。
+
+| ファイル | 表示されるとき | Client必須？ |
+| -------- | -------------- | ------------ |
+| `loading.tsx` | データ取得・描画の**完了を待つ間** | いいえ |
+| `error.tsx` | 描画中に**エラーが投げられた**とき | **はい**（`"use client"`） |
+| `not-found.tsx` | `notFound()` が呼ばれた / 未定義のURL | いいえ |
+
+<Callout type="info" title="全ファイルは“その階層ごと”に置ける">
+`loading` / `error` / `not-found` は、ルートだけでなく任意のフォルダに置けます。セクションごとに別のローディング表示やエラー画面を用意できる、ということです（[第5章](/books/next-js/05-layouts)のネストレイアウトと同じ発想）。
+</Callout>
+
+## まとめ
+
+- `loading.tsx` を置くだけで、データ取得の待ち時間に自動でローディングUIが出る（裏側はSuspense）
+- `error.tsx` は `"use client"` 必須。`error` と `reset` を受け取り、その範囲だけをエラーUIに差し替える
+- 404は `notFound()`（コードから宣言）＋ `not-found.tsx`（表示UI）の組み合わせ
+- これらはフォルダ単位で置けるので、セクションごとに最適なUIを用意できる
+
+次の章では、検索エンジンとSNSでの見え方を左右する **[メタデータとSEO](/books/next-js/09-metadata-and-seo)** を扱います。`generateMetadata` で、ページごとに `title` やOGP画像を動的に設定する方法を学びます。

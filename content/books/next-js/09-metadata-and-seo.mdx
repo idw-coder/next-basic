@@ -1,0 +1,143 @@
+---
+title: "メタデータとSEO — generateMetadataでtitle・OGPを動的に設定する"
+description: "Next.js App RouterのMetadata APIを使い、title・descriptionの設定、generateMetadataによる動的メタデータ、OGP画像やtitleテンプレートまでSEOの実装を解説します。"
+order: 9
+---
+
+検索結果に表示されるタイトルと説明文、SNSでシェアしたときに出るカード（OGP）——これらは集客を左右する重要な要素です。Next.js（App Router）には、これらを型安全に設定する **Metadata API** が組み込まれています。
+
+この章では、静的な `metadata` の設定から、記事ごとに内容を変える `generateMetadata`、そしてOGPやタイトルテンプレートまでを押さえます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`<head>` に `<title>` や `<meta>` を書きたいんだけど、App Routerだとどこに書くの？
+</SpeechBubble>
+
+## metadata — 静的なメタデータ
+
+`page.tsx` または `layout.tsx` で **`metadata` という名前のオブジェクトを `export`** すると、Next.jsが自動で `<head>` に反映してくれます。`<head>` を自分で書く必要はありません。
+
+```tsx
+// src/app/about/page.tsx
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "このサイトについて",
+  description: "私たちのサービスの理念とチームを紹介します。",
+};
+
+export default function AboutPage() {
+  return <h1>このサイトについて</h1>;
+}
+```
+
+よく使うフィールドは次のとおりです。
+
+| フィールド | 説明 |
+| ---------- | ---- |
+| `title` | ページのタイトル（検索結果の見出し・タブの文字） |
+| `description` | ページの説明（検索結果のスニペット） |
+| `keywords` | キーワード（現在のSEOでは重要度は低い） |
+| `openGraph` | SNSシェア時のカード情報（OGP） |
+| `alternates` | 正規URL（`canonical`）など |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`title` と `description` はSEOの基本中の基本。全ページで「そのページ固有の・内容を表す」文言を必ず設定しよう。使い回しはもったいないよ。
+</SpeechBubble>
+
+<Figure src="/images/plan_selection_man_color.png" alt="検索結果やSNSカードでの見え方を設計するイメージ" maxWidth="130px" />
+
+## generateMetadata — ページごとに動的なメタデータ
+
+ブログ記事のように**ページごとにタイトルが変わる**場合、静的な `metadata` では対応できません。そこで `generateMetadata` 関数を使います。`params` を受け取り、データを取得して、メタデータを動的に組み立てられます。
+
+**構文：** `async function generateMetadata({ params }): Promise<Metadata>`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `params` | 動的セグメントの値（[第6章](/books/next-js/06-dynamic-routes)と同じ。`await` で取り出す） |
+| `searchParams` | クエリ文字列（必要な場合） |
+
+**戻り値：** `Metadata` オブジェクト（`title` や `description` など）
+
+```tsx
+// src/app/blog/[slug]/page.tsx
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await fetch(`https://api.example.com/posts/${slug}`).then((r) => r.json());
+
+  return {
+    title: post.title,
+    description: post.excerpt,
+  };
+}
+
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  // ...記事本体の描画
+}
+```
+
+<Callout type="info" title="fetchは重複しても無駄にならない">
+`generateMetadata` と `page` 本体で同じURLを `fetch` しても、[第7章](/books/next-js/07-data-fetching)のキャッシュにより**実際のリクエストは1回にまとめられます**。メタデータ用に別途データ取得を書いても、パフォーマンスを気にしすぎる必要はありません。
+</Callout>
+
+## タイトルのテンプレート — サイト名を自動で付ける
+
+「各ページのタイトル＋サイト名」（例：`記事タイトル | My Blog`）という形にしたいことはよくあります。ルートレイアウトで `title.template` を設定すると、子ページの `title` に自動でサイト名が付きます。
+
+```tsx
+// src/app/layout.tsx
+export const metadata: Metadata = {
+  title: {
+    default: "My Blog", // タイトル未設定のページで使う既定値
+    template: "%s | My Blog", // %s に各ページのtitleが入る
+  },
+};
+```
+
+```tsx
+// src/app/about/page.tsx
+export const metadata: Metadata = {
+  title: "このサイトについて", // → 「このサイトについて | My Blog」になる
+};
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+全ページのタイトルに毎回「| My Blog」って書かなくていいのは助かる…！
+</SpeechBubble>
+
+## OGP — SNSでシェアされたときのカード
+
+SNSでURLが共有されると、`openGraph` の情報をもとにカード（画像＋タイトル＋説明）が表示されます。クリック率に直結するため、特に画像（`images`）は設定しておきたい項目です。
+
+```tsx
+export const metadata: Metadata = {
+  title: "新サービスを公開しました",
+  openGraph: {
+    title: "新サービスを公開しました",
+    description: "詳しくはこちらをご覧ください。",
+    images: ["/og/launch.png"], // SNSカードに表示される画像
+    type: "article",
+  },
+};
+```
+
+<Callout type="column" title="favicon・sitemap・robots も“ファイルを置くだけ”">
+SEO関連では他にも、`app/icon.png`（ファビコン）、`app/sitemap.ts`（サイトマップ）、`app/robots.ts`（クローラ制御）などを**決まった名前で置くだけ**で自動認識される仕組みがあります。サイトの規模が大きくなったら、`sitemap.ts` でサイトマップを動的生成すると検索エンジンにインデックスされやすくなります。
+</Callout>
+
+## まとめ
+
+- `page.tsx` / `layout.tsx` で `metadata` を `export` すると `<head>` に自動反映される（`<head>` は自分で書かない）
+- `title` と `description` はSEOの基本。**全ページで固有の文言**を設定する
+- ページごとに変わるメタデータは `generateMetadata`（`params` を `await` して動的生成）
+- ルートレイアウトの `title.template`（`%s | サイト名`）でサイト名を自動付与できる
+- `openGraph.images` でSNSシェア時のカード画像を設定。`sitemap.ts` / `robots.ts` も活用する
+
+次の章では、フォーム送信やデータ更新を扱う **[Server Actionsとフォーム](/books/next-js/10-server-actions)** を学びます。`"use server"` を使って、APIルートを書かずにサーバー側の処理を呼び出せるようになります。

@@ -41,7 +41,7 @@ export default async function UsersPage() {
 }
 ```
 
-注目すべきは、コンポーネント関数に `async` が使えることです。Server Componentsでは、非同期処理を直接コンポーネント内で実行できます。
+注目すべきは、コンポーネント関数に `async` が使えることです。Server Componentsでは、非同期処理を直接コンポーネント内で実行できます。`fetch` のキャッシュや再検証の仕組みは、[第7章「データ取得とキャッシュ」](/books/next-js/07-data-fetching)で詳しく扱います。
 
 ## Client Components
 
@@ -155,3 +155,5 @@ export default async function ArticlePage() {
 - `"use client"` を付けると **Client Components** になる
 - サーバーで完結する処理はServer Componentsで、UIのインタラクションはClient Componentsで
 - 両者を適切に組み合わせることで、パフォーマンスと開発体験を両立できる
+
+次の章では、ページとURLを対応づける **[ルーティングとページの作り方](/books/next-js/04-routing)** へ進みます。フォルダを作るだけで画面が増えていく、App Routerの中核を体験しましょう。
