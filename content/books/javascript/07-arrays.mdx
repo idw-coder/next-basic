@@ -64,6 +64,10 @@ Array.from(nodes).map((node) => node.textContent);
 
 この前提を押さえたうえで、実務で特に使用頻度の高いメソッドを見ていきます。
 
+<Callout type="note" title="この章のメソッド表記について">
+配列メソッドの多くは**コールバック関数**を引数に取ります。そのコールバックは `(element, index, array)` の3つの引数を受け取れる、という形が共通です（`index`・`array` は省略可能で、使わなければ書かなくてかまいません）。各メソッドでは「コールバックが何を返すと、メソッド自身が最終的に何を返すか（戻り値）」に注目すると整理しやすくなります。
+</Callout>
+
 ## map — 各要素を変換して新しい配列を作る
 
 <Figure src="/images/boomerang_woman_color.png" alt="mapが変換結果を新しい配列として返すイメージ" maxWidth="120px" />
@@ -83,6 +87,12 @@ console.log(numbers); // [1, 2, 3, 4, 5]（元の配列はそのまま）
 
 コールバックは最大3つの引数を受け取ります。
 
+| 引数 | 意味 |
+| ---- | ---- |
+| 第1引数 `element` | 現在処理している要素 |
+| 第2引数 `index`（省略可） | 現在のインデックス（0始まり） |
+| 第3引数 `array`（省略可） | 元の配列そのもの |
+
 ```js
 const result = ['a', 'b', 'c'].map((element, index, array) => {
   // element: 現在の要素（"a", "b", "c"）
@@ -94,6 +104,8 @@ const result = ['a', 'b', 'c'].map((element, index, array) => {
 ```
 
 実務では第1引数だけ使うケースがほとんどです。第2引数の `index` はリスト表示の `key` 生成などで使うことがあります。
+
+この `(element, index, array)` という3引数のコールバックは、`map` だけでなく `filter`・`find`・`findIndex`・`some`・`every` でも共通です。各メソッドで違うのは「コールバックの戻り値をどう扱い、最終的に何を返すか」だけ、と捉えると一気に整理できます。
 
 ### 実務パターン: APIレスポンスの整形
 

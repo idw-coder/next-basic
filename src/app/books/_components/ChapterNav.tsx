@@ -18,7 +18,7 @@ export function ChapterNav({ prev, next }: ChapterNavProps) {
       {prev ? (
         <Link
           href={`/books/${prev.bookSlug}/${prev.chapterSlug}`}
-          className="group flex flex-1 items-center gap-2 rounded-md border border-gray-200 px-4 py-3 text-sm transition hover:border-primary/30 hover:bg-gray-50"
+          className="group flex flex-1 min-w-0 items-center gap-2 rounded-md border border-gray-200 px-4 py-3 text-sm transition hover:border-primary/30 hover:bg-gray-50"
         >
           <ChevronLeft className="h-4 w-4 shrink-0 text-gray-400 group-hover:text-primary transition-colors" />
           <div className="min-w-0">
@@ -34,7 +34,7 @@ export function ChapterNav({ prev, next }: ChapterNavProps) {
       {next ? (
         <Link
           href={`/books/${next.bookSlug}/${next.chapterSlug}`}
-          className="group flex flex-1 items-center justify-end gap-2 rounded-md border border-gray-200 px-4 py-3 text-sm transition hover:border-primary/30 hover:bg-gray-50 text-right"
+          className="group flex flex-1 min-w-0 items-center justify-end gap-2 rounded-md border border-gray-200 px-4 py-3 text-sm transition hover:border-primary/30 hover:bg-gray-50 text-right"
         >
           <div className="min-w-0">
             <div className="text-xs text-gray-500">次の章</div>

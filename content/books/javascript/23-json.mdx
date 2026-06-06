@@ -1,0 +1,229 @@
+---
+title: 'JSONの基礎と実践 — stringify・parseの引数、ディープコピー、よくある落とし穴'
+description: 'JSON.stringify（replacer/インデント）とJSON.parse（try/catch）の使い方、structuredCloneによるディープコピー、Dateやundefinedが消える落とし穴までを実務目線でまとめます。'
+order: 23
+---
+
+APIとのデータのやり取り、`localStorage` への保存、設定ファイルの読み書き——これらはすべて **JSON** という形式を通じて行われます。JavaScriptには `JSON.stringify` と `JSON.parse` という2つのメソッドが用意されており、この2つさえ押さえれば日常の大半は対応できます。
+
+この章では、その2メソッドの引数を表で整理し、ディープコピーへの応用、そして「`Date` が文字列になる」「`undefined` が消える」といった**ハマりやすい落とし穴**までを実務目線で見ていきます。
+
+<Callout type="note" title="この章のメソッド表記について">
+メソッドは `メソッド名(引数1, 引数2?)` という形（シグネチャ）を示し、続けて**引数の表**と「戻り値」を載せます（`引数?` は省略できる引数）。MDNのリファレンス代わりに使ってください。
+</Callout>
+
+## JSONとは — JavaScriptオブジェクトとの違い
+
+JSON（JavaScript Object Notation）は、データを**文字列**で表現するためのフォーマットです。見た目はJavaScriptのオブジェクトによく似ていますが、別物です。
+
+```js
+// JavaScriptのオブジェクト（コード）
+const user = { name: '太郎', age: 25 };
+
+// JSON文字列（あくまで「文字列」）
+const json = '{"name":"太郎","age":25}';
+```
+
+<Figure src="/images/fork_suit_man_color.png" alt="データを変換してやり取りするイメージ" maxWidth="120px" />
+
+JavaScriptオブジェクトとの主な違いは次のとおりです。
+
+| 観点 | JavaScriptオブジェクト | JSON |
+| ---- | ---------------------- | ---- |
+| 正体 | プログラム上の値 | **文字列** |
+| キーの引用符 | 省略可（`name:`） | **必ずダブルクオート**（`"name":`） |
+| 値に使えるもの | 関数・`undefined` なども可 | 文字列・数値・真偽値・null・配列・オブジェクトのみ |
+| 末尾カンマ | 許される | **不可** |
+
+<Callout type="info">
+JSON自体の文法やデータ形式としての位置づけ（XMLとの比較など）は、[HTTPとWeb APIの本：JSONとデータ形式](/books/http-and-web-api/06-json-and-data-format)で詳しく扱っています。この章はJavaScriptから**JSONをどう読み書きするか**に焦点を当てます。
+</Callout>
+
+## JSON.stringify — オブジェクト → JSON文字列
+
+JavaScriptの値をJSON文字列に変換します。APIへの送信や `localStorage` への保存で使います。
+
+**構文：** `JSON.stringify(value, replacer?, space?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `value` | 変換したい値（オブジェクト・配列・数値など） |
+| `replacer`（省略可） | 出力をフィルタ・加工する関数、または残したいキー名の配列 |
+| `space`（省略可） | インデント。数値（スペース数）や `'\t'` を渡すと**整形して読みやすく**なる |
+
+**戻り値：** JSON文字列
+
+```js
+const user = { name: '太郎', age: 25, roles: ['admin'] };
+
+JSON.stringify(user);
+// '{"name":"太郎","age":25,"roles":["admin"]}'
+
+// 第3引数でインデント（人間が読む・ログ出力に便利）
+JSON.stringify(user, null, 2);
+// {
+//   "name": "太郎",
+//   "age": 25,
+//   "roles": ["admin"]
+// }
+
+// 第2引数で特定のキーだけ残す
+JSON.stringify(user, ['name', 'age']);
+// '{"name":"太郎","age":25}'（rolesは除外）
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+第2引数の `null` って何…？インデントしたいだけなのに、なんで `null` を挟むの？
+</SpeechBubble>
+
+`space`（インデント）は**第3引数**なので、間の `replacer`（第2引数）を使わないときは `null` で飛ばす必要があるのです。「フィルタは要らないけど整形はしたい」→ `JSON.stringify(value, null, 2)` という頻出パターンとして覚えてしまいましょう。
+
+## JSON.parse — JSON文字列 → オブジェクト
+
+JSON文字列をJavaScriptの値に戻します。APIのレスポンスや `localStorage` から読み込んだデータを使えるようにします。
+
+**構文：** `JSON.parse(text, reviver?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `text` | パースするJSON文字列 |
+| `reviver`（省略可） | 各値を変換しながら復元する関数（日付文字列を `Date` に戻す等） |
+
+**戻り値：** 文字列を解釈したJavaScriptの値（オブジェクト・配列など）
+
+```js
+const json = '{"name":"太郎","age":25}';
+const user = JSON.parse(json);
+
+user.name; // "太郎"（オブジェクトとして使える）
+user.age; // 25
+```
+
+### parse は必ず try/catch で囲む
+
+`JSON.parse` は、**不正な文字列を渡すと例外を投げます**。APIのレスポンスや外部から来た文字列は壊れている可能性があるため、`try/catch` で囲むのが鉄則です。
+
+```js
+function safeParse(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null; // パース失敗時の既定値
+  }
+}
+
+safeParse('{"ok":true}'); // { ok: true }
+safeParse('壊れた文字列'); // null（例外を握りつぶして既定値）
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`stringify` は基本失敗しないけど、`parse` は外から来た文字列を相手にするぶん失敗しやすい。だから `parse` には `try/catch` をセットで、と覚えておこう。
+</SpeechBubble>
+
+<Callout type="warning" title="例外処理の詳しい書き方は専用章へ">
+`try/catch` の挙動や、エラーを握りつぶさず適切に扱う設計については[エラーハンドリング](/books/javascript/14-error-handling)で詳しく解説しています。
+</Callout>
+
+## ディープコピーに使う
+
+`JSON.stringify` → `JSON.parse` を通すと、ネストしたオブジェクトを丸ごと複製（ディープコピー）できます。ただし現在は専用の `structuredClone` が使えるため、まずはそちらが第一候補です。
+
+| 方法 | 特徴 |
+| ---- | ---- |
+| `structuredClone(obj)` | **推奨**。`Date`・`Map`・`Set` などもそのままコピーでき、循環参照もOK |
+| `JSON.parse(JSON.stringify(obj))` | 手軽だが、`Date` が文字列化・`undefined`/関数が消えるなどJSONの制約を受ける |
+| スプレッド `{ ...obj }` | **浅いコピー**。ネストした中身は共有されたまま（ディープコピーではない） |
+
+```js
+const original = { user: { name: '太郎' }, tags: ['a', 'b'] };
+
+// ⭕ 推奨：構造をそのまま複製
+const copy = structuredClone(original);
+copy.user.name = '花子';
+original.user.name; // "太郎"（元は影響を受けない）
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+スプレッド構文 `{ ...obj }` でコピーしたはずなのに、ネストした中身を書き換えたら元まで変わっちゃった…！
+</SpeechBubble>
+
+スプレッドは**1階層だけ**のコピー（浅いコピー）です。ネストしたオブジェクトは参照が共有されたままなので、深い階層まで独立させたいときは `structuredClone` を使います。浅いコピー／スプレッドの詳細は[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)を参照してください。
+
+## よくある落とし穴 — JSONで「消える・変わる」値
+
+JSONが表現できるのは「文字列・数値・真偽値・null・配列・オブジェクト」だけです。それ以外の値は `JSON.stringify` で**消えたり変換されたり**します。
+
+```js
+const data = {
+  date: new Date(2026, 5, 6), // Date
+  fn: () => {}, // 関数
+  notDefined: undefined, // undefined
+  big: 100n, // BigInt
+  num: NaN, // NaN
+};
+
+JSON.stringify(data);
+// '{"date":"2026-06-05T15:00:00.000Z","num":null}'
+```
+
+何が起きたかを整理すると次のとおりです。
+
+| 元の値 | JSON化の結果 |
+| ------ | ------------ |
+| `Date` | **文字列**になる（`parse` で戻しても `Date` には戻らない） |
+| 関数 / `undefined` / `Symbol` | キーごと**消える** |
+| `NaN` / `Infinity` | `null` になる |
+| `BigInt` | **例外**を投げる（変換不可） |
+| 循環参照（自分自身を含む） | **例外**を投げる |
+
+<Callout type="warning" title="Date は往復で戻らない">
+`JSON.parse(JSON.stringify(date))` を通すと `Date` は文字列になったまま戻りません。日付を保持したい場合は、`parse` の `reviver` で `new Date(値)` に変換するか、`structuredClone` を使います。
+</Callout>
+
+```js
+// 循環参照はエラーになる
+const a = {};
+a.self = a;
+JSON.stringify(a); // TypeError: Converting circular structure to JSON
+```
+
+## 早見表
+
+| やりたいこと | 使うもの |
+| ------------ | -------- |
+| オブジェクト → JSON文字列 | `JSON.stringify(obj)` |
+| 読みやすく整形して出力 | `JSON.stringify(obj, null, 2)` |
+| JSON文字列 → オブジェクト | `JSON.parse(text)`（`try/catch` 必須） |
+| 安全にパース | `try { JSON.parse(text) } catch { ... }` |
+| ディープコピー | `structuredClone(obj)`（推奨） |
+| 浅いコピー | `{ ...obj }`（ネストは共有される点に注意） |
+
+## よくあるハマりどころ
+
+<Figure src="/images/deskwork_check_man_color.png" alt="JSON処理のハマりどころを確認するイメージ" maxWidth="120px" />
+
+### 1. parse を try/catch せずにクラッシュ
+
+外部から来た文字列をそのまま `JSON.parse` すると、壊れたデータで例外が飛びアプリが落ちます。必ず `try/catch`（または安全ラッパー）を通します。
+
+### 2. インデントしようとして引数を間違える
+
+整形は**第3引数**。`JSON.stringify(obj, 2)` ではなく `JSON.stringify(obj, null, 2)` です（第2引数 `replacer` を `null` で飛ばす）。
+
+### 3. Date が文字列になって戻らない
+
+`stringify` で `Date` はISO文字列化されます。`parse` してもただの文字列のまま。日付を保持したいなら `reviver` か `structuredClone`。
+
+### 4. undefined のプロパティが消える
+
+`{ a: 1, b: undefined }` を `stringify` すると `'{"a":1}'` になります。「キーがあるはず」と思い込むとバグります。
+
+## ちゃんと使うためのポイント
+
+- JSONは**文字列**。JavaScriptオブジェクトとは別物で、キーは必ずダブルクオート
+- `JSON.stringify(value, replacer?, space?)` — 整形したいだけなら `JSON.stringify(obj, null, 2)`
+- `JSON.parse(text)` は壊れた入力で例外を投げる。**`try/catch` をセットで**
+- ディープコピーは `structuredClone` が第一候補。`JSON` 経由はJSONの制約を受ける
+- `Date`・関数・`undefined`・`BigInt`・循環参照は、JSON化で消える／変わる／エラーになる
+
+この章で、配列・文字列・数値・日付・JSONといった**よく使う組み込みオブジェクト**を一通り押さえました。データを「取得し（fetch）→ パースし → 加工して → 表示する」という一連の流れは、[非同期処理（Promise）](/books/javascript/13-async-callback-promise)や[DOM操作](/books/javascript/16-dom-manipulation)とつながっていきます。リファレンスとして、必要なときにこの章へ戻ってきてください。
