@@ -1,0 +1,240 @@
+---
+title: 'Gitコマンドチートシート — よく使うコマンドを目的別に逆引き'
+description: '日常的に使うGitコマンドを「やりたいこと」から逆引きできるチートシート。add/commit/push、ブランチ、取り消し、リモート同期、stash、タグ、履歴調整までを目的別の表で一覧化します。'
+order: 11
+---
+
+ここまでの章で、Gitの考え方とコマンドを一通り学びました。この章は、それらを**「やりたいこと」から逆引き**できるチートシートです。コマンドを忘れたとき・手早く確認したいときのリファレンスとして使ってください。各セクションの末尾に、詳しい解説のある章へのリンクを置いています。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+コマンドの意味は分かったけど、いざという時に「あれ、どう打つんだっけ？」ってなる…。サッと見られる一覧が欲しい！
+</SpeechBubble>
+
+<Figure src="/images/plan_selection_man_color.png" alt="目的からコマンドを逆引きするイメージ" maxWidth="130px" />
+
+## 基本フロー（add → commit → push）
+
+毎日いちばん使う、変更を記録して共有するまでの流れです。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| 変更をステージに上げる | `git add ファイル名` |
+| すべての変更をステージに上げる | `git add .` |
+| 削除・リネームも含めて全部上げる | `git add -A` |
+| 変更を一部分ずつ選んで上げる | `git add -p` |
+| ステージした内容を確認する | `git status` / `git diff --staged` |
+| コミットする | `git commit -m "メッセージ"` |
+| add と commit をまとめて（追跡中ファイルのみ） | `git commit -am "メッセージ"` |
+| 直前のコミットにメッセージ込みで修正 | `git commit --amend` |
+| 直前のコミットにメッセージを変えず追加 | `git commit --amend --no-edit` |
+| 空コミットを作る（CI起動用など） | `git commit --allow-empty -m "メッセージ"` |
+| リモートへ送る | `git push` |
+| 初回プッシュ（上流ブランチを設定） | `git push -u origin ブランチ名` |
+| 特定のブランチへ送る | `git push origin ブランチ名` |
+| 履歴を書き換えた後に安全に送る | `git push --force-with-lease` |
+
+> 詳しくは[第3章 add・commit・pushの基本フロー](/books/git-basic/03-basic-flow)へ。
+
+## 状態の確認（status・log・diff）
+
+「今どうなっているか」「過去に何があったか」を確認するコマンド。操作の前後に挟むとミスを防げます。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| 変更状況を見る | `git status` |
+| 変更状況を簡潔に見る | `git status -s` |
+| 履歴を見る | `git log` |
+| 履歴を1行ずつ簡潔に見る | `git log --oneline` |
+| 履歴を図（グラフ）で見る | `git log --oneline --graph --all` |
+| 直近 n 件だけ見る | `git log -n 5` |
+| 特定ファイルの履歴を見る | `git log ファイル名` |
+| 特定の作者の履歴を見る | `git log --author="名前"` |
+| 変更内容（未ステージ）を見る | `git diff` |
+| ステージ済みの変更を見る | `git diff --staged` |
+| 2つのブランチの差分を見る | `git diff main..feature` |
+| あるコミットの内容を見る | `git show コミットID` |
+| 行ごとに最後に変更した人を見る | `git blame ファイル名` |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+迷ったらまず `git status`。今ステージに何が乗っていて、どのブランチにいるかを教えてくれる“現在地マップ”だよ。
+</SpeechBubble>
+
+## ブランチ操作
+
+作業を枝分かれさせ、行き来し、統合するためのコマンドです。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| ブランチ一覧を見る | `git branch` |
+| リモート追跡も含めて一覧を見る | `git branch -a` |
+| 今いるブランチ名を確認する | `git branch --show-current` |
+| ブランチを作る | `git branch ブランチ名` |
+| ブランチを切り替える | `git switch ブランチ名` |
+| 作って切り替えを同時に | `git switch -c ブランチ名` |
+| 直前にいたブランチに戻る | `git switch -` |
+| ブランチ名を変更する | `git branch -m 新しい名前` |
+| ブランチを削除する（マージ済み） | `git branch -d ブランチ名` |
+| ブランチを強制削除する（未マージ） | `git branch -D ブランチ名` |
+| マージ済みのブランチ一覧を見る | `git branch --merged` |
+| ブランチを統合する | `git merge ブランチ名` |
+| ブランチの根元を付け替える | `git rebase ブランチ名` |
+
+<Callout type="note" title="checkout より switch / restore">
+ブランチの切り替えは古くは `git checkout` で行っていましたが、現在は用途が分かれた `git switch`（ブランチ切替）と `git restore`（ファイル復元）が推奨です。意図が明確でミスしにくくなります。
+</Callout>
+
+> 詳しくは[第4章 ブランチを理解する](/books/git-basic/04-branches)、[第5章 mergeとrebaseの違い](/books/git-basic/05-merge-vs-rebase)へ。
+
+## 変更の取り消し
+
+Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で使うコマンドが変わります。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| 作業中の変更を捨てる（ファイル単位） | `git restore ファイル名` |
+| 作業中の変更を全部捨てる | `git restore .` |
+| ステージから下ろす（変更は残す） | `git restore --staged ファイル名` |
+| 特定コミットの内容でファイルを復元 | `git restore --source=コミットID ファイル名` |
+| 直前のコミットを取り消す（変更は残す） | `git reset --soft HEAD^` |
+| 直近 3 件のコミットを取り消す（変更は残す） | `git reset --soft HEAD~3` |
+| 直前のコミットを取り消す（変更も捨てる） | `git reset --hard HEAD^` |
+| コミットを打ち消す新コミットを作る | `git revert コミットID` |
+| マージを中止して元に戻す | `git merge --abort` |
+| リベースを中止して元に戻す | `git rebase --abort` |
+| 未追跡ファイルを削除する | `git clean -fd` |
+
+<Callout type="warning" title="reset --hard と push 済みコミットに注意">
+`git reset --hard` や `git clean -fd` は変更を**完全に破棄**します。戻したい変更まで消えるので、実行前に `git status` で確認を。また、**すでに push したコミットの履歴を書き換える**（`reset` で消すなど）と他人の環境と食い違います。共有済みの履歴を取り消すときは、履歴を書き換えない `git revert` を使うのが安全です。
+</Callout>
+
+> 詳しくは[第7章 取り消し操作の完全ガイド](/books/git-basic/07-undo)へ。
+
+## リモートとの同期（fetch・pull・push）
+
+チームの変更を取り込み、自分の変更を送るコマンドです。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| リモートを登録する | `git remote add origin URL` |
+| 登録済みリモートを確認する | `git remote -v` |
+| リモートのURLを変更する | `git remote set-url origin URL` |
+| リモートの最新を取得（マージしない） | `git fetch` |
+| リモートで消えたブランチを掃除する | `git fetch --prune` |
+| リモートの最新を取得してマージ | `git pull` |
+| リベース型で取り込む | `git pull --rebase` |
+| 自分の変更を送る | `git push` |
+| リモートのブランチ一覧を見る | `git branch -r` |
+| リモートのブランチを取得して切り替える | `git switch ブランチ名`（自動追跡） |
+| リモートのブランチを削除する | `git push origin --delete ブランチ名` |
+
+> 詳しくは[第8章 リモートとの同期](/books/git-basic/08-remote-sync)へ。
+
+## stash（作業の一時退避）
+
+コミットするほどではない作業中の変更を、いったん棚上げするコマンドです。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| 変更を退避する | `git stash` |
+| メッセージを付けて退避する | `git stash push -m "メッセージ"` |
+| 未追跡ファイルも含めて退避する | `git stash -u` |
+| 退避の一覧を見る | `git stash list` |
+| 退避の中身を確認する | `git stash show -p` |
+| 最後の退避を戻す（退避は消す） | `git stash pop` |
+| 退避を戻す（退避は残す） | `git stash apply` |
+| 特定の退避を戻す | `git stash apply stash@{1}` |
+| 退避を1つ破棄する | `git stash drop` |
+| 退避をすべて破棄する | `git stash clear` |
+
+> 詳しくは[第9章 stashで作業を一時退避する](/books/git-basic/09-stash)へ。
+
+## タグ（リリースに印をつける）
+
+特定のコミットに「v1.0.0」などの目印を付けるコマンドです。リリース管理でよく使います。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| タグの一覧を見る | `git tag` |
+| 軽量タグを付ける | `git tag v1.0.0` |
+| 注釈付きタグを付ける | `git tag -a v1.0.0 -m "リリース"` |
+| 特定コミットにタグを付ける | `git tag v1.0.0 コミットID` |
+| タグをリモートへ送る | `git push origin v1.0.0` |
+| タグをまとめて送る | `git push origin --tags` |
+| タグを削除する | `git tag -d v1.0.0` |
+
+## ファイルの追跡管理（rm・mv・.gitignore）
+
+ファイルの削除・移動や「追跡から外す」操作です。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| ファイルを削除して記録する | `git rm ファイル名` |
+| 追跡から外す（ファイルは残す） | `git rm --cached ファイル名` |
+| ファイルを移動・リネームする | `git mv 旧名 新名` |
+| あとから `.gitignore` を効かせ直す | `git rm -r --cached . && git add .` |
+| 無視されているか確認する | `git check-ignore -v ファイル名` |
+
+<Callout type="info" title=".gitignore に書いても消えないとき">
+すでにコミット済みのファイルは、`.gitignore` に追記しても追跡され続けます。`git rm --cached` で一度追跡を外す必要があります。「`.env` を間違えてコミットしてしまった」ときの定番対処です。
+</Callout>
+
+## 履歴の調整（cherry-pick・reflog）
+
+コミットをつまみ食いしたり、消したはずの作業を救出したりするコマンドです。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| 特定のコミットだけ取り込む | `git cherry-pick コミットID` |
+| HEADが動いた全履歴を見る | `git reflog` |
+| reflog で見つけた状態へ戻す | `git reset --hard コミットID` |
+| 直近のコミットを対話的に編集する | `git rebase -i HEAD~3` |
+| 過去の状態を見るだけ（切替なし） | `git switch --detach コミットID` |
+
+## 初期設定（config）
+
+最初に一度だけ、または環境ごとに行う設定です。
+
+| やりたいこと | コマンド |
+| ------------ | -------- |
+| 名前を設定 | `git config --global user.name "名前"` |
+| メールを設定 | `git config --global user.email "メール"` |
+| デフォルトブランチ名を main に | `git config --global init.defaultBranch main` |
+| 既定のエディタを設定 | `git config --global core.editor "code --wait"` |
+| エイリアスを登録する | `git config --global alias.co checkout` |
+| 設定を一覧で確認 | `git config --list` |
+
+> 詳しくは[第2章 Gitの初期設定](/books/git-basic/02-setup)へ。
+
+## 困ったとき逆引き早見表
+
+「この状況、どうすれば？」をまとめました。
+
+| こんなとき | こうする |
+| ---------- | -------- |
+| コミットメッセージを打ち間違えた | `git commit --amend`（push前なら） |
+| 別のブランチで作業すべきだった | `git stash` → ブランチ切替 → `git stash pop` |
+| 直前のコミットをなかったことに（変更は残す） | `git reset --soft HEAD^` |
+| 公開済みのコミットを取り消したい | `git revert コミットID` |
+| `.env` など機密ファイルをコミットした | `git rm --cached .env` → `.gitignore` に追記 |
+| 間違えてリセットする前に戻りたい | `git reflog` で探して `git reset --hard コミットID` |
+| マージでコンフリクトした | 該当ファイルを修正 → `git add` → `git commit`（[第6章](/books/git-basic/06-conflict)） |
+| 別ブランチの1コミットだけ欲しい | `git cherry-pick コミットID` |
+| pull したら勝手にマージコミットができる | `git pull --rebase` を使う |
+| ローカルとリモートのブランチがずれた | `git fetch --prune` で整理する |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`git reflog` 初めて見た…！「消したはずの作業が消えてない」かもしれないのは心強い。
+</SpeechBubble>
+
+<Callout type="info" title="reflog は最後の命綱">
+`git reflog` は、ブランチの移動やリセットを含む「HEADが動いたすべての履歴」を記録しています。`reset --hard` で消したと思ったコミットも、`reflog` でIDを見つけて復活できることが多いです。「やってしまった」ときに思い出してください。
+</Callout>
+
+## まとめ
+
+- このページは「やりたいこと」からコマンドを引く逆引きリファレンス
+- 迷ったらまず `git status` で現在地を確認する
+- 取り消し系は影響範囲が大きい。**公開済みの履歴は `revert`、`reset --hard` / `clean -fd` は実行前に確認**
+- 「やってしまった」ときは `git reflog` が命綱
+
+各コマンドの「なぜそう動くのか」は、本書の該当章で詳しく解説しています。手が止まったらこのチートシートに戻り、深く知りたくなったら各章へ——という形で使い倒してください。チーム開発での実践は[第10章 GitHubでのチーム開発](/books/git-basic/10-team-development)が参考になります。
