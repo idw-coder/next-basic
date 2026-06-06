@@ -254,6 +254,12 @@ propsやstateから導出できる値は、レンダー中に計算すれば済�
 
 ## 無限ループの典型パターン
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`useEffect` を書いたら、ブラウザが固まって無限ループした…！何が起きてるの？
+</SpeechBubble>
+
+「エフェクトの中でstateを更新 → 再レンダー → またエフェクトが走る」が止まらなくなるのが典型的な原因です。2つのパターンで見てみましょう。
+
 ### パターン1: 依存配列に含めた値をエフェクト内で更新する
 
 ```tsx

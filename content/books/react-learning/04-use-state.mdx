@@ -166,6 +166,14 @@ function handleTripleClick() {
 
 ## オブジェクトや配列のstateと参照の罠
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`user.name = '新しい名前'` ってstateを直接書き換えたのに、画面がまったく変わらない…バグ？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+バグじゃなくて、Reactの「変化の検知のしかた」が原因。鍵は **参照** だよ。なぜそうなるか順番に見てみよう。
+</SpeechBubble>
+
 数値や文字列のstateは問題なく更新できたのに、オブジェクトや配列にすると動かない、というケースがあります。
 原因はJavaScriptの「参照」の仕組みにあります。
 

@@ -143,6 +143,14 @@ flowchart LR
 
 ## useCallbackが単体では意味がない理由
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+とりあえず関数は全部 `useCallback` で包んでおけば速くなるんだよね？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+それが落とし穴。`useCallback` は**受け取る側が参照の安定を活かせる時だけ**効く。単体だとむしろ無駄なんだ。
+</SpeechBubble>
+
 重要なポイントとして、**useCallback単体ではパフォーマンスに影響しません**。
 
 ```tsx

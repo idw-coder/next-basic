@@ -143,6 +143,14 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 
 ## group / group-hover: — 親要素のホバーに連動
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+カード全体にマウスを乗せたら、中のタイトルの色も一緒に変えたい…。これってJavaScriptが必要？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+いや、`group` を使えばCSSだけでできるよ。親に `group`、子に `group-hover:` を付けるだけ。
+</SpeechBubble>
+
 親要素にマウスを乗せたとき、**子要素**のスタイルを変えたいケースです。親に `group` を付け、子で `group-hover:` を使います。カードのホバーエフェクトの定番です。
 
 ```html
