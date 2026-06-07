@@ -10,14 +10,40 @@ order: 1
 この章では、設計とは何か、なぜ必要なのかを「設計しなかった場合に何が起きるか」から逆算して考えます。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-早くコードを書き始めたいのに、設計ってなんだか面倒そう…。本当に必要なの？
+  早くコードを書き始めたいのに、設計ってなんだか面倒そう…。本当に必要なの？
 </SpeechBubble>
 
 ## 設計しないとどうなるか
 
-<Figure src="/images/harry_man_color.png" alt="設計なしで開発を進めて混乱するイメージ" maxWidth="120px" />
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+  そもそも設計は必要なのか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+  極論、全ての場合においては必要ではないですが、コードを書く前に考えることは大切です。
+</SpeechBubble>
+
+以下の場合は設計は必要ない
+
+- PMとSEが一人で企画から開発まで行う場合（意思疎通が不要）
+- 要件を全て理解している場合
+- ドキュメント化しなくても、バグなど問題起きない場合、コードを書くことができる場合
+- 運用保守が不要な場合
+
+逆にいうと上記が設計をすると、以下のメリットと考えれます
+
+- 意思疎通
+- 要件の理解
+- バグの発見
+- 運用保守の容易化
 
 設計を飛ばして開発を始めると、典型的にはこうなります。
+
+<Figure
+  src="/images/boomerang_woman_color.png"
+  alt="設計なしで開発を進めて混乱するイメージ"
+  maxWidth="120px"
+/>
 
 - テーブル構成が決まらないまま実装が進み、途中で大幅なマイグレーションが発生する
 - API のレスポンス形式がエンドポイントごとにバラバラで、フロントエンド側が個別対応に追われる
@@ -34,6 +60,46 @@ order: 1
 > - 手戻りを減らす（実装前に矛盾を発見する）
 > - 変更に強い構造を作る（要件変更を低コストで吸収する）
 > - 意思決定を記録する（なぜこの構成にしたか、を後から追える）
+
+## 設計の流れ（上流工程）
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    subgraph P1["企画（PM）"]
+        direction LR
+        A1["問題定義"] --- A2["ビジョン"] --- A3["ゴール"] --- A4["システム概要"]
+    end
+
+    subgraph P2["要件定義（PM・SE）"]
+        direction LR
+        B1["システム要件"] --- B2["モデリング"] --- B3["機能要件"] --- B4["マイルストーン"]
+    end
+
+    subgraph P3["基本設計（SE）"]
+        direction LR
+        C1["画面設計"] --- C2["機能設計"] --- C3["データ設計"]
+    end
+
+    subgraph P4["詳細設計（SE・PG）"]
+        direction LR
+        D1["クラス設計"] --- D2["処理フロー"] --- D3["IF定義"]
+    end
+
+    subgraph P5["実装（PG）"]
+        E1["コーディング"]
+    end
+
+    P1 --> P2 --> P3 --> P4 --> P5
+
+    style P1 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style P2 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style P3 fill:#dbeafe,stroke:#3b82f6,color:#1e3a5f
+    style P4 fill:#f3f4f6,stroke:#9ca3af,color:#374151
+    style P5 fill:#f3f4f6,stroke:#9ca3af,color:#374151
+
+`}
+/>
 
 ## 設計と実装のバランス
 
