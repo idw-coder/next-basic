@@ -75,4 +75,109 @@ type Comparator<T> = (a: T, b: T) => number;
 
 ---
 
+## 戻り値の型：void・never・undefined
+
+TypeScript では `return` と `throw` の使い方によって、関数の戻り値型が変わります。この3つの型は混同しやすいので整理します。
+
+### void — 値を返さない関数
+
+`void` は「意味のある値を返さない」ことを表します。`return` を書かない関数、または `return;` だけの関数に対して TypeScript が推論する型です。
+
+```tsx
+function logMessage(message: string): void {
+  console.log(message);
+  // return を書かない（または return; だけ）
+}
+
+// void な関数の戻り値を使おうとすると型エラー
+const result = logMessage('hello');
+result.toUpperCase(); // Error: 'result' は 'void' 型
+```
+
+`void` は `undefined` と似ていますが、「戻り値を使ってはいけない」という意図を型で表せる点が異なります。コールバック型によく登場します。
+
+```tsx
+// イベントハンドラは「戻り値を使わない」ことを void で表す
+type ClickHandler = (event: MouseEvent) => void;
+
+// 戻り値が void な関数型には、実際に値を返す関数も代入できる
+const handler: ClickHandler = (e) => e.target; // エラーにならない
+```
+
+### never — 絶対に戻らない関数
+
+`never` は「関数が正常に終了しない」ことを表します。`throw` する関数や無限ループする関数の戻り値型です。
+
+```tsx
+// throw する関数の戻り値型は never
+function fail(message: string): never {
+  throw new Error(message);
+}
+
+// 無限ループも never
+function infiniteLoop(): never {
+  while (true) {}
+}
+```
+
+`never` の実用的なメリットは、型の絞り込みに使えることです。
+
+```tsx
+function assertDefined<T>(val: T | null | undefined, label: string): T {
+  if (val == null) {
+    fail(`${label} は必須です`); // never を返すので、以降 val は T 型に確定
+  }
+  return val; // ここでは val: T
+}
+```
+
+`fail()` が `never` を返すため、TypeScript はその後のコードには `val` が `null` / `undefined` でないと判断できます。
+
+### undefined — undefined という値を返す関数
+
+`undefined` は「`undefined` という値そのものを返す」ことを表します。
+
+```tsx
+function findUser(id: number): User | undefined {
+  return users.find((u) => u.id === id); // 見つからないと undefined
+}
+```
+
+`void` と `undefined` の違いをまとめます。
+
+| 型 | 意味 | 戻り値を変数に代入できる？ |
+| --- | --- | --- |
+| `void` | 意味のある値を返さない | できる（ただし `void` 型になる） |
+| `undefined` | `undefined` という値を返す | できる（`undefined` として扱える） |
+| `never` | 絶対に戻ってこない | 到達不能なので意味がない |
+
+<Callout type="column" title="return の後ろに書くものは式">
+  `return` と `throw` はどちらも**制御フロー文（Statement）**です。後ろに書く値（`new Error(...)` や `val`）は**式（Expression）**です。文なので、変数に代入したり式の一部にしたりできません。
+
+```tsx
+const x = return 5;         // SyntaxError
+const y = throw new Error(); // SyntaxError（現在は）
+```
+
+</Callout>
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef type fill:#6366f1,color:#fff,stroke:#4f46e5
+    classDef rule fill:#0ea5e9,color:#fff,stroke:#0284c7
+    classDef warn fill:#ef4444,color:#fff,stroke:#dc2626
+
+    A["関数の終了パターン"] --> B["return 値あり\n→ 戻り値型 T"]
+    A --> C["return なし / return;\n→ 戻り値型 void"]
+    A --> D["return undefined\n→ 戻り値型 undefined"]
+    A --> E["throw / 無限ループ\n→ 戻り値型 never"]
+
+    class B,C,D,E type
+
+`}
+/>
+
+---
+
 この章の詳細な内容は順次追加していきます。

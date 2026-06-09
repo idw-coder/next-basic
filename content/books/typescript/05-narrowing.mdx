@@ -213,6 +213,92 @@ function formatCount(count: number | null): string {
 
 ---
 
+## 早期 return と throw による Narrowing
+
+TypeScript は `if` ブロックの内側だけでなく、`return` や `throw` で「ここには到達しない」と確定した後のコードも Narrowing します。
+
+### 早期 return（Guard Clause）
+
+```tsx
+function greet(name: string | null): string {
+  if (name === null) {
+    return '名前がありません'; // ここで return → 以降 name は null ではない
+  }
+  // この時点で name は string 型に絞り込まれている
+  return `こんにちは、${name.toUpperCase()}さん`;
+}
+```
+
+`if` ブロックの内部で絞り込む代わりに、先に弾いて `return` することで、本来の処理部分ではすでに型が確定した状態にできます。これが「Guard Clause（ガード節）」パターンです。
+
+```tsx
+type User = {
+  name: string;
+  email: string | null;
+  age: number | null;
+};
+
+function sendWelcomeEmail(user: User): void {
+  if (user.email === null) return; // email が null なら終了
+  if (user.age === null) return;   // age が null なら終了
+
+  // ここでは user.email: string、user.age: number が確定
+  console.log(`${user.email} に送信（${user.age}歳向けコンテンツ）`);
+}
+```
+
+### throw による Narrowing
+
+`throw` は関数を中断するため、`throw` の後は「その変数は問題ない型」が確定します。
+
+```tsx
+function requireString(val: unknown): string {
+  if (typeof val !== 'string') {
+    throw new TypeError(`string が必要ですが ${typeof val} が渡されました`);
+  }
+  // ここでは val は string 型
+  return val.toUpperCase();
+}
+```
+
+`throw` で例外を投げると、TypeScript はその後のコードには到達しないと判断するため、型が絞り込まれます。
+
+### アサーション関数パターン
+
+`throw` を使った絞り込みを関数として切り出す場合、戻り値型に `asserts` を使うと型情報を呼び出し元に伝えられます。
+
+```tsx
+function assertString(val: unknown): asserts val is string {
+  if (typeof val !== 'string') {
+    throw new TypeError(`string が必要です`);
+  }
+}
+
+function process(input: unknown) {
+  assertString(input); // ここで throw されなければ以降 input は string
+  console.log(input.toUpperCase()); // OK — input: string
+}
+```
+
+<Callout type="column" title="never との関係">
+  `throw` する関数の戻り値型は `never` です（06章で詳しく扱います）。TypeScript が「この関数は絶対に戻ってこない」と判断できるため、`throw` の後のコードで Narrowing が成立します。
+
+```tsx
+function fail(msg: string): never {
+  throw new Error(msg);
+}
+
+function parse(val: string | null): string {
+  const s = val ?? fail('null は不可');
+  // fail が never を返すので、s は string 型に確定
+  return s.toUpperCase();
+}
+```
+
+</Callout>
+
+---
+
 ## まとめ
 
 型の絞り込み（Narrowing）は、ユニオン型を条件分岐で具体的な型に狭める仕組みです。

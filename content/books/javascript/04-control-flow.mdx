@@ -1,7 +1,392 @@
 ---
 title: '制御構文 — if・switch・for・whileの実務パターン'
-description: 'if文・switch文・for系ループ・while文の基本と、break・continue・ラベルの使いどころを実務パターンで解説します。'
+description: 'if文・switch文・for系ループ・while文の基本と、break・continue・return・throwの使いどころを実務パターンで解説します。'
 order: 4
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+JavaScriptの制御構文は、コードの実行順序を変えるための仕組みです。条件によって処理を分岐したり、繰り返したり、途中で抜け出したりできます。
+
+この章では実務でよく使うパターンを中心に整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`if` と `switch` はどう使い分けるの？`break` や `return` を書き忘れてバグを出したことがある…。
+</SpeechBubble>
+
+---
+
+## 条件分岐：if / else
+
+最も基本的な制御構文です。条件が truthy か falsy かによって、実行するブロックを切り替えます。
+
+```js
+const score = 75;
+
+if (score >= 90) {
+  console.log('優');
+} else if (score >= 70) {
+  console.log('良'); // こちらが実行される
+} else {
+  console.log('可');
+}
+```
+
+### 早期 return パターン
+
+ネストが深くなりがちな条件分岐は、**早期 return（Guard Clause）**で扁平にできます。
+
+```js
+// ネストが深くなるパターン
+function processOrder(order) {
+  if (order) {
+    if (order.isPaid) {
+      if (order.items.length > 0) {
+        // 本来の処理
+        ship(order);
+      }
+    }
+  }
+}
+
+// 早期 return で扁平にしたパターン
+function processOrder(order) {
+  if (!order) return;
+  if (!order.isPaid) return;
+  if (order.items.length === 0) return;
+
+  // 本来の処理
+  ship(order);
+}
+```
+
+<Callout type="column" title="早期 return で読みやすくなる理由">
+  ガード節（早期 return）を先に置くと、「この関数が正常に動く条件」が冒頭に集まります。
+  読み手はネストを追わずに「条件を満たしていれば下の処理に進む」と理解できます。
+</Callout>
+
+---
+
+## 条件分岐：switch
+
+複数の値と比較するときは `switch` が読みやすくなります。
+
+```js
+const day = 'Monday';
+
+switch (day) {
+  case 'Saturday':
+  case 'Sunday':
+    console.log('週末');
+    break;
+  case 'Monday':
+    console.log('月曜日'); // こちらが実行される
+    break;
+  default:
+    console.log('平日');
+}
+```
+
+### フォールスルーに注意
+
+`break` を書き忘れると、次の `case` の処理も続けて実行されます（フォールスルー）。
+
+```js
+switch (status) {
+  case 'pending':
+    console.log('pending');
+    // break がないと次の case も実行される！
+  case 'active':
+    console.log('active'); // status が 'pending' のときも実行される
+    break;
+}
+```
+
+意図的なフォールスルー（複数の値に同じ処理）以外は、必ず `break` を書きます。
+
+<Callout type="warning" title="switch の比較は === （厳格等価）">
+  `switch` は `===` で比較します。`'1'` と `1` は別の値として扱われます。
+</Callout>
+
+---
+
+## ループ：for / for...of / for...in
+
+### for 文
+
+インデックスが必要な場合や、回数を指定して繰り返すときに使います。
+
+```js
+for (let i = 0; i < 5; i++) {
+  console.log(i); // 0, 1, 2, 3, 4
+}
+```
+
+### for...of
+
+配列や文字列などの**イテラブル**を順に処理するときに使います。インデックスが不要なケースはこちらが読みやすいです。
+
+```js
+const fruits = ['apple', 'banana', 'cherry'];
+
+for (const fruit of fruits) {
+  console.log(fruit);
+}
+
+// インデックスも必要な場合は entries()
+for (const [index, fruit] of fruits.entries()) {
+  console.log(index, fruit); // 0 'apple', 1 'banana', ...
+}
+```
+
+### for...in
+
+オブジェクトの**列挙可能なプロパティキー**を順に処理します。
+
+```js
+const user = { name: 'Alice', age: 30 };
+
+for (const key in user) {
+  console.log(key, user[key]); // 'name' 'Alice', 'age' 30
+}
+```
+
+<Callout type="warning" title="配列に for...in は使わない">
+  `for...in` はプロトタイプチェーン上のプロパティも列挙する可能性があります。配列の反復には `for...of` または `forEach` を使いましょう。
+</Callout>
+
+### while / do...while
+
+条件が満たされる間、繰り返し実行します。
+
+```js
+let count = 0;
+while (count < 3) {
+  console.log(count); // 0, 1, 2
+  count++;
+}
+
+// do...while は最低1回は実行される
+let n = 10;
+do {
+  console.log(n); // 10（条件を満たさなくても1回実行）
+  n++;
+} while (n < 5);
+```
+
+---
+
+## break と continue
+
+### break
+
+ループや `switch` を途中で抜け出します。
+
+```js
+const numbers = [1, 3, 5, 2, 8, 4];
+
+for (const n of numbers) {
+  if (n % 2 === 0) {
+    console.log(`最初の偶数: ${n}`); // '最初の偶数: 2'
+    break; // ループを終了
+  }
+}
+```
+
+### continue
+
+現在のイテレーションをスキップして、次のイテレーションに進みます。
+
+```js
+for (let i = 0; i < 5; i++) {
+  if (i % 2 === 0) continue; // 偶数はスキップ
+  console.log(i); // 1, 3
+}
+```
+
+---
+
+## return と throw — 制御フロー文
+
+`return` と `throw` は、`if` や `for` と同様に**制御フロー文（Control Flow Statement）**です。どちらも、その後のコードを実行せずに処理の流れを変えます。
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef start fill:#6366f1,color:#fff,stroke:#4f46e5
+    classDef stmt fill:#0ea5e9,color:#fff,stroke:#0284c7
+    classDef end fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef err fill:#ef4444,color:#fff,stroke:#dc2626
+
+    A["関数の実行"] --> B{"条件チェック"}
+    B -- "正常" --> C["処理..."]
+    C --> D["return 値"]
+    B -- "異常" --> E["throw new Error(...)"]
+    D --> F["呼び出し元に値を返す"]
+    E --> G["呼び出し元に例外を伝播"]
+
+    class A start
+    class B stmt
+    class D,F end
+    class E,G err
+
+`}
+/>
+
+### return — 関数を終了して値を返す
+
+`return` は関数の実行をそこで終了し、呼び出し元に値を返します。
+
+```js
+function divide(a, b) {
+  if (b === 0) {
+    return null; // ここで関数終了。以降は実行されない
+  }
+  return a / b;
+}
+
+console.log(divide(10, 2)); // 5
+console.log(divide(10, 0)); // null
+```
+
+`return` の後ろに書くもの（`null` や `a / b`）は**式（Expression）**です。`return` 自体は文なので、変数に代入したりできません。
+
+```js
+// return は文なので、式としては使えない
+const x = return 5; // SyntaxError
+```
+
+`return` だけ書いた場合、または `return` を省略した関数は `undefined` を返します。
+
+```js
+function doSomething() {
+  console.log('実行');
+  return; // undefined を返す
+}
+
+function doNothing() {
+  // return がない場合も undefined を返す
+}
+```
+
+### throw — 例外を投げて処理を中断する
+
+`throw` は例外を発生させ、呼び出し元に向かってスタックを遡ります。`try...catch` でキャッチされるまで伝播し続けます。
+
+```js
+function getUser(id) {
+  if (!id) {
+    throw new Error('id は必須です'); // ここで関数終了。例外を投げる
+  }
+  return fetchUser(id);
+}
+
+try {
+  getUser(null);
+} catch (error) {
+  console.log(error.message); // 'id は必須です'
+}
+```
+
+`throw` の後ろに書くもの（`new Error(...)`）も**式**です。技術的には任意の値を投げられますが、`Error` オブジェクト（またはそのサブクラス）を使うのが慣習です。
+
+```js
+throw new Error('メッセージ');          // 推奨
+throw new TypeError('型が違います');    // 組み込みエラー型
+throw new RangeError('範囲外です');     // 組み込みエラー型
+throw 'エラー文字列';                   // 技術的には可能だが非推奨
+throw 42;                               // 同上
+```
+
+<Callout type="warning" title="文字列や数値を throw しない">
+  文字列や数値を `throw` すると、`error.message` や `error.stack` が使えません。
+  デバッグが困難になるため、必ず `Error` オブジェクトを使いましょう。
+</Callout>
+
+### return と throw の使い分け
+
+| 状況 | 使うもの |
+| ---- | -------- |
+| 正常な終了（値を返す） | `return` |
+| 値を返さずに終了 | `return`（`undefined` が返る） |
+| 想定内の「早期終了」（ガード節） | `return` |
+| 呼び出し元に問題を知らせたい | `throw` |
+| 引数が不正・前提条件を満たさない | `throw` |
+
+```js
+// 正常な早期終了 → return
+function formatName(name) {
+  if (!name) return '名前未設定'; // 値として返せるのでreturnでよい
+  return name.trim();
+}
+
+// 呼び出し元に問題を知らせる → throw
+function parsePositiveInt(str) {
+  const num = parseInt(str, 10);
+  if (isNaN(num)) {
+    throw new TypeError(`'${str}' は数値に変換できません`);
+  }
+  if (num <= 0) {
+    throw new RangeError(`正の整数が必要です: ${num}`);
+  }
+  return num;
+}
+```
+
+<Callout type="column" title="throw は『文』ですが、式の文脈で使えるようになる">
+  TC39 の「Throw Expressions」プロポーザルにより、将来的には式の文脈でも `throw` が使えるようになる予定です（2026年現在、Stage 2）。
+
+```js
+// 現在はエラー（throw は文なので右辺に書けない）
+const name = input ?? throw new Error('必須'); // 現状は SyntaxError
+
+// 代替として即時実行関数やヘルパーを使う
+const name = input ?? (() => { throw new Error('必須'); })();
+```
+
+</Callout>
+
+---
+
+## まとめ
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef topic fill:#6366f1,color:#fff,stroke:#4f46e5
+    classDef rule fill:#0ea5e9,color:#fff,stroke:#0284c7
+    classDef warn fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A["条件分岐"] --> B["if/else: 条件が複雑・範囲比較"]
+    A --> C["switch: 1つの値と複数の候補を比較\nbreak 忘れに注意"]
+
+    D["ループ"] --> E["for...of: 配列の反復（推奨）"]
+    D --> F["for: インデックスが必要なとき"]
+    D --> G["while: 終了条件が動的なとき"]
+
+    H["中断・終了"] --> I["break: ループ・switchを抜ける"]
+    H --> J["continue: イテレーションをスキップ"]
+    H --> K["return: 関数を終了して値を返す"]
+    H --> L["throw: 例外を投げて処理を中断"]
+
+    class A,D,H topic
+    class B,C,E,F,G,I,J,K,L rule
+
+`}
+/>
+
+| 構文 | 役割 |
+| ---- | ---- |
+| `if / else` | 条件によって分岐 |
+| `switch` | 単一値の多分岐（`break` 必須） |
+| `for...of` | イテラブルの反復 |
+| `for...in` | オブジェクトのキー列挙（配列には使わない） |
+| `while` | 条件が真の間繰り返す |
+| `break` | ループ・switch を抜ける |
+| `continue` | 今のイテレーションをスキップ |
+| `return` | 関数を終了して値を返す（制御フロー文） |
+| `throw` | 例外を投げて処理を中断（制御フロー文） |
+
+`throw` を使った例外のキャッチ（`try...catch`）やカスタムエラークラスの詳細は、14章「エラーハンドリング」で扱います。
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="ステップアップしている男性のイラスト" maxWidth="200px" />
+
+次の章では、関数の定義方法と `this` の挙動を詳しく見ていきます。
