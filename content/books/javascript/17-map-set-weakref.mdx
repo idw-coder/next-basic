@@ -16,7 +16,274 @@ ES2015で追加されたこれらは、「キーの柔軟さ」や「値の一�
 
 ## Map — あらゆる型をキーにできる連想配列
 
-> このセクションは現在執筆中です。
+Mapは **キーと値のペアを格納する** コレクションです。
+一見するとオブジェクト（`{}`）と同じに思えますが、決定的な違いがあります。
+オブジェクトのキーは文字列（またはSymbol）に限定されるのに対し、Mapは **オブジェクト・関数・数値など、あらゆる型をキーにできます**。
+
+### 基本の使い方
+
+<Figure src="/images/deta_man_color.png" alt="Mapにデータを格納するイメージ" maxWidth="120px" />
+
+```js
+const m = new Map();
+m.set('name', 'Alice');
+m.set(42, 'the answer');
+m.set(true, 'yes');
+
+console.log(m.get('name')); // "Alice"
+console.log(m.get(42));     // "the answer"
+console.log(m.size);        // 3
+```
+
+コンストラクタに `[key, value]` ペアの配列を渡して初期化することもできます。
+
+```js
+const config = new Map([
+  ['theme', 'dark'],
+  ['lang', 'ja'],
+  ['fontSize', 16],
+]);
+
+console.log(config.get('lang')); // "ja"
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+オブジェクトをキーにできるって、具体的にどういうこと？
+</SpeechBubble>
+
+たとえばDOM要素をキーにして、その要素に紐づくデータを管理できます。
+
+```js
+const metadata = new Map();
+
+const btn = document.querySelector('#submit');
+metadata.set(btn, { clickCount: 0, lastClicked: null });
+
+// ボタンがクリックされたら
+metadata.get(btn).clickCount++;
+```
+
+オブジェクトでこれをやろうとすると、キーが文字列化されて `"[object HTMLButtonElement]"` になってしまい、まったく区別がつきません。
+
+### キーの同値判定 — SameValueZero
+
+<Figure src="/images/deskwork_check_man_color.png" alt="キーの同値判定を確認するイメージ" maxWidth="120px" />
+
+MapのキーもSetと同じく **SameValueZero** アルゴリズムで比較されます。
+ほぼ `===` と同じですが、`NaN` 同士は同一とみなされます。
+
+```js
+const m = new Map();
+m.set(NaN, 'not a number');
+m.set(NaN, 'overwritten');
+console.log(m.size);       // 1 — NaN同士は同じキーとして扱われる
+console.log(m.get(NaN));   // "overwritten"
+```
+
+オブジェクトキーは **参照で比較** されます。見た目が同じでも別のオブジェクトは別のキーです。
+
+```js
+const m = new Map();
+m.set({ id: 1 }, 'Alice');
+m.set({ id: 1 }, 'Bob');
+console.log(m.size); // 2 — 別オブジェクトなので別キー
+```
+
+同じオブジェクトをキーとして使いたい場合は、変数に保持しておく必要があります。
+
+```js
+const key = { id: 1 };
+const m = new Map();
+m.set(key, 'Alice');
+console.log(m.get(key)); // "Alice"
+```
+
+### 主要メソッド
+
+**構文：** `new Map()` または `new Map(iterable)`
+
+| メソッド              | 説明                             | 戻り値                |
+| --------------------- | -------------------------------- | --------------------- |
+| `set(key, value)`     | キーと値のペアを追加・上書き     | Map自身               |
+| `get(key)`            | キーに対応する値を取得           | 値 or `undefined`     |
+| `has(key)`            | キーが存在するか                 | `boolean`             |
+| `delete(key)`         | キーと値のペアを削除             | 削除できたら `true`   |
+| `clear()`             | 全要素を削除                     | `undefined`           |
+| `forEach(fn)`         | 各ペアに対してコールバック実行   | `undefined`           |
+
+`set` はMap自身を返すので、メソッドチェーンが可能です。
+
+```js
+const m = new Map()
+  .set('a', 1)
+  .set('b', 2)
+  .set('c', 3);
+```
+
+<Callout type="warning">
+`get` で存在しないキーを参照すると `undefined` が返ります。値として `undefined` を格納している場合と区別がつかないため、キーの存在確認には必ず `has` を使いましょう。
+</Callout>
+
+### Mapはイテラブル
+
+<Figure src="/images/planning_suit_man_color.png" alt="Mapの反復処理" maxWidth="120px" />
+
+Mapは `for...of` で回せます。各要素は `[key, value]` の配列として取り出せます。
+挿入順が保持されるのはSetと同じです。
+
+```js
+const m = new Map([
+  ['name', 'Alice'],
+  ['age', 25],
+  ['city', 'Tokyo'],
+]);
+
+for (const [key, value] of m) {
+  console.log(`${key}: ${value}`);
+}
+// "name: Alice"
+// "age: 25"
+// "city: Tokyo"
+```
+
+`keys()`・`values()`・`entries()` の各メソッドでイテレータを取得することもできます。
+
+```js
+console.log([...m.keys()]);    // ["name", "age", "city"]
+console.log([...m.values()]);  // ["Alice", 25, "Tokyo"]
+console.log([...m.entries()]); // [["name", "Alice"], ["age", 25], ["city", "Tokyo"]]
+```
+
+### Object との使い分け
+
+<Figure src="/images/fork_suit_man_color.png" alt="ObjectとMapの使い分けを考えるイメージ" maxWidth="120px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+結局、普通のオブジェクトと Map はどう使い分ければいいの？
+</SpeechBubble>
+
+| 観点                     | Object (`{}`)                              | Map                                    |
+| ------------------------ | ------------------------------------------ | -------------------------------------- |
+| キーに使える型           | 文字列・Symbol のみ                        | あらゆる型                             |
+| キーの順序               | 基本は挿入順だが数値キーが先に来る         | 常に挿入順                             |
+| サイズの取得             | `Object.keys(obj).length`                  | `map.size`（O(1)）                     |
+| イテレーション           | `Object.entries()` 等で変換が必要          | そのまま `for...of` で回せる           |
+| プロトタイプ汚染のリスク | `toString` 等の既存キーと衝突する可能性    | キー空間が完全にクリーン               |
+| JSON との相互変換        | `JSON.stringify` でそのまま変換可能        | 直接変換できない（手動変換が必要）     |
+| パフォーマンス           | 少量のデータ、静的な構造に最適化           | 頻繁な追加・削除に強い                 |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+迷ったら「キーが文字列で、構造が固定なら Object」「キーが動的・非文字列、頻繁に追加削除するなら Map」と覚えると実務で困らないよ。
+</SpeechBubble>
+
+#### 文字列キーでも Map を選ぶケース
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+キーが全部文字列なら、Object で十分じゃない？わざわざ Map にする意味あるの？
+</SpeechBubble>
+
+キーが文字列だけでも、**キーの中身が事前に決まっていない（動的な）場合**はMapの方が安全で便利です。
+たとえばユーザー入力やAPIレスポンスのキーをそのまま格納するケースを考えてみましょう。
+
+```js
+// Objectだとプロトタイプのプロパティと衝突する危険がある
+const obj = {};
+obj['toString'] = 'oops';
+// obj.toString() → TypeError!（プロトタイプのメソッドを上書きしてしまった）
+
+// Mapならキー空間が完全にクリーン
+const m = new Map();
+m.set('toString', 'safe'); // 何の問題もない
+```
+
+メソッドの使い勝手にも差があります。
+
+```js
+const obj = { a: 1, b: 2, c: 3 };
+const map = new Map([['a', 1], ['b', 2], ['c', 3]]);
+
+// サイズ取得
+Object.keys(obj).length; // 3（毎回キー配列を生成）
+map.size;                // 3（プロパティアクセスだけ、O(1)）
+
+// キーの存在確認
+'a' in obj;              // true（プロトタイプチェーンも見てしまう）
+Object.hasOwn(obj, 'a'); // true（安全だが冗長）
+map.has('a');             // true（シンプル）
+
+// 削除
+delete obj.b;            // true だが、もとから無いキーでも true
+map.delete('b');         // true（実際に削除できたときだけ true）
+```
+
+実務での判断基準をまとめると次のようになります。
+
+| シナリオ                                         | 選択   | 理由                                           |
+| ------------------------------------------------ | ------ | ---------------------------------------------- |
+| 構造が固定（`{ name, age }` のような型付きデータ） | Object | TypeScriptの型推論が効く、JSONとの親和性が高い |
+| キーが動的（ユーザー入力、辞書的な用途）         | Map    | プロトタイプ汚染の心配がない、メソッドが便利   |
+| 頻繁に追加・削除を繰り返す                       | Map    | パフォーマンス面で有利                         |
+| サイズを頻繁にチェックする                       | Map    | `size` がO(1)で取得できる                      |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「キーが文字列か否か」より「構造が固定か動的か」で選ぶのが実務的なコツだね。動的なキー・値ペアを扱うなら、文字列キーでもMapの方が自然だよ。
+</SpeechBubble>
+
+### 実務でよく使うパターン
+
+<Figure src="/images/pc-work-woman01.png" alt="実務でMapを使いこなすイメージ" maxWidth="120px" />
+
+#### Object → Map → Object の変換
+
+APIレスポンス（オブジェクト）をMapに変換して処理し、最後にオブジェクトに戻すパターンです。
+
+```js
+const data = { name: 'Alice', age: 25, city: 'Tokyo' };
+
+// Object → Map
+const m = new Map(Object.entries(data));
+
+// Map → Object
+const obj = Object.fromEntries(m);
+console.log(obj); // { name: "Alice", age: 25, city: "Tokyo" }
+```
+
+#### カウンター（出現回数の集計）
+
+配列内の要素の出現回数をMapで集計する、実務頻出のパターンです。
+
+```js
+const words = ['apple', 'banana', 'apple', 'cherry', 'banana', 'apple'];
+
+const counter = new Map();
+for (const word of words) {
+  counter.set(word, (counter.get(word) ?? 0) + 1);
+}
+
+console.log(counter);
+// Map(3) { "apple" => 3, "banana" => 2, "cherry" => 1 }
+```
+
+<Callout type="note">
+`counter.get(word) ?? 0` は、キーが未登録（`undefined`）なら `0` を使う、というイディオムです。Objectで同じことをすると `obj[word] = (obj[word] || 0) + 1` と書きますが、`||` は `0` も偽値として扱ってしまうため `??`（Nullish Coalescing）の方が安全です。
+</Callout>
+
+#### キャッシュ・メモ化
+
+計算コストの高い処理の結果をMapにキャッシュするパターンです。
+
+```js
+const cache = new Map();
+
+function expensiveCalc(input) {
+  if (cache.has(input)) {
+    return cache.get(input);
+  }
+  const result = /* 重い計算 */ input * input;
+  cache.set(input, result);
+  return result;
+}
+```
 
 ## Set — 重複しない値のコレクション
 
