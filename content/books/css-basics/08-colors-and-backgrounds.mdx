@@ -1,91 +1,221 @@
 ---
-title: '色と背景の指定方法 — CSSカラーシステムを理解する'
-description: 'hex・rgb・hsl・oklchなど色の指定形式と、背景色・グラデーション・backgroundプロパティの使い方を解説します。'
+title: '色と背景の指定方法 — hex・rgb・hsl・oklchとグラデーションの使い分け'
+description: 'hex・rgb・hsl・oklchなどCSSの色指定形式を比較し、背景色・グラデーション・opacity・currentColorの使い方を実務パターン付きで解説します。'
 order: 8
 ---
 
-CSSの色指定には複数の形式があります。それぞれの特徴を知り、プロジェクトに合った使い方を選びましょう。
+CSSの色指定には複数の形式があり、それぞれに得意な場面があります。「デザインツールからコピペするだけ」でも動きますが、形式ごとの特徴を知っておくと、ダークモード対応やデザインシステムの構築で大きな差が出ます。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 色の指定って `#fff` とか `rgb()` とか `hsl()` とかいろいろ…結局どれを使えばいいの？
 </SpeechBubble>
 
-<Figure src="/images/stepup_suit_man_color-1.png" alt="カラーシステムを使いこなしてデザインが上達するイメージ" maxWidth="260px" />
+結論から言うと、**デザインツールからの受け渡しにはHEX、コード上で色を調整したいときはHSL、モダンな色空間が必要ならOKLCH**です。順番に見ていきましょう。
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="カラーシステムを使いこなしてスキルアップするイメージ" maxWidth="260px" />
 
 ---
 
-## 色の指定形式
-
-### HEX（16進数）
+## HEX（16進数）— 最もよく使う形式
 
 ```css
-color: #2563eb;        /* 不透明 */
-color: #2563eb80;      /* 透明度50%（8桁） */
-color: #fff;           /* 3桁省略形 */
+color: #2563eb;        /* 6桁：不透明 */
+color: #2563eb80;      /* 8桁：透明度50% */
+color: #fff;           /* 3桁：省略形（#ffffff） */
 ```
 
-デザインツール（Figmaなど）からコピーしてそのまま使えるので実務でよく使われます。
+HEXは赤（RR）緑（GG）青（BB）を16進数2桁ずつ、計6桁で表します。デザインツール（Figma、Adobe XDなど）が出力するデフォルト形式なので、**コピペでそのまま使える**のが最大のメリットです。
 
 <Callout type="info">
 FigmaでカラーをコピーするとHEX値で取得できます。CSSにそのまま貼り付けるだけなので、デザイナーとのやり取りがスムーズになります。
 </Callout>
 
-### RGB / RGBA
-
-```css
-color: rgb(37, 99, 235);
-color: rgba(37, 99, 235, 0.5); /* 透明度50% */
-
-/* 新しい記法（スペース区切り、/で透明度） */
-color: rgb(37 99 235 / 50%);
-```
-
-### HSL
-
-```css
-/* 色相(0-360) 彩度(%) 明度(%) */
-color: hsl(220, 80%, 53%);
-color: hsl(220 80% 53% / 0.5); /* 透明度付き */
-```
-
-「少し暗くしたい」「彩度を下げたい」といった調整が直感的にできます。
-
-### currentColor
-
-```css
-.icon {
-  color: #2563eb;
-  border: 1px solid currentColor; /* colorと同じ値が使われる */
-}
-```
+デメリットは「見ただけで何色か想像しにくい」こと。`#2563eb` がどんな青か、慣れるまではぱっと分かりません。
 
 ---
 
-## background-color
+## RGB / RGBA — 透明度を使いたいとき
 
 ```css
+color: rgb(37, 99, 235);             /* 不透明 */
+color: rgba(37, 99, 235, 0.5);       /* 透明度50%（旧記法） */
+color: rgb(37 99 235 / 50%);         /* 透明度50%（新記法） */
+```
+
+赤（0〜255）、緑（0〜255）、青（0〜255）の3つの値で色を指定します。HEXと同じRGBカラーモデルですが、透明度（アルファ値）の指定が直感的です。
+
+<Callout type="note">
+新しい記法（スペース区切り + `/` で透明度）はモダンブラウザで問題なく使えます。カンマ区切りの `rgba()` も引き続き動きますが、新しいプロジェクトではスペース区切りを使いましょう。
+</Callout>
+
+---
+
+## HSL — 人間の感覚に近い色指定
+
+```css
+/* 色相(0-360°) 彩度(%) 明度(%) */
+color: hsl(220, 80%, 53%);            /* 不透明 */
+color: hsl(220 80% 53% / 50%);        /* 透明度50% */
+```
+
+| パラメータ | 範囲 | 意味 |
+| --- | --- | --- |
+| 色相（Hue） | 0〜360° | 色相環の角度。0=赤、120=緑、240=青 |
+| 彩度（Saturation） | 0〜100% | 鮮やかさ。0%=グレー、100%=最も鮮やか |
+| 明度（Lightness） | 0〜100% | 明るさ。0%=黒、50%=標準、100%=白 |
+
+HSLの最大の強みは、**色の調整がパラメータの意味そのまま**でできることです。
+
+```css
+/* 元の色 */
+color: hsl(220, 80%, 53%);
+
+/* 少し暗くしたい → 明度を下げるだけ */
+color: hsl(220, 80%, 40%);
+
+/* 彩度を下げて落ち着いた色に → 彩度を下げるだけ */
+color: hsl(220, 40%, 53%);
+
+/* 同系色のバリエーション → 明度だけ変える */
+--color-primary: hsl(220, 80%, 53%);
+--color-primary-light: hsl(220, 80%, 70%);
+--color-primary-dark: hsl(220, 80%, 35%);
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+HSLは「このボタンをもう少し暗くしたい」「hover時に明るくしたい」といった調整が数値1つで済むのが強みだよ。HEXだと `#2563eb` を暗くするのに計算が必要になる。
+</SpeechBubble>
+
+---
+
+## OKLCH — 次世代の色空間
+
+```css
+color: oklch(0.55 0.2 260);              /* Lightness Chroma Hue */
+color: oklch(0.55 0.2 260 / 50%);        /* 透明度付き */
+```
+
+OKLCH（Oklab色空間のLCH表現）は、HSLの欠点を補う新しい色指定形式です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+HSLで十分そうなのに、なぜ新しい形式が必要なの？
+</SpeechBubble>
+
+HSLには「明度50%の黄色と明度50%の青で、見た目の明るさが全然違う」という問題があります。人間の目は色相によって明るさの感じ方が違うのに、HSLはそれを考慮していません。OKLCHは**知覚的に均一**な色空間で、同じLightness値なら本当に同じ明るさに見えます。
+
+```css
+/* HSL: 同じ明度50%なのに、黄色の方がずっと明るく見える */
+color: hsl(60, 100%, 50%);   /* 黄色 — とても明るく見える */
+color: hsl(240, 100%, 50%);  /* 青 — 暗く見える */
+
+/* OKLCH: 同じLightness 0.7なら、本当に同程度の明るさに見える */
+color: oklch(0.7 0.15 90);   /* 黄色系 */
+color: oklch(0.7 0.15 260);  /* 青系 */
+```
+
+<Callout type="note">
+OKLCHは2023年以降のモダンブラウザでサポートされています。Tailwind CSS v4ではデフォルトの色空間としてOKLCHが採用されました。今すぐ使わなくても、知識として知っておくと今後役立ちます。
+</Callout>
+
+---
+
+## 色指定形式の選び方まとめ
+
+| 形式 | 使い所 | メリット | デメリット |
+| --- | --- | --- | --- |
+| HEX | デザインツールからの受け渡し | コピペで使える、最も普及 | 見ただけで色が分からない |
+| RGB | プログラムで色を計算するとき | JavaScriptとの相性が良い | 調整が直感的でない |
+| HSL | CSSで色のバリエーションを作るとき | 明度・彩度の調整が簡単 | 知覚的に不均一 |
+| OKLCH | デザインシステム、知覚的一貫性が必要なとき | 知覚的に均一 | まだ新しい、ツール対応途上 |
+
+---
+
+## currentColor — 親のcolorを再利用する
+
+```css
+.icon-button {
+  color: #2563eb;
+  border: 1px solid currentColor;  /* colorと同じ#2563eb */
+  fill: currentColor;              /* SVGのfillにも使える */
+}
+
+.icon-button:hover {
+  color: #1d4ed8;
+  /* border と fill も自動で変わる */
+}
+```
+
+`currentColor` は「その要素の `color` プロパティの値」を参照するキーワードです。ボタンのテキスト色・ボーダー色・アイコン色を連動させたいときに便利です。
+
+---
+
+## background-color と opacity
+
+```css
+/* 背景色 */
 .card {
   background-color: #f8fafc;
-  background-color: transparent; /* 透明 */
+}
+
+/* 要素全体の透明度（子要素も含めて透明になる） */
+.overlay {
+  opacity: 0.5;
+}
+
+/* 背景色だけ半透明にしたい場合 → 色の透明度を使う */
+.overlay-bg {
+  background-color: rgb(0 0 0 / 50%);
+  /* テキストは不透明のまま */
 }
 ```
 
+<Callout type="warning">
+`opacity` は要素全体（テキストも子要素も含む）が透明になります。「背景だけ半透明にしたい」場合は `opacity` ではなく、色の透明度（`rgb(... / 50%)`）を使いましょう。これはよくあるハマりどころです。
+</Callout>
+
 ---
 
-## background-image / グラデーション
+## グラデーション
+
+### linear-gradient（線形グラデーション）
 
 ```css
-/* 線形グラデーション */
+/* 角度を指定 */
 .hero {
   background-image: linear-gradient(135deg, #667eea, #764ba2);
 }
 
 /* 上から下（デフォルト） */
-background-image: linear-gradient(#f0f9ff, #e0f2fe);
+.fade {
+  background-image: linear-gradient(#f0f9ff, #e0f2fe);
+}
 
-/* 放射状グラデーション */
-background-image: radial-gradient(circle at center, #fff, #f1f5f9);
+/* 3色以上 */
+.rainbow {
+  background-image: linear-gradient(90deg, #f87171, #fbbf24, #34d399);
+}
 ```
+
+### radial-gradient（放射状グラデーション）
+
+```css
+.spotlight {
+  background-image: radial-gradient(circle at center, #fff, #f1f5f9);
+}
+```
+
+### グラデーション + テキスト（見出しのアクセント）
+
+```css
+.gradient-text {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+```
+
+<Figure src="/images/boomerang_woman_color.png" alt="グラデーションを活用したデザインのイメージ" maxWidth="180px" />
 
 ---
 
@@ -98,26 +228,33 @@ background-image: radial-gradient(circle at center, #fff, #f1f5f9);
   background-position: center;  /* 中央基準 */
   background-repeat: no-repeat; /* 繰り返さない */
 }
+
+/* ショートハンド */
+.hero {
+  background: url('/images/hero.jpg') center / cover no-repeat;
+}
 ```
 
----
-
-## opacity と透明度
+背景画像の上にテキストを重ねるときは、半透明のオーバーレイを組み合わせると読みやすくなります。
 
 ```css
-/* 要素全体の透明度（子要素も含む） */
-.overlay { opacity: 0.5; }
-
-/* 色の透明度だけ変えたい場合は rgba / hsl を使う */
-.overlay { background-color: rgb(0 0 0 / 50%); }
+.hero-overlay {
+  background: 
+    linear-gradient(rgb(0 0 0 / 50%), rgb(0 0 0 / 50%)),
+    url('/images/hero.jpg') center / cover no-repeat;
+  color: white;
+}
 ```
 
 ---
 
 ## ちゃんと使うためのポイント
 
-- 実務ではHEXが最も使いやすく、デザインツールとの親和性も高い
-- 透明度を使いたいときは `rgba()` か HEX 8桁
-- グラデーションはCSS変数と組み合わせるとテーマ管理がしやすい
+- デザインツールからの受け渡しは**HEX**が最もスムーズ
+- CSSで色のバリエーションを作るなら**HSL**（明度・彩度を1つの数値で調整）
+- 知覚的な一貫性が必要なデザインシステムには**OKLCH**
+- `opacity` は要素全体を透明にする。背景だけ半透明にしたいなら色の透明度（`/ 50%`）を使う
+- `currentColor` でテキスト色とボーダー・アイコン色を連動させると保守しやすい
+- グラデーションは `linear-gradient` のショートハンドを覚えるだけで表現の幅が広がる
 
 次の章では、**トランジションとアニメーション**を学びます。

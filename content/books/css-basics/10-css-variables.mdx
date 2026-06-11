@@ -1,20 +1,22 @@
 ---
-title: 'CSS変数（カスタムプロパティ）でテーマを管理する'
-description: 'var()とカスタムプロパティを使ってデザイントークンを定義し、テーマカラーや余白の一元管理と、ダークモード対応の方法を解説します。'
+title: 'CSS変数（カスタムプロパティ）入門 — テーマ管理・ダークモード・コンポーネント設計の実践'
+description: 'var()とカスタムプロパティの基本から、デザイントークンの定義、ダークモード対応、スコープ、JavaScriptとの連携、実務での命名規則まで解説します。'
 order: 10
 ---
 
-**CSS変数（カスタムプロパティ）**を使うと、色・サイズ・余白などの値を一箇所で定義して使い回せます。テーマの変更やダークモード対応が格段に楽になります。
+**CSS変数（カスタムプロパティ）**を使うと、色・サイズ・余白などの値を一箇所で定義して使い回せます。「この青をサイト全体で少し暗くしたい」という変更が、値を1つ書き換えるだけで完了します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 同じ色をあちこちにベタ書きしてて、変更のたびに全部直すのが大変…一箇所で管理できないの？
 </SpeechBubble>
 
+まさにその課題を解決するのがCSS変数です。Sassの変数（`$color`）と似ていますが、CSS変数は**ブラウザが実行時に解決する**ため、JavaScriptからの操作やメディアクエリでの切り替えが可能です。
+
 <Figure src="/images/planning_suit_man_color.png" alt="CSS変数でデザイントークンを設計しているイメージ" maxWidth="260px" />
 
 ---
 
-## 基本の書き方
+## 基本の書き方 — 定義と参照
 
 変数は `--` で始まる名前で定義し、`var()` で参照します。
 
@@ -35,46 +37,119 @@ order: 10
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-md);
 }
+
+.card {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+}
 ```
+
+`:root` はHTMLの `<html>` 要素を指すセレクタで、ここに書いた変数はページ内のどこからでも参照できます。
 
 ---
 
-## デフォルト値
+## デフォルト値（フォールバック）
 
-変数が未定義のときのフォールバックを指定できます。
+変数が未定義のときのフォールバック値を指定できます。
 
 ```css
 .card {
-  background-color: var(--card-bg, #ffffff); /* 未定義なら #ffffff */
+  background-color: var(--card-bg, #ffffff);
+  /* --card-bg が未定義なら #ffffff が使われる */
+}
+
+/* デフォルト値にさらに変数を入れることもできる */
+.text {
+  color: var(--text-color, var(--color-text, #333));
 }
 ```
+
+コンポーネント単位でCSS変数を使うとき、「指定されていなければデフォルト値を使う」というパターンが非常に便利です。
 
 ---
 
-## スコープ
+## スコープ — 変数が有効な範囲
 
-CSS変数はスコープを持ちます。特定のコンポーネントだけで有効な変数を作れます。
+CSS変数はCSSのカスケードに従い、**定義した要素とその子孫**でのみ有効です。
 
 ```css
 :root {
-  --btn-bg: #2563eb;
+  --btn-bg: #2563eb;       /* ページ全体で有効 */
 }
 
 .btn-danger {
-  --btn-bg: #dc2626; /* このクラス内だけ上書き */
+  --btn-bg: #dc2626;       /* このクラスの中だけ上書き */
+}
+
+.btn {
   background-color: var(--btn-bg);
 }
+/* .btn-danger 内の .btn → 赤、それ以外の .btn → 青 */
 ```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+Sassの変数（`$color`）はビルド時に解決されて固定値になるけど、CSS変数はブラウザが実行時に解決する。だからメディアクエリで値を切り替えたり、JavaScriptから動的に変えたりできるんだ。これが最大の違いだよ。
+</SpeechBubble>
+
+---
+
+## デザイントークンとしてのCSS変数
+
+実務では、色・余白・角丸・フォントサイズなどのデザイン値をCSS変数で一元管理し、これを**デザイントークン**と呼びます。
+
+```css
+:root {
+  /* カラー */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-secondary: #64748b;
+  --color-success: #22c55e;
+  --color-danger: #ef4444;
+  --color-text: #1a1a2e;
+  --color-text-muted: #64748b;
+  --color-bg: #ffffff;
+  --color-surface: #f8fafc;
+  --color-border: #e2e8f0;
+
+  /* スペーシング */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 48px;
+
+  /* 角丸 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* フォントサイズ */
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+}
+```
+
+<Callout type="note" title="命名規則のコツ">
+CSS変数の命名は `--カテゴリ-用途` の形が見通しやすいです。`--color-primary`、`--spacing-md`、`--radius-lg` のように。「この値を変えると何に影響するか」が名前から分かるのが理想です。
+</Callout>
 
 ---
 
 ## ダークモード対応
+
+CSS変数の最も実践的な使い方の一つがダークモード対応です。変数の値を切り替えるだけで、全コンポーネントのテーマが一気に変わります。
 
 ```css
 :root {
   --color-bg: #ffffff;
   --color-text: #1a1a2e;
   --color-surface: #f8fafc;
+  --color-border: #e2e8f0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -82,6 +157,7 @@ CSS変数はスコープを持ちます。特定のコンポーネントだけ�
     --color-bg: #0f172a;
     --color-text: #f1f5f9;
     --color-surface: #1e293b;
+    --color-border: #334155;
   }
 }
 
@@ -89,27 +165,133 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
 }
+
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
 ```
 
-変数の値を切り替えるだけで、全コンポーネントのテーマが一気に変わります。
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+すごい…変数の値を変えるだけで全部切り替わるの？コンポーネント側は何も触らなくていいんだ。
+</SpeechBubble>
 
-<Callout type="note">
-Tailwind CSSやshadcn/uiなどのモダンなフレームワークも、内部的にCSS変数を活用してテーマカラーを管理しています。CSS変数を理解しておくと、フレームワークのカスタマイズも容易になります。
+そのとおりです。コンポーネント側は `var(--color-bg)` と書いておくだけで、ライトモードでもダークモードでも適切な色が適用されます。
+
+### クラスベースのダークモード切り替え
+
+OSの設定ではなくユーザーの操作でテーマを切り替えたい場合は、クラスベースで制御します。
+
+```css
+:root {
+  --color-bg: #ffffff;
+  --color-text: #1a1a2e;
+}
+
+:root.dark {
+  --color-bg: #0f172a;
+  --color-text: #f1f5f9;
+}
+```
+
+```js
+// JavaScriptでトグル
+document.documentElement.classList.toggle('dark');
+```
+
+<Callout type="info" title="Tailwind CSSとCSS変数">
+Tailwind CSSやshadcn/uiなどのモダンなフレームワークも、内部的にCSS変数を活用してテーマカラーを管理しています。CSS変数の仕組みを理解しておくと、フレームワークのカスタマイズも容易になります。
 </Callout>
+
+---
+
+## コンポーネント設計でのCSS変数
+
+CSS変数をコンポーネントの「外部インターフェース」として使うと、再利用性の高いコンポーネントが作れます。
+
+```css
+/* ボタンコンポーネント：外からCSS変数でカスタマイズ可能 */
+.btn {
+  background-color: var(--btn-bg, #2563eb);
+  color: var(--btn-color, #ffffff);
+  padding: var(--btn-padding, 8px 16px);
+  border-radius: var(--btn-radius, 8px);
+}
+
+/* 使う側で変数を上書き */
+.hero .btn {
+  --btn-bg: #dc2626;
+  --btn-padding: 12px 32px;
+}
+
+.sidebar .btn {
+  --btn-bg: #64748b;
+  --btn-radius: 4px;
+}
+```
+
+<Figure src="/images/deskwork_check_man_color.png" alt="コンポーネント設計を確認するイメージ" maxWidth="180px" />
+
+コンポーネントの内部CSSには触れず、**変数だけを上書きしてバリエーションを作れる**のがポイントです。
 
 ---
 
 ## JavaScriptとの連携
 
-CSS変数はJavaScriptから読み書きできます。
+CSS変数はJavaScriptから読み書きできます。これにより、ユーザーの操作に応じたリアルタイムなスタイル変更が可能です。
+
+### 読み取り
 
 ```js
-// 読み取り
-const primary = getComputedStyle(document.documentElement)
-  .getPropertyValue('--color-primary');
+const styles = getComputedStyle(document.documentElement);
+const primary = styles.getPropertyValue('--color-primary');
+// " #2563eb"（先頭にスペースが入ることがある → trim()推奨）
+```
 
-// 書き込み（動的なテーマ切り替えなど）
+### 書き込み
+
+```js
+// テーマカラーを動的に変更
 document.documentElement.style.setProperty('--color-primary', '#10b981');
+
+// ユーザーがカラーピッカーで選んだ色をリアルタイムに反映
+colorPicker.addEventListener('input', (e) => {
+  document.documentElement.style.setProperty('--color-primary', e.target.value);
+});
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+JavaScriptで `setProperty` した値は、CSSのカスケードでインラインスタイルと同じ扱いになるよ。だからCSS側の `:root { --color-primary: ... }` より優先される。元に戻したいときは `removeProperty` で解除できる。
+</SpeechBubble>
+
+---
+
+## よくあるハマりどころ
+
+### 変数名のタイプミスに気づかない
+
+CSS変数は未定義でもエラーにならず、フォールバック値（`var()` の第2引数）が使われます。フォールバック値もなければプロパティが無効になるだけです。
+
+```css
+/* タイプミス：--color-primry（aが抜けてる） */
+.btn {
+  background-color: var(--color-primry);
+  /* 未定義 → 無効 → backgroundが透明になる */
+}
+```
+
+DevToolsで値が空になっていたら、変数名のスペルを確認しましょう。
+
+### calc() の中での単位
+
+```css
+/* ❌ 数値だけの変数をcalcでpxに変換しようとする */
+:root { --spacing: 16; }
+.box { padding: calc(var(--spacing) * 1px); } /* 動くがやめた方がいい */
+
+/* ⭕ 最初から単位付きで定義する */
+:root { --spacing: 16px; }
+.box { padding: var(--spacing); }
 ```
 
 ---
@@ -117,7 +299,9 @@ document.documentElement.style.setProperty('--color-primary', '#10b981');
 ## ちゃんと使うためのポイント
 
 - デザイントークン（色・余白・角丸など）はCSS変数で一元管理する
-- `:root` に基本テーマ変数を定義し、ダークモードは `@media (prefers-color-scheme: dark)` で上書き
-- コンポーネント固有の変数はそのコンポーネントのクラスに定義してスコープを絞る
+- 命名は `--カテゴリ-用途`（`--color-primary`、`--spacing-md`）
+- `:root` にベーステーマを定義し、ダークモードは `@media (prefers-color-scheme: dark)` またはクラス（`.dark`）で変数を上書き
+- コンポーネントの「外部インターフェース」としてCSS変数を使うと再利用性が上がる
+- CSS変数はJavaScriptから読み書きできる → テーマ切り替えやリアルタイムカスタマイズに活用
 
-次の章では、スタイルが当たらない・意図せず上書きされる原因となる**詳細度とカスケード**を学びます。
+次の章では、スタイルが当たらない・意図せず上書きされる原因となる**[詳細度とカスケード](/books/css-basics/11-specificity)**を学びます。

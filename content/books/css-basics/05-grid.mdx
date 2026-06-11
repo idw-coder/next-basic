@@ -1,28 +1,22 @@
 ---
-title: 'CSS Gridでページレイアウトを設計する'
-description: '2次元レイアウトを可能にするCSS Gridの基本概念、テンプレートの定義方法、よく使うパターンを解説します。'
+title: 'CSS Gridで2次元レイアウトを組む — grid-template・fr単位・areasの実践ガイド'
+description: '行×列の2次元レイアウトを制御するCSS Gridの基本から、grid-template-areas、auto-fill + minmax、Flexboxとの使い分けまで実務パターン付きで解説します。'
 order: 5
 ---
 
-**CSS Grid**は、行と列の2次元でレイアウトを制御できる仕組みです。Flexboxが1軸（横または縦）のレイアウトに適しているのに対し、Gridは行と列を同時に操作できるため、ページ全体のレイアウトや複雑なグリッドUIに向いています。
+**CSS Grid**は、行と列の2次元でレイアウトを制御できる仕組みです。Flexboxが1軸（横または縦）のレイアウトに適しているのに対し、Gridは行と列を**同時に**操作できるため、ページ全体のレイアウトや複雑なグリッドUIに向いています。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-Flexbox を覚えたばかりなのに Grid も…？2つの違いと使い分けが分からない。
+Flexbox を覚えたばかりなのに Grid も…？2つの違いと使い分けがよく分からない。
 </SpeechBubble>
+
+Flexboxは「1列の中でどう並べるか」を制御するツール、Gridは「ページ全体を行と列の碁盤の目に区切る」ツールです。役割が違うので、両方使えるとレイアウトの引き出しが一気に広がります。
 
 <Figure src="/images/planning_suit_man_color.png" alt="Gridでページレイアウトを設計しているイメージ" maxWidth="260px" />
 
----
+## 基本の使い方 — display: grid と grid-template-columns
 
-## 基本の使い方
-
-```css
-.container {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr; /* 3列、均等幅 */
-  gap: 16px;
-}
-```
+親要素に `display: grid` を指定し、`grid-template-columns` で列の数と幅を定義します。
 
 ```html
 <div class="container">
@@ -35,35 +29,79 @@ Flexbox を覚えたばかりなのに Grid も…？2つの違いと使い分�
 </div>
 ```
 
-アイテムは定義した列数で自動的に折り返します。
+```css
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr; /* 3列、均等幅 */
+  gap: 16px;
+}
+```
+
+アイテムは定義した列数で自動的に折り返し、3列 × 2行のグリッドになります。
+
+`display: grid` を付けた要素を**グリッドコンテナ**、その直接の子要素を**グリッドアイテム**と呼びます。Flexboxと同じ「親に指定 → 子が並ぶ」の構造です。
 
 ---
 
-## grid-template-columns / rows
+## fr 単位 — 「余った空間の何分の何か」
 
-列と行のサイズを定義します。
+`fr`（fraction）はGrid専用の単位で、**利用可能な空間を比率で分配**します。
 
 ```css
-/* 固定幅とfr単位の混在 */
-grid-template-columns: 200px 1fr;  /* サイドバー + メイン */
+/* 3列均等 */
+grid-template-columns: 1fr 1fr 1fr;
+
+/* 左の固定サイドバー + 残りをメイン */
+grid-template-columns: 240px 1fr;
+
+/* 左:右 = 1:2 の比率 */
+grid-template-columns: 1fr 2fr;
+```
+
+`px` や `%` と混在できるのがポイントです。「固定幅のサイドバー + 残りをメインコンテンツ」のようなパターンが `240px 1fr` の一行で書けます。
+
+---
+
+## grid-template-columns / rows のパターン
+
+列と行のサイズ定義にはいくつかの書き方があります。
+
+```css
+/* 固定幅 */
+grid-template-columns: 200px 400px 200px;
 
 /* repeat() で繰り返し */
 grid-template-columns: repeat(3, 1fr); /* 3列均等 */
+grid-template-columns: repeat(4, 100px); /* 100px × 4列 */
 
-/* auto-fill で自動的に詰め込む */
+/* minmax() で最小・最大を指定 */
+grid-template-columns: repeat(3, minmax(200px, 1fr));
+
+/* auto-fill で画面幅に応じて自動的に列数を調整 */
 grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+```
 
-/* 行の高さ */
+| パターン | 意味 |
+| --- | --- |
+| `repeat(3, 1fr)` | 均等3列 |
+| `200px 1fr` | 固定幅 + 残り全部 |
+| `repeat(auto-fill, minmax(200px, 1fr))` | 200px以上で自動的に列数を調整 |
+
+行の高さも同じように指定できます。
+
+```css
 grid-template-rows: 60px 1fr 80px; /* ヘッダー・本文・フッター */
 ```
 
-`fr`（fraction）は「余った空間の何分の何か」を表す単位です。
+<Callout type="note">
+`auto-fill` と `auto-fit` の違い：`auto-fill` は余ったスペースを空のトラックとして残し、`auto-fit` は空のトラックを潰してアイテムを引き伸ばします。カードグリッドでは `auto-fill` が一般的です。
+</Callout>
 
 ---
 
-## grid-template-areas
+## grid-template-areas — 名前でレイアウトを視覚的に定義
 
-名前でレイアウトを視覚的に定義できます。
+Grid最大の強みの一つが `grid-template-areas` です。レイアウトを**文字列で視覚的に**記述できます。
 
 ```css
 .page {
@@ -83,35 +121,66 @@ grid-template-rows: 60px 1fr 80px; /* ヘッダー・本文・フッター */
 .footer  { grid-area: footer; }
 ```
 
-コードを見るだけでレイアウトが想像できるのが強みです。
+CSSを見ただけで「ヘッダーは全幅、左にサイドバー、右にメイン、フッターも全幅」というレイアウト構造が想像できます。
 
-<Callout type="note">
-`grid-template-areas` でレイアウトを定義すると、チームメンバーがCSSを見ただけでページ構造を把握できます。大規模プロジェクトではメンテナンス性の面で特に有効です。
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`grid-template-areas` はチーム開発で特に威力を発揮するよ。新しいメンバーがCSSを見たとき、レイアウトの意図が一目で分かるからね。
+</SpeechBubble>
+
+<Callout type="warning">
+`grid-template-areas` のルール：各行の列数は揃える必要があります。`"header header"` と `"sidebar main footer"` のように列数が違うとエラーになります。また、エリアは必ず四角形にならなくてはなりません。L字型やT字型にはできません。
 </Callout>
 
 ---
 
-## アイテムの配置（span）
+## アイテムの配置 — span で複数セルをまたぐ
 
 アイテムが複数のセルにまたがるように指定できます。
 
 ```css
+/* 列番号で指定 */
 .featured {
-  grid-column: 1 / 3;  /* 1列目〜3列目の手前まで（2列分） */
+  grid-column: 1 / 3;  /* 1列目のラインから3列目のラインまで（2列分） */
   grid-row: 1 / 2;
 }
 
-/* span を使う書き方 */
+/* span を使う書き方（推奨） */
 .wide {
   grid-column: span 2; /* 2列分の幅を占める */
 }
+
+.tall {
+  grid-row: span 3;    /* 3行分の高さを占める */
+}
 ```
+
+<Figure src="/images/deskwork_check_man_color.png" alt="グリッドのセル配置を確認しているイメージ" maxWidth="200px" />
+
+`span` の方がコードの意図が明確で読みやすいです。「ライン番号を数える」のは直感的でないため、`grid-template-areas` か `span` で書くのがおすすめです。
 
 ---
 
-## よく使うパターン
+## gap — アイテム間の間隔
 
-### レスポンシブカードグリッド
+Flexboxと同じく `gap` でアイテム間の余白をまとめて指定できます。
+
+```css
+.grid {
+  display: grid;
+  gap: 16px;          /* 行・列とも 16px */
+  gap: 8px 16px;      /* 行方向 列方向 */
+  row-gap: 8px;       /* 行方向のみ */
+  column-gap: 16px;   /* 列方向のみ */
+}
+```
+
+`margin` で調整するのと違い、外側に余計な余白がつかないのが `gap` の利点です。
+
+---
+
+## 実務でよく使うパターン
+
+### レスポンシブカードグリッド（メディアクエリ不要）
 
 ```css
 .card-grid {
@@ -121,7 +190,7 @@ grid-template-rows: 60px 1fr 80px; /* ヘッダー・本文・フッター */
 }
 ```
 
-`auto-fill` + `minmax` の組み合わせで、画面幅に応じて列数が自動調整されます。メディアクエリ不要で実現できる強力なパターンです。
+`auto-fill` + `minmax` の組み合わせで、画面幅に応じて列数が自動調整されます。**メディアクエリを1行も書かずに**レスポンシブなグリッドが実現できる、Gridの最も強力なパターンです。
 
 ### サイドバー付きレイアウト
 
@@ -133,26 +202,89 @@ grid-template-rows: 60px 1fr 80px; /* ヘッダー・本文・フッター */
   max-width: 1200px;
   margin: 0 auto;
 }
+
+/* モバイルでは1列に */
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+```
+
+### ダッシュボード風のタイル配置
+
+```css
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.widget-large {
+  grid-column: span 2;
+  grid-row: span 2;
+}
 ```
 
 ---
 
 ## Flexbox vs Grid の使い分け
 
-| | Flexbox | Grid |
-|---|---|---|
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+結局FlexboxとGrid、どっちを使えばいいの？両方できるパターンもあるよね？
+</SpeechBubble>
+
+| 観点 | Flexbox | Grid |
+| --- | --- | --- |
 | 次元 | 1次元（行 or 列） | 2次元（行と列） |
 | 向いている場面 | ナビ・ボタン並び・カード1行 | ページレイアウト・複数行グリッド |
-| アイテム配置の主導権 | アイテム主導 | コンテナ主導 |
+| アイテム配置の主導権 | アイテム主導（中身に応じて伸縮） | コンテナ主導（枠を先に決める） |
+| コンテンツ量が不定のとき | 得意（中身に合わせて伸縮） | やや苦手（枠が先に決まるため） |
 
-実務では両方を組み合わせます。外側のページ構造はGrid、内側のUIコンポーネントはFlexboxというパターンが多いです。
+実務では両方を組み合わせます。**外側のページ構造はGrid、内側のUIコンポーネントはFlexbox**というパターンが多いです。
+
+```css
+/* ページ全体 → Grid */
+.page {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+/* ナビゲーション（Grid内のアイテム）→ Flexbox */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+```
+
+<Callout type="info" title="迷ったときの判断基準">
+「**行と列の両方を揃えたい**」ならGrid、「**一方向に並べるだけ**」ならFlexbox。カードリストで「行ごとの列数を自動調整したい」なら `auto-fill` のGrid、「余白を埋める形で伸縮させたい」なら `flex-wrap` のFlexbox、と考えるとスッキリします。
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### auto-fill で意図しない隙間が出る
+
+`auto-fill` は余ったスペースに空のトラックを確保します。アイテムが少ないときに右側が空くのはこのためです。アイテムを引き伸ばしたい場合は `auto-fit` に変えてみてください。
+
+### grid-template-areas の綴りミス
+
+`grid-area: heaer;`（typo）のように、`grid-template-areas` で定義した名前と `grid-area` の値が一致しないと、そのアイテムは配置されません。DevToolsの「Grid」オーバーレイでエリアが表示されるので確認しましょう。
+
+### IE11はGridの旧仕様しかサポートしない
+
+IE11では `grid-template-areas` や `gap` が使えません。2024年以降のプロジェクトであればIE対応は不要ですが、レガシー環境では注意が必要です。
 
 ---
 
 ## ちゃんと使うためのポイント
 
 - `fr` 単位と `auto-fill + minmax` の組み合わせはレスポンシブグリッドの定石
-- `grid-template-areas` を使うとレイアウトの意図がコードから読み取りやすくなる
+- `grid-template-areas` でレイアウトの意図をコードに残す
 - Flexboxは「1方向の並び」、Gridは「行×列の2次元」と使い分ける
+- DevToolsの「Grid」オーバーレイを活用して、ラインやエリアの配置を目視確認する
 
 次の章では、画面サイズに応じてレイアウトを切り替える**レスポンシブデザインとメディアクエリ**を学びます。

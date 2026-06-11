@@ -1,33 +1,96 @@
 ---
-title: "Next.jsとは何か"
-description: "Next.jsの概要と、なぜ今Next.jsを学ぶべきなのかを解説します。"
+title: 'Next.jsとは何か — 誕生の背景・Reactとの違い・なぜ今学ぶべきかを解説'
+description: 'Next.jsの概要、Guillermo Rauch（Vercel CEO）が開発した背景と動機、Reactとの違い、App RouterとPages Routerの比較、2024年以降に学ぶべき理由をまとめます。'
 order: 1
 ---
 
-Next.jsは、Reactをベースにしたフルスタックフレームワークです。Vercel社が開発・メンテナンスしており、サーバーサイドレンダリング（SSR）、静的サイト生成（SSG）、APIルートなど、Webアプリケーション開発に必要な機能が最初から組み込まれています。
+Next.jsは、Reactをベースにした**フルスタックWebフレームワーク**です。ルーティング、サーバーサイドレンダリング（SSR）、静的サイト生成（SSG）、API処理など、Webアプリケーション開発に必要な機能が最初から組み込まれています。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 Reactを勉強したばかりなのに、もうNext.js？この2つって何が違うの？
 </SpeechBubble>
 
-ざっくり言うと、Next.jsは「Reactを実戦で使うために足りないもの（ルーティングやサーバー処理など）を最初から揃えたフレームワーク」です。まずはこの章で全体像をつかみましょう。
-
-## なぜNext.jsを学ぶのか
+ざっくり言うと、Reactは「UIを作るためのライブラリ」、Next.jsは「Reactを使って実際のWebアプリを作るために必要なもの（ルーティング、サーバー処理、ビルド、最適化）を全部揃えたフレームワーク」です。Reactだけだと自分で揃えなければならないピースを、Next.jsが最初から用意してくれます。
 
 <Figure src="/images/relief_man_color.png" alt="複雑な設定から解放されるイメージ" maxWidth="120px" />
 
-Reactだけでは、ルーティングやサーバーサイドレンダリングの仕組みを自分で構築する必要があります。Next.jsを使うことで、これらの複雑な設定から解放され、**アプリケーションのロジックに集中**できます。
+---
 
-主なメリットは以下の通りです：
+## Next.jsが生まれた背景 — なぜReactだけでは足りなかったのか
 
-- **ファイルベースルーティング** — ディレクトリ構成がそのままURLになる
-- **サーバーコンポーネント** — デフォルトでサーバー側でレンダリングされ、パフォーマンスが向上
-- **自動コード分割** — ページごとに必要なJavaScriptだけが読み込まれる
-- **組み込みの最適化** — 画像、フォント、スクリプトの最適化が標準装備
+Next.jsは2016年10月、**Guillermo Rauch**（ギジェルモ・ラウチ）によって公開されました。Guillermoは、リアルタイム通信ライブラリ `Socket.IO` の開発者としても知られるアルゼンチン出身のエンジニアで、当時は自身が創業した **Zeit**（現Vercel）のCEOでした。
+
+### 当時のReact開発の課題
+
+2016年当時、Reactは画面を描画するライブラリとしては非常に強力でしたが、「実際にWebアプリを作って公開する」ためには多くの追加設定が必要でした。
+
+- **ルーティング**がない → `react-router` を自分で導入・設定する
+- **サーバーサイドレンダリング（SSR）**の仕組みがない → SEOや初回表示速度のために自前でNode.jsサーバーを構築する
+- **コード分割**を自分で設定する必要がある → ページごとに適切にバンドルを分ける
+- **ビルド設定**（Webpack）が複雑 → `create-react-app` はあったが、SSR非対応
+
+<MermaidDiagram chart={`
+flowchart LR
+    A["Reactだけ"] --> B["ルーティング\n自分で設定"]
+    A --> C["SSR\n自分で構築"]
+    A --> D["ビルド設定\n自分で管理"]
+    A --> E["最適化\n自分で実装"]
+    F["Next.js"] --> G["全部入り\nすぐ開発開始"]
+`} />
+
+### Guillermoの考え
+
+Guillermoは当時のブログで、Next.jsのコンセプトを次のような方針で説明しています。
+
+- **ゼロ設定（Zero Config）**：設定ファイルを書かなくても、賢いデフォルトで動く
+- **ファイルシステムベースのルーティング**：ディレクトリにファイルを置くだけでページができる
+- **自動的なサーバーレンダリング**：SSRが特別な設定なしにデフォルトで有効
+- **自動コード分割**：各ページに必要なJavaScriptだけを配信する
+
+「Reactで優れたWebアプリを作るための**最短経路**を提供する」——これがNext.jsの出発点でした。
+
+<Callout type="column" title="ZeitからVercelへ">
+Guillermo Rauchが2015年に創業したZeit社は、2020年に**Vercel**へ社名変更しました。Vercelはデプロイプラットフォームとしても有名で、Next.jsアプリのデプロイ先として最適化されています。ただしNext.jsはオープンソースなので、AWS、Google Cloud、自前サーバーなど、Vercel以外の環境でも動かせます。
+</Callout>
+
+---
+
+## ReactとNext.jsの違い
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Reactだけでもアプリは作れるよね？あえてNext.jsを使うメリットって何なの？
+</SpeechBubble>
+
+| 観点 | React単体 | Next.js |
+| --- | --- | --- |
+| 種類 | UIライブラリ | フルスタックフレームワーク |
+| ルーティング | 自分で追加（react-router等） | ファイルベースで自動 |
+| レンダリング | クライアントサイドのみ（CSR） | SSR / SSG / ISR / CSR を選択可 |
+| SEO | CSRは検索エンジンに弱い | SSR/SSGで最初からHTMLがある |
+| サーバー処理 | なし（別途API構築が必要） | API Routes / Server Actions |
+| 画像最適化 | 自分で実装 | `next/image` で自動最適化 |
+| コード分割 | 手動設定 | ページ単位で自動 |
+| 初期設定 | Webpack等の設定が必要 | `npx create-next-app` ですぐ開始 |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+React公式ドキュメントでも「新しいプロジェクトを始めるならNext.jsなどのフレームワークを使おう」と推奨しているよ。Reactチーム自身が「Reactだけでは足りない」と認めている、ということなんだ。
+</SpeechBubble>
+
+### いつReact単体を使うか
+
+Next.jsが万能というわけではありません。以下のケースではReact単体（+ Viteなど）の方が向いていることもあります。
+
+- **Electron / React Nativeなど非Webプラットフォーム**
+- **SPAで十分な社内ツール・管理画面**（SEOが不要）
+- **既存のバックエンドAPIがすでにあり、フロントだけ作りたい場合**
+
+それ以外の、一般的なWebサイト・Webアプリケーション開発では、Next.jsを選んでおけばまず間違いありません。
+
+---
 
 ## Hello World
 
-まずはもっともシンプルなNext.jsのページを見てみましょう。
+もっともシンプルなNext.jsのページを見てみましょう。
 
 ```tsx
 // app/page.tsx
@@ -41,34 +104,68 @@ export default function Home() {
 }
 ```
 
-たったこれだけで、`/` にアクセスしたときに表示されるページが完成します。`app/page.tsx` というファイルを作るだけで、Next.jsが自動的にルーティングを設定してくれるのです。
+`app/page.tsx` というファイルを作るだけで、`/` にアクセスしたときに表示されるページが完成します。ルーティング設定は不要です。これがNext.jsの「ファイルベースルーティング」の基本です。
+
+<Figure src="/images/deskwork_check_man_color.png" alt="最初のNext.jsページを確認するイメージ" maxWidth="160px" />
+
+---
 
 ## App RouterとPages Router
 
-Next.jsには2つのルーティング方式があります：
+Next.jsには2つのルーティング方式があります。
 
 | 特徴 | App Router（推奨） | Pages Router（従来） |
-|------|-------------------|---------------------|
+| --- | --- | --- |
 | ディレクトリ | `app/` | `pages/` |
 | デフォルト | Server Components | Client Components |
 | レイアウト | ネストレイアウト対応 | `_app.tsx` で一括 |
-| データ取得 | `async` コンポーネント | `getServerSideProps` 等 |
+| データ取得 | `async` コンポーネント内で直接 | `getServerSideProps` 等の専用関数 |
+| 登場時期 | Next.js 13（2022年〜、13.4で安定版） | Next.js 1〜12 |
 
-本書では **App Router** を前提に解説を進めます。2024年以降の新規プロジェクトでは、App Routerの使用が推奨されています。
+**本書ではApp Routerを前提に解説を進めます。** 2023年のNext.js 13.4でApp Routerが安定版になり、2024年以降の新規プロジェクトではApp Routerが推奨されています。
+
+<Callout type="warning" title="検索時の注意">
+ネットにはPages Router時代の記事がまだ多く残っています。`getServerSideProps` や `getStaticProps` が登場する記事はPages Router向けです。本書はApp Routerで統一しているので、記事を探すときは「App Router」のキーワードを加えると混乱しにくくなります。
+</Callout>
+
+---
+
+## Next.jsの主な機能
+
+本書で学ぶ範囲を中心に、Next.jsの主要機能を整理しておきます。
+
+| 機能 | 内容 | 扱う章 |
+| --- | --- | --- |
+| ファイルベースルーティング | ディレクトリ構成がそのままURLになる | [第4章](/books/next-js/04-routing) |
+| Server Components | デフォルトでサーバー側レンダリング | [第3章](/books/next-js/03-components) |
+| ネストレイアウト | ヘッダーなどの共通UIを宣言的に管理 | [第5章](/books/next-js/05-layouts) |
+| 動的ルーティング | `[id]` でパラメータ付きURL | [第6章](/books/next-js/06-dynamic-routes) |
+| データ取得 + キャッシュ | `fetch` + `revalidate` でISR | [第7章](/books/next-js/07-data-fetching) |
+| loading.tsx / error.tsx | ローディングとエラーの宣言的な処理 | [第8章](/books/next-js/08-loading-and-error) |
+| メタデータ | SEO向けの `<title>` `<meta>` を型安全に管理 | [第9章](/books/next-js/09-metadata-and-seo) |
+| Server Actions | `"use server"` でフォーム送信・データ更新 | [第10章](/books/next-js/10-server-actions) |
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-ネットにはPages Router時代の記事もまだ多いから、調べるときは「App RouterかPages Routerか」を意識すると混乱しないよ。本書は一貫してApp Routerで進めるね。
+全部を一度に覚える必要はないよ。まずは「ファイルを置くとページができる」「Server Componentでデータが取れる」の2つだけ掴めれば、あとは実際に作りながら身につく。
 </SpeechBubble>
 
-## この本で学ぶこと
+---
 
-本書を通じて、以下のスキルを身につけることを目指します：
+## Next.jsの現在 — なぜ2024年以降も学ぶべきか
 
-1. [Next.jsプロジェクトのセットアップ](/books/next-js/02-setup)
-2. [App Routerによるルーティング](/books/next-js/04-routing)と[動的ルーティング](/books/next-js/06-dynamic-routes)
-3. [Server ComponentsとClient Componentsの使い分け](/books/next-js/03-components)
-4. [レイアウトと共通UI](/books/next-js/05-layouts)
-5. [データの取得とキャッシュ](/books/next-js/07-data-fetching)、[ローディングとエラー処理](/books/next-js/08-loading-and-error)
-6. [メタデータとSEO](/books/next-js/09-metadata-and-seo)、[Server Actionsによるデータ更新](/books/next-js/10-server-actions)
+Next.jsは2016年のリリース以来、Webフロントエンド開発の事実上の標準フレームワークの一つになっています。
 
-次の章では、実際にNext.jsの開発環境を構築していきます。
+- **npm週間ダウンロード数**はReactフレームワーク中トップクラス
+- **Hulu、TikTok、Nike、Notion**など大規模サービスでの採用実績
+- React公式が「フレームワークを使おう」と推奨する中で、最も成熟した選択肢
+- **Server Components**や**Server Actions**など、React最新機能のいち早い実装
+
+求人市場でもNext.jsのスキルは強く求められており、React開発者のキャリアパスとして自然な選択です。
+
+<Callout type="note">
+Next.jsの競合としてRemix（Shopify）やNuxt.js（Vue.js版）などがありますが、2024年時点のエコシステムの充実度・採用実績・学習リソースの量ではNext.jsが頭一つ抜けています。
+</Callout>
+
+---
+
+次の章では、実際に[Next.jsの開発環境を構築](/books/next-js/02-setup)していきます。`create-next-app` で数分でプロジェクトが立ち上がる体験をしましょう。
