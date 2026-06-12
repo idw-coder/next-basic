@@ -14,6 +14,21 @@ order: 5
 
 ---
 
+## 目次
+
+- [typeof による絞り込み](#section-1)
+- [instanceof による絞り込み](#section-2)
+- [in による絞り込み](#section-3)
+- [判別可能なユニオン（Discriminated Union）](#section-4)
+- [網羅性チェック — never を使って漏れを検出する](#section-5)
+- [真偽値チェックによる絞り込み](#section-6)
+- [早期 return と throw による Narrowing](#section-7)
+- [まとめ](#section-8)
+
+---
+
+<a id="section-1"></a>
+
 ## typeof による絞り込み
 
 最もシンプルな方法です。JavaScriptの `typeof` 演算子を使います。
@@ -45,6 +60,8 @@ typeof { name: '' }; // 'object' — 区別できない
 
 ---
 
+<a id="section-2"></a>
+
 ## instanceof による絞り込み
 
 クラスのインスタンスを判定するには `instanceof` を使います。
@@ -63,6 +80,8 @@ function formatDate(value: string | Date): string {
 `instanceof` はクラスベースのオブジェクト（`Date`、`Error`、`RegExp`、独自クラスなど）に対して機能します。`type` や `interface` で定義した型には使えません。型情報はコンパイル時に消えるため、実行時には存在しないからです。
 
 ---
+
+<a id="section-3"></a>
 
 ## in による絞り込み
 
@@ -86,6 +105,8 @@ function move(animal: Fish | Bird) {
 `'プロパティ名' in オブジェクト` で、そのプロパティが存在するかを実行時にチェックします。TypeScriptはこのチェックの結果から型を推論します。
 
 ---
+
+<a id="section-4"></a>
 
 ## 判別可能なユニオン（Discriminated Union）
 
@@ -150,6 +171,8 @@ flowchart TD
 
 ---
 
+<a id="section-5"></a>
+
 ## 網羅性チェック — never を使って漏れを検出する
 
 判別可能なユニオンで、すべてのケースを処理したかをコンパイラにチェックさせられます。
@@ -176,6 +199,8 @@ function renderState(state: RequestState): string {
 もし将来 `RequestState` に新しい状態（例: `'timeout'`）を追加したのに `case` を書き忘れると、`default` に到達する可能性が生まれ、`never` への代入でコンパイルエラーになります。型で漏れを防げるわけです。
 
 ---
+
+<a id="section-6"></a>
 
 ## 真偽値チェックによる絞り込み
 
@@ -212,6 +237,8 @@ function formatCount(count: number | null): string {
 ```
 
 ---
+
+<a id="section-7"></a>
 
 ## 早期 return と throw による Narrowing
 
@@ -298,6 +325,8 @@ function parse(val: string | null): string {
 </Callout>
 
 ---
+
+<a id="section-8"></a>
 
 ## まとめ
 

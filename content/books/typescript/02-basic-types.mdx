@@ -15,6 +15,20 @@ TypeScriptで型を書く最も基本的な方法は **型注釈（type annotati
 
 ---
 
+## 目次
+
+- [プリミティブ型](#section-1)
+- [型推論 — 書かなくても推論される](#section-2)
+- [配列の型](#section-3)
+- [オブジェクトの型](#section-4)
+- [関数の型](#section-5)
+- [特殊な型](#section-6)
+- [まとめ](#section-7)
+
+---
+
+<a id="section-1"></a>
+
 ## プリミティブ型
 
 JavaScriptのプリミティブ値に対応する型です。
@@ -35,6 +49,8 @@ TypeScriptの型名は小文字で書きます。大文字の `String`、`Number
 </Callout>
 
 ---
+
+<a id="section-2"></a>
 
 ## 型推論 — 書かなくても推論される
 
@@ -75,6 +91,8 @@ let status: 'loading' | 'success' | 'error' = 'loading';
 
 ---
 
+<a id="section-3"></a>
+
 ## 配列の型
 
 配列の型は `型名[]` で書きます。
@@ -101,6 +119,8 @@ const mixed = [1, 'hello']; // (number | string)[] と推論される
 ```
 
 ---
+
+<a id="section-4"></a>
 
 ## オブジェクトの型
 
@@ -143,6 +163,8 @@ user.age = 26; // OK
 ```
 
 ---
+
+<a id="section-5"></a>
 
 ## 関数の型
 
@@ -190,6 +212,8 @@ function logMessage(message: string): void {
 `void` は「戻り値を使わない」という意思表示です。推論に任せても構いませんが、明示すると意図が伝わりやすくなります。
 
 ---
+
+<a id="section-6"></a>
 
 ## 特殊な型
 
@@ -248,6 +272,8 @@ function throwError(message: string): never {
 `never` は直接使う場面は少ないですが、05章の判別可能なユニオンで「すべてのケースを網羅したか」のチェックに使えます。
 
 ---
+
+<a id="section-7"></a>
 
 ## まとめ
 

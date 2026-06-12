@@ -12,6 +12,21 @@ APIとのデータのやり取り、`localStorage` への保存、設定ファ�
 メソッドは `メソッド名(引数1, 引数2?)` という形（シグネチャ）を示し、続けて**引数の表**と「戻り値」を載せます（`引数?` は省略できる引数）。MDNのリファレンス代わりに使ってください。
 </Callout>
 
+## 目次
+
+- [JSONとは — JavaScriptオブジェクトとの違い](#section-1)
+- [JSON.stringify — オブジェクト → JSON文字列](#section-2)
+- [JSON.parse — JSON文字列 → オブジェクト](#section-3)
+- [ディープコピーに使う](#section-4)
+- [よくある落とし穴 — JSONで「消える・変わる」値](#section-5)
+- [早見表](#section-6)
+- [よくあるハマりどころ](#section-7)
+- [ちゃんと使うためのポイント](#section-8)
+
+---
+
+<a id="section-1"></a>
+
 ## JSONとは — JavaScriptオブジェクトとの違い
 
 JSON（JavaScript Object Notation）は、データを**文字列**で表現するためのフォーマットです。見た目はJavaScriptのオブジェクトによく似ていますが、別物です。
@@ -38,6 +53,8 @@ JavaScriptオブジェクトとの主な違いは次のとおりです。
 <Callout type="info">
 JSON自体の文法やデータ形式としての位置づけ（XMLとの比較など）は、[HTTPとWeb APIの本：JSONとデータ形式](/books/http-and-web-api/06-json-and-data-format)で詳しく扱っています。この章はJavaScriptから**JSONをどう読み書きするか**に焦点を当てます。
 </Callout>
+
+<a id="section-2"></a>
 
 ## JSON.stringify — オブジェクト → JSON文字列
 
@@ -77,6 +94,8 @@ JSON.stringify(user, ['name', 'age']);
 </SpeechBubble>
 
 `space`（インデント）は**第3引数**なので、間の `replacer`（第2引数）を使わないときは `null` で飛ばす必要があるのです。「フィルタは要らないけど整形はしたい」→ `JSON.stringify(value, null, 2)` という頻出パターンとして覚えてしまいましょう。
+
+<a id="section-3"></a>
 
 ## JSON.parse — JSON文字列 → オブジェクト
 
@@ -124,6 +143,8 @@ safeParse('壊れた文字列'); // null（例外を握りつぶして既定値�
 `try/catch` の挙動や、エラーを握りつぶさず適切に扱う設計については[エラーハンドリング](/books/javascript/14-error-handling)で詳しく解説しています。
 </Callout>
 
+<a id="section-4"></a>
+
 ## ディープコピーに使う
 
 `JSON.stringify` → `JSON.parse` を通すと、ネストしたオブジェクトを丸ごと複製（ディープコピー）できます。ただし現在は専用の `structuredClone` が使えるため、まずはそちらが第一候補です。
@@ -148,6 +169,8 @@ original.user.name; // "太郎"（元は影響を受けない）
 </SpeechBubble>
 
 スプレッドは**1階層だけ**のコピー（浅いコピー）です。ネストしたオブジェクトは参照が共有されたままなので、深い階層まで独立させたいときは `structuredClone` を使います。浅いコピー／スプレッドの詳細は[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)を参照してください。
+
+<a id="section-5"></a>
 
 ## よくある落とし穴 — JSONで「消える・変わる」値
 
@@ -187,6 +210,8 @@ a.self = a;
 JSON.stringify(a); // TypeError: Converting circular structure to JSON
 ```
 
+<a id="section-6"></a>
+
 ## 早見表
 
 | やりたいこと | 使うもの |
@@ -197,6 +222,8 @@ JSON.stringify(a); // TypeError: Converting circular structure to JSON
 | 安全にパース | `try { JSON.parse(text) } catch { ... }` |
 | ディープコピー | `structuredClone(obj)`（推奨） |
 | 浅いコピー | `{ ...obj }`（ネストは共有される点に注意） |
+
+<a id="section-7"></a>
 
 ## よくあるハマりどころ
 
@@ -217,6 +244,8 @@ JSON.stringify(a); // TypeError: Converting circular structure to JSON
 ### 4. undefined のプロパティが消える
 
 `{ a: 1, b: undefined }` を `stringify` すると `'{"a":1}'` になります。「キーがあるはず」と思い込むとバグります。
+
+<a id="section-8"></a>
 
 ## ちゃんと使うためのポイント
 

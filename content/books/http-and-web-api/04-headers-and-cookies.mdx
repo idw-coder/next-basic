@@ -14,6 +14,21 @@ HTTPリクエストとレスポンスは、**ボディ**（本文）だけでな
 
 ---
 
+## 目次
+
+- [HTTPメッセージの構造](#section-1)
+- [よく使うリクエストヘッダー](#section-2)
+- [よく使うレスポンスヘッダー](#section-3)
+- [キャッシュ制御](#section-4)
+- [Cookieの仕組み](#section-5)
+- [Cookieのセキュリティ属性](#section-6)
+- [CookieとlocalStorageの使い分け](#section-7)
+- [まとめ](#section-8)
+
+---
+
+<a id="section-1"></a>
+
 ## HTTPメッセージの構造
 
 リクエストもレスポンスも、**スタートライン + ヘッダー + 空行 + ボディ** という共通の構造です。
@@ -38,6 +53,8 @@ Set-Cookie: session=abc123
 ```
 
 ---
+
+<a id="section-2"></a>
 
 ## よく使うリクエストヘッダー
 
@@ -76,6 +93,8 @@ Content-Type: multipart/form-data
 
 ---
 
+<a id="section-3"></a>
+
 ## よく使うレスポンスヘッダー
 
 | ヘッダー | 役割 | 例 |
@@ -87,6 +106,8 @@ Content-Type: multipart/form-data
 | `Access-Control-Allow-Origin` | CORS許可 | `https://example.com` |
 
 ---
+
+<a id="section-4"></a>
 
 ## キャッシュ制御
 
@@ -120,6 +141,8 @@ Cache-Control: no-cache
 
 ---
 
+<a id="section-5"></a>
+
 ## Cookieの仕組み
 
 **Cookie** は、サーバーがブラウザに「この値を覚えておいて、次のリクエストで送り返して」と依頼する仕組みです。HTTPは本来ステートレス（状態を持たない）ですが、Cookieによって「ログイン状態」のような状態管理が可能になります。
@@ -142,6 +165,8 @@ sequenceDiagram
 3. 以降、同じドメインへのリクエストに `Cookie` ヘッダーとして自動送信する
 
 ---
+
+<a id="section-6"></a>
 
 ## Cookieのセキュリティ属性
 
@@ -176,6 +201,8 @@ Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=8640
 
 ---
 
+<a id="section-7"></a>
+
 ## CookieとlocalStorageの使い分け
 
 ブラウザでデータを保存する方法はCookieだけではありません。よく比較されるのが `localStorage` です。
@@ -191,6 +218,8 @@ Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=8640
 セッション管理にはCookie（HttpOnly）、UIの状態保持にはlocalStorage、というのが一般的な使い分けです。
 
 ---
+
+<a id="section-8"></a>
 
 ## まとめ
 

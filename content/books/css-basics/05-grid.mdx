@@ -14,6 +14,23 @@ Flexboxは「1列の中でどう並べるか」を制御するツール、Grid�
 
 <Figure src="/images/planning_suit_man_color.png" alt="Gridでページレイアウトを設計しているイメージ" maxWidth="260px" />
 
+## 目次
+
+- [基本の使い方 — display: grid と grid-template-columns](#section-1)
+- [fr 単位 — 「余った空間の何分の何か」](#section-2)
+- [grid-template-columns / rows のパターン](#section-3)
+- [grid-template-areas — 名前でレイアウトを視覚的に定義](#section-4)
+- [アイテムの配置 — span で複数セルをまたぐ](#section-5)
+- [gap — アイテム間の間隔](#section-6)
+- [実務でよく使うパターン](#section-7)
+- [Flexbox vs Grid の使い分け](#section-8)
+- [よくあるハマりどころ](#section-9)
+- [ちゃんと使うためのポイント](#section-10)
+
+---
+
+<a id="section-1"></a>
+
 ## 基本の使い方 — display: grid と grid-template-columns
 
 親要素に `display: grid` を指定し、`grid-template-columns` で列の数と幅を定義します。
@@ -43,6 +60,8 @@ Flexboxは「1列の中でどう並べるか」を制御するツール、Grid�
 
 ---
 
+<a id="section-2"></a>
+
 ## fr 単位 — 「余った空間の何分の何か」
 
 `fr`（fraction）はGrid専用の単位で、**利用可能な空間を比率で分配**します。
@@ -61,6 +80,8 @@ grid-template-columns: 1fr 2fr;
 `px` や `%` と混在できるのがポイントです。「固定幅のサイドバー + 残りをメインコンテンツ」のようなパターンが `240px 1fr` の一行で書けます。
 
 ---
+
+<a id="section-3"></a>
 
 ## grid-template-columns / rows のパターン
 
@@ -99,6 +120,8 @@ grid-template-rows: 60px 1fr 80px; /* ヘッダー・本文・フッター */
 
 ---
 
+<a id="section-4"></a>
+
 ## grid-template-areas — 名前でレイアウトを視覚的に定義
 
 Grid最大の強みの一つが `grid-template-areas` です。レイアウトを**文字列で視覚的に**記述できます。
@@ -133,6 +156,8 @@ CSSを見ただけで「ヘッダーは全幅、左にサイドバー、右に�
 
 ---
 
+<a id="section-5"></a>
+
 ## アイテムの配置 — span で複数セルをまたぐ
 
 アイテムが複数のセルにまたがるように指定できます。
@@ -160,6 +185,8 @@ CSSを見ただけで「ヘッダーは全幅、左にサイドバー、右に�
 
 ---
 
+<a id="section-6"></a>
+
 ## gap — アイテム間の間隔
 
 Flexboxと同じく `gap` でアイテム間の余白をまとめて指定できます。
@@ -177,6 +204,8 @@ Flexboxと同じく `gap` でアイテム間の余白をまとめて指定でき
 `margin` で調整するのと違い、外側に余計な余白がつかないのが `gap` の利点です。
 
 ---
+
+<a id="section-7"></a>
 
 ## 実務でよく使うパターン
 
@@ -228,6 +257,8 @@ Flexboxと同じく `gap` でアイテム間の余白をまとめて指定でき
 
 ---
 
+<a id="section-8"></a>
+
 ## Flexbox vs Grid の使い分け
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
@@ -264,6 +295,8 @@ Flexboxと同じく `gap` でアイテム間の余白をまとめて指定でき
 
 ---
 
+<a id="section-9"></a>
+
 ## よくあるハマりどころ
 
 ### auto-fill で意図しない隙間が出る
@@ -279,6 +312,8 @@ Flexboxと同じく `gap` でアイテム間の余白をまとめて指定でき
 IE11では `grid-template-areas` や `gap` が使えません。2024年以降のプロジェクトであればIE対応は不要ですが、レガシー環境では注意が必要です。
 
 ---
+
+<a id="section-10"></a>
 
 ## ちゃんと使うためのポイント
 

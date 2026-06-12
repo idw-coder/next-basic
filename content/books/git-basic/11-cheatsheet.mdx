@@ -12,6 +12,25 @@ order: 11
 
 <Figure src="/images/plan_selection_man_color.png" alt="目的からコマンドを逆引きするイメージ" maxWidth="130px" />
 
+## 目次
+
+- [基本フロー（add → commit → push）](#section-1)
+- [状態の確認（status・log・diff）](#section-2)
+- [ブランチ操作](#section-3)
+- [変更の取り消し](#section-4)
+- [リモートとの同期（fetch・pull・push）](#section-5)
+- [stash（作業の一時退避）](#section-6)
+- [タグ（リリースに印をつける）](#section-7)
+- [ファイルの追跡管理（rm・mv・.gitignore）](#section-8)
+- [履歴の調整（cherry-pick・reflog）](#section-9)
+- [初期設定（config）](#section-10)
+- [困ったとき逆引き早見表](#section-11)
+- [まとめ](#section-12)
+
+---
+
+<a id="section-1"></a>
+
 ## 基本フロー（add → commit → push）
 
 毎日いちばん使う、変更を記録して共有するまでの流れです。
@@ -34,6 +53,8 @@ order: 11
 | 履歴を書き換えた後に安全に送る | `git push --force-with-lease` |
 
 > 詳しくは[第3章 add・commit・pushの基本フロー](/books/git-basic/03-basic-flow)へ。
+
+<a id="section-2"></a>
 
 ## 状態の確認（status・log・diff）
 
@@ -58,6 +79,8 @@ order: 11
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
 迷ったらまず `git status`。今ステージに何が乗っていて、どのブランチにいるかを教えてくれる“現在地マップ”だよ。
 </SpeechBubble>
+
+<a id="section-3"></a>
 
 ## ブランチ操作
 
@@ -85,6 +108,8 @@ order: 11
 
 > 詳しくは[第4章 ブランチを理解する](/books/git-basic/04-branches)、[第5章 mergeとrebaseの違い](/books/git-basic/05-merge-vs-rebase)へ。
 
+<a id="section-4"></a>
+
 ## 変更の取り消し
 
 Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で使うコマンドが変わります。
@@ -109,6 +134,8 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 > 詳しくは[第7章 取り消し操作の完全ガイド](/books/git-basic/07-undo)へ。
 
+<a id="section-5"></a>
+
 ## リモートとの同期（fetch・pull・push）
 
 チームの変更を取り込み、自分の変更を送るコマンドです。
@@ -129,6 +156,8 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 > 詳しくは[第8章 リモートとの同期](/books/git-basic/08-remote-sync)へ。
 
+<a id="section-6"></a>
+
 ## stash（作業の一時退避）
 
 コミットするほどではない作業中の変更を、いったん棚上げするコマンドです。
@@ -148,6 +177,8 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 > 詳しくは[第9章 stashで作業を一時退避する](/books/git-basic/09-stash)へ。
 
+<a id="section-7"></a>
+
 ## タグ（リリースに印をつける）
 
 特定のコミットに「v1.0.0」などの目印を付けるコマンドです。リリース管理でよく使います。
@@ -161,6 +192,8 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | タグをリモートへ送る | `git push origin v1.0.0` |
 | タグをまとめて送る | `git push origin --tags` |
 | タグを削除する | `git tag -d v1.0.0` |
+
+<a id="section-8"></a>
 
 ## ファイルの追跡管理（rm・mv・.gitignore）
 
@@ -178,6 +211,8 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 すでにコミット済みのファイルは、`.gitignore` に追記しても追跡され続けます。`git rm --cached` で一度追跡を外す必要があります。「`.env` を間違えてコミットしてしまった」ときの定番対処です。
 </Callout>
 
+<a id="section-9"></a>
+
 ## 履歴の調整（cherry-pick・reflog）
 
 コミットをつまみ食いしたり、消したはずの作業を救出したりするコマンドです。
@@ -189,6 +224,8 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | reflog で見つけた状態へ戻す | `git reset --hard コミットID` |
 | 直近のコミットを対話的に編集する | `git rebase -i HEAD~3` |
 | 過去の状態を見るだけ（切替なし） | `git switch --detach コミットID` |
+
+<a id="section-10"></a>
 
 ## 初期設定（config）
 
@@ -204,6 +241,8 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | 設定を一覧で確認 | `git config --list` |
 
 > 詳しくは[第2章 Gitの初期設定](/books/git-basic/02-setup)へ。
+
+<a id="section-11"></a>
 
 ## 困ったとき逆引き早見表
 
@@ -229,6 +268,8 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 <Callout type="info" title="reflog は最後の命綱">
 `git reflog` は、ブランチの移動やリセットを含む「HEADが動いたすべての履歴」を記録しています。`reset --hard` で消したと思ったコミットも、`reflog` でIDを見つけて復活できることが多いです。「やってしまった」ときに思い出してください。
 </Callout>
+
+<a id="section-12"></a>
 
 ## まとめ
 

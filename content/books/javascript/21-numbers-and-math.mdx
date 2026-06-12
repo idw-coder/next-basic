@@ -12,6 +12,22 @@ order: 21
 メソッドは `メソッド名(引数1, 引数2?)` という形（シグネチャ）を示し、続けて**引数の表**と「戻り値」を載せます（`引数?` は省略できる引数）。MDNのリファレンス代わりに、「何を渡すと何が返るか」を確認しながら使ってください。
 </Callout>
 
+## 目次
+
+- [JavaScriptの数値は基本「1種類」だけ — number 型](#section-1)
+- [文字列と数値の相互変換](#section-2)
+- [浮動小数点の罠 — 0.1 + 0.2 が 0.3 にならない](#section-3)
+- [数値のフォーマット — toFixed / toLocaleString](#section-4)
+- [Number の静的メソッド・プロパティ](#section-5)
+- [Math オブジェクト — よく使う計算](#section-6)
+- [早見表](#section-7)
+- [よくあるハマりどころ](#section-8)
+- [ちゃんと使うためのポイント](#section-9)
+
+---
+
+<a id="section-1"></a>
+
 ## JavaScriptの数値は基本「1種類」だけ — number 型
 
 多くの言語には `int`（整数）や `float`（小数）といった区別がありますが、**JavaScriptの数値は原則すべて `number` 型の1種類**です。整数も小数も同じ型で扱われます。
@@ -46,6 +62,8 @@ console.log(typeof NaN); // "number"（NaNの型はnumber）
 <Callout type="column" title="BigInt — もう1つの数値型">
 厳密には `number` のほかに `BigInt`（`10n` のように末尾に `n` を付ける）という整数専用の型もあります。`number` が安全に扱える整数の上限（`Number.MAX_SAFE_INTEGER` ≒ 9000兆）を超える巨大な整数を扱うときに使いますが、日常的な計算ではまず `number` だけで十分です。
 </Callout>
+
+<a id="section-2"></a>
 
 ## 文字列と数値の相互変換
 
@@ -88,6 +106,8 @@ String(42); // "42"
 (255).toString(16); // "ff"（16進数の文字列に）
 `合計: ${1000}円`; // "合計: 1000円"
 ```
+
+<a id="section-3"></a>
 
 ## 浮動小数点の罠 — 0.1 + 0.2 が 0.3 にならない
 
@@ -139,6 +159,8 @@ const totalCents = 10 + 20; // 30
 const totalYen = totalCents / 100; // 0.3
 ```
 
+<a id="section-4"></a>
+
 ## 数値のフォーマット — toFixed / toLocaleString
 
 ### 小数の桁数を揃える — toFixed
@@ -181,6 +203,8 @@ const totalYen = totalCents / 100; // 0.3
 「1234567 → 1,234,567」のようなカンマ区切りは、正規表現で自作せず `toLocaleString()` に任せるのが定番です。通貨記号やパーセント表示も `options` で対応できます。
 </Callout>
 
+<a id="section-5"></a>
+
 ## Number の静的メソッド・プロパティ
 
 `Number` には、数値の判定や定数として使う静的メンバーが用意されています。
@@ -204,6 +228,8 @@ Number.isFinite(1 / 0); // false（Infinityは有限でない）
 <Callout type="warning" title="グローバルの isNaN() ではなく Number.isNaN() を使う">
 古い `isNaN('abc')` は、引数をいったん数値に変換してから判定するため `true` を返してしまい直感に反します。`Number.isNaN()` は変換せず厳密に判定するので、**`Number.isNaN()` を使う**のが安全です。
 </Callout>
+
+<a id="section-6"></a>
 
 ## Math オブジェクト — よく使う計算
 
@@ -261,6 +287,8 @@ function randomInt(min, max) {
 randomInt(1, 6); // サイコロ（1〜6のいずれか）
 ```
 
+<a id="section-7"></a>
+
 ## 早見表
 
 | やりたいこと | 使うもの |
@@ -275,6 +303,8 @@ randomInt(1, 6); // サイコロ（1〜6のいずれか）
 | 範囲指定の乱数 | `Math.floor(Math.random() * 幅) + min` |
 | 整数かどうか判定 | `Number.isInteger(x)` |
 | NaN かどうか判定 | `Number.isNaN(x)` |
+
+<a id="section-8"></a>
 
 ## よくあるハマりどころ
 
@@ -316,6 +346,8 @@ Math.trunc(-1.5); // -1（小数部を捨てるだけ）
 Number('12.3.4'); // NaN
 parseInt('12.3.4', 10); // 12（最初の整数部分だけ）
 ```
+
+<a id="section-9"></a>
 
 ## ちゃんと使うためのポイント
 

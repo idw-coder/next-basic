@@ -14,6 +14,20 @@ HTTPリクエストには必ず **メソッド** が含まれます。メソッ�
 
 ---
 
+## 目次
+
+- [主要なHTTPメソッド](#section-1)
+- [その他のメソッド](#section-2)
+- [安全性とべき等性](#section-3)
+- [GETリクエストの原則](#section-4)
+- [POSTリクエストの使い方](#section-5)
+- [よくある誤用パターン](#section-6)
+- [まとめ](#section-7)
+
+---
+
+<a id="section-1"></a>
+
 ## 主要なHTTPメソッド
 
 <Figure src="/images/fork_suit_man_color.png" alt="分岐で悩む男性のイラスト" maxWidth="300px" />
@@ -35,6 +49,8 @@ DELETE /api/users/1        → ユーザー1を削除
 ```
 
 ---
+
+<a id="section-2"></a>
 
 ## その他のメソッド
 
@@ -66,6 +82,8 @@ PATCH /api/users/1
 </Callout>
 
 ---
+
+<a id="section-3"></a>
 
 ## 安全性とべき等性
 
@@ -108,6 +126,8 @@ flowchart TD
 
 ---
 
+<a id="section-4"></a>
+
 ## GETリクエストの原則
 
 GETは最も頻繁に使われるメソッドです。いくつかの重要な原則があります。
@@ -141,6 +161,8 @@ URLはブラウザの履歴、サーバーのアクセスログ、プロキシ�
 
 ---
 
+<a id="section-5"></a>
+
 ## POSTリクエストの使い方
 
 POSTは新しいリソースを作成するときに使います。
@@ -172,6 +194,8 @@ Location: /api/users/42
 
 ---
 
+<a id="section-6"></a>
+
 ## よくある誤用パターン
 
 **1. すべてPOSTで処理する**
@@ -198,6 +222,8 @@ GET /api/users/1/activate
 状態を変える操作には POST、PUT、PATCH、DELETE を使います。
 
 ---
+
+<a id="section-7"></a>
 
 ## まとめ
 

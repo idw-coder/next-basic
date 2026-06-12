@@ -14,6 +14,21 @@ APIのURLって自由に決めていいの？`/getUserData` みたいに動詞�
 
 ---
 
+## 目次
+
+- [RESTの基本的な考え方](#section-1)
+- [URL設計の基本ルール](#section-2)
+- [CRUD操作のパターン](#section-3)
+- [クエリパラメータの使い方](#section-4)
+- [レスポンスの設計](#section-5)
+- [命名規則](#section-6)
+- [よくあるアンチパターン](#section-7)
+- [まとめ](#section-8)
+
+---
+
+<a id="section-1"></a>
+
 ## RESTの基本的な考え方
 
 RESTは、Webの仕組みをそのまま活用する設計スタイルです。核となる考え方は3つあります。
@@ -40,6 +55,8 @@ flowchart LR
 `} />
 
 ---
+
+<a id="section-2"></a>
 
 ## URL設計の基本ルール
 
@@ -97,6 +114,8 @@ GET /api/comments/3
 
 ---
 
+<a id="section-3"></a>
+
 ## CRUD操作のパターン
 
 REST APIの基本パターンを一覧にまとめます。
@@ -113,6 +132,8 @@ REST APIの基本パターンを一覧にまとめます。
 <Figure src="/images/usingcomputer_suit_woman_color.png" alt="PCを使う女性のイラスト" maxWidth="300px" />
 
 ---
+
+<a id="section-4"></a>
 
 ## クエリパラメータの使い方
 
@@ -135,6 +156,8 @@ GET /api/articles?status=published&sort=createdAt&order=desc&page=1&limit=10
 パスが「どのリソースか」を表し、クエリが「どう絞り込むか」を表す、という役割分担です。
 
 ---
+
+<a id="section-5"></a>
 
 ## レスポンスの設計
 
@@ -178,6 +201,8 @@ GET /api/articles?status=published&sort=createdAt&order=desc&page=1&limit=10
 
 ---
 
+<a id="section-6"></a>
+
 ## 命名規則
 
 | 要素 | 規則 | 例 |
@@ -200,6 +225,8 @@ GET /api/BlogPosts
 ```
 
 ---
+
+<a id="section-7"></a>
 
 ## よくあるアンチパターン
 
@@ -246,6 +273,8 @@ RESTは厳密な仕様ではなく設計スタイルです。「パスワード�
 </Callout>
 
 ---
+
+<a id="section-8"></a>
 
 ## まとめ
 
