@@ -1,186 +1,519 @@
 ---
 title: 'テキスト・フォント・改行制御 — 読みやすさを設計する'
-description: 'font-family・font-size・line-heightに加え、white-space・word-break・overflow-wrapなどテキストの改行・折り返し制御まで網羅的に解説します。'
+description: 'font-family・font-size・font-weight・line-height・letter-spacingに加え、white-space・word-break・overflow-wrap・text-overflowなど、CSSで文字を読みやすく整える方法を実務パターン付きで解説します。'
 order: 7
 ---
 
-テキストの見た目はUXに直結します。読みやすいフォントサイズ・行間・色の選択が、コンテンツへの集中力を高めます。
+テキストの見た目は、ページの読みやすさ・信頼感・操作しやすさに直結します。CSSで文字を整えるときは、単に「おしゃれにする」のではなく、**読ませたい情報を迷わず読める状態にする**ことが大切です。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-文字まわり、なんとなく整えてるけど「読みやすい」の基準が分からない…。
+文字まわり、なんとなく整えてるけど「読みやすい」の基準が分からない…。フォントサイズや行間って、どう決めればいいの？
 </SpeechBubble>
+
+結論から言うと、本文は `font-size: 1rem`、`line-height: 1.6`〜`1.8` を起点にし、見出し・補足・ボタンなど役割ごとに調整していくと安定します。さらに、長いURLや日本語の折り返しまで考えておくと、スマートフォンでも崩れにくいUIになります。
 
 <Figure src="/images/deskwork_check_man_color.png" alt="読みやすいテキストを設計しているイメージ" maxWidth="220px" />
 
 ---
 
-## font-family
+## タイポグラフィで調整するもの
 
-フォントの種類を指定します。カンマ区切りでフォールバックを列挙します。
+CSSで文字を整えるときは、次のプロパティをセットで考えます。
+
+| プロパティ | 役割 | よく使う値 |
+| --- | --- | --- |
+| `font-family` | フォントの種類 | `sans-serif`, `Noto Sans JP` |
+| `font-size` | 文字サイズ | `1rem`, `0.875rem`, `clamp()` |
+| `font-weight` | 太さ | `400`, `500`, `700` |
+| `line-height` | 行間 | `1.5`, `1.7`, `1.2` |
+| `letter-spacing` | 文字間隔 | `0.02em`, `0.08em` |
+| `text-align` | 揃え位置 | `left`, `center`, `right` |
+| `white-space` | 改行・空白の扱い | `normal`, `nowrap`, `pre-wrap` |
+| `overflow-wrap` | 長い単語の折り返し | `break-word`, `anywhere` |
+| `word-break` | 単語単位の改行ルール | `normal`, `keep-all`, `break-all` |
+
+文字は1つのプロパティだけで決まりません。たとえば `font-size` が同じでも、`line-height` が狭いと詰まって見えます。`font-weight` が太すぎると、見出しは目立ちますが本文は読みづらくなります。
+
+---
+
+## font-family — フォントの種類を指定する
+
+`font-family` は、表示するフォントを指定するプロパティです。カンマ区切りで複数指定すると、左から順に使えるフォントが選ばれます。
 
 ```css
 body {
   font-family: 'Noto Sans JP', sans-serif;
 }
+```
 
-/* システムフォントスタック（読み込み不要で高速） */
+最後には必ず `sans-serif` や `serif` のような**総称ファミリー**を書きます。指定したフォントが読み込めなかった場合でも、近い種類のフォントで表示できるようにするためです。
+
+### システムフォントスタック
+
+Webフォントを読み込まず、OSに入っているフォントを使う指定もよく使われます。読み込みが不要なので高速で、管理画面やドキュメント系のUIと相性が良いです。
+
+```css
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, 'Noto Sans JP', sans-serif;
 }
 ```
 
-Webフォント（Google Fontsなど）を使う場合は `<link>` で読み込みます。
-
----
-
-## font-size
+日本語サイトでは、日本語フォントもフォールバックに入れておくと安定します。
 
 ```css
-body   { font-size: 16px; }   /* ベースサイズ */
-h1     { font-size: 2rem; }    /* 32px相当 */
-h2     { font-size: 1.5rem; }  /* 24px */
-small  { font-size: 0.875rem; } /* 14px */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo,
+    'Noto Sans JP', sans-serif;
+}
 ```
 
-`rem` はルートの `font-size` に対する倍率。ユーザーのブラウザ設定を尊重するため `px` より `rem` が推奨されます。
+### Webフォントを使うときの注意
 
-<Callout type="column">
-ブラウザのデフォルト `font-size` は通常 16px です。`1rem = 16px` として計算できますが、ユーザーがブラウザ設定でフォントサイズを大きくしている場合、`rem` はそれに追従します。`px` で固定するとアクセシビリティを損ないます。
+Google FontsなどのWebフォントを使う場合は、HTMLの `<link>` やCSSの `@import` で読み込みます。ただし、日本語フォントはファイルサイズが大きくなりやすいため、必要な太さだけを読み込むのが基本です。
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link
+  href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap"
+  rel="stylesheet"
+>
+```
+
+<Callout type="warning" title="Webフォントは読み込みコストも見る">
+太さを何種類も読み込むと、初回表示が遅くなることがあります。本文・中見出し・強調に使う `400`, `500`, `700` 程度から始め、必要以上に増やさないようにしましょう。
 </Callout>
 
 ---
 
-## font-weight
+## font-size — 文字サイズを決める
+
+`font-size` は文字の大きさを指定します。本文の基準は `1rem`、つまり多くのブラウザで 16px 相当です。
 
 ```css
-font-weight: 400; /* normal */
-font-weight: 700; /* bold */
-font-weight: 300; /* light（フォントが対応していれば） */
+body {
+  font-size: 1rem; /* 通常は16px相当 */
+}
+
+h1 {
+  font-size: 2rem; /* 32px相当 */
+}
+
+h2 {
+  font-size: 1.5rem; /* 24px相当 */
+}
+
+small {
+  font-size: 0.875rem; /* 14px相当 */
+}
+```
+
+`rem` はルート要素、つまり `html` の `font-size` に対する倍率です。ユーザーがブラウザ設定で文字を大きくしている場合、`rem` はその設定に追従します。
+
+<Callout type="column">
+ブラウザのデフォルト `font-size` は通常 16px です。`1rem = 16px` として計算できますが、ユーザーがブラウザ設定でフォントサイズを大きくしている場合、`rem` はそれに追従します。本文を `px` で固定しすぎると、アクセシビリティを損ないます。
+</Callout>
+
+### px・em・remの違い
+
+| 単位 | 基準 | 向いている用途 |
+| --- | --- | --- |
+| `px` | 固定値 | ボーダー、アイコン、細かい調整 |
+| `em` | 親要素の文字サイズ | ボタン内の余白、コンポーネント内の相対調整 |
+| `rem` | ルート要素の文字サイズ | 本文、見出し、余白の共通スケール |
+
+基本は `rem` を使い、コンポーネント内で文字サイズに連動させたい余白には `em` を使うと扱いやすくなります。
+
+```css
+.button {
+  font-size: 1rem;
+  padding: 0.6em 1em; /* 文字サイズに応じて余白も変わる */
+}
+
+.button-large {
+  font-size: 1.125rem;
+}
+```
+
+### clamp()でレスポンシブな文字サイズにする
+
+見出しは画面幅に応じて少し変化させると、スマホでもPCでも自然に見えます。`clamp(最小値, 推奨値, 最大値)` を使うと、メディアクエリを書かずにサイズを制御できます。
+
+```css
+h1 {
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: clamp(1.375rem, 2.5vw, 2rem);
+  line-height: 1.3;
+}
+```
+
+ただし、本文まで大きく可変にしすぎると読み心地が不安定になります。本文は `1rem`〜`1.125rem` 程度を基準にし、見出しだけ `clamp()` を使うところから始めるのが現実的です。
+
+---
+
+## font-weight — 太さで情報の強弱を作る
+
+`font-weight` は文字の太さを指定します。
+
+```css
+.text {
+  font-weight: 400; /* normal */
+}
+
+.lead {
+  font-weight: 500; /* 少し強調 */
+}
+
+.heading {
+  font-weight: 700; /* bold */
+}
+```
+
+| 値 | 呼び方 | 主な用途 |
+| --- | --- | --- |
+| `400` | normal | 本文 |
+| `500` | medium | ラベル、少し強めたい本文 |
+| `600` | semibold | 小見出し、ボタン |
+| `700` | bold | 見出し、強い強調 |
+
+日本語フォントでは、太字を多用すると画面全体が重く見えやすいです。本文は `400`、UIラベルやボタンは `500`〜`600`、見出しは `700` くらいにするとバランスを取りやすくなります。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「全部太字」は強調ではなく、情報の優先順位が消えた状態になりやすいよ。太さは、見出し・ラベル・本文の役割を分けるために使おう。
+</SpeechBubble>
+
+---
+
+## line-height — 行間を整える
+
+`line-height` は行の高さを指定します。本文の読みやすさに最も影響しやすいプロパティです。
+
+```css
+p {
+  line-height: 1.7;
+}
+
+h1 {
+  line-height: 1.2;
+}
+```
+
+単位なしの数値は、要素自身の `font-size` に対する倍率です。たとえば `font-size: 16px; line-height: 1.7;` なら、行の高さは `27.2px` になります。
+
+| 要素 | 目安 |
+| --- | --- |
+| 本文 | `1.6`〜`1.8` |
+| 長文記事 | `1.7`〜`1.9` |
+| 見出し | `1.15`〜`1.35` |
+| ボタン・ナビ | `1`〜`1.4` |
+
+本文は行間が狭いと目で追いづらくなり、広すぎると段落のまとまりが弱くなります。日本語の長文では `1.7` 前後から調整すると失敗しにくいです。
+
+### line-heightは単位なしを使う
+
+`line-height` には `px` や `%` も指定できますが、基本は単位なしの数値を使います。子要素に継承されたときも、各要素の `font-size` に応じて自然に計算されるためです。
+
+```css
+body {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.small-note {
+  font-size: 0.875rem;
+  /* line-heightは0.875remに対して1.7倍で計算される */
+}
 ```
 
 ---
 
-## line-height（行間）
+## 1行の長さも読みやすさに影響する
+
+文字サイズと行間を整えても、1行が長すぎると読みづらくなります。本文エリアには `max-width` を設定して、行長を制御しましょう。
 
 ```css
-/* 本文：1.6〜1.8が読みやすい */
-p { line-height: 1.7; }
-
-/* 見出し：タイトルは詰める */
-h1 { line-height: 1.2; }
+.article {
+  max-width: 42rem;
+  margin-inline: auto;
+  font-size: 1rem;
+  line-height: 1.8;
+}
 ```
 
-単位なしの数値は `font-size` に対する倍率です。
+日本語の本文では、PC画面で横に広がりすぎないようにするだけで読みやすさが大きく改善します。カードの説明文やFAQの回答文も、幅いっぱいに広げず適度な最大幅を持たせると安定します。
+
+<Callout type="info" title="文字サイズだけで解決しない">
+「読みづらい」と感じる原因は、文字サイズではなく行長や行間にあることも多いです。まず `font-size`、`line-height`、`max-width` の3つをセットで確認しましょう。
+</Callout>
 
 ---
 
-## letter-spacing（文字間隔）
+## letter-spacing — 文字間隔を調整する
+
+`letter-spacing` は文字と文字の間隔を調整します。
 
 ```css
-/* 見出しを少し広げると読みやすくなることがある */
-h1 { letter-spacing: 0.02em; }
+h1 {
+  letter-spacing: 0.02em;
+}
 
-/* ALL CAPS のとき広げると可読性が上がる */
-.tag { letter-spacing: 0.1em; }
+.tag {
+  letter-spacing: 0.08em;
+}
+```
+
+少し広げると見出しや短いラベルが読みやすくなることがあります。ただし、本文に大きな `letter-spacing` を入れると読みにくくなります。
+
+```css
+/* よくない例：本文全体に広い文字間隔を入れる */
+p {
+  letter-spacing: 0.08em;
+}
+```
+
+### 英大文字のラベルでは広げる
+
+英大文字だけの短いラベルは、文字が詰まって見えやすいです。少しだけ間隔を広げると読みやすくなります。
+
+```css
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+```
+
+日本語の本文では、基本的に `letter-spacing` は `normal` のままで問題ありません。見出しやロゴ風の短いテキストだけ、必要に応じて調整しましょう。
+
+---
+
+## text-align — 揃え位置を決める
+
+`text-align` はテキストの横方向の揃え位置を指定します。
+
+```css
+.center {
+  text-align: center;
+}
+
+.right {
+  text-align: right;
+}
+
+.left {
+  text-align: left;
+}
+```
+
+本文は左揃えが基本です。中央揃えは短い見出しやヒーローセクションには使えますが、長い文章では行頭の位置が毎行ずれて読みにくくなります。
+
+```css
+/* 短い見出しならOK */
+.hero-title {
+  text-align: center;
+}
+
+/* 長文は左揃え */
+.article-body {
+  text-align: left;
+}
 ```
 
 ---
 
-## text-align
+## text-decoration・text-transform — 補助的な文字装飾
+
+リンクやラベルでは、文字装飾もよく使います。
 
 ```css
-.center { text-align: center; }
-.right  { text-align: right; }
-.left   { text-align: left; }  /* デフォルト */
+a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
 ```
+
+`text-underline-offset` を使うと、下線と文字の距離を調整できます。リンクの下線が文字に近すぎて窮屈に見えるときに便利です。
+
+```css
+.label {
+  text-transform: uppercase;
+}
+```
+
+`text-transform: uppercase;` は英字を大文字に変換します。見た目だけの変換なので、HTML上のテキストを無理に大文字で書く必要がありません。
 
 ---
 
 ## テキストの改行・折り返し制御
 
-「URLが枠をはみ出す」「日本語が変なところで切れる」——テキストの折り返しまわりは忘れやすいので整理しておきましょう。
+「URLが枠をはみ出す」「日本語が変なところで切れる」「ボタンの文字が2行になって崩れる」など、テキストの折り返しまわりは実務でよく問題になります。
 
 <Figure src="/images/fork_suit_man_color.png" alt="テキストの改行制御に悩んでいるイメージ" maxWidth="240px" />
 
-### white-space（改行・空白の制御）
+### white-space — 改行・空白の扱い
+
+`white-space` は、HTML上の改行や連続空白をどう表示するか、幅が足りないときに折り返すかを制御します。
 
 ```css
-/* 改行を許可しない（1行に強制） */
-.nowrap { white-space: nowrap; }
-
-/* HTML上の改行・連続空白をそのまま表示（preタグ相当） */
-.pre { white-space: pre; }
-
-/* 改行はそのまま表示しつつ、幅で折り返す */
-.pre-wrap { white-space: pre-wrap; }
-
-/* 通常の折り返し（デフォルト） */
-.normal { white-space: normal; }
-```
-
-| 値 | 改行をそのまま表示 | 折り返し | 連続空白 |
-|---|---|---|---|
-| `normal` | しない | する | 1つにまとめる |
-| `nowrap` | しない | しない | 1つにまとめる |
-| `pre` | する | しない | そのまま |
-| `pre-wrap` | する | する | そのまま |
-| `pre-line` | する | する | 1つにまとめる |
-
-### overflow-wrap / word-break（長い単語の折り返し）
-
-```css
-/* 長い英単語やURLが枠をはみ出すのを防ぐ */
-.break-word {
-  overflow-wrap: break-word;
+/* 通常の折り返し */
+.normal {
+  white-space: normal;
 }
 
-/* 日本語で使う：どこでも改行を許可 */
+/* 改行を許可しない */
+.nowrap {
+  white-space: nowrap;
+}
+
+/* HTML上の改行・連続空白をそのまま表示 */
+.pre {
+  white-space: pre;
+}
+
+/* 改行はそのまま表示しつつ、幅で折り返す */
+.pre-wrap {
+  white-space: pre-wrap;
+}
+```
+
+| 値 | HTML上の改行 | 幅による折り返し | 連続空白 |
+| --- | --- | --- | --- |
+| `normal` | 反映しない | する | 1つにまとめる |
+| `nowrap` | 反映しない | しない | 1つにまとめる |
+| `pre` | 反映する | しない | そのまま |
+| `pre-wrap` | 反映する | する | そのまま |
+| `pre-line` | 反映する | する | 1つにまとめる |
+
+ユーザーが入力した改行を表示したいコメント欄やプロフィール文では、`pre-wrap` がよく使われます。
+
+```css
+.user-comment {
+  white-space: pre-wrap;
+}
+```
+
+### overflow-wrap — 長い単語やURLを折り返す
+
+`overflow-wrap` は、長い英単語・URL・ファイルパスなどが親要素からはみ出すのを防ぐために使います。
+
+```css
+.content {
+  overflow-wrap: break-word;
+}
+```
+
+より強く「必要ならどこでも折り返してよい」としたい場合は `anywhere` も使えます。
+
+```css
+.message {
+  overflow-wrap: anywhere;
+}
+```
+
+`anywhere` は強力ですが、通常の単語まで思わぬ位置で折り返されることがあります。本文全体には `break-word`、チャットメッセージや狭いカードなど崩れを防ぎたい場所には `anywhere`、という使い分けが現実的です。
+
+### word-break — 単語の区切り方を制御する
+
+`word-break` は、単語の途中で改行してよいかを制御します。
+
+```css
+.normal {
+  word-break: normal;
+}
+
+.keep-all {
+  word-break: keep-all;
+}
+
 .break-all {
   word-break: break-all;
 }
-
-/* 日本語の自然な禁則処理を維持しつつ、長い単語だけ折り返す（推奨） */
-.break-keep {
-  word-break: keep-all;
-  overflow-wrap: break-word;
-}
 ```
 
-### 実務でよく使うパターン
+| 値 | 特徴 | 注意点 |
+| --- | --- | --- |
+| `normal` | ブラウザ標準の改行 | まずはこれでよい |
+| `keep-all` | CJK文字での任意改行を抑える | 日本語本文では詰まりやすい場合もある |
+| `break-all` | 文字単位で強く折り返す | 英単語やURLが細かく切れる |
+
+日本語サイトでは、本文全体に `word-break: break-all;` を入れるのは避けましょう。日本語も英単語も不自然な位置で切れやすくなります。
+
+<Callout type="warning" title="break-allの使いすぎに注意">
+`word-break: break-all;` は便利ですが、文章の読みやすさを大きく下げることがあります。まずは `overflow-wrap: break-word;` を試し、それでも狭い領域で崩れる場合だけ局所的に使いましょう。
+</Callout>
+
+### line-break — 日本語の禁則処理
+
+`line-break` は、日本語・中国語・韓国語などの禁則処理の厳しさを指定します。
 
 ```css
-/* URLやファイルパスが含まれるテキスト */
-.url-text {
-  overflow-wrap: break-word;
-  word-break: break-all;
-}
-
-/* 日本語メインのコンテンツ（禁則処理を維持） */
 .jp-text {
-  word-break: keep-all;
-  overflow-wrap: break-word;
   line-break: strict;
 }
+```
 
-/* 強制的に改行させない + はみ出し省略 */
-.no-break {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+日本語の本文で、句読点や括弧の位置をより自然に扱いたい場合に使えます。ただし、ブラウザやフォントによって見え方が変わることもあるため、本文全体に入れる前に実際の表示を確認しましょう。
+
+---
+
+## 実務でよく使う折り返しパターン
+
+### 日本語メインの本文
+
+日本語の長文では、自然な改行を保ちつつ、長いURLだけははみ出さないようにします。
+
+```css
+.article-body {
+  line-height: 1.8;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 ```
 
-### `<br>` を使わずにCSSで改行する
+### URLやファイルパスが入るテキスト
+
+URL・メールアドレス・ファイルパスは、途中で折り返せないとレイアウトを壊します。
 
 ```css
-/* Flexboxで縦並びにする */
-.vertical { display: flex; flex-direction: column; }
+.url-text {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+```
 
-/* ::after で改行を挿入 */
-.break-after::after {
-  content: "\A";
-  white-space: pre;
+### ボタンやナビゲーション
+
+短いUIテキストは、意図せず2行になると高さがずれて見えることがあります。
+
+```css
+.nav-link,
+.button {
+  white-space: nowrap;
+}
+```
+
+ただし、スマホで横幅が足りないのに `nowrap` を指定すると、今度は横にはみ出します。長いラベルが入る可能性がある場合は、ラベルを短くするか、アイコンとテキストの配置を見直しましょう。
+
+### ユーザー入力の改行を表示する
+
+コメントやメモ欄では、ユーザーが入力した改行を反映したいことがあります。
+
+```css
+.comment-body {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 ```
 
@@ -188,15 +521,23 @@ h1 { letter-spacing: 0.02em; }
 
 ## テキストの省略
 
+表示領域が限られているカード・一覧・テーブルでは、長いテキストを省略することがあります。
+
+### 1行で省略する
+
 ```css
-/* 1行で省略 */
 .truncate {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+```
 
-/* 複数行で省略（-webkit- prefix が必要） */
+`text-overflow: ellipsis;` だけでは省略されません。`overflow: hidden;` と `white-space: nowrap;` をセットで指定する必要があります。
+
+### 複数行で省略する
+
+```css
 .clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -205,12 +546,157 @@ h1 { letter-spacing: 0.02em; }
 }
 ```
 
+ニュースカードや商品カードの説明文では、2〜3行で揃えると一覧が見やすくなります。
+
+```css
+.card-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+```
+
+<Callout type="note" title="省略は情報を隠す">
+省略表示はレイアウトを整えるには便利ですが、ユーザーに必要な情報を隠すことにもなります。詳細ページへのリンク、ツールチップ、展開ボタンなど、全文を確認できる導線も検討しましょう。
+</Callout>
+
+---
+
+## `<br>` に頼りすぎない
+
+見た目のためだけに `<br>` を大量に入れると、画面幅が変わったときに不自然な改行になります。文章の区切りは段落、レイアウト上の縦並びはCSSで表現しましょう。
+
+```html
+<!-- よくない例：見た目のためだけにbrを入れる -->
+<p>
+  CSSで文字を整えると<br>
+  読みやすいページになります
+</p>
+```
+
+```html
+<!-- よい例：文として自然に書く -->
+<p>CSSで文字を整えると、読みやすいページになります。</p>
+```
+
+縦に並べたい場合は、Flexboxやブロック要素を使います。
+
+```css
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+```
+
+どうしてもCSSで改行を入れたい場合は、疑似要素と `white-space` を使う方法もあります。
+
+```css
+.break-after::after {
+  content: "\A";
+  white-space: pre;
+}
+```
+
+---
+
+## 読みやすい本文スタイルの例
+
+ここまでの内容を組み合わせると、基本の本文スタイルは次のように書けます。
+
+```css
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo,
+    'Noto Sans JP', sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #1f2937;
+}
+
+.article {
+  max-width: 42rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.article h1 {
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.article h2 {
+  margin-top: 2.5em;
+  font-size: clamp(1.375rem, 2.5vw, 2rem);
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.article p {
+  margin-block: 1em;
+  overflow-wrap: break-word;
+}
+
+.article a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+```
+
+管理画面やカードUIでは、本文より少し詰めたスタイルにすることもあります。
+
+```css
+.card {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.card-title {
+  font-size: 1rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.card-meta {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #6b7280;
+}
+```
+
+---
+
+## よくある失敗と直し方
+
+| 状態 | 原因 | 直し方 |
+| --- | --- | --- |
+| 本文が詰まって見える | `line-height` が狭い | `1.6`〜`1.8` にする |
+| PCで文章が横に長すぎる | 本文幅に制限がない | `max-width` を指定する |
+| スマホでURLがはみ出す | 長い文字列が折り返されない | `overflow-wrap: break-word` を入れる |
+| ボタンの高さがばらつく | ラベルが折り返されている | `white-space: nowrap`、文言調整 |
+| 文章が変な位置で切れる | `word-break: break-all` の使いすぎ | `normal` + `overflow-wrap` に戻す |
+| 見出しが大きすぎる | PC基準のサイズを固定している | `clamp()` で上限・下限を決める |
+
 ---
 
 ## ちゃんと使うためのポイント
 
-- `font-size` は `rem` で統一すると拡大縮小に強い
-- 本文の `line-height` は 1.6〜1.8 が読みやすい
-- フォントスタックは必ず最後に総称ファミリー（`sans-serif` など）を書く
+- 本文の `font-size` は `1rem` を基準にし、ユーザーのブラウザ設定を尊重する
+- 本文の `line-height` は `1.6`〜`1.8`、長文では `1.7` 前後から調整する
+- 1行が長すぎる本文には `max-width` を指定する
+- フォントスタックは必ず最後に `sans-serif` などの総称ファミリーを書く
+- 長いURLや英単語のはみ出しには、まず `overflow-wrap: break-word` を使う
+- `word-break: break-all` は局所的に使い、本文全体には指定しない
+- 省略表示は `overflow`、`white-space`、`text-overflow` をセットで指定する
 
 次の章では、**色と背景**のスタイリングを学びます。
