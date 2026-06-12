@@ -1,0 +1,741 @@
+---
+title: 'Route HandlersとAPI Route — route.tsでAPIエンドポイントを作る'
+description: 'Next.js App RouterのRoute Handlersを使い、app/api配下のroute.tsでGET・POST・PUT・DELETEを実装する方法、NextRequest・NextResponseの使い方、Server Actionsとの使い分けまで解説します。'
+order: 8
+---
+
+ここまでは、Server Componentから外部APIやデータソースを `fetch` して画面に表示する方法を学びました。次は、Next.jsアプリ自身が**APIエンドポイントを提供する側**になる方法です。
+
+App Routerでは、`app/api/.../route.ts` に関数を書くことで、JSONを返すAPIを作れます。この仕組みを **Route Handlers** と呼びます。Pages Router時代の名前に慣れている人は、**API RoutesのApp Router版**と考えると理解しやすいです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Next.jsって画面を作るフレームワークだと思ってたけど、APIも作れるの？ Expressみたいに別サーバーを立てる必要はないの？
+</SpeechBubble>
+
+はい。小〜中規模のWebアプリなら、Next.jsの中にAPIを作るだけで十分な場面が多いです。画面、データ取得、API、フォーム更新を同じプロジェクトで扱えるのが、Next.jsをフルスタックフレームワークと呼ぶ理由の1つです。
+
+<Figure src="/images/pc-work-woman01.png" alt="Next.jsでAPIエンドポイントを実装しているイメージ" maxWidth="260px" />
+
+---
+
+## 目次
+
+- [Route Handlersとは](#route-handlers-overview)
+- [page.tsxとroute.tsの違い](#page-vs-route)
+- [HTTPメソッドで処理を分ける](#http-methods)
+- [GET — データを取得する](#get)
+- [POST — JSON bodyを受け取って作成する](#post)
+- [PUT — 既存データを更新する](#put)
+- [DELETE — 既存データを削除する](#delete)
+- [NextRequest — リクエストを扱う](#next-request)
+- [NextResponse — レスポンスを返す](#next-response)
+- [エラーレスポンスの基本](#error-responses)
+- [DB連携の基本パターン](#db-pattern)
+- [認証・認可はサーバー側で必ず確認する](#auth)
+- [Route HandlersとServer Actionsの使い分け](#route-handlers-vs-server-actions)
+- [よくあるハマりどころ](#common-pitfalls)
+- [まとめ](#summary)
+
+---
+
+<a id="route-handlers-overview"></a>
+
+## Route Handlersとは
+
+Route Handlerは、特定のURLに対するHTTPリクエストを受け取り、レスポンスを返す関数です。`page.tsx` が「画面」を返すのに対して、`route.ts` は「データ」や「ステータス」を返します。
+
+```txt
+src/app/
+├── users/
+│   └── page.tsx        → /users の画面
+└── api/
+    └── users/
+        └── route.ts    → /api/users のAPI
+```
+
+`app/api/users/route.ts` を作ると、`/api/users` というURLでアクセスできるAPIになります。
+
+```ts
+// src/app/api/users/route.ts
+export async function GET() {
+  return Response.json([
+    { id: 1, name: '田中' },
+    { id: 2, name: '佐藤' },
+  ]);
+}
+```
+
+ブラウザや `fetch('/api/users')` からアクセスすると、JSONが返ります。
+
+<Callout type="info" title="route.tsはpage.tsxと同じ階層に置けない">
+同じURLセグメントに `page.tsx` と `route.ts` を同時に置くことはできません。`/users` は画面、`/api/users` はAPI、のように役割ごとにURLを分けましょう。
+</Callout>
+
+---
+
+<a id="page-vs-route"></a>
+
+## page.tsxとroute.tsの違い
+
+| ファイル | 返すもの | 使い道 |
+| --- | --- | --- |
+| `page.tsx` | Reactコンポーネント | ユーザーが見る画面 |
+| `route.ts` | `Response` / `NextResponse` | JSON、Webhook、外部連携用API |
+
+たとえば、ユーザー一覧画面は `page.tsx`、その画面が使うユーザー一覧APIは `route.ts` にします。
+
+```txt
+src/app/
+├── users/
+│   └── page.tsx
+└── api/
+    └── users/
+        └── route.ts
+```
+
+```tsx
+// src/app/users/page.tsx
+export default async function UsersPage() {
+  const res = await fetch('http://localhost:3000/api/users');
+  const users = await res.json();
+
+  return (
+    <ul>
+      {users.map((user: { id: number; name: string }) => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+<Callout type="note" title="Server Componentから内部APIを呼ぶべきか">
+Server Componentから同じアプリ内のAPIを `fetch` するより、DBアクセスやサービス関数を直接呼ぶ方がシンプルなことも多いです。Route Handlerは「ブラウザ、外部サービス、モバイルアプリなど、HTTP経由で呼ばれる入口」が必要なときに特に向いています。
+</Callout>
+
+---
+
+<a id="http-methods"></a>
+
+## HTTPメソッドで処理を分ける
+
+Route Handlerでは、HTTPメソッド名と同じ名前の関数を `export` します。
+
+```ts
+// src/app/api/users/route.ts
+export async function GET() {
+  // 一覧取得
+}
+
+export async function POST(request: Request) {
+  // 新規作成
+}
+
+export async function PUT(request: Request) {
+  // 更新
+}
+
+export async function DELETE(request: Request) {
+  // 削除
+}
+```
+
+同じ `/api/users` というURLでも、リクエストのメソッドによって呼ばれる関数が変わります。
+
+| メソッド | 主な意味 | 例 |
+| --- | --- | --- |
+| `GET` | 取得 | ユーザー一覧を取得する |
+| `POST` | 作成 | 新しいユーザーを作る |
+| `PUT` | 全体更新・置き換え | ユーザー情報を更新する |
+| `PATCH` | 部分更新 | 名前だけ変更する |
+| `DELETE` | 削除 | ユーザーを削除する |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+同じURLなのに、`GET` と `POST` で別の処理になるんだね。URLだけじゃなくて、HTTPメソッドもルーティングの条件になるのか。
+</SpeechBubble>
+
+定義していないメソッドでアクセスされた場合、そのメソッドは許可されません。まずは `GET` と `POST` から始め、必要に応じて `PUT` / `PATCH` / `DELETE` を追加するとよいです。
+
+---
+
+<a id="get"></a>
+
+## GET — データを取得する
+
+`GET` は、一覧や詳細を取得するためのメソッドです。リクエストボディは基本的に使わず、クエリパラメータや動的ルートで条件を受け取ります。
+
+```ts
+// src/app/api/users/route.ts
+const users = [
+  { id: 1, name: '田中', role: 'admin' },
+  { id: 2, name: '佐藤', role: 'member' },
+];
+
+export async function GET() {
+  return Response.json({ users });
+}
+```
+
+### クエリパラメータを読む
+
+`/api/users?role=admin` のようなクエリは、`request.url` から `URL` オブジェクトを作って読み取れます。
+
+```ts
+// src/app/api/users/route.ts
+import type { NextRequest } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  const role = request.nextUrl.searchParams.get('role');
+
+  const filteredUsers = role
+    ? users.filter((user) => user.role === role)
+    : users;
+
+  return Response.json({ users: filteredUsers });
+}
+```
+
+`NextRequest` を使うと、通常の `Request` よりもNext.js向けの便利な情報を扱えます。クエリを読むなら `request.nextUrl.searchParams` が分かりやすいです。
+
+```ts
+const page = request.nextUrl.searchParams.get('page') ?? '1';
+const keyword = request.nextUrl.searchParams.get('q') ?? '';
+```
+
+<Callout type="info" title="GETは取得専用にする">
+`GET` でデータを作成・更新・削除するのは避けましょう。ブラウザやクローラ、プリフェッチなどが意図せずGETを実行することがあります。副作用のある処理は `POST` / `PUT` / `PATCH` / `DELETE` に分けるのが基本です。
+</Callout>
+
+---
+
+<a id="post"></a>
+
+## POST — JSON bodyを受け取って作成する
+
+`POST` は、新しいデータを作成するときによく使います。送られてきたJSONは `await request.json()` で読み取ります。
+
+```ts
+// src/app/api/users/route.ts
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
+  const body = await request.json();
+
+  const name = String(body.name ?? '').trim();
+  const role = String(body.role ?? 'member').trim();
+
+  if (!name) {
+    return NextResponse.json(
+      { error: 'name is required' },
+      { status: 400 },
+    );
+  }
+
+  const user = {
+    id: Date.now(),
+    name,
+    role,
+  };
+
+  // 実務ではここでDBに保存する
+  return NextResponse.json({ user }, { status: 201 });
+}
+```
+
+クライアント側からは次のように呼び出します。
+
+```ts
+await fetch('/api/users', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: '山田',
+    role: 'member',
+  }),
+});
+```
+
+### request.json()は一度だけ読む
+
+リクエストボディはストリームなので、基本的に一度しか読めません。
+
+```ts
+const body = await request.json();
+
+// 同じrequestに対してもう一度 json() を呼ぶ設計は避ける
+// const body2 = await request.json();
+```
+
+読み取った `body` を変数に入れて、以降の処理で使い回しましょう。
+
+### 必ず入力値を検証する
+
+APIに届く値は信用できません。ブラウザ側でバリデーションしていても、curlやPostmanから直接APIを叩けます。
+
+```ts
+function isValidRole(value: unknown): value is 'admin' | 'member' {
+  return value === 'admin' || value === 'member';
+}
+
+export async function POST(request: Request) {
+  const body = await request.json();
+
+  if (typeof body.name !== 'string' || body.name.trim() === '') {
+    return NextResponse.json({ error: 'name is required' }, { status: 400 });
+  }
+
+  if (!isValidRole(body.role)) {
+    return NextResponse.json({ error: 'role is invalid' }, { status: 400 });
+  }
+
+  return NextResponse.json(
+    { user: { id: Date.now(), name: body.name, role: body.role } },
+    { status: 201 },
+  );
+}
+```
+
+実務では、Zodなどのバリデーションライブラリを使うと、型チェックとエラーメッセージの管理がしやすくなります。
+
+---
+
+<a id="put"></a>
+
+## PUT — 既存データを更新する
+
+`PUT` は、既存データを更新するときに使います。どのデータを更新するかは、動的ルートで受け取るのが一般的です。
+
+```txt
+src/app/api/users/[id]/route.ts
+```
+
+このファイルは `/api/users/123` のようなURLに対応します。
+
+```ts
+// src/app/api/users/[id]/route.ts
+import { NextResponse } from 'next/server';
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const body = await request.json();
+
+  const name = String(body.name ?? '').trim();
+
+  if (!name) {
+    return NextResponse.json(
+      { error: 'name is required' },
+      { status: 400 },
+    );
+  }
+
+  // 実務ではここでDBを更新する
+  const updatedUser = {
+    id: Number(id),
+    name,
+  };
+
+  return NextResponse.json({ user: updatedUser });
+}
+```
+
+App Routerでは、動的セグメントの `params` は `await` して取り出します。`[id]` というフォルダ名にしたので、`params` には `{ id: string }` が入ります。
+
+```ts
+const { id } = await params;
+```
+
+クライアント側からは、更新対象のIDをURLに含めて呼びます。
+
+```ts
+await fetch('/api/users/123', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: '山田太郎',
+  }),
+});
+```
+
+<Callout type="note" title="PUTとPATCHの違い">
+厳密には、`PUT` はリソース全体の置き換え、`PATCH` は一部更新に使われます。ただし小規模なアプリでは、更新処理を `PUT` に寄せても実用上は困らないことが多いです。API設計を丁寧に揃えたい場合は、名前だけ変更するような処理を `PATCH` に分けましょう。
+</Callout>
+
+---
+
+<a id="delete"></a>
+
+## DELETE — 既存データを削除する
+
+`DELETE` は、指定したデータを削除するときに使います。こちらも動的ルートでIDを受け取ることが多いです。
+
+```ts
+// src/app/api/users/[id]/route.ts
+import { NextResponse } from 'next/server';
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  if (!id) {
+    return NextResponse.json(
+      { error: 'id is required' },
+      { status: 400 },
+    );
+  }
+
+  // 実務ではここでDBから削除する
+  return new Response(null, { status: 204 });
+}
+```
+
+削除に成功し、返すJSONがない場合は `204 No Content` を返すことがあります。JSONで結果を返したいなら、次のようにしても構いません。
+
+```ts
+return NextResponse.json({ ok: true });
+```
+
+クライアント側からは次のように呼び出します。
+
+```ts
+await fetch('/api/users/123', {
+  method: 'DELETE',
+});
+```
+
+削除は取り消しが難しい操作なので、実務ではサーバー側で認可チェックを必ず行います。
+
+---
+
+<a id="next-request"></a>
+
+## NextRequest — リクエストを扱う
+
+`NextRequest` は、標準のWeb `Request` をNext.js向けに拡張した型です。通常の `request.json()` や `request.headers.get()` に加えて、`nextUrl` や `cookies` を扱いやすくなります。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+迷ったら、まずは標準の `Request` で書いてみよう。クエリ、Cookie、Next.js固有のURL情報を扱いたくなったら `NextRequest` に切り替える、くらいで十分だよ。
+</SpeechBubble>
+
+```ts
+import type { NextRequest } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const page = request.nextUrl.searchParams.get('page') ?? '1';
+  const token = request.cookies.get('token')?.value;
+  const userAgent = request.headers.get('user-agent');
+
+  return Response.json({
+    pathname,
+    page,
+    hasToken: Boolean(token),
+    userAgent,
+  });
+}
+```
+
+よく使う読み取りは次の通りです。
+
+| 書き方 | 取れるもの |
+| --- | --- |
+| `request.nextUrl.pathname` | パス名 |
+| `request.nextUrl.searchParams.get('q')` | クエリパラメータ |
+| `request.cookies.get('token')?.value` | Cookie |
+| `request.headers.get('authorization')` | HTTPヘッダー |
+| `await request.json()` | JSON body |
+| `await request.formData()` | フォームデータ |
+
+`NextRequest` は必須ではありません。JSON bodyを読むだけなら `Request` で十分です。
+
+```ts
+export async function POST(request: Request) {
+  const body = await request.json();
+  return Response.json(body);
+}
+```
+
+クエリやCookieなどNext.js固有の便利機能を使いたいときに `NextRequest` を選ぶ、と覚えておきましょう。
+
+---
+
+<a id="next-response"></a>
+
+## NextResponse — レスポンスを返す
+
+`NextResponse` は、標準のWeb `Response` をNext.js向けに拡張したものです。JSONを返す、Cookieを設定する、リダイレクトする、といった処理を読みやすく書けます。
+
+<Figure src="/images/deskwork_check_man_color.png" alt="APIレスポンスの内容を確認しているイメージ" maxWidth="220px" />
+
+```ts
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  return NextResponse.json({
+    message: 'Hello from Route Handler',
+  });
+}
+```
+
+ステータスコードを付ける場合は、第2引数に指定します。
+
+```ts
+return NextResponse.json(
+  { error: 'Unauthorized' },
+  { status: 401 },
+);
+```
+
+ヘッダーも同時に指定できます。
+
+```ts
+return NextResponse.json(
+  { ok: true },
+  {
+    status: 200,
+    headers: {
+      'Cache-Control': 'no-store',
+    },
+  },
+);
+```
+
+### Cookieを設定する
+
+ログイン処理などでは、レスポンスにCookieを付けたいことがあります。
+
+```ts
+import { NextResponse } from 'next/server';
+
+export async function POST() {
+  const response = NextResponse.json({ ok: true });
+
+  response.cookies.set('token', 'example-token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    path: '/',
+  });
+
+  return response;
+}
+```
+
+`httpOnly: true` にすると、ブラウザのJavaScriptからCookieを読めなくなります。認証トークンのような重要な値をCookieに入れる場合は、基本的に `httpOnly` を使います。
+
+### リダイレクトする
+
+API内で条件に応じて別URLへリダイレクトしたい場合は、`NextResponse.redirect()` を使えます。
+
+```ts
+import { NextResponse } from 'next/server';
+
+export async function GET(request: Request) {
+  const url = new URL('/login', request.url);
+  return NextResponse.redirect(url);
+}
+```
+
+---
+
+<a id="error-responses"></a>
+
+## エラーレスポンスの基本
+
+APIでは、成功時だけでなく失敗時の返し方も重要です。ステータスコードとJSONの形を揃えておくと、クライアント側で扱いやすくなります。
+
+```ts
+import { NextResponse } from 'next/server';
+
+function errorResponse(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+
+    if (typeof body.name !== 'string') {
+      return errorResponse('name must be a string', 400);
+    }
+
+    return NextResponse.json({ ok: true }, { status: 201 });
+  } catch {
+    return errorResponse('invalid json body', 400);
+  }
+}
+```
+
+よく使うステータスコードは次の通りです。
+
+| ステータス | 意味 | 使う場面 |
+| --- | --- | --- |
+| `200` | OK | 取得・更新成功 |
+| `201` | Created | 作成成功 |
+| `204` | No Content | 削除成功、返す本文なし |
+| `400` | Bad Request | 入力値が不正 |
+| `401` | Unauthorized | ログインが必要 |
+| `403` | Forbidden | 権限がない |
+| `404` | Not Found | 対象データがない |
+| `409` | Conflict | 重複や競合 |
+| `500` | Internal Server Error | 予期しないサーバーエラー |
+
+<Callout type="warning" title="エラー詳細を返しすぎない">
+DBエラーやスタックトレースをそのままクライアントに返すと、内部構造が漏れることがあります。ログには詳細を残し、レスポンスにはユーザーやクライアントが扱える範囲のメッセージを返しましょう。
+</Callout>
+
+---
+
+<a id="db-pattern"></a>
+
+## DB連携の基本パターン
+
+実務では、Route Handlerの中でDBを直接操作するより、サービス関数に切り出すとテストしやすくなります。
+
+```txt
+src/
+├── app/
+│   └── api/
+│       └── users/
+│           └── route.ts
+└── server/
+    └── users.ts
+```
+
+```ts
+// src/server/users.ts
+export async function getUsers() {
+  // Prismaやmysql2などでDBから取得する
+  return [
+    { id: 1, name: '田中' },
+    { id: 2, name: '佐藤' },
+  ];
+}
+
+export async function createUser(input: { name: string }) {
+  // DBへ保存する
+  return { id: Date.now(), name: input.name };
+}
+```
+
+```ts
+// src/app/api/users/route.ts
+import { NextResponse } from 'next/server';
+import { createUser, getUsers } from '@/server/users';
+
+export async function GET() {
+  const users = await getUsers();
+  return NextResponse.json({ users });
+}
+
+export async function POST(request: Request) {
+  const body = await request.json();
+
+  if (typeof body.name !== 'string' || body.name.trim() === '') {
+    return NextResponse.json({ error: 'name is required' }, { status: 400 });
+  }
+
+  const user = await createUser({ name: body.name.trim() });
+  return NextResponse.json({ user }, { status: 201 });
+}
+```
+
+Route Handlerは「HTTPの入口」に集中させ、実際の業務ロジックは別ファイルに置く。これが保守しやすい構成です。
+
+---
+
+<a id="auth"></a>
+
+## 認証・認可はサーバー側で必ず確認する
+
+Route Handlerは外部から直接アクセスできる入口です。画面側でボタンを隠していても、API自体は直接叩けます。
+
+```ts
+import { NextResponse } from 'next/server';
+
+async function getCurrentUser() {
+  // 実務ではセッションやJWTからログインユーザーを取得する
+  return { id: 1, role: 'member' };
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const currentUser = await getCurrentUser();
+
+  if (currentUser.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'forbidden' },
+      { status: 403 },
+    );
+  }
+
+  const { id } = await params;
+  // 管理者だけ削除できる
+  return NextResponse.json({ deletedId: id });
+}
+```
+
+入力値の検証は「値が正しいか」、認可は「その操作をしてよい人か」を確認する処理です。どちらもクライアント側だけで済ませてはいけません。
+
+---
+
+<a id="route-handlers-vs-server-actions"></a>
+
+## Route HandlersとServer Actionsの使い分け
+
+Next.jsでは、データ更新にServer Actionsも使えます。では、Route HandlerとServer Actionsはどう使い分ければよいのでしょうか。
+
+| 使いたい場面 | 向いているもの |
+| --- | --- |
+| 外部サービスからWebhookを受ける | Route Handler |
+| モバイルアプリや別フロントエンドから呼ぶ | Route Handler |
+| REST APIとしてURLを公開したい | Route Handler |
+| `<form>` 送信でDBを更新したい | Server Actions |
+| 同じNext.jsアプリ内だけで完結する更新 | Server Actions |
+| APIのURL設計を省きたい | Server Actions |
+
+Route Handlerは「HTTP APIを明示的に作る」仕組みです。Server Actionsは「Next.jsアプリ内からサーバー関数を呼ぶ」仕組みです。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+外から呼ばれる入口が必要ならRoute Handler。フォーム送信や画面内の更新だけならServer Actions。この基準で考えると迷いにくいよ。
+</SpeechBubble>
+
+---
+
+<a id="common-pitfalls"></a>
+
+## よくあるハマりどころ
+
+| ハマりどころ | 原因 | 対策 |
+| --- | --- | --- |
+| `/api/users` が404になる | `app/api/users/route.ts` ではなく別の場所に置いている | `app` 配下のURL構造を確認する |
+| JSON bodyが読めない | `Content-Type` がない、またはbodyがJSONでない | `headers` と `JSON.stringify` を確認する |
+| `params.id` が取れない | App Routerでは `params` を `await` していない | `const { id } = await params` にする |
+| エラー時も200で返している | ステータスコードを指定していない | `NextResponse.json(..., { status: 400 })` を使う |
+| 削除APIを誰でも叩ける | 認可チェックがない | サーバー側でログイン状態と権限を確認する |
+
+---
+
+<a id="summary"></a>
+
+## まとめ
+
+- App Routerでは `app/api/.../route.ts` でAPIエンドポイントを作る
+- `page.tsx` は画面、`route.ts` はJSONやステータスを返すAPI
+- `GET` / `POST` / `PUT` / `DELETE` など、HTTPメソッド名の関数を `export` する
+- `NextRequest` はクエリ、Cookie、ヘッダーなどを読みやすくするリクエスト型
+- `NextResponse` はJSON、ステータスコード、Cookie、リダイレクトを返しやすくするレスポンス型
+- 入力値のバリデーションと認証・認可は、必ずRoute Handler側で行う
+- 外部から呼ばれるHTTP APIはRoute Handler、同じNext.jsアプリ内のフォーム更新はServer Actionsが向いている
+
+次の章では、データ取得中の **[ローディングとエラー処理](/books/next-js/08-loading-and-error)** を扱います。`fetch` を待つ間に何を見せるか、失敗したらどう表示するか——`loading.tsx` と `error.tsx` で宣言的に実装できます。

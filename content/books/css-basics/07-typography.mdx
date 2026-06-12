@@ -16,6 +16,29 @@ order: 7
 
 ---
 
+## 目次
+
+- [タイポグラフィで調整するもの](#typography-overview)
+- [font-family — フォントの種類を指定する](#font-family)
+- [font-size — 文字サイズを決める](#font-size)
+- [font-weight — 太さで情報の強弱を作る](#font-weight)
+- [line-height — 行間を整える](#line-height)
+- [1行の長さも読みやすさに影響する](#line-length)
+- [letter-spacing — 文字間隔を調整する](#letter-spacing)
+- [text-align — 揃え位置を決める](#text-align)
+- [text-decoration・text-transform — 補助的な文字装飾](#text-decoration-transform)
+- [テキストの改行・折り返し制御](#wrapping)
+- [実務でよく使う折り返しパターン](#wrapping-patterns)
+- [テキストの省略](#truncation)
+- [`<br>` に頼りすぎない](#avoid-br)
+- [読みやすい本文スタイルの例](#article-style-example)
+- [よくある失敗と直し方](#common-mistakes)
+- [ちゃんと使うためのポイント](#checklist)
+
+---
+
+<a id="typography-overview"></a>
+
 ## タイポグラフィで調整するもの
 
 CSSで文字を整えるときは、次のプロパティをセットで考えます。
@@ -35,6 +58,8 @@ CSSで文字を整えるときは、次のプロパティをセットで考え�
 文字は1つのプロパティだけで決まりません。たとえば `font-size` が同じでも、`line-height` が狭いと詰まって見えます。`font-weight` が太すぎると、見出しは目立ちますが本文は読みづらくなります。
 
 ---
+
+<a id="font-family"></a>
 
 ## font-family — フォントの種類を指定する
 
@@ -87,6 +112,8 @@ Google FontsなどのWebフォントを使う場合は、HTMLの `<link>` やCSS
 </Callout>
 
 ---
+
+<a id="font-size"></a>
 
 ## font-size — 文字サイズを決める
 
@@ -157,6 +184,8 @@ h2 {
 
 ---
 
+<a id="font-weight"></a>
+
 ## font-weight — 太さで情報の強弱を作る
 
 `font-weight` は文字の太さを指定します。
@@ -189,6 +218,8 @@ h2 {
 </SpeechBubble>
 
 ---
+
+<a id="line-height"></a>
 
 ## line-height — 行間を整える
 
@@ -233,6 +264,8 @@ body {
 
 ---
 
+<a id="line-length"></a>
+
 ## 1行の長さも読みやすさに影響する
 
 文字サイズと行間を整えても、1行が長すぎると読みづらくなります。本文エリアには `max-width` を設定して、行長を制御しましょう。
@@ -253,6 +286,8 @@ body {
 </Callout>
 
 ---
+
+<a id="letter-spacing"></a>
 
 ## letter-spacing — 文字間隔を調整する
 
@@ -294,6 +329,8 @@ p {
 
 ---
 
+<a id="text-align"></a>
+
 ## text-align — 揃え位置を決める
 
 `text-align` はテキストの横方向の揃え位置を指定します。
@@ -328,6 +365,8 @@ p {
 
 ---
 
+<a id="text-decoration-transform"></a>
+
 ## text-decoration・text-transform — 補助的な文字装飾
 
 リンクやラベルでは、文字装飾もよく使います。
@@ -355,6 +394,8 @@ a:hover {
 `text-transform: uppercase;` は英字を大文字に変換します。見た目だけの変換なので、HTML上のテキストを無理に大文字で書く必要がありません。
 
 ---
+
+<a id="wrapping"></a>
 
 ## テキストの改行・折り返し制御
 
@@ -468,6 +509,8 @@ a:hover {
 
 ---
 
+<a id="wrapping-patterns"></a>
+
 ## 実務でよく使う折り返しパターン
 
 ### 日本語メインの本文
@@ -518,6 +561,8 @@ URL・メールアドレス・ファイルパスは、途中で折り返せな�
 ```
 
 ---
+
+<a id="truncation"></a>
 
 ## テキストの省略
 
@@ -570,6 +615,8 @@ URL・メールアドレス・ファイルパスは、途中で折り返せな�
 
 ---
 
+<a id="avoid-br"></a>
+
 ## `<br>` に頼りすぎない
 
 見た目のためだけに `<br>` を大量に入れると、画面幅が変わったときに不自然な改行になります。文章の区切りは段落、レイアウト上の縦並びはCSSで表現しましょう。
@@ -607,6 +654,8 @@ URL・メールアドレス・ファイルパスは、途中で折り返せな�
 ```
 
 ---
+
+<a id="article-style-example"></a>
 
 ## 読みやすい本文スタイルの例
 
@@ -676,6 +725,8 @@ body {
 
 ---
 
+<a id="common-mistakes"></a>
+
 ## よくある失敗と直し方
 
 | 状態 | 原因 | 直し方 |
@@ -688,6 +739,8 @@ body {
 | 見出しが大きすぎる | PC基準のサイズを固定している | `clamp()` で上限・下限を決める |
 
 ---
+
+<a id="checklist"></a>
 
 ## ちゃんと使うためのポイント
 

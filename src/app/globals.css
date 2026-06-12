@@ -122,6 +122,7 @@
   }
   html {
     overflow-x: hidden;
+    scroll-behavior: smooth;
   }
   body {
     @apply bg-background text-foreground;
@@ -173,17 +174,31 @@
   text-decoration: underline;
 }
 
+.prose :target {
+  scroll-margin-top: 5rem;
+}
+
+.prose a[id] {
+  scroll-margin-top: 5rem;
+}
+
+.prose a[id] + h2 {
+  margin-top: 0;
+}
+
 .prose h2 {
   font-size: clamp(1.25rem, 2.5vw + 0.5rem, 1.75rem);
   font-weight: bold;
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.375rem;
+  scroll-margin-top: 5rem;
 }
 
 .prose h3 {
   font-size: clamp(1.05rem, 1.8vw + 0.4rem, 1.35rem);
   font-weight: bold;
   color: oklch(0.4 0 0);
+  scroll-margin-top: 5rem;
 }
 
 .prose table {

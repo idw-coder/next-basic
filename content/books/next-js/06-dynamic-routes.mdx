@@ -76,7 +76,7 @@ export default async function BlogPostPage({
   const res = await fetch(`https://api.example.com/posts/${slug}`);
 
   if (!res.ok) {
-    notFound(); // 記事が無ければ404へ（第8章で解説）
+    notFound(); // 記事が無ければ404へ（第9章で解説）
   }
 
   const post = await res.json();

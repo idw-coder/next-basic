@@ -219,19 +219,67 @@ const categoryToBookMap: Record<string, string> = {
 
 ### 既存の本に章を追加する
 
-該当する本のディレクトリに MDX ファイルを追加する。ファイル名は `{order}-{slug}.mdx` のような命名を推奨するが、Velite はファイル名を直接スラッグとして使うだけなので命名規則に制約はない。`order` フロントマターの値でソートされる。
+該当する本のディレクトリに MDX ファイルを追加する。Velite はファイル名を直接 `chapterSlug` として使う。章の表示順はファイル名ではなく、frontmatter の `order` でソートされる。
+
+既存章に差し込む場合、**既存ファイル名（= 既存URL）は変更しない**。SEO評価・外部リンク・サイト内リンクを維持するため。新規章は、連番ではなく意味ベースの slug を推奨する。
 
 ```
-content/books/nextjs/04-routing.mdx   ← 追加
+content/books/next-js/route-handlers.mdx   ← 追加
 ```
 
 ```yaml
 ---
-title: 'ルーティングの仕組み'
-description: 'App Router のファイルベースルーティングを解説します。'
-order: 4
+title: 'Route HandlersとAPI Route'
+description: 'Next.js App RouterでAPIエンドポイントを作る方法を解説します。'
+order: 8
 ---
 ```
+
+上記の場合、URL は `/books/next-js/route-handlers` になる。既存章が `08-loading-and-error.mdx` のような番号付きファイル名でも、新規章まで番号付きに合わせる必要はない。番号はURLに残り続けるため、今後の差し込みに弱くなる。
+
+既存本へ章を差し込むときの方針:
+
+- 既存ファイル名は変更しない
+- 新規ファイル名は `route-handlers.mdx` のような意味ベース slug にする
+- 並び順は `order` で調整する
+- 章末の「次の章」リンクや本文中の章番号表記だけ更新する
+
+### 長い章には目次を入れる
+
+1ページが長くなる章では、冒頭の導入文・吹き出し・画像の後に「目次」を置く。読者が必要な見出しへ直接移動できるように、各主要見出しへのリンクを並べる。
+
+日本語見出しや記号入り見出しは自動生成される `id` が読みづらくなったり、変更時にリンクが壊れたりしやすい。長い章では、主要見出しの直前に明示的なアンカーを置くことを推奨する。
+
+```mdx
+## 目次
+
+- [Route Handlersとは](#route-handlers-overview)
+- [GET — データを取得する](#get)
+- [NextRequest — リクエストを扱う](#next-request)
+
+---
+
+<a id="route-handlers-overview"></a>
+
+## Route Handlersとは
+
+...
+
+---
+
+<a id="get"></a>
+
+## GET — データを取得する
+
+...
+```
+
+目次を入れる目安:
+
+- `##` 見出しが8個以上ある
+- 本文が400行を超える
+- 検索流入があり、読者が一部のトピックだけを参照しそうな章
+- API、CSSプロパティ、設定項目など、辞書的に参照されやすい章
 
 開発サーバー起動中であれば Velite の watch モードが検知してホットリロードされる。本番環境では再ビルド（`npm run build`）が必要。
 
