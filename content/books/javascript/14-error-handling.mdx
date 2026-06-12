@@ -14,6 +14,22 @@ order: 14
 
 その「なんとなく」を一つずつ潰していきましょう。`throw` 自体の基礎（`throw` は文、文字列を投げない、など）は[制御構文の章](/books/javascript/04-control-flow)で扱っているので、ここでは**捕まえる側**に集中します。
 
+## 目次
+
+- [try...catch の基本 — エラーが起きても処理を止めない](#try-catch)
+- [catch が受け取る error オブジェクト — name・message・stack](#error-object)
+- [組み込みのエラー型 — TypeError・RangeError…](#built-in-errors)
+- [finally — 成否にかかわらず必ず実行する](#finally)
+- [throw と再スロー — 握りつぶさず、必要なら投げ直す](#throw-and-rethrow)
+- [カスタムエラークラス — Error を継承して種類を作る](#custom-error-class)
+- [非同期処理のエラーハンドリング](#async-error-handling)
+- [よくあるハマりどころ](#common-pitfalls)
+- [ちゃんと使うためのポイント](#checklist)
+
+---
+
+<a id="try-catch"></a>
+
 ## try...catch の基本 — エラーが起きても処理を止めない
 
 JavaScriptは、エラー（例外）が発生するとその場で処理を中断し、呼び出し元へさかのぼっていきます。最後まで誰も受け止めなければ、プログラム全体が止まります。`try...catch` は、この「止まる」を**自分のコードで受け止める**ための仕組みです。
@@ -58,6 +74,8 @@ flowchart TD
     class E,F done
 `}
 />
+
+<a id="error-object"></a>
 
 ## catch が受け取る error オブジェクト — name・message・stack
 
@@ -104,6 +122,8 @@ function isValidJson(text) {
 `catch (e) {}` って書いてたけど、使わないなら `catch {}` でいいんだ。
 </SpeechBubble>
 
+<a id="built-in-errors"></a>
+
 ## 組み込みのエラー型 — TypeError・RangeError…
 
 JavaScriptには、状況に応じた**組み込みのエラー型**があります。すべて `Error` を継承していて、`error.name` で種類を見分けられます。自分でエラーを投げるときも、内容に合った型を選ぶと、受け取る側が分類しやすくなります。
@@ -133,6 +153,8 @@ function setVolume(v) {
   }
 }
 ```
+
+<a id="finally"></a>
 
 ## finally — 成否にかかわらず必ず実行する
 
@@ -173,6 +195,8 @@ function f() {
 
 </Callout>
 
+<a id="throw-and-rethrow"></a>
+
 ## throw と再スロー — 握りつぶさず、必要なら投げ直す
 
 `catch` で受け止めたからといって、**何ごともなかったことにして良いとは限りません**。自分で対処できないエラーは、より上の呼び出し元に判断を委ねるべきです。そのために `catch` の中で**もう一度 `throw` する**のが「再スロー」です。
@@ -207,6 +231,8 @@ try {
 </SpeechBubble>
 
 「落ちない」のと「正しく動く」のは別物です。`catch` に入ったら、**最低でもログを残す**、対処できないなら**再スローする**、ユーザーに**エラーを伝える**——このいずれかは必ず行いましょう。
+
+<a id="custom-error-class"></a>
 
 ## カスタムエラークラス — Error を継承して種類を作る
 
@@ -271,6 +297,8 @@ async function loadUser(id) {
 <Callout type="note" title="name を確実にする小ワザ">
 カスタムエラーを継承で重ねると `name` の設定漏れが起きがちです。`this.name = this.constructor.name;` と書いておくと、クラス名が自動的に `name` に入ります。
 </Callout>
+
+<a id="async-error-handling"></a>
 
 ## 非同期処理のエラーハンドリング
 
@@ -344,6 +372,8 @@ const ok = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
 「全部そろわないと意味がない」なら `all`、「コケたものは飛ばして、取れたものだけ使いたい」なら `allSettled`。この使い分けは実務で本当によく出てくるよ。
 </SpeechBubble>
 
+<a id="common-pitfalls"></a>
+
 ## よくあるハマりどころ
 
 <Figure src="/images/deskwork_check_man_color.png" alt="非同期エラーのハマりどころを確認するイメージ" maxWidth="130px" />
@@ -409,6 +439,8 @@ try {
 <Callout type="note" title="未処理のエラーを最後にすくう網">
 どこでも捕まえられなかったエラーは、ブラウザでは `window.addEventListener('unhandledrejection', ...)`（Promise のreject）や `'error'` イベントで最終的に検知できます。Sentry などのエラー監視は、この網を使って本番のエラーを収集しています。
 </Callout>
+
+<a id="checklist"></a>
 
 ## ちゃんと使うためのポイント
 

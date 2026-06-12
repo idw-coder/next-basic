@@ -14,6 +14,18 @@ ES2015で追加されたこれらは、「キーの柔軟さ」や「値の一�
 オブジェクトがあるのに Map って必要なの？Set も配列で代用できそうだけど…何が違うの？
 </SpeechBubble>
 
+## 目次
+
+- [Map — あらゆる型をキーにできる連想配列](#map)
+- [Set — 重複しない値のコレクション](#set)
+- [WeakMap・WeakSet — GCに優しいコレクション](#weakmap-weakset)
+- [WeakRef・FinalizationRegistry — 弱参照と後始末](#weakref-finalizationregistry)
+- [ちゃんと使うためのポイント](#checklist)
+
+---
+
+<a id="map"></a>
+
 ## Map — あらゆる型をキーにできる連想配列
 
 Mapは **キーと値のペアを格納する** コレクションです。
@@ -285,6 +297,8 @@ function expensiveCalc(input) {
 }
 ```
 
+<a id="set"></a>
+
 ## Set — 重複しない値のコレクション
 
 Setは **同じ値を1つしか持たない** コレクションです。
@@ -405,13 +419,19 @@ a.isDisjointFrom(b); // false — 共通要素がないか
 
 以前はスプレッドと `filter` で手書きしていた処理が、ネイティブメソッドで書けるようになりました。
 
+<a id="weakmap-weakset"></a>
+
 ## WeakMap・WeakSet — GCに優しいコレクション
 
 > このセクションは現在執筆中です。
 
+<a id="weakref-finalizationregistry"></a>
+
 ## WeakRef・FinalizationRegistry — 弱参照と後始末
 
 > このセクションは現在執筆中です。
+
+<a id="checklist"></a>
 
 ## ちゃんと使うためのポイント
 

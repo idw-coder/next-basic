@@ -15,6 +15,21 @@ JavaScriptの演算子には、他の言語とは少し違う挙動をするも�
 
 ---
 
+## 目次
+
+- [等価比較：`==` と `===` の違い](#equality-comparison)
+- [論理演算子と短絡評価](#logical-operators)
+- [Nullish Coalescing：`??`](#nullish-coalescing)
+- [オプショナルチェーン：`?.`](#optional-chaining)
+- [論理代入演算子](#logical-assignment)
+- [演算子の優先順位と括弧](#operator-precedence)
+- [よくある疑問](#faq)
+- [まとめ](#summary)
+
+---
+
+<a id="equality-comparison"></a>
+
 ## 等価比較：`==` と `===` の違い
 
 JavaScriptには等価演算子が2種類あります。
@@ -103,6 +118,8 @@ if (value === null || value === undefined) {
 
 ---
 
+<a id="logical-operators"></a>
+
 ## 論理演算子と短絡評価
 
 `&&`（AND）と `||`（OR）は単なる真偽値チェックではなく、**値をそのまま返す**という重要な性質があります。
@@ -158,6 +175,8 @@ greet(null); // "こんにちは、名無しさん"
 <Figure src="/images/planning_suit_man_color.png" alt="考えている男性のイラスト" maxWidth="200px" />
 
 ---
+
+<a id="nullish-coalescing"></a>
 
 ## Nullish Coalescing：`??`
 
@@ -217,6 +236,8 @@ flowchart LR
 </Callout>
 
 ---
+
+<a id="optional-chaining"></a>
 
 ## オプショナルチェーン：`?.`
 
@@ -286,6 +307,8 @@ console.log(country); // '国籍不明'
 
 ---
 
+<a id="logical-assignment"></a>
+
 ## 論理代入演算子
 
 ES2021 で追加された演算子です。論理演算と代入を組み合わせた省略記法です。
@@ -328,6 +351,8 @@ function getUser(id) {
 
 ---
 
+<a id="operator-precedence"></a>
+
 ## 演算子の優先順位と括弧
 
 `&&` は `||` より優先順位が高いです。
@@ -364,6 +389,8 @@ null || (undefined ?? 'デフォルト'); // 'デフォルト'
 </Callout>
 
 ---
+
+<a id="faq"></a>
 
 ## よくある疑問
 
@@ -415,6 +442,8 @@ console.log(Number.isNaN(undefined)); // false（isNaN() と挙動が異なる�
 </Callout>
 
 ---
+
+<a id="summary"></a>
 
 ## まとめ
 

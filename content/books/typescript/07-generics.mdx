@@ -4,6 +4,25 @@ description: '型を引数として受け取る仕組み「ジェネリクス」
 order: 7
 ---
 
+## 目次
+
+- [そもそもジェネリクスとは何か](#generics-overview)
+- [ジェネリクスがない世界](#without-generics)
+- [`<T>` の読み方](#type-parameter-t)
+- [型推論と明示的な型引数](#type-inference)
+- [複数の型パラメータ](#multiple-type-parameters)
+- [制約（extends）](#extends-constraints)
+- [型エイリアス・インターフェースのジェネリクス](#generic-type-alias-interface)
+- [`as` キャストとの違い](#as-cast-difference)
+- [デフォルト型パラメータ](#default-type-parameters)
+- [ユーティリティ型と Pick](#utility-types-and-pick)
+- [React コンポーネントとジェネリクス](#react-generics)
+- [よくある疑問](#faq)
+
+---
+
+<a id="generics-overview"></a>
+
 ## そもそもジェネリクスとは何か
 
 関数は「値」を引数として受け取りますが、ジェネリクスは「型」を引数として受け取る仕組みです。
@@ -26,6 +45,8 @@ order: 7
 <Figure src="/images/question_woman_04_color.png" alt="悩んでいる人のイラスト" maxWidth="120px" />
 
 ---
+
+<a id="without-generics"></a>
 
 ## ジェネリクスがない世界
 
@@ -79,6 +100,8 @@ b.toUpperCase(); // エラー — number に toUpperCase はない
 
 ---
 
+<a id="type-parameter-t"></a>
+
 ## `<T>` の読み方
 
 `<T>` は「型パラメータ」と呼ばれます。関数の `(x: number)` が「値の入れ物」であるのと同様に、`<T>` は「型の入れ物」です。
@@ -94,6 +117,8 @@ function getFirst<T>(arr: T[]): T {
 `T` という名前に特別な意味はありません。慣習的に使われているだけで、`<Foo>` でも `<MyType>` でも動きます。ただし、1 文字の慣例が広く使われています（後述）。
 
 ---
+
+<a id="type-inference"></a>
 
 ## 型推論と明示的な型引数
 
@@ -137,6 +162,8 @@ user.name; // string（補完が効く）
 
 ---
 
+<a id="multiple-type-parameters"></a>
+
 ## 複数の型パラメータ
 
 型パラメータは複数持てます。
@@ -167,6 +194,8 @@ const lengths = map(['hello', 'world'], (s) => s.length);
 </Callout>
 
 ---
+
+<a id="extends-constraints"></a>
 
 ## 制約（extends）
 
@@ -211,6 +240,8 @@ getProperty(user, 'email'); // エラー — 'email' は存在しない
 
 ---
 
+<a id="generic-type-alias-interface"></a>
+
 ## 型エイリアス・インターフェースのジェネリクス
 
 ジェネリクスは関数だけでなく、型エイリアスやインターフェースにも使えます（型エイリアスとインターフェースの基本は[型エイリアスとインターフェース](/books/typescript/03-type-alias-and-interface)を参照）。
@@ -242,6 +273,8 @@ interface Repository<T> {
 ```
 
 ---
+
+<a id="as-cast-difference"></a>
 
 ## `as` キャストとの違い
 
@@ -277,6 +310,8 @@ const user = (await fetchApi('/api/users/1')) as number; // コンパイルOK、
 
 ---
 
+<a id="default-type-parameters"></a>
+
 ## デフォルト型パラメータ
 
 関数の引数にデフォルト値を設定できるように、型パラメータにもデフォルトを設定できます。
@@ -295,6 +330,8 @@ const userRes: ApiResponse<User> = { data: user, status: 200 };
 ```
 
 ---
+
+<a id="utility-types-and-pick"></a>
 
 ## ユーティリティ型と Pick
 
@@ -340,6 +377,8 @@ type AppItem = Pick<LibraryItem, 'id' | 'title'> & {
 `Pick` 以外にも `Partial`・`Omit`・`Required`・`Record` など多くの組み込みユーティリティ型があります。これらはすべてジェネリクスで実装されており、[ユーティリティ型](/books/typescript/09-utility-types)の章でまとめて扱います。
 
 ---
+
+<a id="react-generics"></a>
 
 ## React コンポーネントとジェネリクス
 
@@ -402,6 +441,8 @@ const [count, setCount] = useLocalStorage('count', 0); // number
 React と TypeScript の組み合わせは、[ReactとTypeScript](/books/typescript/13-react-and-typescript)の章でさらに詳しく扱います。
 
 ---
+
+<a id="faq"></a>
 
 ## よくある疑問
 

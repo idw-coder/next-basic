@@ -3,6 +3,7 @@ import MermaidDiagram from '@/components/MermaidDiagram';
 import Figure from '@/app/books/_components/Figure';
 import Callout from '@/app/books/_components/Callout';
 import SpeechBubble from '@/app/books/_components/SpeechBubble';
+import Marker from '@/app/books/_components/Marker';
 
 // MDX 内で <MermaidDiagram /> と記述するだけで自動的にこのコンポーネントが使われる。
 const sharedComponents = {
@@ -10,6 +11,7 @@ const sharedComponents = {
   Figure,
   Callout,
   SpeechBubble,
+  Marker,
 };
 
 // Velite が生成した MDX のコンパイル済みコード文字列を受け取り、

@@ -15,6 +15,23 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 
 この章を読めば「変換は `map`、絞り込みは `filter`、集約は `reduce`」のように、**やりたいことから逆引きで**選べるようになります。
 
+## 目次
+
+- [配列メソッドとは — Array インスタンスのメソッドという意味](#array-methods-overview)
+- [map — 各要素を変換して新しい配列を作る](#map)
+- [filter — 条件に合う要素だけを残す](#filter)
+- [reduce — 配列を1つの値にまとめる](#reduce)
+- [find — 条件に合う最初の1つを取得](#find)
+- [some — 1つでも条件を満たすか](#some)
+- [every — すべてが条件を満たすか](#every)
+- [メソッドの使い分け早見表](#method-comparison)
+- [よくあるハマりどころ](#common-pitfalls)
+- [ちゃんと使うためのポイント](#checklist)
+
+---
+
+<a id="array-methods-overview"></a>
+
 ## 配列メソッドとは — Array インスタンスのメソッドという意味
 
 `[1, 2, 3].map(...)` のように配列に対して `.map()` を呼べるのは、配列が **`Array` コンストラクタのインスタンス**だからです。
@@ -67,6 +84,8 @@ Array.from(nodes).map((node) => node.textContent);
 <Callout type="note" title="この章のメソッド表記について">
 配列メソッドの多くは**コールバック関数**を引数に取ります。そのコールバックは `(element, index, array)` の3つの引数を受け取れる、という形が共通です（`index`・`array` は省略可能で、使わなければ書かなくてかまいません）。各メソッドでは「コールバックが何を返すと、メソッド自身が最終的に何を返すか（戻り値）」に注目すると整理しやすくなります。
 </Callout>
+
+<a id="map"></a>
 
 ## map — 各要素を変換して新しい配列を作る
 
@@ -141,6 +160,8 @@ users.forEach((user) => {
 });
 ```
 
+<a id="filter"></a>
+
 ## filter — 条件に合う要素だけを残す
 
 `filter` はコールバックが `true` を返した要素だけで構成された**新しい配列**を返します。
@@ -187,6 +208,8 @@ const result = [1, 2, 3].filter((n) => n > 10);
 console.log(result); // []
 console.log(result.length); // 0
 ```
+
+<a id="reduce"></a>
 
 ## reduce — 配列を1つの値にまとめる
 
@@ -283,6 +306,8 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 
 `reduce` の出番は「合計」「グルーピング」「オブジェクトへの変換」など、`map` / `filter` では表現できない集約処理です。
 
+<a id="find"></a>
+
 ## find — 条件に合う最初の1つを取得
 
 `find` はコールバックが `true` を返した**最初の要素**を返します。
@@ -320,6 +345,8 @@ const index = users.findIndex((u) => u.id === 2);
 console.log(index); // 1
 ```
 
+<a id="some"></a>
+
 ## some — 1つでも条件を満たすか
 
 `some` はコールバックが `true` を返す要素が**1つでもあれば** `true` を返します。
@@ -343,6 +370,8 @@ console.log(canEdit); // true
 ### 短絡評価する
 
 `some` は `true` を返す要素を見つけた時点で残りの要素を処理せずに終了します。大きな配列でもパフォーマンス上の問題になりにくいです。
+
+<a id="every"></a>
 
 ## every — すべてが条件を満たすか
 
@@ -380,6 +409,8 @@ console.log(isFormValid); // false（passwordが invalid）
 
 空配列の可能性がある場合は、事前に `length` をチェックしてください。
 
+<a id="method-comparison"></a>
+
 ## メソッドの使い分け早見表
 
 | やりたいこと                 | メソッド    | 戻り値              |
@@ -391,6 +422,8 @@ console.log(isFormValid); // false（passwordが invalid）
 | 条件に合う最初のインデックス | `findIndex` | 数値 or `-1`        |
 | 1つでも条件を満たすか        | `some`      | `boolean`           |
 | すべて条件を満たすか         | `every`     | `boolean`           |
+
+<a id="common-pitfalls"></a>
 
 ## よくあるハマりどころ
 
@@ -434,6 +467,8 @@ const result = numbers.map((n) => {
 const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 // [8, 10]
 ```
+
+<a id="checklist"></a>
 
 ## ちゃんと使うためのポイント
 

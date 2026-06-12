@@ -16,6 +16,24 @@ TypeScriptには、既存の型を変換して新しい型を作る**ユーテ�
 
 ---
 
+## 目次
+
+- [ベースとなる型](#base-type)
+- [Partial\<T\> — 全プロパティをオプショナルにする](#partial)
+- [Required\<T\> — 全プロパティを必須にする](#required)
+- [Pick\<T, K\> — 特定のプロパティだけ取り出す](#pick)
+- [Omit\<T, K\> — 特定のプロパティを除外する](#omit)
+- [Record\<K, V\> — キーと値の型を指定したオブジェクト](#record)
+- [Readonly\<T\> — 全プロパティをreadonlyにする](#readonly)
+- [ReturnType\<T\> — 関数の戻り値の型を取得する](#returntype)
+- [ユーティリティ型の組み合わせ](#combining-utility-types)
+- [ユーティリティ型の早見表](#utility-types-cheatsheet)
+- [まとめ](#summary)
+
+---
+
+<a id="base-type"></a>
+
 ## ベースとなる型
 
 この章のコード例では、以下の `User` 型をベースに使います。
@@ -33,6 +51,8 @@ type User = {
 ユーティリティ型は「この型を土台にして、こう変換した型がほしい」という場面で使います。変換のパターンを1つずつ見ていきます。
 
 ---
+
+<a id="partial"></a>
 
 ## Partial\<T\> — 全プロパティをオプショナルにする
 
@@ -83,6 +103,8 @@ type Partial<T> = {
 
 ---
 
+<a id="required"></a>
+
 ## Required\<T\> — 全プロパティを必須にする
 
 `Required<T>` は `Partial` の逆で、すべてのオプショナルプロパティを必須にします。
@@ -118,7 +140,9 @@ function submitForm(input: Required<FormInput>) {
 
 ---
 
-## <Figure src="/images/fork_suit_man_color.png" alt="PickとOmitどちらを使うか考えるイラスト" maxWidth="300px" />
+<Figure src="/images/fork_suit_man_color.png" alt="PickとOmitどちらを使うか考えるイラスト" maxWidth="300px" />
+
+<a id="pick"></a>
 
 ## Pick\<T, K\> — 特定のプロパティだけ取り出す
 
@@ -150,6 +174,8 @@ function UserCard({ id, name, email }: UserListItem) {
 元の `User` 型にプロパティが追加されても、`UserListItem` は影響を受けません。必要なプロパティだけを明示的に選んでいるので、意図しないデータが紛れ込むことを防げます。
 
 ---
+
+<a id="omit"></a>
 
 ## Omit\<T, K\> — 特定のプロパティを除外する
 
@@ -190,6 +216,8 @@ createUser({ name: 'Alice', age: 25, email: 'alice@example.com' });
 </Callout>
 
 ---
+
+<a id="record"></a>
 
 ## Record\<K, V\> — キーと値の型を指定したオブジェクト
 
@@ -238,6 +266,8 @@ const bgColors: Record<Theme, string> = {
 
 ---
 
+<a id="readonly"></a>
+
 ## Readonly\<T\> — 全プロパティをreadonlyにする
 
 `Readonly<T>` は、すべてのプロパティに `readonly` を付けます。プロパティへの再代入がコンパイルエラーになります。
@@ -282,6 +312,8 @@ config.db.host = 'other'; // OK — ネストの中身は readonly ではない
 
 ---
 
+<a id="returntype"></a>
+
 ## ReturnType\<T\> — 関数の戻り値の型を取得する
 
 `ReturnType<T>` は、関数型 `T` の戻り値の型を取り出します。
@@ -299,7 +331,7 @@ type UserFromFn = ReturnType<typeof getUser>;
 
 ### 実務での使いどころ — ライブラリやAPIの戻り値
 
-外部ライブラリの関数やAPIクライアントの戻り値の型が明示的にexportされていない場合に、`ReturnType` で型を抽出できます。
+<Marker>外部ライブラリの関数やAPIクライアントの戻り値の型が明示的にexportされていない場合に、`ReturnType` で型を抽出できます。</Marker>
 
 ```tsx
 import { fetchUserProfile } from './api';
@@ -310,6 +342,8 @@ type UserProfile = Awaited<ReturnType<typeof fetchUserProfile>>;
 ```
 
 ---
+
+<a id="combining-utility-types"></a>
 
 ## ユーティリティ型の組み合わせ
 
@@ -389,6 +423,8 @@ type LinkButtonProps = Omit<ButtonProps, 'onClick'> & {
 
 ---
 
+<a id="utility-types-cheatsheet"></a>
+
 ## ユーティリティ型の早見表
 
 | ユーティリティ型 | 変換内容                     | 主な用途                       |
@@ -402,6 +438,8 @@ type LinkButtonProps = Omit<ButtonProps, 'onClick'> & {
 | `ReturnType<T>`  | 関数の戻り値型を取得         | ライブラリの型抽出             |
 
 ---
+
+<a id="summary"></a>
 
 ## まとめ
 
