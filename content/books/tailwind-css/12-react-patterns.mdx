@@ -36,6 +36,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 ```
 
+`clsx` は `disabled && 'opacity-50'` のような条件付きクラスを自然に扱い、`tailwind-merge` は `px-2 px-4` のような競合を後勝ちで整理します。Reactコンポーネントで `className` を外から受け取るなら、ほぼ必須の小さなユーティリティです。
+
 ```tsx
 import { cn } from '@/lib/utils'
 
@@ -54,11 +56,27 @@ function Button({ disabled, className }: { disabled?: boolean; className?: strin
 }
 ```
 
+<TailwindPreview title="propsで状態を切り替えるボタンの見た目">
+  <div className="flex flex-wrap gap-3">
+    <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
+      primary / md
+    </button>
+    <button className="rounded-md border border-blue-600 px-3 py-1.5 text-sm font-semibold text-blue-600">
+      outline / sm
+    </button>
+    <button className="rounded-md bg-red-600 px-5 py-2.5 text-base font-semibold text-white">
+      danger / lg
+    </button>
+  </div>
+</TailwindPreview>
+
 ---
 
 ## cva：バリアント管理
 
 `class-variance-authority` でコンポーネントのバリアントを型安全に管理できます。
+
+ボタンの `variant`、`size`、`disabled` のように、見た目の分岐が増え始めたら `cva` の出番です。条件分岐をコンポーネント内に直接書き続けるより、バリアント定義として分離した方が、追加・削除・型チェックがしやすくなります。
 
 ```bash
 npm install class-variance-authority

@@ -396,6 +396,30 @@ flowchart LR
 
 目安は章あたり2〜4個。使いすぎると逆にうるさくなるので、「ここは言葉で説明するより会話の方が腑に落ちる」と思った箇所に絞って配置します。
 
+#### `<TailwindPreview>`
+
+Tailwindのクラスで作ったUIサンプルを、本文中に実表示するためのプレビュー枠。Tailwind CSS本のように「コードだけでは完成形が想像しにくい」章で使う。
+
+| prop     | 型       | デフォルト  | 説明                 |
+| -------- | -------- | ----------- | -------------------- |
+| `title`  | `string` | `'Preview'` | プレビュー枠の見出し |
+| `children` | `ReactNode` | なし | 表示したいサンプルUI |
+
+```mdx
+<TailwindPreview title="ボタンの見た目">
+  <div className="flex gap-3">
+    <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
+      送信
+    </button>
+    <button className="rounded-md border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600">
+      キャンセル
+    </button>
+  </div>
+</TailwindPreview>
+```
+
+実表示サンプルは読者の理解に直結するため、Tailwind・CSS・UIコンポーネント系の章では、主要なコード例の直後に入れる。MDX内ではReact JSXとして書くため、実表示部分は `class` ではなく `className` を使う。
+
 #### 新しいコンポーネントを追加する
 
 `src/components/mdx-content.tsx` の `sharedComponents` オブジェクトに登録すると、すべての MDX で使用可能になる。

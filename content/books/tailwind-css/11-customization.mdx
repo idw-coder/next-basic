@@ -59,6 +59,25 @@ v4 ではCSSファイルの中に `@theme` ブロックを書きます。
 <div class="animate-fade-in">フェードイン</div>
 ```
 
+<TailwindPreview title="テーマ化した色を使うイメージ">
+  <div className="grid gap-3 sm:grid-cols-3">
+    <div className="rounded-md bg-blue-600 p-4 text-white">
+      <p className="text-xs font-semibold uppercase opacity-80">brand</p>
+      <p className="mt-1 text-sm font-semibold">主要ボタンやリンク</p>
+    </div>
+    <div className="rounded-md bg-blue-100 p-4 text-blue-900">
+      <p className="text-xs font-semibold uppercase opacity-70">brand-light</p>
+      <p className="mt-1 text-sm font-semibold">淡い背景や通知</p>
+    </div>
+    <div className="rounded-md border border-blue-200 bg-white p-4 text-blue-700">
+      <p className="text-xs font-semibold uppercase opacity-70">border</p>
+      <p className="mt-1 text-sm font-semibold">枠線や補助要素</p>
+    </div>
+  </div>
+</TailwindPreview>
+
+テーマ化の目的は「短いクラス名にすること」だけではありません。ブランドカラーを1箇所に集めることで、色変更・リニューアル・ダークモード対応の影響範囲を小さくできます。`bg-[#2563eb]` が各所に散らばっている状態より、`bg-brand` のような意味を持つ名前の方が保守しやすくなります。
+
 ---
 
 ## v3：tailwind.config.js での設定
@@ -133,6 +152,8 @@ Reactを使う場合は、コンポーネント化の方がより推奨されま
 <Callout type="warning">
 `@apply` の多用はTailwindの利点（ユーティリティの直接適用）を打ち消し、従来のCSS設計と変わらなくなります。使うとしても、`btn-primary` のような本当にグローバルで繰り返すパターンに限定しましょう。
 </Callout>
+
+`@apply` は「Tailwindで書いたCSSクラスを、もう一度CSS設計へ戻す」機能でもあります。ReactやVueのようにコンポーネント単位で切り出せる環境なら、まずはコンポーネント化を優先し、`@apply` はMarkdown本文・CMS本文・外部HTMLなど、コンポーネント化しにくい場所の共通スタイルに限定すると管理しやすくなります。
 
 ---
 

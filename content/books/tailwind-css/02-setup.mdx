@@ -47,6 +47,27 @@ v4 では `tailwind.config.js` は不要で、CSS の `@import` だけで有効�
 v4ではPostCSSの設定も不要になりました。Viteプラグインを使うか、CSS内の `@import "tailwindcss"` だけで動作します。v3から移行する場合は公式のアップグレードガイドを参照してください。
 </Callout>
 
+### Next.jsでの最小構成
+
+Next.js App Routerなら、基本は `app/globals.css` に `@import "tailwindcss";` を置き、`app/layout.tsx` でそのCSSを読み込む構成になります。
+
+```tsx
+// app/layout.tsx
+import './globals.css';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ja">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+<Callout type="warning" title="古い記事との違いに注意">
+Tailwind v3の記事では `tailwind.config.js`、`postcss.config.js`、`@tailwind base` などが登場します。v4の新規プロジェクトでは構成がかなり簡略化されているため、検索するときは「Tailwind CSS v4」「Next.js App Router」まで入れると混乱しにくくなります。
+</Callout>
+
 ---
 
 ## Viteへの導入（v4）
@@ -116,6 +137,8 @@ Tailwindを使うなら必須の拡張機能です。
 ```
 拡張機能ID: bradlc.vscode-tailwindcss
 ```
+
+この拡張を入れると、`bg-` と打った時点で候補が出たり、`text-blue-600` にホバーすると実際のCSS値を確認できたりします。Tailwindはクラス名を多く使うため、補完なしで書くより学習効率が大きく上がります。
 
 ---
 

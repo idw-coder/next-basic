@@ -37,6 +37,22 @@ order: 10
 </button>
 ```
 
+<TailwindPreview title="よく使うボタンの見た目">
+  <div className="flex flex-wrap gap-3">
+    <button className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
+      送信
+    </button>
+    <button className="inline-flex items-center rounded-md border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 transition-colors hover:bg-blue-50">
+      キャンセル
+    </button>
+    <button className="inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900">
+      詳細
+    </button>
+  </div>
+</TailwindPreview>
+
+ボタンは「色」だけでなく、`inline-flex`、`items-center`、`gap-*`、`focus-visible:*`、`disabled:*` まで含めて1つの型として扱うと再利用しやすくなります。アイコンを入れる予定があるなら、最初から `inline-flex items-center gap-2` にしておくと崩れにくいです。
+
 ---
 
 ## バッジ
@@ -77,6 +93,23 @@ order: 10
 </div>
 ```
 
+<TailwindPreview title="カードUIの完成例">
+  <article className="max-w-md overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+    <div className="h-28 bg-gradient-to-br from-blue-100 via-cyan-50 to-emerald-100" />
+    <div className="p-5">
+      <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">Tailwind</span>
+      <h3 className="mt-1 text-lg font-semibold text-slate-900">再利用できるカードを作る</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-500">
+        画像、カテゴリ、タイトル、説明、アクションを組み合わせた典型的なカードです。
+      </p>
+      <div className="mt-4 flex items-center justify-between">
+        <span className="text-xs text-slate-400">2026/06/12</span>
+        <button className="text-sm font-semibold text-blue-600 hover:underline">続きを読む</button>
+      </div>
+    </div>
+  </article>
+</TailwindPreview>
+
 ---
 
 ## フォーム
@@ -112,6 +145,29 @@ order: 10
   </button>
 </form>
 ```
+
+<TailwindPreview title="フォーム入力の基本セット">
+  <form className="max-w-md space-y-4">
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-slate-700">メールアドレス</label>
+      <input
+        type="email"
+        className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder="example@email.com"
+      />
+    </div>
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-slate-700">メッセージ</label>
+      <textarea
+        rows={3}
+        className="block w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
+    <button type="button" className="w-full rounded-md bg-blue-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
+      送信する
+    </button>
+  </form>
+</TailwindPreview>
 
 ---
 
