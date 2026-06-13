@@ -18,6 +18,15 @@ App Routerでは、すべてのコンポーネントが**デフォルトでServe
 - APIキーなどの機密情報を安全に扱える
 - クライアントに送信されるJavaScriptが減る
 
+この3つは言葉だけだと少し抽象的です。実務のコードに置き換えると、次のような意味になります。
+
+| 特徴 | 実装でいうと |
+| --- | --- |
+| データベースに直接アクセスできる | `db.user.findMany()` のようなDBクライアントをServer Component内で呼べる |
+| ファイルシステムにアクセスできる | `fs.readFile()` でMarkdownやJSONファイルを読み込める |
+| APIキーを安全に扱える | `process.env.SECRET_API_KEY` を使って外部APIを呼べる |
+| JavaScriptが減る | ただ表示するだけの一覧・記事・プロフィールをClient Componentにしなくてよい |
+
 ```tsx
 // app/users/page.tsx — Server Component（デフォルト）
 async function getUsers() {
@@ -42,6 +51,105 @@ export default async function UsersPage() {
 ```
 
 注目すべきは、コンポーネント関数に `async` が使えることです。Server Componentsでは、非同期処理を直接コンポーネント内で実行できます。`fetch` のキャッシュや再検証の仕組みは、[第7章「データ取得とキャッシュ」](/books/next-js/07-data-fetching)で詳しく扱います。
+
+### データベースに直接アクセスする例
+
+Server Componentはサーバー側で実行されるため、PrismaやDrizzleのようなDBクライアントを直接呼べます。ブラウザにDB接続情報が送られるわけではありません。
+
+```tsx
+// app/users/page.tsx — Server Component
+import { db } from "@/lib/db";
+
+export default async function UsersPage() {
+  const users = await db.user.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+
+  return (
+    <ul>
+      {users.map((user) => (
+        <li key={user.id}>{user.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+これをClient Componentでやろうとすると、ブラウザ上でDBクライアントを動かすことになり、接続情報や認証情報を守れません。DB操作は、Server Component、[Route Handlers](/books/next-js/route-handlers)、[Server Actions](/books/next-js/10-server-actions) のようなサーバー側の場所に置くのが基本です。
+
+### ファイルシステムにアクセスする例
+
+たとえば、`content/` 配下のMarkdownやJSONを読み込んでページに表示したい場合もServer Componentが向いています。
+
+```tsx
+// app/docs/page.tsx — Server Component
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+export default async function DocsPage() {
+  const filePath = path.join(process.cwd(), "content", "intro.md");
+  const markdown = await readFile(filePath, "utf8");
+
+  return <pre>{markdown}</pre>;
+}
+```
+
+`fs` はNode.jsのAPIなので、ブラウザでは使えません。だからファイル読み込みはClient Componentではなく、サーバー側で完結させます。
+
+### APIキーを安全に使う例
+
+外部APIを呼ぶとき、秘密のAPIキーを使うことがあります。Server Componentなら `process.env` から秘密情報を読み、サーバー側でAPIを呼べます。
+
+```tsx
+// app/weather/page.tsx — Server Component
+async function getWeather() {
+  const res = await fetch("https://api.example.com/weather", {
+    headers: {
+      Authorization: `Bearer ${process.env.WEATHER_API_KEY}`,
+    },
+  });
+
+  return res.json();
+}
+
+export default async function WeatherPage() {
+  const weather = await getWeather();
+
+  return <p>今日の天気: {weather.summary}</p>;
+}
+```
+
+<Callout type="warning" title="秘密情報をClient Componentに置かない">
+`"use client"` が付いたファイルはブラウザ側のJavaScriptに含まれます。`process.env.SECRET_API_KEY` のような秘密情報をClient Componentで使おうとしてはいけません。ブラウザに出してよい値だけ `NEXT_PUBLIC_` を付けて使います。
+</Callout>
+
+### クライアントに送るJavaScriptが減るとは
+
+記事本文、商品一覧、ユーザープロフィールのように「取得したデータを表示するだけ」のUIは、ブラウザで状態管理やクリック処理をする必要がありません。
+
+```tsx
+// Server Componentで十分な例
+export default async function ProductListPage() {
+  const products = await getProducts();
+
+  return (
+    <div>
+      {products.map((product) => (
+        <article key={product.id}>
+          <h2>{product.name}</h2>
+          <p>{product.price}円</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+```
+
+このページ全体をClient Componentにすると、一覧表示のためのコンポーネントコードまでブラウザに送る必要が出ます。Server Componentなら、サーバーでHTMLに近い形まで作って返せるため、ブラウザに送るJavaScriptを減らせます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「表示するだけ」はServer Component。「クリックで変わる」「入力に反応する」はClient Component。この感覚で分けると、実装がかなり考えやすくなるよ。
+</SpeechBubble>
 
 ## Client Components
 
@@ -74,7 +182,25 @@ Client Componentsが必要になるのは、主に以下のケースです：
 
 ## 使い分けの指針
 
-Server ComponentsとClient Componentsをどう使い分けるか、以下の表を参考にしてください：
+Server ComponentsとClient Componentsをどう使い分けるかは、まず「ブラウザ上で動く必要があるか？」から考えると分かりやすいです。
+
+<MermaidDiagram id="next-component-decision-flow" chart={`
+flowchart LR
+    A["作りたいUI"] --> B{"クリックや入力で状態が変わる？"}
+    B -- "Yes" --> C["Client Component"]
+    B -- "No" --> D{"window / localStorage を使う？"}
+    D -- "Yes" --> C
+    D -- "No" --> E{"DB・ファイル・秘密のAPIキーを使う？"}
+    E -- "Yes" --> F["Server Component"]
+    E -- "No" --> G{"ただデータを取得して表示する？"}
+    G -- "Yes" --> F
+    G -- "No" --> H["まずServer Componentで作る"]
+    H --> I["必要な部分だけClient Componentへ"]
+`} />
+
+迷ったら、まずServer Componentで作ってみます。`useState`、`onClick`、`window` などが必要になった部分だけClient Componentに切り出す、という順番が実務では扱いやすいです。
+
+表で整理すると、次のようになります。
 
 | やりたいこと | Server | Client |
 |-------------|--------|--------|
