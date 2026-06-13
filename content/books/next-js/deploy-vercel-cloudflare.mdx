@@ -1,0 +1,369 @@
+---
+title: 'Next.jsのデプロイ — VercelとCloudflare Workersの違いを理解する'
+description: 'Next.jsアプリを本番公開する方法を、Vercel・Node.jsサーバー・Docker・static export・Cloudflare Workersの違い、環境変数、ビルド、エッジ環境の注意点まで解説します。'
+order: 13
+---
+
+ここまでで、ページ、[Route Handlers](/books/next-js/route-handlers)、[Proxy](/books/next-js/proxy-and-middleware)、[Server Actions](/books/next-js/10-server-actions) まで一通り扱いました。最後に必要なのが、作ったNext.jsアプリを**本番環境へデプロイする**ことです。
+
+Next.jsはVercel製のフレームワークですが、Vercelでしか動かないわけではありません。Node.jsサーバー、Docker、静的ホスティング、Cloudflare Workersなど、複数の選択肢があります。ただし、使える機能や必要な設定はデプロイ先によって変わります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Next.jsってVercelにデプロイするもの、という印象があるけど、Cloudflareや普通のサーバーでも動かせるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+動かせるよ。ただしVercelはNext.js向けに最適化されていて、Cloudflare Workersのようなエッジ環境ではOpenNext adapterなど追加の工程が必要になる。違いを理解して選ぼう。
+</SpeechBubble>
+
+<Figure src="/images/pc-work-woman01.png" alt="Next.jsアプリを本番環境へデプロイしているイメージ" maxWidth="260px" />
+
+---
+
+## 目次
+
+- [Next.jsのデプロイ先の全体像](#deployment-options)
+- [Vercelにデプロイする基本の流れ](#vercel-flow)
+- [Vercelで特に楽になること](#vercel-benefits)
+- [Vercelでしかできないことはあるのか](#vercel-only)
+- [Node.jsサーバーやDockerにデプロイする場合](#node-docker)
+- [static exportで静的サイトとして配信する場合](#static-export)
+- [Cloudflare Workersにデプロイする場合](#cloudflare-workers)
+- [エッジ環境へ出すときの注意点](#edge-runtime-notes)
+- [環境変数と本番ビルドの注意点](#env-vars)
+- [デプロイ前チェックリスト](#checklist)
+- [まとめ](#summary)
+
+---
+
+<a id="deployment-options"></a>
+
+## Next.jsのデプロイ先の全体像
+
+Next.js公式では、主なデプロイ形態として **Node.jsサーバー、Docker、static export、Adapterによる各プラットフォーム対応** が示されています。
+
+<MermaidDiagram id="next-deploy-options" chart={`
+flowchart TD
+    A["Next.jsアプリ"] --> B["Vercel"]
+    A --> C["Node.jsサーバー"]
+    A --> D["Docker"]
+    A --> E["static export"]
+    A --> F["Adapter"]
+    F --> G["Cloudflare Workers"]
+    F --> H["Netlifyなど"]
+`} />
+
+| デプロイ先 | 向いているケース | 注意点 |
+| --- | --- | --- |
+| Vercel | Next.jsを最短で本番公開したい | Vercelの料金・制限・運用ルールを理解する |
+| Node.jsサーバー | VPS、Render、Railway、社内基盤などで動かしたい | プロセス管理、ログ、スケールを自分で考える |
+| Docker | Cloud Run、ECS、Kubernetesなどに載せたい | コンテナ設計と環境変数管理が必要 |
+| static export | 完全な静的サイトとして配信したい | SSR、Route Handlers、Server Actionsなどは使えない |
+| Cloudflare Workers | エッジ寄りの環境で配信したい | OpenNext adapter、Wrangler、`workerd` での確認が必要 |
+
+<Callout type="info" title="公式の整理">
+Next.js公式の [Deploying](https://nextjs.org/docs/app/getting-started/deploying) では、Node.jsサーバーとDockerは全機能対応、static exportはサーバー機能が必要な機能に制限あり、Adapterはプラットフォームごとに対応状況が変わる、という整理になっています。
+</Callout>
+
+---
+
+<a id="vercel-flow"></a>
+
+## Vercelにデプロイする基本の流れ
+
+Vercelでのデプロイは、GitHubなどのリポジトリを連携するのが最も一般的です。
+
+<MermaidDiagram id="vercel-deploy-flow" chart={`
+sequenceDiagram
+    participant D as Developer
+    participant G as GitHub
+    participant V as Vercel
+    participant U as User
+
+    D->>G: push / pull request
+    G->>V: Git連携でビルド開始
+    V-->>D: Preview URLを発行
+    D->>G: mainへマージ
+    G->>V: Productionビルド
+    U->>V: 本番URLへアクセス
+`} />
+
+最小限の流れは次のとおりです。
+
+1. GitHubにNext.jsプロジェクトをpushする
+2. Vercelで「New Project」からリポジトリを選ぶ
+3. Framework PresetがNext.jsになっていることを確認する
+4. 必要な環境変数を設定する
+5. Deployする
+
+VercelはNext.jsプロジェクトを自動判定し、`npm run build` 相当のビルドを実行します。Vercel公式の [Next.js on Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs) でも、Vercelへのデプロイはゼロ設定で、スケーラビリティ・可用性・グローバルパフォーマンス面の追加最適化があると説明されています。
+
+---
+
+<a id="vercel-benefits"></a>
+
+## Vercelで特に楽になること
+
+VercelはNext.jsの開発元が提供するプラットフォームなので、Next.jsの機能とかなり密に統合されています。
+
+| 機能 | Vercelで楽になる理由 |
+| --- | --- |
+| Preview Deployment | Pull Requestごとに確認URLができる |
+| Production Deployment | mainブランチへの反映を本番公開にしやすい |
+| SSR | Vercel Functionsとして自動的に実行される |
+| Streaming | Route Handlers、Vercel Functions、React Server Componentsで扱いやすい |
+| Image Optimization | `next/image` の最適化を追加サービスなしで使いやすい |
+| Cache-Control / ISR | Next.jsのキャッシュ戦略とVercel CDNがつながりやすい |
+| 環境変数 | Production / Preview / Developmentで分けて管理できる |
+| ロールバック | 過去のDeploymentへ戻しやすい |
+
+[データ取得とキャッシュ](/books/next-js/07-data-fetching) で扱った静的レンダリング、再検証、キャッシュの考え方は、デプロイ先のCDNやランタイムと密接に関係します。Vercelではこの接続がNext.js向けに設計されているため、最初のデプロイ先として選びやすいです。
+
+<Callout type="note" title="Vercelは魔法ではなく、Next.js向けの運用を肩代わりしてくれる">
+Vercelを使うとデプロイは簡単になりますが、環境変数、外部DB、認証、料金、リージョン、ログ監視などの運用判断は必要です。特に [Server Actions](/books/next-js/10-server-actions) や [Route Handlers](/books/next-js/route-handlers) でDB更新を行う場合、接続先DBの場所やコネクション管理も考えましょう。
+</Callout>
+
+---
+
+<a id="vercel-only"></a>
+
+## Vercelでしかできないことはあるのか
+
+結論から言うと、**Next.jsの基本機能そのものがVercelでしか使えない、というわけではありません**。Node.jsサーバーやDockerでもNext.jsは動きます。
+
+ただし、Vercelには「Vercelのプラットフォーム機能」として使えるものがあります。
+
+| 分類 | 例 | Vercel以外ではどうなるか |
+| --- | --- | --- |
+| デプロイ体験 | Git連携、Preview URL、Production昇格 | 各プラットフォームやCI/CDで自分で構成する |
+| Vercel CDN | ISR、Cache-Control、画像最適化との統合 | CDNや画像基盤を別途設計する |
+| Vercel Functions | SSRやRoute Handlerの実行基盤 | Node.jsサーバー、Lambda、Workersなど別ランタイムに載せる |
+| Observability | ログ、メトリクス、Web Vitals系の統合 | Datadog、Sentry、Cloudflare Analyticsなどを選ぶ |
+| Vercel固有サービス | Blob、KV、Postgres、Edge Configなど | 他社DBやストレージで代替する |
+
+つまり、「VercelでしかNext.jsをデプロイできない」のではなく、**VercelではNext.js向けの周辺機能が最初からつながっている**と考えるのが正確です。
+
+<Marker>Vercel以外に出す場合は、Next.jsの機能をそのプラットフォームのビルド・キャッシュ・ランタイムへどう対応させるかを確認する必要があります。</Marker>
+
+---
+
+<a id="node-docker"></a>
+
+## Node.jsサーバーやDockerにデプロイする場合
+
+Next.jsはNode.jsサーバーとして起動できます。`package.json` に次のようなスクリプトがあれば、本番用ビルドと起動ができます。
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  }
+}
+```
+
+```bash
+npm run build
+npm run start
+```
+
+この形は、VPS、Render、Railway、Fly.io、社内のNode.js実行基盤などに向いています。Docker化する場合は、`next.config.ts` に `output: 'standalone'` を設定して、実行に必要なファイルだけをまとめる構成がよく使われます。
+
+```ts
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  output: 'standalone',
+};
+
+export default nextConfig;
+```
+
+Node.jsサーバーやDockerは、Next.js機能の自由度が高い一方で、次の運用を自分で考える必要があります。
+
+- プロセス管理
+- ログ収集
+- ヘルスチェック
+- スケールアウト
+- CDN
+- 環境変数
+- DBコネクション
+- HTTPS / ドメイン
+
+---
+
+<a id="static-export"></a>
+
+## static exportで静的サイトとして配信する場合
+
+完全な静的サイトでよければ、`output: 'export'` を使ってHTML/CSS/JSだけを書き出せます。
+
+```ts
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  output: 'export',
+};
+
+export default nextConfig;
+```
+
+この場合、S3、Nginx、Apache、GitHub Pagesのような静的ホスティングでも配信できます。
+
+ただし、static exportではサーバーが必要な機能は使えません。
+
+| 使える / 使いやすい | 使えない / 制限されやすい |
+| --- | --- |
+| 静的なページ | SSR |
+| 静的生成されたブログ | Route Handlers |
+| クライアント側だけで完結する画面 | Server Actions |
+| 外部APIをブラウザから直接呼ぶ構成 | Proxy |
+| 画像を事前に最適化する構成 | 動的な画像最適化 |
+
+[Route Handlers](/books/next-js/route-handlers) や [Server Actions](/books/next-js/10-server-actions) を使うアプリは、基本的にstatic exportではなく、サーバー機能を持つデプロイ先を選びます。
+
+---
+
+<a id="cloudflare-workers"></a>
+
+## Cloudflare Workersにデプロイする場合
+
+Cloudflare Workersは、Node.jsサーバーではなく `workerd` というWorkers Runtimeで動きます。そのため、Next.jsアプリをそのまま `next start` で動かすのではなく、Cloudflare向けに変換する工程が必要です。
+
+Cloudflare公式では、Next.jsアプリをWorkersへデプロイする方法として **OpenNext adapter** を使う流れが案内されています。
+
+<MermaidDiagram id="cloudflare-next-deploy-flow" chart={`
+flowchart TD
+    A["Next.jsアプリ"] --> B["OpenNext adapter"]
+    B --> C[".open-next/worker.js"]
+    B --> D[".open-next/assets"]
+    C --> E["Cloudflare Workers"]
+    D --> E
+    E --> F["workers.dev または custom domain"]
+`} />
+
+新規プロジェクトなら、CloudflareのCLIからNext.js向けに作成できます。
+
+```bash
+npm create cloudflare@latest -- my-next-app --framework=next
+```
+
+既存プロジェクトなら、現在のCloudflareドキュメントでは `wrangler deploy` による自動検出、または手動設定が案内されています。
+
+```bash
+npx wrangler deploy
+```
+
+手動で構成する場合は、概ね次のような工程になります。
+
+1. `@opennextjs/cloudflare` を入れる
+2. `wrangler` を入れる
+3. `wrangler.jsonc` または `wrangler.toml` を作る
+4. `compatibility_flags` に `nodejs_compat` を設定する
+5. `open-next.config.ts` を作る
+6. `preview` / `deploy` スクリプトを追加する
+7. `npm run preview` でWorkers Runtimeに近い環境で確認する
+8. `npm run deploy` で公開する
+
+```json
+{
+  "scripts": {
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+  }
+}
+```
+
+<Callout type="warning" title="npm run dev だけでは本番相当の確認にならない">
+Cloudflare Workersに出す場合、`npm run dev` はNext.jsの開発サーバーで動きます。一方、本番は `workerd` ランタイムです。Cloudflare公式でも、統合テストや本番に近い確認では `preview` コマンドを使うべきだと説明されています。
+</Callout>
+
+Cloudflare OpenNext adapterは多くのNext.js機能をサポートしていますが、Node.jsランタイム前提の機能や一部の新機能は対応状況を確認する必要があります。たとえばCloudflare公式ドキュメントでは、Node.js in Middlewareは「not yet supported」とされています。これは [ProxyとMiddleware](/books/next-js/proxy-and-middleware) で触れたランタイム差分とつながる話です。
+
+詳細はCloudflare公式の [Next.js on Cloudflare Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/) と、OpenNextの [Cloudflare adapter documentation](https://opennext.js.org/cloudflare) を確認してください。
+
+---
+
+<a id="edge-runtime-notes"></a>
+
+## エッジ環境へ出すときの注意点
+
+Cloudflare Workers、Vercel Edge、Deno Deployのようなエッジ寄りの環境は、ユーザーに近い場所で軽く処理できるのが強みです。一方で、Node.jsサーバーとは前提が違います。
+
+| 観点 | Node.jsサーバー | エッジ環境 |
+| --- | --- | --- |
+| 実行環境 | Node.js | Web標準API中心のランタイム |
+| ファイル操作 | `fs` が使える | 使えないことが多い |
+| npmパッケージ | Node.js前提でも動きやすい | Edge対応が必要 |
+| DB接続 | TCP接続しやすい | HTTPベースや専用接続が向きやすい |
+| 確認方法 | `next start` に近い | adapterのpreviewで確認する |
+
+[ProxyとMiddleware](/books/next-js/proxy-and-middleware) でも説明した通り、エッジ環境は「Node.jsをそのまま小さくしたもの」ではありません。`fs`、ネイティブモジュール、Node.js専用APIに依存するライブラリは、本番で動かない可能性があります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ローカルでは動いたのにCloudflareに出したら落ちる、というのはランタイム差分が原因になりやすいんだね。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そう。だからCloudflare Workersへ出すなら、`npm run preview` のように本番ランタイムに近い確認を必ず挟む。Vercel以外では特に大事だよ。
+</SpeechBubble>
+
+---
+
+<a id="env-vars"></a>
+
+## 環境変数と本番ビルドの注意点
+
+Next.jsでは、環境変数が「ビルド時に必要なもの」と「実行時に必要なもの」に分かれます。
+
+| 種類 | 例 | 注意点 |
+| --- | --- | --- |
+| ビルド時に必要 | SSGで使うAPIキー、`NEXT_PUBLIC_...` | ビルド環境に設定する |
+| 実行時に必要 | DB URL、外部APIの秘密鍵 | Runtime側に設定する |
+| ブラウザに出る | `NEXT_PUBLIC_ANALYTICS_ID` | 秘密情報を入れない |
+| サーバーだけ | `DATABASE_URL` | クライアントコードへ渡さない |
+
+特にCloudflare Workers BuildsやCI/CDでは、ビルド時に必要な環境変数が設定されていないと、静的生成やビルド内のデータ取得で失敗します。VercelでもCloudflareでも、Production / Preview / Developmentで値を分けることを意識しましょう。
+
+<Callout type="warning" title="NEXT_PUBLIC_ は公開される">
+`NEXT_PUBLIC_` で始まる環境変数はブラウザ側のJavaScriptに埋め込まれます。APIキー、DB URL、シークレット、JWT署名鍵などを入れてはいけません。
+</Callout>
+
+---
+
+<a id="checklist"></a>
+
+## デプロイ前チェックリスト
+
+本番公開前に、最低限ここを確認しましょう。
+
+| チェック項目 | 見るポイント |
+| --- | --- |
+| `npm run build` が通る | 型・Lint・静的生成エラーを確認 |
+| 環境変数が設定されている | Production / Previewで不足がないか |
+| DB接続先が本番向け | ローカルDBやテストDBを参照していないか |
+| 認証・認可がサーバー側にある | [Server Actions](/books/next-js/10-server-actions) / [Route Handlers](/books/next-js/route-handlers) で確認 |
+| `robots.txt` / `sitemap.xml` | SEO公開範囲が意図通りか |
+| OGP / metadata | [メタデータとSEO](/books/next-js/09-metadata-and-seo) の設定が本番URLになっているか |
+| エラー監視 | Sentryなどで本番エラーを拾えるか |
+| ログ | APIエラーや認証エラーを追えるか |
+| ロールバック手段 | 失敗時に戻せるか |
+
+---
+
+<a id="summary"></a>
+
+## まとめ
+
+- Next.jsはVercel専用ではなく、Node.jsサーバー、Docker、static export、Adapter経由の各プラットフォームへデプロイできる
+- VercelはNext.js向けのゼロ設定デプロイ、Preview Deployment、Vercel Functions、画像最適化、キャッシュ統合などが強い
+- Vercel固有の運用機能は便利だが、他プラットフォームではCI/CD、CDN、画像最適化、ログ監視などを別途組み合わせる
+- static exportは静的配信に向くが、Route Handlers、Server Actions、SSR、Proxyなどサーバー機能は使えない
+- Cloudflare Workersへ出す場合はOpenNext adapterやWranglerを使い、`workerd` ランタイムでpreviewする
+- エッジ環境はNode.jsと同じではないため、Node.js API依存・DB接続・Middleware/Proxyの対応状況に注意する
+- 本番前には `npm run build`、環境変数、認証・認可、SEO、ログ、ロールバックを確認する
+
+これでNext.js App Routerの基礎から、API、Proxy、Server Actions、デプロイまで一通りつながりました。実際のアプリでは、ここから認証、DB設計、テスト、監視を少しずつ足していくと、本番運用できる形に近づきます。
