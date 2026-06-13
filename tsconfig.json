@@ -21,7 +21,12 @@
     "paths": {
       "@/*": ["./src/*"],
       "#site/content": ["./.velite"]
-    }
+    },
+
+    // TypeORM の @Entity / @PrimaryGeneratedColumn 等のデコレータ用。
+    // 無効だと「プロパティデコレーターのシグネチャを解決できません」等の型エラーになる。
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
