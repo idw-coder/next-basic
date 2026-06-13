@@ -738,4 +738,4 @@ Route Handlerは「HTTP APIを明示的に作る」仕組みです。Server Acti
 - 入力値のバリデーションと認証・認可は、必ずRoute Handler側で行う
 - 外部から呼ばれるHTTP APIはRoute Handler、同じNext.jsアプリ内のフォーム更新はServer Actionsが向いている
 
-次の章では、データ取得中の **[ローディングとエラー処理](/books/next-js/08-loading-and-error)** を扱います。`fetch` を待つ間に何を見せるか、失敗したらどう表示するか——`loading.tsx` と `error.tsx` で宣言的に実装できます。
+次の章では、リクエストがページやAPIに届く前に処理を挟む **[ProxyとMiddleware](/books/next-js/proxy-and-middleware)** を扱います。ログイン判定、リダイレクト、`middleware.ts` から `proxy.ts` への変更を理解しましょう。

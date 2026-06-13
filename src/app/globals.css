@@ -163,12 +163,19 @@
 }
 
 .prose .book-marker {
-  background: linear-gradient(transparent 58%, oklch(0.86 0.17 85 / 0.5) 58%);
+  --book-marker-color: oklch(0.86 0.17 85 / 0.5);
+  background: linear-gradient(transparent 58%, var(--book-marker-color) 58%);
   background-repeat: no-repeat;
   border-radius: 0.12em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
   padding-inline: 0.08em;
+}
+
+.prose .book-marker code {
+  background:
+    linear-gradient(transparent 58%, var(--book-marker-color) 58%),
+    var(--muted);
 }
 
 .prose blockquote {

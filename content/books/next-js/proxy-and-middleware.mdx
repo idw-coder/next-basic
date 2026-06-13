@@ -1,0 +1,450 @@
+---
+title: 'ProxyとMiddleware — リクエストの入口で認証・リダイレクトを制御する'
+description: 'Next.jsのproxy.ts（旧middleware.ts）を使い、リクエストがページやRoute Handlerに届く前に認証・リダイレクト・ヘッダー操作を行う方法、Edge RuntimeとNode.js Runtimeの違い、Next.js 16での名称変更を解説します。'
+order: 9
+---
+
+Route Handlersは `/api/users` のようなAPIエンドポイントを作る仕組みでした。では、ページやAPIに到達する**前**に、ログイン状態を見てリダイレクトしたり、特定のURLだけアクセス制御したりしたい場合はどうすればよいでしょうか。
+
+Next.jsでは、そうした「リクエストの入口で行う処理」を `proxy.ts` で書けます。Next.js 15以前の記事では `middleware.ts` と呼ばれていることが多いですが、**Next.js 16では `middleware.ts` は非推奨になり、`proxy.ts` にリネーム**されています。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  ログインしていない人を `/login` に飛ばしたいだけなら、各ページでチェックすればいいのかな？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  ページごとに書くと漏れやすいよ。入口でまとめて判定したいときに `proxy.ts`
+  が使える。ただし強力なので、何でもここに詰め込まないのが大事。
+</SpeechBubble>
+
+<Figure
+  src="/images/deskwork_check_man_color.png"
+  alt="リクエストの入口でチェックしているイメージ"
+  maxWidth="220px"
+/>
+
+---
+
+## 目次
+
+- [Proxyとは](#proxy-overview)
+- [`proxy.ts` の基本形](#basic-proxy)
+- [`matcher` で対象URLを絞る](#matcher)
+- [認証リダイレクトの例](#auth-redirect)
+- [NextRequestとNextResponseの使い方](#next-request-response)
+- [Edge Runtimeとは](#edge-runtime)
+- [Edge RuntimeとNode.js Runtimeの違い](#edge-vs-node)
+- [Edge RuntimeはVercel独自の概念なのか](#is-vercel-only)
+- [Next.js 16の変更 — `middleware.ts` から `proxy.ts` へ](#middleware-to-proxy)
+- [Proxyに書くべき処理・書くべきでない処理](#when-to-use)
+- [よくあるハマりどころ](#common-pitfalls)
+- [まとめ](#summary)
+
+---
+
+<a id="proxy-overview"></a>
+
+## Proxyとは
+
+Proxyは、リクエストがページやRoute Handlerに届く前に実行される処理です。
+
+```txt
+ブラウザ
+  ↓
+proxy.ts        ← ここで認証、リダイレクト、rewrite、ヘッダー操作
+  ↓
+page.tsx / route.ts
+```
+
+<MermaidDiagram id="next-proxy-flow" chart={`
+flowchart LR
+    A["ブラウザからリクエスト"] --> B["proxy.ts"]
+    B --> C{"処理を分岐"}
+    C -- "通す" --> D["page.tsx または route.ts"]
+    C -- "別URLへ移動" --> E["redirect"]
+    C -- "内部的に行き先変更" --> F["rewrite"]
+    F --> D
+`} />
+
+たとえば、次のような処理に向いています。
+
+| やりたいこと                           | Proxyが向いている理由                  |
+| -------------------------------------- | -------------------------------------- |
+| 未ログインユーザーを `/login` に飛ばす | ページに入る前にまとめて判定できる     |
+| 古いURLを新しいURLへリダイレクトする   | レンダリング前にURLを変えられる        |
+| A/Bテストや地域別のrewriteをする       | リクエスト情報を見て行き先を変えられる |
+| 一部APIにCORSヘッダーを付ける          | Route Handlerに届く前に共通処理できる  |
+
+ただし、Proxyは**すべてのリクエストの入口に近い場所**で動きます。便利だからといって、DBアクセスや重いビジネスロジックを入れる場所ではありません。
+
+<Callout type="warning" title="Proxyは最後の手段に近い">
+  Next.js公式でも、Middleware/Proxyは強力な機能であり、使いすぎを避ける方向が示されています。ページ内で済む処理、Route
+  Handlerで済む処理、Server Actionsで済む処理は、まずそちらに置く方が分かりやすく保守しやすいです。
+</Callout>
+
+---
+
+<a id="basic-proxy"></a>
+
+## `proxy.ts` の基本形
+
+`proxy.ts` は、`app/` の中ではなく、プロジェクトのルート、または `src/` を使っている場合は `src/proxy.ts` に置きます。
+
+```txt
+my-app/
+├── src/
+│   ├── app/
+│   │   └── page.tsx
+│   └── proxy.ts
+└── next.config.ts
+```
+
+基本形は次のとおりです。
+
+```ts
+// src/proxy.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith('/admin')) {
+    // ここで認証チェックなどを行う
+  }
+
+  return NextResponse.next();
+}
+```
+
+`NextResponse.next()` は「特に止めずに、次の処理へ進める」という意味です。ページなら `page.tsx`、APIなら `route.ts` へ進みます。
+
+---
+
+<a id="matcher"></a>
+
+## `matcher` で対象URLを絞る
+
+Proxyは入口の処理なので、対象URLを絞らないと余計なリクエストでも実行されます。実務では `config.matcher` で対象を明示するのが基本です。
+
+```ts
+// src/proxy.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function proxy(request: NextRequest) {
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/admin/:path*'],
+};
+```
+
+この例では、`/dashboard` と `/admin` 配下だけでProxyが動きます。
+
+<Callout type="info" title="まずは狭く指定する">
+  最初からサイト全体を対象にするより、`/dashboard/:path*` や `/admin/:path*`
+  のように守りたい範囲を絞る方が安全です。対象が広いほど、画像、静的ファイル、API、プリフェッチなども考慮する必要が出ます。
+</Callout>
+
+---
+
+<a id="auth-redirect"></a>
+
+## 認証リダイレクトの例
+
+ログイン済みかどうかをCookieで判定し、未ログインなら `/login` にリダイレクトする例です。
+
+```ts
+// src/proxy.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function proxy(request: NextRequest) {
+  const session = request.cookies.get('session')?.value;
+
+  if (!session) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', request.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/admin/:path*'],
+};
+```
+
+`new URL('/login', request.url)` と書くと、現在のオリジンを保ったまま `/login` のURLを作れます。`next` クエリに元のパスを入れておけば、ログイン後に戻す処理も作りやすくなります。
+
+<MermaidDiagram id="next-proxy-auth-sequence" chart={`
+sequenceDiagram
+    participant U as User
+    participant P as proxy.ts
+    participant L as login page
+    participant D as dashboard
+
+    U->>P: GET /dashboard
+    P->>P: session Cookieを確認
+    alt sessionなし
+        P-->>U: redirect login next dashboard
+        U->>L: GET /login
+    else sessionあり
+        P->>D: NextResponse.next()
+        D-->>U: dashboardを表示
+    end
+`} />
+
+<Callout type="warning" title="Proxyだけで認可を完結させない">
+  Proxyで未ログインを弾くのは有効ですが、それだけで安全とは言い切れません。Server ActionsやRoute
+  Handlersの中でも、必ず「このユーザーがこの操作をしてよいか」を確認してください。`matcher`
+  の変更やURL構成の変更で、Proxyの対象から外れる可能性があるためです。
+</Callout>
+
+---
+
+<a id="next-request-response"></a>
+
+## NextRequestとNextResponseの使い方
+
+Proxyでは、[Route Handlers](/books/next-js/route-handlers) と同じく `NextRequest` / `NextResponse` をよく使います。
+
+### URLを読む
+
+```ts
+export function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const searchParams = request.nextUrl.searchParams;
+
+  if (pathname === '/old') {
+    const url = new URL('/new', request.url);
+    url.search = searchParams.toString();
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
+}
+```
+
+### Cookieを読む
+
+```ts
+export function proxy(request: NextRequest) {
+  const token = request.cookies.get('token')?.value;
+
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  return NextResponse.next();
+}
+```
+
+### ヘッダーを追加する
+
+```ts
+export function proxy(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-from-proxy', 'true');
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+}
+```
+
+`NextResponse.next({ request: { headers } })` は、後続のページやRoute Handlerに渡すリクエストヘッダーを変更します。一方で、クライアントに返すレスポンスヘッダーを設定したい場合は、`const response = NextResponse.next()` を作ってから `response.headers.set()` します。
+
+---
+
+<a id="edge-runtime"></a>
+
+## Edge Runtimeとは
+
+Edge Runtimeは、Node.jsサーバーよりもユーザーに近い場所で軽量に処理を動かすための実行環境です。Vercelにデプロイした場合で考えると、アプリ本体が動くリージョンとは別に、CDNに近い場所でリクエストをさばくイメージです。
+
+ただし、Edge Runtimeは「Node.jsをそのままエッジで動かす環境」ではありません。Web標準APIを中心にした、制限のあるJavaScript実行環境です。
+
+```txt
+Node.js Runtime
+  - fs, crypto, net などNode.js APIを使える
+  - DB接続や重いサーバー処理に向く
+  - アプリのレンダリングやRoute Handlerの標準実行環境
+
+Edge Runtime
+  - fetch, Request, Response, Headers などWeb標準API中心
+  - 起動が軽く、リクエストの入口処理に向く
+  - Node.jsのネイティブAPIは使えない
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Edge Runtimeって速そうだけど、Node.jsと同じコードが全部動くわけではないんだね。
+</SpeechBubble>
+
+その通りです。`fs` でファイルを読む、Node.js専用のライブラリを使う、ネイティブモジュールに依存する、といった処理はEdge Runtimeでは動かないことがあります。
+
+---
+
+<a id="edge-vs-node"></a>
+
+## Edge RuntimeとNode.js Runtimeの違い
+
+違いを実務目線で整理すると、次のようになります。
+
+| 観点          | Node.js Runtime                                       | Edge Runtime                                      |
+| ------------- | ----------------------------------------------------- | ------------------------------------------------- |
+| 主な用途      | レンダリング、Route Handler、DB連携、重いサーバー処理 | リダイレクト、rewrite、軽い認証判定、ヘッダー操作 |
+| 使えるAPI     | Node.js APIを広く使える                               | Web標準API中心                                    |
+| `fs`          | 使える                                                | 使えない                                          |
+| `require`     | 使える場面が多い                                      | 基本はES Modules                                  |
+| npmパッケージ | Node.js前提のものも使いやすい                         | Edge対応していないと動かない場合がある            |
+| DB接続        | 向いている                                            | 直接接続は避けたいことが多い                      |
+| 起動・配置    | アプリのサーバー側                                    | ユーザーに近い場所で動かしやすい                  |
+
+Edge Runtimeは「軽い入口処理」に向いています。逆に、DBへ複雑なクエリを投げる、外部APIをいくつも叩いて集約する、ファイルを読み書きする、といった処理はRoute HandlerやServer Actionsに寄せる方が安全です。
+
+<MermaidDiagram id="next-proxy-runtime-split" chart={`
+flowchart LR
+    A["リクエスト"] --> B["Proxy"]
+    B --> C["軽い判定"]
+    C --> D["redirect / rewrite / next"]
+    D --> E["Route Handler または Server Action"]
+    E --> F["DBアクセスや重い処理"]
+
+    subgraph EdgeLike["Edge向き"]
+        B
+        C
+        D
+    end
+
+    subgraph NodeLike["Node.js向き"]
+        E
+        F
+    end
+`} />
+
+<Callout type="note" title="Next.jsのバージョンでランタイムの扱いが変わっている">
+  古いMiddlewareの記事では「MiddlewareはEdge
+  Runtimeのみ」と説明されていることがあります。これは当時の制約としては重要でした。一方、Next.js
+  15.5でMiddlewareのNode.js Runtimeサポートが安定し、Next.js 16の `proxy.ts`
+  では公式ドキュメント上、ProxyはNode.js
+  Runtimeがデフォルトとされています。古い記事と現行仕様が食い違って見えるのは、この変遷があるためです。
+</Callout>
+
+---
+
+<a id="is-vercel-only"></a>
+
+## Edge RuntimeはVercel独自の概念なのか
+
+Edge Runtimeという考え方自体は、Vercelだけのものではありません。Cloudflare Workers、Deno Deploy、Netlify Edge Functionsなど、ユーザーに近い場所で軽量なJavaScriptを実行する仕組みは複数あります。
+
+ただし、**Next.jsのEdge Runtimeとして何が使えるか、どの機能がどう動くかは、Next.jsとデプロイ先の実装に依存**します。VercelではNext.jsとの統合が強く、ProxyやEdge向け機能を自然に使いやすい一方、セルフホスティングや別プラットフォームでは対応状況を確認する必要があります。
+
+実務では、次のように考えると迷いにくいです。
+
+- Edge Runtimeは「Vercelだけのマーケティング用語」ではない
+- ただし、Next.jsでのEdge Runtimeの挙動はNext.jsとデプロイ先の対応に左右される
+- Node.js APIに依存する処理はEdgeに置かない
+- 認証の最終チェックやDB更新は、Route Handler / Server Actions側にも必ず置く
+
+---
+
+<a id="middleware-to-proxy"></a>
+
+## Next.js 16の変更 — `middleware.ts` から `proxy.ts` へ
+
+<Marker>Next.js 16では、従来の `middleware.ts` というファイル規約が非推奨になり、`proxy.ts` にリネームされました。</Marker>
+
+```diff
+- src/middleware.ts
++ src/proxy.ts
+```
+
+関数名も変わります。
+
+<MermaidDiagram id="next-proxy-rename-flow" chart={`
+flowchart LR
+    A["Next.js 15以前"] --> B["middleware.ts"]
+    B --> C["middleware(request)"]
+    C --> D["Next.js 16以降"]
+    D --> E["proxy.ts"]
+    E --> F["proxy(request)"]
+`} />
+
+```diff
+- export function middleware(request: NextRequest) {
++ export function proxy(request: NextRequest) {
+    return NextResponse.next();
+  }
+```
+
+移行用のcodemodも用意されています。
+
+```bash
+npx @next/codemod@canary middleware-to-proxy .
+```
+
+名称変更の意図は、Expressのような「アプリ内部のmiddleware」と誤解されやすかったためです。Next.jsのProxyは、アプリのレンダリングコードの中間に差し込むというより、**アプリの前段にあるネットワーク境界でリクエストを処理するもの**と捉える方が近いです。
+
+<Callout type="info" title="古い記事では middleware.ts と書かれている">
+  Next.js 15以前の記事・教材・サンプルでは `middleware.ts` が多く登場します。Next.js
+  16以降で新しく書くなら `proxy.ts` を使い、古いコードを読むときは「middleware.ts =
+  現在のproxy.tsの旧名」と読み替えましょう。
+</Callout>
+
+---
+
+<a id="when-to-use"></a>
+
+## Proxyに書くべき処理・書くべきでない処理
+
+Proxyは便利ですが、何でも置ける場所ではありません。
+
+| 処理                                   | Proxyに置いてよいか | 理由                                            |
+| -------------------------------------- | ------------------- | ----------------------------------------------- |
+| 未ログインなら `/login` にリダイレクト | 向いている          | ページ到達前に判断したい                        |
+| `/old` を `/new` にリダイレクト        | 向いている          | レンダリング不要                                |
+| `/dashboard` 配下だけアクセス制御      | 向いている          | `matcher` で絞りやすい                          |
+| 複雑なDB検索                           | 避ける              | 重くなりやすく、入口処理に向かない              |
+| ユーザーの権限を最終確定する           | Proxyだけでは不十分 | Server Actions / Route Handlers側でも確認が必要 |
+| フォーム送信後のDB更新                 | 向かない            | Server ActionsやRoute Handlerの責務             |
+| ページごとの細かい表示分岐             | 向かないことが多い  | Server Component内で扱う方が自然                |
+
+迷ったら、「その処理はリクエストがページ/APIに届く前に終わっている必要があるか？」と考えます。必要がなければ、ページ、Route Handler、Server Actionsに置く方が読みやすいです。
+
+---
+
+<a id="common-pitfalls"></a>
+
+## よくあるハマりどころ
+
+| ハマりどころ                                    | 原因                                      | 対策                                                  |
+| ----------------------------------------------- | ----------------------------------------- | ----------------------------------------------------- |
+| 画像や静的ファイルにもProxyが走る               | `matcher` が広すぎる                      | 対象パスを狭くする                                    |
+| ログインページへ無限リダイレクトする            | `/login` 自体もProxy対象になっている      | `matcher` から `/login` を外す                        |
+| Edgeで動かないライブラリがある                  | Node.js APIやネイティブ機能に依存している | Edge対応ライブラリにするか、処理をRoute Handlerへ移す |
+| Proxyで認証したのにAPIが叩ける                  | APIが `matcher` 対象外                    | Route Handler側でも認証・認可する                     |
+| 古い記事の `middleware.ts` をそのまま使っている | Next.js 16で名称が変わった                | `proxy.ts` と `proxy()` に移行する                    |
+| ProxyにDB処理を入れて遅くなる                   | 入口処理が重い                            | 軽い判定だけにし、詳細処理はサーバー側へ寄せる        |
+
+---
+
+<a id="summary"></a>
+
+## まとめ
+
+- `proxy.ts` は、ページやRoute Handlerに届く前に実行される入口処理
+- Next.js 16では `middleware.ts` が非推奨になり、`proxy.ts` / `proxy()` にリネームされた
+- `matcher` で対象URLを狭く絞るのが基本
+- `NextRequest` でURL・Cookie・ヘッダーを読み、`NextResponse` で通過・リダイレクト・rewrite・ヘッダー操作を行う
+- Edge RuntimeはWeb標準API中心の軽量な実行環境で、Node.js Runtimeとは使えるAPIが異なる
+- 古いMiddlewareはEdge Runtimeのみという説明が多いが、Next.js 15.5以降とNext.js 16のProxyではランタイムの扱いが変わっている
+- Proxyは強力だが、認証・認可の最終チェックはRoute HandlerやServer Actions側にも必ず置く
+
+次の章では、データ取得中の **[ローディングとエラー処理](/books/next-js/08-loading-and-error)** を扱います。`fetch` を待つ間に何を見せるか、失敗したらどう表示するか——`loading.tsx` と `error.tsx` で宣言的に実装できます。
