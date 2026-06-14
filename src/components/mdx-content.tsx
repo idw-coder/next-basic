@@ -5,6 +5,7 @@ import Callout from '@/app/books/_components/Callout';
 import SpeechBubble from '@/app/books/_components/SpeechBubble';
 import Marker from '@/app/books/_components/Marker';
 import TailwindPreview from '@/app/books/_components/TailwindPreview';
+import QuizLink from '@/app/books/_components/QuizLink';
 
 // MDX 内で <MermaidDiagram /> と記述するだけで自動的にこのコンポーネントが使われる。
 function ResponsiveTable(props: React.ComponentPropsWithoutRef<'table'>) {
@@ -22,6 +23,7 @@ const sharedComponents = {
   SpeechBubble,
   Marker,
   TailwindPreview,
+  QuizLink,
   table: ResponsiveTable,
 };
 

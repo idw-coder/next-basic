@@ -148,6 +148,8 @@ npm install → HTTP_PROXY環境変数（使う側）→ 社内プロキシ（�
 
 ## フォワードプロキシ
 
+## <Figure src="/images/fork_suit_man_color.png" alt="分岐で悩んでいる男性のイラスト" maxWidth="200px" />
+
 フォワードプロキシは **クライアント側** に設置され、クライアントの代わりにサーバーへリクエストを送ります。サーバーからはプロキシのIPアドレスしか見えないため、クライアントの身元を隠す効果があります。
 
 ### 主な用途
@@ -209,9 +211,24 @@ curl https://api.example.com/data
 
 ### 実務でよく使われるリバースプロキシ
 
-#### Nginx
+#### Nginx — Webサーバーでありプロキシサーバーでもある
 
-Webサーバーとして最も広く使われているNginxは、リバースプロキシとしても定番です。
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+NginxってWebサーバーなの？プロキシサーバーなの？Apacheとは何が違うの？
+</SpeechBubble>
+
+Nginxは **Webサーバーとリバースプロキシの両方の機能を持つ** ソフトウェアです。「どっちなの？」ではなく「どっちもできる」が正解です。
+
+Apacheとの違いを整理すると、こうなります。
+
+| 項目 | Apache | Nginx |
+| --- | --- | --- |
+| 生まれた目的 | Webサーバー（静的ファイル配信） | Webサーバー + リバースプロキシ |
+| プロキシ機能 | `mod_proxy`モジュールを後から追加 | 最初から組み込み |
+| 処理モデル | リクエストごとにプロセス/スレッド生成 | イベント駆動（少ないリソースで大量接続） |
+| 得意な場面 | `.htaccess`による柔軟な設定 | 大量の同時接続、リバースプロキシ |
+
+Apacheが「Webサーバーにプロキシ機能を後付けした」のに対して、Nginxは「最初からプロキシを前提に設計された」という違いがあります。そのため、現代のWebアプリではNginxをリバースプロキシとして使うのが主流になっています。
 
 ```nginx
 # /etc/nginx/conf.d/app.conf
@@ -219,6 +236,7 @@ server {
     listen 80;
     server_name api.example.com;
 
+    # リバースプロキシとしての設定 — アプリサーバーに転送
     location / {
         proxy_pass http://localhost:3000;
         proxy_set_header Host $host;
@@ -227,6 +245,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Webサーバーとしての設定 — 静的ファイルを直接配信
     location /static/ {
         root /var/www;
         expires 30d;
@@ -234,7 +253,15 @@ server {
 }
 ```
 
+上の設定を見ると、`/` へのリクエストは `proxy_pass` でアプリサーバーに転送（リバースプロキシの仕事）し、`/static/` へのリクエストはファイルを直接返しています（Webサーバーの仕事）。1つのNginxが両方の役割を同時にこなしているわけです。
+
 `proxy_set_header`で付与している`X-Forwarded-For`や`X-Real-IP`は、アプリサーバーが「本来のクライアントIPアドレス」を知るためのヘッダーです。04章で扱ったHTTPヘッダーの実践的な使い方です。
+
+<QuizLink
+  href="/quiz/nginx-basic"
+  title="Nginxクイズに挑戦する"
+  description="リバースプロキシ・設定ファイル・ロードバランシングなど、Nginxの基礎知識をクイズで確認しよう"
+/>
 
 #### Cloudflare
 
@@ -287,6 +314,10 @@ X-Forwarded-For: 203.0.113.50, 198.51.100.178
 ---
 
 ## 開発環境でのプロキシ
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+開発中に `fetch('/api/users')` したらCORSエラーが出た。プロキシで解決できるって聞いたけど、どう設定するの？
+</SpeechBubble>
 
 開発中に最もよくプロキシを使うのは、**CORS（Cross-Origin Resource Sharing）の回避** です。フロントエンドの開発サーバー（`localhost:3000`）からバックエンドAPI（`localhost:8080`）にリクエストを送ると、オリジンが異なるためブラウザにブロックされます。開発サーバーのプロキシ機能を使えば、同一オリジンからのリクエストに見せかけることができます。
 
@@ -377,6 +408,8 @@ CRA（webpack-dev-server）では`package.json`に`proxy`フィールドを追�
 
 ## HTTPクライアントのプロキシ設定
 
+## <Figure src="/images/usingcomputer_suit_woman_color.png" alt="PCを使う女性のイラスト" maxWidth="200px" />
+
 Node.jsやブラウザ以外のHTTPクライアントからプロキシを経由する場面もあります。
 
 ### 環境変数による設定
@@ -450,6 +483,8 @@ git config --global https.proxy http://proxy.example.com:8080
 
 ## デバッグ用プロキシツール
 
+## <Figure src="/images/pc-work-woman01.png" alt="PCで作業する女性のイラスト" maxWidth="200px" />
+
 HTTPプロキシを使って通信内容を可視化・改変できるツールがあります。APIの挙動を調査したり、レスポンスをモックしたりするのに便利です。
 
 ### Charles Proxy
@@ -509,6 +544,10 @@ mitmproxy -s addon.py
 ---
 
 ## プロキシ関連のトラブルシューティング
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`npm install` が全然通らない…。プロキシが原因かもしれないけど、どこから調べればいいの？
+</SpeechBubble>
 
 <MermaidDiagram
   chart={`

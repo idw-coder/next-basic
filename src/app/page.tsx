@@ -533,41 +533,39 @@ export default async function Home() {
         <SectionHeading className="mb-6" icon={<Sparkles className="size-5 text-red-400" />}>
           このサイトの特徴
         </SectionHeading>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-4">
           {[
             {
               icon: BadgeCheck,
               color: 'text-primary',
               title: '無料で利用可能',
-              desc: '会員登録なしでも\nすぐに問題を解ける',
+              desc: '会員登録なしでもすぐに問題を解ける',
             },
             {
               icon: Clock,
               color: 'text-primary',
               title: 'スキマ時間で学べる',
-              desc: '1問ずつ短時間で\n解答できる設計',
+              desc: '1問ずつ短時間で解答できる設計',
             },
             {
               icon: RotateCcw,
               color: 'text-primary',
               title: '復習しやすい',
-              desc: '間違えた問題を\n繰り返し解き直せる',
+              desc: '間違えた問題を繰り返し解き直せる',
             },
             {
               icon: TrendingUp,
               color: 'text-primary',
               title: '成長を実感',
-              desc: '正答率や学習日数を\nプロフィールで確認',
+              desc: '正答率や学習日数をプロフィールで確認',
             },
           ].map((f) => (
-            <div key={f.title} className="text-center">
-              <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-primary/10">
-                <f.icon className={`size-6 ${f.color}`} />
+            <div key={f.title} className="flex items-start gap-3">
+              <f.icon className={`size-5 ${f.color} shrink-0 mt-0.5`} />
+              <div>
+                <p className="font-semibold text-foreground text-sm mb-0.5">{f.title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
               </div>
-              <p className="font-semibold text-foreground text-sm mb-1">{f.title}</p>
-              <p className="text-xs text-muted-foreground whitespace-pre-line leading-relaxed">
-                {f.desc}
-              </p>
             </div>
           ))}
         </div>
@@ -579,32 +577,27 @@ export default async function Home() {
           クイズカテゴリ
         </SectionHeading>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {CATEGORIES.map((cat) => {
             const count = counts[cat.slug] ?? 0;
-            const colors = CATEGORY_COLORS[cat.slug];
             return (
               <Link
                 key={cat.slug}
                 href={`/quiz/${cat.slug}`}
-                className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 sm:p-4 transition hover:shadow-md hover:border-primary/30"
+                className="group flex flex-col rounded-lg border border-border bg-card p-4 transition hover:shadow-sm hover:border-primary/20"
               >
-                <div
-                  className={`
-                    size-3 shrink-0
-                    rounded-full border-2 ${colors?.border ?? 'border-gray-300'}
-                    ${cat.bgColor}
-                  `}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                    {cat.name}
-                  </p>
+                <div className="flex items-baseline justify-between mb-1.5">
+                  <p className={`text-sm font-bold ${cat.color}`}>{cat.name}</p>
                   {count > 0 && (
-                    <p className="text-[11px] text-muted-foreground">{count}問</p>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">{count}問</span>
                   )}
                 </div>
-                <ChevronRight className="size-4 text-muted-foreground/50 group-hover:text-primary shrink-0 transition-colors" />
+                <p className="text-xs text-muted-foreground mb-2.5 line-clamp-2 leading-relaxed">{cat.description}</p>
+                <div className="flex flex-wrap gap-1 mt-auto">
+                  {cat.topics.map((t) => (
+                    <span key={t} className={`text-[10px] px-1.5 py-0.5 rounded ${cat.badgeBg} ${cat.badgeText}`}>{t}</span>
+                  ))}
+                </div>
               </Link>
             );
           })}
@@ -647,50 +640,42 @@ export default async function Home() {
       </section>
 
       {/* 会員登録CTA */}
-      <section className="mb-12 md:mb-16 bg-blue-50/50 dark:bg-blue-950/20 rounded-md px-5 py-8 md:px-8">
+      <section className="mb-12 md:mb-16">
         <SectionHeading
-          className="mb-6"
-          subtitle="登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。"
+          className="mb-2"
         >
           無料会員登録で学習をもっと便利に
         </SectionHeading>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 max-w-3xl mx-auto mb-6">
+        <p className="text-center text-sm text-muted-foreground mb-6">登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。</p>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-3 lg:grid-cols-4 max-w-3xl mx-auto mb-6">
           {[
             {
               icon: Target,
-              color: 'text-green-500',
-              bg: 'bg-green-500/10',
+              color: 'text-green-600',
               title: '正答率を記録',
               desc: '成長を数字で実感',
             },
             {
               icon: Flame,
               color: 'text-orange-500',
-              bg: 'bg-orange-500/10',
               title: '連続学習ストリーク',
               desc: '毎日の習慣を可視化',
             },
             {
               icon: TrendingUp,
               color: 'text-blue-500',
-              bg: 'bg-blue-500/10',
               title: 'カテゴリ別の進捗',
               desc: '得意・苦手が一目瞭然',
             },
             {
               icon: UserCircle,
               color: 'text-violet-500',
-              bg: 'bg-violet-500/10',
               title: 'デバイス間で同期',
               desc: 'PC・スマホどちらでも',
             },
           ].map((f) => (
-            <div key={f.title} className="flex items-start gap-3 rounded-md border p-4">
-              <div
-                className={`flex size-9 shrink-0 items-center justify-center rounded-md ${f.bg}`}
-              >
-                <f.icon className={`size-5 ${f.color}`} />
-              </div>
+            <div key={f.title} className="flex items-start gap-2.5">
+              <f.icon className={`size-4 ${f.color} shrink-0 mt-0.5`} />
               <div>
                 <p className="font-semibold text-foreground text-sm">{f.title}</p>
                 <p className="text-xs text-muted-foreground">{f.desc}</p>
@@ -710,47 +695,31 @@ export default async function Home() {
 
       {/* ランダムクイズ & キーワード検索 CTA */}
       <section className="mb-12 md:mb-16 grid gap-4 sm:grid-cols-2">
-        <Link href="/quiz/random" className="block group">
-          <div className="rounded-md border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-5 sm:p-6 hover:border-blue-400 dark:hover:border-blue-600 transition-colors h-full">
-            <div className="flex items-start gap-4">
-              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/60 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/60 transition-colors">
-                <Shuffle className="size-6 sm:size-7 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-1">
-                  ランダムクイズに挑戦！
-                </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-                  全カテゴリからランダムに出題。5問・10問など問題数を選んでサクッと力試し！
-                </p>
-                <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
-                  挑戦する
-                  <ArrowRight className="size-3.5 sm:size-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </div>
-            </div>
+        <Link href="/quiz/random" className="group flex items-start gap-3.5 rounded-lg border border-border bg-card p-4 sm:p-5 transition hover:shadow-sm hover:border-primary/20">
+          <Shuffle className="size-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-bold text-foreground mb-1">ランダムクイズに挑戦</h2>
+            <p className="text-xs text-muted-foreground mb-2">
+              全カテゴリからランダムに出題。5問・10問など問題数を選んでサクッと力試し
+            </p>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+              挑戦する
+              <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+            </span>
           </div>
         </Link>
 
-        <Link href="/search" className="block group">
-          <div className="rounded-md border-2 border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 p-5 sm:p-6 hover:border-violet-400 dark:hover:border-violet-600 transition-colors h-full">
-            <div className="flex items-start gap-4">
-              <div className="flex size-12 sm:size-14 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/60 group-hover:bg-violet-200 dark:group-hover:bg-violet-800/60 transition-colors">
-                <Search className="size-6 sm:size-7 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-1">
-                  キーワードで探す
-                </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-                  クイズも教科書も横断検索。「Promise」「型ガード」「API設計」などから探せます
-                </p>
-                <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-violet-600 dark:text-violet-400">
-                  検索する
-                  <ArrowRight className="size-3.5 sm:size-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </div>
-            </div>
+        <Link href="/search" className="group flex items-start gap-3.5 rounded-lg border border-border bg-card p-4 sm:p-5 transition hover:shadow-sm hover:border-primary/20">
+          <Search className="size-5 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-bold text-foreground mb-1">キーワードで探す</h2>
+            <p className="text-xs text-muted-foreground mb-2">
+              クイズも教科書も横断検索。「Promise」「型ガード」「API設計」などから探せます
+            </p>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+              検索する
+              <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
+            </span>
           </div>
         </Link>
       </section>
@@ -758,53 +727,39 @@ export default async function Home() {
       {/* 学習のすすめ方 */}
       <section className="mb-12 md:mb-16 bg-muted/40 rounded-md px-5 py-8 md:px-8">
         <SectionHeading className="mb-6">学習のすすめ方</SectionHeading>
-        <div className="space-y-4 sm:space-y-0 sm:grid sm:grid-cols-5 sm:gap-4">
+        <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-5 sm:gap-5">
           {[
             {
               step: 1,
-              color: 'bg-red-400',
               title: 'まずはクイズに挑戦',
               desc: 'スキマ時間に1問ずつ。会員登録なしですぐ始められます。',
             },
             {
               step: 2,
-              color: 'bg-blue-400',
               title: '間違えた問題を復習',
               desc: '解答履歴から間違えた問題をピックアップして解き直しましょう。',
             },
             {
               step: 3,
-              color: 'bg-indigo-400',
               title: '教科書で体系的に学ぶ',
               desc: 'クイズで気になったテーマは教科書で基礎から順番に理解を深められます。',
             },
             {
               step: 4,
-              color: 'bg-amber-400',
               title: 'プロフィールで確認',
               desc: '会員登録すると正答率・連続学習日数・カテゴリ別進捗を確認できます。',
             },
             {
               step: 5,
-              color: 'bg-green-400',
               title: 'コードを書いて実践',
               desc: '問題で学んだ知識を、実際にコードを書いて理解を深めましょう。',
             },
-          ].map((s, i) => (
-            <div key={s.step} className="flex sm:flex-col items-start sm:items-center gap-3 sm:gap-0 sm:text-center">
-              <div className="flex sm:flex-col items-center gap-3 sm:gap-0 shrink-0">
-                <div
-                  className={`flex size-8 sm:size-9 items-center justify-center rounded-full ${s.color} text-white font-bold text-xs sm:text-sm shadow-sm`}
-                >
-                  {s.step}
-                </div>
-                {i < 4 && (
-                  <div className="hidden sm:block w-px h-4 bg-gray-300 mx-auto" />
-                )}
-              </div>
-              <div className="sm:mt-1">
-                <p className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">{s.title}</p>
-                <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+          ].map((s) => (
+            <div key={s.step} className="flex sm:flex-col items-start sm:items-start gap-3 sm:gap-0">
+              <span className="text-xs font-bold text-muted-foreground/60 shrink-0 tabular-nums sm:mb-1.5">{s.step}.</span>
+              <div>
+                <p className="font-semibold text-foreground text-sm mb-0.5">{s.title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {s.desc}
                 </p>
               </div>
