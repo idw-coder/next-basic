@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu } from 'lucide-react';
+import { Menu, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { useState, useRef, useTransition, useCallback, useEffect } from 'react';
+import { searchInBook, type InBookSearchResult } from '../_actions/searchInBook';
 
 interface Chapter {
   title: string;
@@ -20,6 +21,72 @@ interface BookSidebarProps {
   chapters: Chapter[];
 }
 
+function SidebarSearch({
+  bookSlug,
+  onResults,
+}: {
+  bookSlug: string;
+  onResults: (results: InBookSearchResult[] | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [isPending, startTransition] = useTransition();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const doSearch = useCallback(
+    (value: string) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (value.trim().length < 2) {
+        onResults(null);
+        return;
+      }
+      timerRef.current = setTimeout(() => {
+        startTransition(async () => {
+          const results = await searchInBook(bookSlug, value);
+          onResults(results);
+        });
+      }, 300);
+    },
+    [bookSlug, onResults],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  return (
+    <div className="relative mb-3">
+      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          doSearch(e.target.value);
+        }}
+        placeholder="この本の中を検索…"
+        className={cn(
+          'w-full rounded-md border border-gray-200 bg-gray-50 py-1.5 pl-7 pr-7 text-xs',
+          'placeholder:text-gray-400 focus:border-primary/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20',
+          isPending && 'opacity-70',
+        )}
+      />
+      {query && (
+        <button
+          onClick={() => {
+            setQuery('');
+            onResults(null);
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SidebarContent({
   bookTitle,
   bookSlug,
@@ -27,6 +94,13 @@ function SidebarContent({
   onNavigate,
 }: BookSidebarProps & { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const [searchResults, setSearchResults] = useState<InBookSearchResult[] | null>(null);
+
+  const isSearching = searchResults !== null;
+  const matchedSlugs = isSearching ? new Set(searchResults.map((r) => r.chapterSlug)) : null;
+  const snippetMap = isSearching
+    ? new Map(searchResults.filter((r) => r.snippet).map((r) => [r.chapterSlug, r.snippet]))
+    : null;
 
   return (
     <nav className="flex flex-col">
@@ -37,26 +111,37 @@ function SidebarContent({
       >
         {bookTitle}
       </Link>
+      <SidebarSearch bookSlug={bookSlug} onResults={setSearchResults} />
+      {isSearching && searchResults.length === 0 && (
+        <p className="px-2.5 py-2 text-xs text-gray-400">一致する章が見つかりませんでした</p>
+      )}
       <ol className="flex flex-col gap-0.5">
         {chapters.map((chapter) => {
+          if (matchedSlugs && !matchedSlugs.has(chapter.chapterSlug)) return null;
           const href = `/books/${bookSlug}/${chapter.chapterSlug}`;
           const isActive = pathname === href;
+          const snippet = snippetMap?.get(chapter.chapterSlug);
           return (
             <li key={chapter.chapterSlug}>
               <Link
                 href={href}
                 onClick={onNavigate}
                 className={cn(
-                  'flex items-start gap-2.5 rounded-xs px-2.5 py-2 text-sm transition-colors',
+                  'flex flex-col gap-0.5 rounded-xs px-2.5 py-2 text-sm transition-colors',
                   isActive
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                 )}
               >
-                <span className="shrink-0 text-xs font-mono mt-0.5 text-gray-400 w-4 text-right">
-                  {chapter.order}
+                <span className="flex items-start gap-2.5">
+                  <span className="shrink-0 text-xs font-mono mt-0.5 text-gray-400 w-4 text-right">
+                    {chapter.order}
+                  </span>
+                  <span className="line-clamp-2">{chapter.title}</span>
                 </span>
-                <span className="line-clamp-2">{chapter.title}</span>
+                {snippet && (
+                  <span className="ml-6.5 text-[11px] text-gray-400 line-clamp-1">{snippet}</span>
+                )}
               </Link>
             </li>
           );
