@@ -617,16 +617,24 @@ export default async function Home() {
           教科書
         </SectionHeading>
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 max-w-4xl mx-auto">
-          {bookList.slice(0, 6).map((book) => (
-            <BookCard
-              key={book.bookSlug}
-              bookSlug={book.bookSlug}
-              title={book.title}
-              description={book.description}
-              chapterCount={getChaptersByBook(book.bookSlug).length}
-              isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
-            />
-          ))}
+          {bookList.slice(0, 6).map((book) => {
+            const chapters = getChaptersByBook(book.bookSlug);
+            return (
+              <BookCard
+                key={book.bookSlug}
+                bookSlug={book.bookSlug}
+                title={book.title}
+                description={book.description}
+                chapterCount={chapters.length}
+                chapters={chapters.map((c) => ({
+                  title: c.title,
+                  order: c.order,
+                  chapterSlug: c.chapterSlug,
+                }))}
+                isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
+              />
+            );
+          })}
         </div>
         <div className="text-center mt-6">
           <Button variant="outline" className="rounded-full px-6" size="sm" asChild>

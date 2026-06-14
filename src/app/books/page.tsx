@@ -42,16 +42,24 @@ export default function BooksPage() {
 
       {/* 書籍グリッド: スマホ2列 / PC3列 */}
       <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-        {books.map((book) => (
-          <BookCard
-            key={book.bookSlug}
-            bookSlug={book.bookSlug}
-            title={book.title}
-            description={book.description}
-            chapterCount={getChaptersByBook(book.bookSlug).length}
-            isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
-          />
-        ))}
+        {books.map((book) => {
+          const chapters = getChaptersByBook(book.bookSlug);
+          return (
+            <BookCard
+              key={book.bookSlug}
+              bookSlug={book.bookSlug}
+              title={book.title}
+              description={book.description}
+              chapterCount={chapters.length}
+              chapters={chapters.map((c) => ({
+                title: c.title,
+                order: c.order,
+                chapterSlug: c.chapterSlug,
+              }))}
+              isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
+            />
+          );
+        })}
       </div>
     </div>
   );
