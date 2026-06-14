@@ -88,6 +88,8 @@ function SidebarSearch({
         <input
           type="text"
           value={query}
+          autoFocus={false}
+          tabIndex={-1}
           onChange={(e) => {
             setQuery(e.target.value);
             doSearch(e.target.value);

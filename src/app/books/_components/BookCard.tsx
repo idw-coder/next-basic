@@ -60,7 +60,7 @@ export default function BookCard({
       <Link
         href={`/books/${bookSlug}`}
         className={cn(
-          'relative flex h-full flex-col rounded-lg bg-white p-5 sm:p-6',
+          'relative flex h-full flex-col rounded-lg bg-white p-3.5 sm:p-6',
           'border border-gray-200 shadow-sm overflow-hidden',
           'transition-all duration-200',
           'hover:shadow-md hover:border-gray-300',
@@ -72,7 +72,7 @@ export default function BookCard({
           return (
             <BgIcon
               className={cn(
-                'pointer-events-none absolute -right-4 -bottom-4 size-28 sm:size-32 opacity-[0.06]',
+                'pointer-events-none absolute -right-3 -bottom-3 size-20 sm:size-32 opacity-[0.06]',
                 theme.iconText,
               )}
               strokeWidth={1}
@@ -81,15 +81,15 @@ export default function BookCard({
         })()}
 
         {/* ヘッダー: アイコン + NEW */}
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start justify-between mb-2 sm:mb-3">
           <div
             className={cn(
-              'flex size-9 items-center justify-center rounded-lg',
+              'flex size-7 sm:size-9 items-center justify-center rounded-lg',
               theme.iconBg,
               theme.iconText,
             )}
           >
-            {(() => { const Icon = iconMap[theme.iconName] ?? BookOpen; return <Icon className="size-4.5" strokeWidth={2} />; })()}
+            {(() => { const Icon = iconMap[theme.iconName] ?? BookOpen; return <Icon className="size-3.5 sm:size-4.5" strokeWidth={2} />; })()}
           </div>
           {isNew && (
             <span className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white">
@@ -100,7 +100,7 @@ export default function BookCard({
         </div>
 
         {/* タイトル */}
-        <h3 className="text-[15px] sm:text-base font-bold leading-snug text-gray-900 line-clamp-2 mb-2">
+        <h3 className="text-[13px] sm:text-base font-bold leading-snug text-gray-900 line-clamp-2 mb-1.5 sm:mb-2">
           {title}
         </h3>
 
@@ -110,9 +110,9 @@ export default function BookCard({
         </p>
 
         {/* フッター */}
-        <div className="mt-auto flex items-center justify-between pt-2">
+        <div className="mt-auto flex items-center justify-between pt-1.5 sm:pt-2">
           <span className={cn(
-            'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold',
+            'inline-flex items-center rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold',
             theme.badgeBg,
             theme.badgeText,
           )}>
