@@ -106,6 +106,39 @@ switch (status) {
   `switch` は `===` で比較します。`'1'` と `1` は別の値として扱われます。
 </Callout>
 
+### オブジェクトマッピングで switch を置き換える
+
+`switch` 文が単純な値の対応付けをしているだけなら、**オブジェクト（マップ）** で書き換えると簡潔になります。
+
+```js
+// switch を使うパターン
+function getStatusLabel(status) {
+  switch (status) {
+    case 'draft': return '下書き';
+    case 'published': return '公開中';
+    case 'archived': return 'アーカイブ';
+    default: return '不明';
+  }
+}
+
+// オブジェクトマッピングで書き換え
+const STATUS_LABELS = {
+  draft: '下書き',
+  published: '公開中',
+  archived: 'アーカイブ',
+};
+
+function getStatusLabel(status) {
+  return STATUS_LABELS[status] ?? '不明';
+}
+```
+
+マッピングをオブジェクトとして定義すると、データとロジックが分離されてテストしやすくなります。ただし、条件に複雑なロジックが含まれる場合（範囲チェック、複数条件の組み合わせなど）は `if/else` や `switch` の方が読みやすいです。
+
+<Callout type="info" title="いつオブジェクトマッピングを選ぶか">
+「値A → 値B」の単純な対応付けなら、オブジェクトマッピングが最もシンプルです。一方、case内で処理を実行する必要がある場合や、フォールスルーを意図的に使いたい場合は `switch` を使います。
+</Callout>
+
 ---
 
 ## ループ：for / for...of / for...in

@@ -24,6 +24,8 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 - [find — 条件に合う最初の1つを取得](#find)
 - [some — 1つでも条件を満たすか](#some)
 - [every — すべてが条件を満たすか](#every)
+- [flatMap — 変換と平坦化を同時に行う](#flatmap)
+- [メソッドチェーンの実践パターン](#chaining)
 - [メソッドの使い分け早見表](#method-comparison)
 - [よくあるハマりどころ](#common-pitfalls)
 - [ちゃんと使うためのポイント](#checklist)
@@ -409,6 +411,87 @@ console.log(isFormValid); // false（passwordが invalid）
 
 空配列の可能性がある場合は、事前に `length` をチェックしてください。
 
+<a id="flatmap"></a>
+
+## flatMap — 変換と平坦化を同時に行う
+
+`flatMap` は各要素にコールバックを適用し、その結果を**1段階だけ平坦化**した新しい配列を返します。`map` してから `flat(1)` するのと同じですが、1回の走査で済むため効率的です。
+
+```js
+const sentences = ['Hello world', 'Good morning'];
+
+// map だと配列の配列になる
+sentences.map(s => s.split(' '));
+// [["Hello", "world"], ["Good", "morning"]]
+
+// flatMap なら1段階平坦化される
+sentences.flatMap(s => s.split(' '));
+// ["Hello", "world", "Good", "morning"]
+```
+
+### 実務パターン: filter + map を1回で
+
+`flatMap` で空配列 `[]` を返すと、その要素を除外できます。`filter` + `map` を1回の走査にまとめたいときに便利です。
+
+```js
+const items = [
+  { name: 'PC', price: 120000, inStock: true },
+  { name: 'マウス', price: 3000, inStock: false },
+  { name: 'モニター', price: 45000, inStock: true },
+];
+
+// filter + map
+items.filter(i => i.inStock).map(i => i.name);
+
+// flatMap で同じことを1回で
+items.flatMap(i => i.inStock ? [i.name] : []);
+// ["PC", "モニター"]
+```
+
+<Callout type="column" title="flatMap vs filter + map">
+`filter` + `map` の方が読みやすいケースが多いです。`flatMap` は「変換の結果が可変長の配列になる」ケース（1対多の変換）で真価を発揮します。単純な絞り込み + 変換なら `filter` + `map` で問題ありません。
+</Callout>
+
+---
+
+<a id="chaining"></a>
+
+## メソッドチェーンの実践パターン
+
+配列メソッドを連鎖させる**メソッドチェーン**は、実務で最もよく書くパターンの一つです。
+
+```js
+const transactions = [
+  { id: 1, type: 'income', amount: 50000, date: '2024-06' },
+  { id: 2, type: 'expense', amount: 3000, date: '2024-06' },
+  { id: 3, type: 'expense', amount: 15000, date: '2024-07' },
+  { id: 4, type: 'income', amount: 80000, date: '2024-07' },
+  { id: 5, type: 'expense', amount: 5000, date: '2024-06' },
+];
+
+// 6月の支出合計を計算
+const juneExpenses = transactions
+  .filter(t => t.type === 'expense')      // 支出だけ
+  .filter(t => t.date === '2024-06')      // 6月だけ
+  .reduce((sum, t) => sum + t.amount, 0); // 合計
+// 8000
+```
+
+チェーンは上から下に「絞り込み → 変換 → 集約」の順で読めるのが理想です。
+
+### 途中で結果を確認したいとき
+
+チェーンの途中で `console.log` を挟みたい場合、一時変数に切り出すか、デバッグ用の `tap` パターンを使います。
+
+```js
+// 一時変数に切り出す
+const expenses = transactions.filter(t => t.type === 'expense');
+console.log('expenses:', expenses);
+const total = expenses.reduce((sum, t) => sum + t.amount, 0);
+```
+
+---
+
 <a id="method-comparison"></a>
 
 ## メソッドの使い分け早見表
@@ -422,6 +505,7 @@ console.log(isFormValid); // false（passwordが invalid）
 | 条件に合う最初のインデックス | `findIndex` | 数値 or `-1`        |
 | 1つでも条件を満たすか        | `some`      | `boolean`           |
 | すべて条件を満たすか         | `every`     | `boolean`           |
+| 変換 + 1段階の平坦化         | `flatMap`   | 新しい配列          |
 
 <a id="common-pitfalls"></a>
 

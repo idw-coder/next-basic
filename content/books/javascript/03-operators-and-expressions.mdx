@@ -359,17 +359,13 @@ function getUser(id) {
 
 ```js
 // && が先に評価される
-true ||
-  (false &&
-    false(
-      // → true || (false && false)
-      // → true || false
-      // → true
+true || false && false;
+// → true || (false && false)
+// → true || false
+// → true
 
-      // 意図を明確にするなら括弧を使う
-      true || false,
-    ) &&
-    false); // → false
+// 意図を明確にするなら括弧を使う
+(true || false) && false; // → false
 ```
 
 `??` は `&&` や `||` と混在させることができません（優先順位が曖昧なため、構文エラーになります）。

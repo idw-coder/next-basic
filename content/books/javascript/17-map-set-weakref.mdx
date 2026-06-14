@@ -423,13 +423,119 @@ a.isDisjointFrom(b); // false — 共通要素がないか
 
 ## WeakMap・WeakSet — GCに優しいコレクション
 
-> このセクションは現在執筆中です。
+MapやSetは、キー（Mapの場合）や値（Setの場合）への参照を持ち続けるため、格納したオブジェクトが**ガベージコレクション（GC）の対象にならなくなります**。たとえばDOM要素をMapのキーにした場合、その要素がページから削除されても、Mapが参照を持ち続ける限りメモリ上に残ります。
+
+**WeakMap** と **WeakSet** は、この問題を解決するための「弱い参照」版のコレクションです。
+
+### WeakMap
+
+WeakMapは**キーにオブジェクトしか使えない**代わりに、キーとなるオブジェクトへの参照が**弱い（weak）**です。他のどこからもそのオブジェクトを参照しなくなると、WeakMapに入っていてもGCに回収されます。
+
+```js
+const privateData = new WeakMap();
+
+function createUser(name) {
+  const user = { name };
+  privateData.set(user, { loginCount: 0, lastLogin: null });
+  return user;
+}
+
+let alice = createUser('Alice');
+privateData.get(alice); // { loginCount: 0, lastLogin: null }
+
+alice = null; // alice への参照がなくなる
+// → WeakMap内のエントリもGC時に自動的に消える
+```
+
+### WeakMapの制約
+
+弱い参照であるがゆえの制約があります。
+
+| できること | できないこと |
+|---|---|
+| `get(key)` / `set(key, value)` / `has(key)` / `delete(key)` | `size` の取得 |
+| オブジェクトキーの使用 | `for...of` による列挙 |
+| | `keys()` / `values()` / `entries()` |
+| | 文字列・数値をキーにすること |
+
+GCのタイミングは予測できないため、「今いくつ入っているか」を知る手段がありません。列挙もできません。
+
+### WeakMapの実務での使いどころ
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+普通の Map を使って、不要になったら `delete` すればいいのでは？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+手動で `delete` するのは漏れやすい。WeakMap なら「不要になったら勝手に消える」から、メモリリークのリスクがそもそもないんだ。
+</SpeechBubble>
+
+| ユースケース | 説明 |
+|---|---|
+| **DOM要素へのメタデータ付与** | 要素が削除されたら自動的にメタデータも消える |
+| **プライベートデータの格納** | クラスインスタンスに外部からアクセスできない情報を紐づける |
+| **キャッシュ** | 元のオブジェクトが不要になったらキャッシュも自動解放 |
+
+```js
+// DOM要素にメタデータを紐づける
+const elementData = new WeakMap();
+
+function trackElement(el) {
+  elementData.set(el, { created: Date.now(), clicks: 0 });
+}
+
+// el がDOMから削除され、他の参照もなくなれば
+// WeakMap内のエントリも自動的にGC対象になる
+```
+
+### WeakSet
+
+WeakSetはSetの弱い参照版です。オブジェクトだけを格納でき、格納したオブジェクトへの参照が弱いです。
+
+```js
+const visited = new WeakSet();
+
+function processOnce(obj) {
+  if (visited.has(obj)) return; // 処理済み
+  visited.add(obj);
+  // 処理...
+}
+```
+
+WeakSetの制約もWeakMapと同様で、`size`・列挙・イテレーションはできません。使いどころは「あるオブジェクトに対して処理済みかどうかのフラグ」や「循環参照の検知」などに限られます。
 
 <a id="weakref-finalizationregistry"></a>
 
 ## WeakRef・FinalizationRegistry — 弱参照と後始末
 
-> このセクションは現在執筆中です。
+<Callout type="column" title="上級者向けの機能">
+WeakRef と FinalizationRegistry は日常的に使う機能ではありません。ライブラリやフレームワークの内部実装で使われることがほとんどで、アプリケーションコードで直接使う場面はまれです。ここでは「こういうものがある」という理解にとどめれば十分です。
+</Callout>
+
+**WeakRef** は任意のオブジェクトへの弱い参照を作ります。WeakMapと違い、キー・値のペアではなく、単体のオブジェクトへの弱い参照です。
+
+```js
+let target = { data: 'important' };
+const ref = new WeakRef(target);
+
+ref.deref(); // { data: 'important' } — まだ生きている
+target = null;
+// GC後
+ref.deref(); // undefined — 回収された
+```
+
+**FinalizationRegistry** は、オブジェクトがGCで回収されたときにコールバックを実行する仕組みです。
+
+```js
+const registry = new FinalizationRegistry((heldValue) => {
+  console.log(`${heldValue} が回収されました`);
+});
+
+let obj = { name: 'temp' };
+registry.register(obj, 'temp object');
+obj = null;
+// GC発生時に "temp object が回収されました" と出力される（タイミングは不定）
+```
 
 <a id="checklist"></a>
 
