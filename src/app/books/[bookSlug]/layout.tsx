@@ -4,6 +4,7 @@ import {
   BookSidebarDesktop,
   BookSidebarMobile,
 } from "../_components/BookSidebar";
+import { SearchHighlighter } from "../_components/SearchHighlighter";
 
 interface BookLayoutProps {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ export default async function BookLayout({
         bookSlug={book.bookSlug}
         chapters={sidebarChapters}
       />
+      <SearchHighlighter />
     </div>
   );
 }

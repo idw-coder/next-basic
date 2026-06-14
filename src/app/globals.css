@@ -325,3 +325,13 @@
     text-decoration: underline;
   }
 }
+
+::highlight(book-search) {
+  background-color: #fef08a;
+  color: inherit;
+}
+
+::highlight(book-search-current) {
+  background-color: #f97316;
+  color: white;
+}

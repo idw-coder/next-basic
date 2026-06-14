@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, Search, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, Menu, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useRef, useTransition, useCallback, useEffect } from 'react';
@@ -30,16 +30,29 @@ function SidebarSearch({
 }) {
   const [query, setQuery] = useState('');
   const [isPending, startTransition] = useTransition();
+  const [matchInfo, setMatchInfo] = useState<{ count: number; index: number } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const clearAll = useCallback(() => {
+    setQuery('');
+    setMatchInfo(null);
+    onResults(null);
+    document.dispatchEvent(new CustomEvent('book-search-query', { detail: { query: '' } }));
+  }, [onResults]);
 
   const doSearch = useCallback(
     (value: string) => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (value.trim().length < 2) {
+        setMatchInfo(null);
         onResults(null);
+        document.dispatchEvent(new CustomEvent('book-search-query', { detail: { query: '' } }));
         return;
       }
       timerRef.current = setTimeout(() => {
+        document.dispatchEvent(
+          new CustomEvent('book-search-query', { detail: { query: value.trim() } }),
+        );
         startTransition(async () => {
           const results = await searchInBook(bookSlug, value);
           onResults(results);
@@ -50,38 +63,79 @@ function SidebarSearch({
   );
 
   useEffect(() => {
+    const clearHandler = () => {
+      setQuery('');
+      setMatchInfo(null);
+      onResults(null);
+    };
+    const matchHandler = (e: Event) => {
+      const { count, index } = (e as CustomEvent<{ count: number; index: number }>).detail;
+      setMatchInfo(count > 0 ? { count, index } : null);
+    };
+    document.addEventListener('book-search-clear', clearHandler);
+    document.addEventListener('book-search-matches', matchHandler);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      document.removeEventListener('book-search-clear', clearHandler);
+      document.removeEventListener('book-search-matches', matchHandler);
     };
-  }, []);
+  }, [onResults]);
 
   return (
-    <div className="relative mb-3">
-      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          doSearch(e.target.value);
-        }}
-        placeholder="この本の中を検索…"
-        className={cn(
-          'w-full rounded-md border border-gray-200 bg-gray-50 py-1.5 pl-7 pr-7 text-xs',
-          'placeholder:text-gray-400 focus:border-primary/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20',
-          isPending && 'opacity-70',
-        )}
-      />
-      {query && (
-        <button
-          onClick={() => {
-            setQuery('');
-            onResults(null);
+    <div className="mb-3">
+      <div className="relative">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            doSearch(e.target.value);
           }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+          placeholder="この本の中を検索…"
+          className={cn(
+            'w-full rounded-md border border-gray-200 bg-gray-50 py-1.5 pl-7 pr-7 text-xs',
+            'placeholder:text-gray-400 focus:border-primary/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary/20',
+            isPending && 'opacity-70',
+          )}
+        />
+        {query && (
+          <button
+            onClick={clearAll}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {matchInfo && (
+        <div className="mt-1.5 flex items-center gap-1 text-xs text-gray-500">
+          <span className="tabular-nums">
+            {matchInfo.index + 1}/{matchInfo.count}
+          </span>
+          <button
+            onClick={() =>
+              document.dispatchEvent(
+                new CustomEvent('book-search-nav', { detail: { direction: 'prev' } }),
+              )
+            }
+            className="rounded p-0.5 hover:bg-gray-100"
+            aria-label="前の一致箇所"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() =>
+              document.dispatchEvent(
+                new CustomEvent('book-search-nav', { detail: { direction: 'next' } }),
+              )
+            }
+            className="rounded p-0.5 hover:bg-gray-100"
+            aria-label="次の一致箇所"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );
