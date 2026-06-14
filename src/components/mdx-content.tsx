@@ -7,6 +7,14 @@ import Marker from '@/app/books/_components/Marker';
 import TailwindPreview from '@/app/books/_components/TailwindPreview';
 
 // MDX 内で <MermaidDiagram /> と記述するだけで自動的にこのコンポーネントが使われる。
+function ResponsiveTable(props: React.ComponentPropsWithoutRef<'table'>) {
+  return (
+    <div className="overflow-x-auto -mx-1">
+      <table {...props} />
+    </div>
+  );
+}
+
 const sharedComponents = {
   MermaidDiagram,
   Figure,
@@ -14,6 +22,7 @@ const sharedComponents = {
   SpeechBubble,
   Marker,
   TailwindPreview,
+  table: ResponsiveTable,
 };
 
 // Velite が生成した MDX のコンパイル済みコード文字列を受け取り、
