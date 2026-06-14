@@ -9,13 +9,13 @@ interface FigureProps {
 
 export default function Figure({ src, alt, maxWidth, caption }: FigureProps) {
   return (
-    <figure style={{ maxWidth, margin: '1.5rem 0' }}>
+    <figure style={{ maxWidth, margin: '1.5rem auto' }}>
       <Image
         src={src}
         alt={alt ?? ''}
         width={800}
         height={600}
-        style={{ width: '100%', height: 'auto' }}
+        style={{ width: '100%', height: 'auto', maxHeight: '40vh', objectFit: 'contain' }}
       />
       {caption && (
         <figcaption
