@@ -148,6 +148,75 @@ HTTPSがないと、通信経路上の第三者がリクエストの中身（パ
 
 ---
 
+## DevToolsで実際に確認する
+
+ここまでの内容は、ブラウザの **開発者ツール（DevTools）** で実際に確認できます。Chrome DevToolsを開いて（`F12` または `Cmd + Option + I`）、Networkタブを見ながら任意のページにアクセスしてみます。
+
+### DNS・TCP・HTTPの所要時間を見る
+
+Networkタブでリクエストを選択し、**Timing** タブを見ると、各フェーズにかかった時間がわかります。
+
+| 項目 | 対応するフェーズ |
+|---|---|
+| **DNS Lookup** | ドメイン名 → IPアドレスの変換 |
+| **Initial Connection** | TCPハンドシェイク |
+| **SSL** | TLS暗号化のネゴシエーション |
+| **Waiting (TTFB)** | サーバーが処理してレスポンスを返すまで |
+| **Content Download** | レスポンスボディのダウンロード |
+
+<Callout type="info">
+### TTFBが遅いときの切り分け
+
+**TTFB（Time to First Byte）** はサーバーの処理時間を反映します。DNS LookupやInitial Connectionは正常なのにTTFBだけ遅い場合、問題はサーバー側（遅いクエリ、重い処理など）にあります。逆にDNS Lookupが遅い場合は、DNSサーバーの応答やキャッシュの問題です。
+
+</Callout>
+
+### 1ページで何回リクエストが飛ぶか
+
+NetworkタブのStatusバーに表示される「XX requests」の数字を見ると、1ページの表示に何回のHTTPリクエストが必要かがわかります。一般的なWebサイトでは **30〜100回以上** のリクエストが飛びます。HTML、CSS、JavaScript、画像、フォント、API呼び出し — それぞれが独立したHTTPリクエストです。
+
+---
+
+## よくあるトラブルと切り分け方
+
+Web開発で「繋がらない」「表示されない」というとき、DNS・TCP・HTTPのどこでコケているかを切り分けるのが最短ルートです。
+
+<MermaidDiagram chart={`
+flowchart TD
+    classDef check fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef dns fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef tcp fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef http fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["サイトが表示されない"] --> B{"ping でIPに届く?"}
+    B -->|No| C["DNS or ネットワークの問題"]
+    B -->|Yes| D{"ポートに接続できる?"}
+    D -->|No| E["ファイアウォール or サーバー停止"]
+    D -->|Yes| F{"HTTPレスポンスが返る?"}
+    F -->|No| G["アプリサーバーの問題"]
+    F -->|Yes| H["レスポンスの中身を確認"]
+
+    class A check
+    class C dns
+    class E tcp
+    class G,H http
+`} id="troubleshoot" />
+
+```bash
+# 1. 名前解決できるか確認
+nslookup example.com
+
+# 2. IPに到達できるか確認
+ping example.com
+
+# 3. ポートに接続できるか確認
+curl -v https://example.com 2>&1 | head -20
+```
+
+`curl -v` の出力を見れば、DNS解決、TCP接続、TLSハンドシェイク、HTTPレスポンスのどこまで進んだかがわかります。
+
+---
+
 ## まとめ
 
 Webの通信は **DNS → TCP → HTTP** の3段階で進みます。

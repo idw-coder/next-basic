@@ -22,6 +22,7 @@ HTTPレスポンスの先頭には、3桁の **ステータスコード** が必
 - [4xx — クライアントエラー系](#section-4)
 - [5xx — サーバーエラー系](#section-5)
 - [APIレスポンスの設計指針](#section-6)
+- [DevToolsでステータスコードを確認する](#section-6b)
 - [まとめ](#section-7)
 
 ---
@@ -219,6 +220,73 @@ Authorization: Bearer <一般ユーザーのトークン>
 ```
 
 ステータスコードで「何が起きたか」の大枠を伝え、ボディで「具体的に何が問題か」を伝える。この2層構造がフロントエンドにとって扱いやすいレスポンス設計です。
+
+---
+
+<a id="section-6b"></a>
+
+## DevToolsでステータスコードを確認する
+
+Chrome DevToolsのNetworkタブを開くと、各リクエストの **Status** 列にステータスコードが表示されます。色分けされているので、一目でエラーの有無がわかります。
+
+| 色 | 意味 |
+|---|---|
+| 緑/黒 | 2xx成功、3xxリダイレクト |
+| 赤 | 4xxクライアントエラー、5xxサーバーエラー |
+| 灰色 | キャンセルされたリクエスト |
+
+### 実務でよくある調査フロー
+
+APIの呼び出しがうまくいかないとき、DevToolsで確認する順番は決まっています。
+
+<MermaidDiagram chart={`
+flowchart TD
+    classDef step fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef action fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef warn fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A["Networkタブでステータスコードを確認"] --> B{"何番?"}
+    B -->|"200"| C["Responseタブでデータ内容を確認"]
+    B -->|"4xx"| D["Headersタブでリクエスト内容を確認"]
+    B -->|"5xx"| E["サーバーのログを確認"]
+    B -->|"表示なし"| F["Consoleタブでネットワークエラーを確認"]
+    D --> G["送ったURL・ヘッダー・ボディは正しい?"]
+
+    class A step
+    class C,G action
+    class D,E,F warn
+`} id="debug-flow" />
+
+### fetchでステータスコードをハンドリングする
+
+`fetch` はHTTPエラー（4xx、5xx）でも **例外を投げない** 点に注意が必要です。ネットワークエラー（サーバーに繋がらない等）でのみ例外が発生します。
+
+```js
+const response = await fetch('/api/users/1');
+
+// fetchはHTTPエラーでもrejectしない — 明示的なチェックが必要
+if (!response.ok) {
+  // response.ok は status が 200-299 の場合に true
+  if (response.status === 404) {
+    console.error('ユーザーが見つかりません');
+  } else if (response.status === 401) {
+    console.error('ログインが必要です');
+    // ログイン画面にリダイレクトする等の処理
+  } else {
+    console.error(`APIエラー: ${response.status}`);
+  }
+  return;
+}
+
+const user = await response.json();
+```
+
+<Callout type="warning">
+### axiosとfetchのエラーハンドリングの違い
+
+axiosは4xx・5xxで自動的に例外を投げるため、`try/catch` で拾えます。しかし素の `fetch` は `response.ok` を明示的にチェックする必要があります。この違いを知らないと「エラーなのに正常系のコードが実行されてしまう」というバグを生みます。
+
+</Callout>
 
 ---
 

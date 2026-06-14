@@ -23,6 +23,7 @@ HTTPリクエストとレスポンスは、**ボディ**（本文）だけでな
 - [Cookieの仕組み](#section-5)
 - [Cookieのセキュリティ属性](#section-6)
 - [CookieとlocalStorageの使い分け](#section-7)
+- [DevToolsでヘッダーとCookieを確認する](#section-7b)
 - [まとめ](#section-8)
 
 ---
@@ -216,6 +217,67 @@ Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=8640
 | 用途 | セッション管理、認証 | UI設定、一時データ |
 
 セッション管理にはCookie（HttpOnly）、UIの状態保持にはlocalStorage、というのが一般的な使い分けです。
+
+---
+
+<a id="section-7b"></a>
+
+## DevToolsでヘッダーとCookieを確認する
+
+### リクエスト・レスポンスヘッダーの確認
+
+NetworkタブでリクエストをクリックするとHeadersタブが開きます。ここで **Request Headers**（送信側）と **Response Headers**（受信側）の両方を確認できます。
+
+実務で特にチェックする項目:
+
+| 確認項目 | 見るべきヘッダー | よくある問題 |
+|---|---|---|
+| 認証トークンが送れているか | `Authorization` | トークンの付け忘れ、有効期限切れ |
+| データ形式が正しいか | `Content-Type` | `application/json` の付け忘れ |
+| CORSが通っているか | `Access-Control-Allow-Origin` | オリジンの不一致 |
+| キャッシュが効いているか | `Cache-Control`, `ETag` | 古いデータが表示される |
+
+### Cookieの確認
+
+Chrome DevToolsの **Application** タブ → **Cookies** で、現在のドメインに保存されているCookieの一覧と、各セキュリティ属性を確認できます。
+
+確認すべきポイント:
+
+- `HttpOnly` が付いているか（JavaScriptからアクセスできないようになっているか）
+- `Secure` が付いているか（HTTPS限定で送信されるか）
+- `SameSite` の値が適切か（CSRF対策が有効か）
+- `Expires / Max-Age` が適切か（セッション切れのタイミング）
+
+<Callout type="info">
+### 「ログインしたのにすぐ切れる」の調べ方
+
+セッションがすぐ切れる場合は、Applicationタブで以下を確認します。
+
+1. **Cookieが保存されているか** — `Set-Cookie` にセキュリティ属性の問題があると、ブラウザがCookieを拒否することがある
+2. **`Max-Age` や `Expires` の値** — 有効期限が極端に短くないか
+3. **`SameSite=None` なのに `Secure` がないか** — この組み合わせだとCookieが保存されない
+4. **別ドメインからのリクエストか** — `SameSite=Strict` だとクロスサイトリクエストにCookieが付かない
+
+</Callout>
+
+### curlでヘッダーを確認する
+
+ブラウザを介さずにヘッダーを確認したいときは、`curl -v` が便利です。
+
+```bash
+# -v でリクエスト/レスポンスヘッダーを表示
+curl -v https://api.example.com/users
+
+# 特定のヘッダーを付けてリクエスト
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     https://api.example.com/users
+
+# レスポンスヘッダーだけ確認（ボディは不要）
+curl -I https://api.example.com/users
+```
+
+`curl -v` の出力で `>` がリクエスト、`<` がレスポンスのヘッダーです。APIの動作確認やデバッグで頻繁に使います。
 
 ---
 

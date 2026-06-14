@@ -219,6 +219,129 @@ IDに大きな整数を使うAPIでは、文字列として返すことがあり
 
 ---
 
+## 実務で使うfetchのパターン
+
+ここまでの知識を組み合わせて、実務で使えるfetchのパターンを整理します。
+
+### 基本: エラーハンドリング付きfetch
+
+素の `fetch` はHTTPエラーでも例外を投げないため、ラッパー関数を作っておくとコードがすっきりします。
+
+```js
+async function apiFetch(url, options = {}) {
+  const response = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      error.message || `API Error: ${response.status}`
+    );
+  }
+
+  // 204 No Content はボディがない
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+// 使い方
+try {
+  const user = await apiFetch('/api/users/1');
+  console.log(user.name);
+} catch (err) {
+  console.error('取得に失敗:', err.message);
+}
+```
+
+### タイムアウトの設定
+
+`fetch` にはデフォルトのタイムアウトがありません。`AbortController` を使って設定します。
+
+```js
+async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`リクエストが${timeoutMs}msでタイムアウトしました`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+```
+
+<Callout type="note">
+### なぜタイムアウトが重要か
+
+タイムアウトを設定しないと、サーバーが応答しない場合にユーザーが延々と待たされます。APIのレスポンスが遅い場合に「しばらくしてからもう一度お試しください」と表示する方が、無限にローディングを見せ続けるよりユーザー体験として優れています。
+
+</Callout>
+
+### リトライの実装
+
+ネットワークエラーや5xxエラーは一時的な場合が多いため、リトライが有効です。
+
+```js
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      // 5xxはリトライ対象、4xxはリトライしない
+      if (response.status >= 500 && attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+        continue;
+      }
+
+      return response;
+    } catch (err) {
+      // ネットワークエラーはリトライ
+      if (attempt === maxRetries) throw err;
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+    }
+  }
+}
+```
+
+`Math.pow(2, attempt)` で **指数バックオフ**（1秒 → 2秒 → 4秒）を実装しています。固定間隔でリトライすると、サーバーが回復する前に大量のリクエストが殺到する「サンダーリングハード」問題が起きます。
+
+---
+
+## DevToolsでJSONレスポンスを確認する
+
+NetworkタブでAPIリクエストを選択し、**Response** タブまたは **Preview** タブを見ると、JSONレスポンスの中身が整形されて表示されます。
+
+Previewタブではオブジェクトをツリー形式で展開でき、大きなレスポンスでも目的のフィールドを素早く探せます。
+
+### Consoleでのデバッグ
+
+DevToolsのConsoleで `fetch` を直接実行して、APIの動作を確認することもできます。
+
+```js
+// Consoleから直接APIを叩いて確認
+const res = await fetch('/api/users');
+const data = await res.json();
+console.table(data); // テーブル形式で見やすく表示
+```
+
+`console.table()` は配列のデータをテーブル形式で表示するので、APIレスポンスの確認に便利です。
+
+---
+
 ## まとめ
 
 - JSONは **キーと値のペア** で構成されるテキスト形式。Web APIの標準フォーマット

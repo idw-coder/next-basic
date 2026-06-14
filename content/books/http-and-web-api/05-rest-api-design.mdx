@@ -23,6 +23,7 @@ APIのURLって自由に決めていいの？`/getUserData` みたいに動詞�
 - [レスポンスの設計](#section-5)
 - [命名規則](#section-6)
 - [よくあるアンチパターン](#section-7)
+- [実践: TODOアプリのAPI設計](#section-7b)
 - [まとめ](#section-8)
 
 ---
@@ -271,6 +272,93 @@ GET /api/articles
 RESTは厳密な仕様ではなく設計スタイルです。「パスワード変更」や「メール送信」のように、CRUDに綺麗に当てはまらない操作もあります。その場合は `POST /api/users/42/change-password` のようなアクション指向のエンドポイントも許容されます。一貫性と分かりやすさのバランスが大事です。
 
 </Callout>
+
+---
+
+<a id="section-7b"></a>
+
+## 実践: TODOアプリのAPI設計
+
+ここまでのルールを使って、TODOアプリのAPIを設計してみます。実際にやってみると「この操作はどのメソッドで、URLはどうするか」という判断が身につきます。
+
+### 要件
+
+- ユーザーはTODOを作成・取得・更新・削除できる
+- TODOにはタイトル、完了状態、優先度がある
+- TODOを完了/未完了に切り替えられる
+- TODOを優先度や作成日でソート・フィルタできる
+
+### エンドポイント設計
+
+| 操作 | メソッド | URL | リクエストボディ | レスポンス |
+|---|---|---|---|---|
+| TODO一覧取得 | GET | `/api/todos` | なし | 200 + 配列 |
+| TODO詳細取得 | GET | `/api/todos/:id` | なし | 200 + オブジェクト |
+| TODO作成 | POST | `/api/todos` | `{ title, priority }` | 201 + 作成されたTODO |
+| TODO更新 | PATCH | `/api/todos/:id` | `{ title?, priority? }` | 200 + 更新されたTODO |
+| TODO削除 | DELETE | `/api/todos/:id` | なし | 204 |
+
+### フィルタリングとソート
+
+```
+// 未完了のTODOだけ取得
+GET /api/todos?completed=false
+
+// 優先度「高」のTODOを作成日の新しい順で
+GET /api/todos?priority=high&sort=createdAt&order=desc
+
+// ページネーション付き
+GET /api/todos?page=1&limit=20
+```
+
+### レスポンス例
+
+```json
+// GET /api/todos?completed=false&sort=createdAt&order=desc
+{
+  "data": [
+    {
+      "id": "todo_3",
+      "title": "APIのテストを書く",
+      "completed": false,
+      "priority": "high",
+      "createdAt": "2024-06-14T10:00:00.000Z"
+    },
+    {
+      "id": "todo_1",
+      "title": "デプロイ手順を確認",
+      "completed": false,
+      "priority": "medium",
+      "createdAt": "2024-06-13T09:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2
+  }
+}
+```
+
+### 「完了にする」はどう設計するか
+
+「TODOを完了にする」を専用のエンドポイント（`POST /api/todos/:id/complete`）にするか、PATCHで更新するかは判断が分かれます。
+
+```
+// アプローチ1: PATCHで完了フラグを更新（RESTful）
+PATCH /api/todos/3
+{ "completed": true }
+
+// アプローチ2: アクション指向のエンドポイント
+POST /api/todos/3/complete
+POST /api/todos/3/uncomplete
+```
+
+単純なフラグ切り替えならPATCHで十分です。しかし「完了時に通知を送る」「完了日時を自動記録する」など副作用がある場合は、アクション指向のエンドポイントにする方が意図が明確になります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+実際に設計してみると「CRUDに収まらない操作」が出てくるのがわかる。完璧にRESTじゃなくても、一貫性があればOKなんだね。
+</SpeechBubble>
 
 ---
 

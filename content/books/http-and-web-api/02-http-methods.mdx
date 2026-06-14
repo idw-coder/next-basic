@@ -22,6 +22,7 @@ HTTPリクエストには必ず **メソッド** が含まれます。メソッ�
 - [GETリクエストの原則](#section-4)
 - [POSTリクエストの使い方](#section-5)
 - [よくある誤用パターン](#section-6)
+- [fetchで各メソッドを実際に使う](#section-6b)
 - [まとめ](#section-7)
 
 ---
@@ -220,6 +221,77 @@ GET /api/users/1/activate
 ```
 
 状態を変える操作には POST、PUT、PATCH、DELETE を使います。
+
+---
+
+<a id="section-6b"></a>
+
+## fetchで各メソッドを実際に使う
+
+理論を押さえたら、実際のコードでHTTPメソッドを使い分けてみます。以下はブラウザの `fetch` APIでCRUD操作を行う典型的なパターンです。
+
+```js
+// GET — データの取得
+const users = await fetch('/api/users').then(res => res.json());
+
+// POST — データの作成
+const newUser = await fetch('/api/users', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'Alice', email: 'alice@example.com' }),
+}).then(res => res.json());
+
+// PUT — データの全体更新
+await fetch('/api/users/42', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'Bob', email: 'bob@example.com', role: 'admin' }),
+});
+
+// PATCH — データの部分更新
+await fetch('/api/users/42', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'Bob' }),
+});
+
+// DELETE — データの削除
+await fetch('/api/users/42', { method: 'DELETE' });
+```
+
+### DevToolsで確認する
+
+Chrome DevToolsのNetworkタブでリクエストを選択すると、**Method** 列にHTTPメソッドが表示されます。「この操作はGETで飛んでいるのか、POSTで飛んでいるのか」を確認する習慣をつけると、APIの挙動をデバッグしやすくなります。
+
+Networkタブの **フィルター** で `method:POST` と入力すると、POSTリクエストだけを絞り込めます。「意図しないGETが飛んでいた」「POSTのはずがGETになっていた」といったバグの発見に役立ちます。
+
+<Callout type="info">
+### POSTの二重送信を防ぐ
+
+フォームの送信ボタンを連打すると、POSTリクエストが複数回飛んでデータが重複する問題はよくあります。対策として、送信後にボタンを無効化する、またはサーバー側でべき等キー（idempotency key）を使って重複を弾く方法があります。
+
+```js
+// フロント側: 送信中はボタンを無効化
+const [isSubmitting, setIsSubmitting] = useState(false);
+
+const handleSubmit = async () => {
+  setIsSubmitting(true);
+  try {
+    await fetch('/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': crypto.randomUUID(),
+      },
+      body: JSON.stringify(orderData),
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+```
+
+</Callout>
 
 ---
 
