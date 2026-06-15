@@ -15,7 +15,7 @@ export default function Figure({ src, alt, maxWidth, caption }: FigureProps) {
         alt={alt ?? ''}
         width={800}
         height={600}
-        style={{ width: '100%', height: 'auto', maxHeight: '40vh', objectFit: 'contain' }}
+        style={{ width: '100%', height: 'auto', maxHeight: '20vh', objectFit: 'contain' }}
       />
       {caption && (
         <figcaption

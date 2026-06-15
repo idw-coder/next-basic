@@ -473,6 +473,8 @@ export async function POST(request: Request) {
 
 `NextResponse` は、標準のWeb `Response` をNext.js向けに拡張したものです。JSONを返す、Cookieを設定する、リダイレクトする、といった処理を読みやすく書けます。
 
+標準の `fetch`、`Request`、`Response` の関係は[JavaScriptのWeb API章](/books/javascript/20-web-apis)で整理しています。Route Handlerでは、その標準Web APIをNext.js上で使っていると考えると理解しやすくなります。
+
 <Figure src="/images/deskwork_check_man_color.png" alt="APIレスポンスの内容を確認しているイメージ" maxWidth="220px" />
 
 ```ts
