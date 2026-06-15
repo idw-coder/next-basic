@@ -1,0 +1,63 @@
+export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
+  'http-and-web-api': ['CORS'],
+
+  'integration-and-e2e-testing': ['E2E', '統合テスト', 'モック', 'CI'],
+
+  'system-design': ['要件定義', 'DB設計', 'API設計', '認証', 'エラー設計'],
+
+  javascript: [
+    'Promise',
+    'async',
+    'fetch',
+    'JSON',
+    'Date',
+    'Map',
+    '配列',
+    '文字列',
+    'class',
+    'this',
+  ],
+
+  typescript: ['ユニオン型', 'ジェネリクス', '型ガード', 'Utility Types', 'tsconfig'],
+
+  'react-learning': ['useState', 'useEffect', 'useMemo', 'useCallback', '依存配列'],
+
+  'css-basics': ['Flexbox', 'Grid', 'レスポンシブ', '詳細度', 'CSS変数'],
+
+  'tailwind-css': ['flex', 'grid', 'レスポンシブ', 'dark', 'theme'],
+
+  'unit-testing': ['単体テスト', 'モック', 'リファクタリング', 'テスト構造', 'メソッド'],
+
+  'git-basic': [
+    'commit',
+    'branch',
+    'merge',
+    'rebase',
+    'stash',
+    'reset',
+    'revert',
+    'restore',
+    'fetch',
+    'pull',
+    'push',
+    'conflict',
+  ],
+
+  'cs-basics': ['CPU', 'メモリ', 'データ構造', 'ネットワーク', 'デバッグ'],
+
+  'next-js': [
+    'Server Components',
+    'Client Components',
+    'Route Handler',
+    'Server Actions',
+    'metadata',
+    'middleware',
+    'layout',
+    'loading',
+    'error',
+    'fetch',
+    'cache',
+    'revalidate',
+    'dynamic routes',
+  ],
+};

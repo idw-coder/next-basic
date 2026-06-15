@@ -80,18 +80,22 @@ export function SearchHighlighter() {
       if (!article) return;
 
       const ranges = findTextRanges(article, query);
+      const requestedPosition = sessionStorage.getItem('book-search-target-position');
+      sessionStorage.removeItem('book-search-target-position');
+      const initialIndex =
+        requestedPosition === 'last' && ranges.length > 0 ? ranges.length - 1 : 0;
       matchesRef.current = ranges;
-      indexRef.current = 0;
-      applyHighlightStyles(ranges, 0);
+      indexRef.current = initialIndex;
+      applyHighlightStyles(ranges, initialIndex);
 
       document.dispatchEvent(
         new CustomEvent('book-search-matches', {
-          detail: { count: ranges.length, index: 0 },
+          detail: { count: ranges.length, index: initialIndex },
         }),
       );
 
       if (ranges.length > 0) {
-        ranges[0].startContainer.parentElement?.scrollIntoView({
+        ranges[initialIndex].startContainer.parentElement?.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
         });
@@ -106,10 +110,16 @@ export function SearchHighlighter() {
       const ranges = matchesRef.current;
       if (ranges.length === 0) return;
       const cur = indexRef.current;
-      const next =
-        direction === 'next'
-          ? (cur + 1) % ranges.length
-          : (cur - 1 + ranges.length) % ranges.length;
+      if (
+        (direction === 'next' && cur === ranges.length - 1) ||
+        (direction === 'prev' && cur === 0)
+      ) {
+        document.dispatchEvent(
+          new CustomEvent('book-search-boundary', { detail: { direction } }),
+        );
+        return;
+      }
+      const next = direction === 'next' ? cur + 1 : cur - 1;
       indexRef.current = next;
       applyHighlightStyles(ranges, next);
       document.dispatchEvent(
