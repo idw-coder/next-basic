@@ -554,6 +554,8 @@ export async function GET(request: Request) {
 
 APIでは、成功時だけでなく失敗時の返し方も重要です。ステータスコードとJSONの形を揃えておくと、クライアント側で扱いやすくなります。
 
+ステータスコード自体の意味や、`400`・`401`・`403`・`404`・`500` の使い分けは、[HTTPステータスコード一覧](/books/http-and-web-api/03-status-codes)で整理しています。Route HandlerでAPIを作る前に、返すべきコードの基準を押さえておくと設計がぶれません。
+
 ```ts
 import { NextResponse } from 'next/server';
 

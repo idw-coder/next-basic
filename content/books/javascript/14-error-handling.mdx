@@ -325,7 +325,7 @@ async function showUser(id) {
 ```
 
 <Callout type="warning" title="fetch は HTTP エラーでは reject しない">
-`fetch` がエラーになる（reject する）のは、ネットワーク不通などの**通信そのものの失敗**だけです。404 や 500 が返ってきても **Promise は成功（fulfilled）扱い**になります。`res.ok`（ステータスが200番台か）を必ずチェックし、ダメなら自分で `throw` しましょう。
+`fetch` がエラーになる（reject する）のは、ネットワーク不通などの**通信そのものの失敗**だけです。404 や 500 が返ってきても **Promise は成功（fulfilled）扱い**になります。`res.ok`（ステータスが200番台か）を必ずチェックし、ダメなら自分で `throw` しましょう。HTTPステータスコードの意味は[HTTPステータスコード一覧](/books/http-and-web-api/03-status-codes)で整理しています。
 </Callout>
 
 ### Promise — .catch() でつなぐ

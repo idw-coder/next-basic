@@ -1,10 +1,12 @@
 ---
-title: 'テキストとフォントのユーティリティ'
-description: 'Tailwindのtext・font系クラスを使って、読みやすく美しいテキストスタイリングを行う方法を解説します。'
+title: 'Tailwind CSSの文字サイズ・フォント・行間 — text・font・leading・line-clampの使い方'
+description: 'Tailwind CSSで文字サイズ、font-weight、line-height、文字色、text-align、truncate、line-clamp、proseを使い、見出し・本文・カード文言を読みやすく整える方法を整理します。'
 order: 5
 ---
 
 テキストの大きさ・太さ・行間・色——読みやすさを左右する要素は、Tailwindでは `text-*` `font-*` `leading-*` といったユーティリティで指定します。
+
+CSSプロパティとしての `font-size`、`line-height`、`white-space`、`overflow-wrap` を先に確認したい場合は、[テキスト・フォント・改行制御](/books/css-basics/07-typography)を参照してください。この章では、それらをTailwindのユーティリティとしてどう使うかに絞ります。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 文字まわりのクラスが多すぎて、どれを使えば「それっぽく」なるのか分からない…。
@@ -15,6 +17,22 @@ order: 5
 </SpeechBubble>
 
 <Figure src="/images/pc-work-woman01.png" alt="テキストのスタイリングを確認しているイメージ" maxWidth="220px" />
+
+---
+
+## よく使う組み合わせ早見表
+
+Tailwindの文字系クラスは単体で覚えるより、UIの用途ごとに組み合わせで覚える方が実務で使えます。
+
+| 用途 | クラス例 | 役割 |
+|---|---|---|
+| ページ見出し | `text-2xl font-bold leading-tight text-slate-900` | 大きく、太く、行間を締める |
+| セクション見出し | `text-lg font-semibold leading-snug text-slate-900` | 本文より目立たせる |
+| 本文 | `text-base leading-relaxed text-slate-700` | 読みやすい行間にする |
+| 補足文 | `text-sm leading-6 text-slate-500` | 主文より弱く見せる |
+| ラベル | `text-xs font-semibold uppercase tracking-wide text-slate-500` | 小さくても識別しやすくする |
+| 1行省略 | `truncate` | 一覧のタイトル崩れを防ぐ |
+| 複数行省略 | `line-clamp-2` / `line-clamp-3` | カードの高さを揃える |
 
 ---
 

@@ -1,16 +1,32 @@
 ---
-title: 'トランジションとアニメーション — 動きをCSSで作る'
-description: 'transition・animationプロパティの使い方と、パフォーマンスを意識したCSSアニメーションの作り方を解説します。'
+title: 'CSS transitionとanimationの違い — hover・フェードイン・スライドを滑らかに動かす'
+description: 'CSSのtransitionとanimationの違い、hover時の状態変化、@keyframes、transform・opacityを使ったパフォーマンスの良い動き、prefers-reduced-motion対応を整理します。'
 order: 9
 ---
 
-動きはUIに生命を吹き込みます。ボタンのホバー、モーダルのフェードイン——適切なアニメーションはUXを向上させます。CSSには `transition` と `animation` の2つの仕組みがあります。
+ボタンのホバー、モーダルのフェードイン、ローディングスピナーのような動きは、CSSだけで実装できます。CSSには `transition` と `animation` の2つの仕組みがあり、用途が違います。
+
+Tailwind CSSでボタンやカードに `transition-colors`、`transition-shadow` を付ける実装例は、[コンポーネントパターン](/books/tailwind-css/10-components)でも扱っています。この章では、その裏側にあるCSSの仕組みを確認します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 ホバーでぬるっと動かしたいんだけど、`transition` と `animation` ってどっちを使うの？
 </SpeechBubble>
 
 <Figure src="/images/relief_man_color.png" alt="滑らかなアニメーションが完成したときの安心感" maxWidth="260px" />
+
+---
+
+## transitionとanimationの使い分け
+
+最初に、どちらを使うかを決めます。`transition` は「状態が変わった時に滑らかにつなぐ」ためのもの、`animation` は「決めた動きを自動で再生する」ためのものです。
+
+| やりたいこと | 使うもの | 例 |
+|---|---|---|
+| hover時に色を変える | `transition` | ボタンの背景色を滑らかに変える |
+| hover時に少し拡大する | `transition` | カードを `scale(1.02)` にする |
+| 表示時にフェードインする | `animation` | `@keyframes fadeIn` |
+| ローディングを回し続ける | `animation` | `spin 1s linear infinite` |
+| 何段階かの動きを作る | `animation` | スライドしてから薄く消える |
 
 ---
 

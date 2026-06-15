@@ -112,6 +112,8 @@ App Routerの重要な性質です。同じレイアウトを共有するペー�
 
 例えばダッシュボードのサイドバーに開閉状態を持たせている場合、`/dashboard` から `/dashboard/settings` へ移動してもサイドバーの開閉状態は維持され、`children`（ページの中身）だけが切り替わります。
 
+「再マウントされない」とは、コンポーネントがDOMから外れて作り直されないという意味です。React側の用語としてのマウント・再レンダー・アンマウントは、[Reactのレンダー・マウント・再レンダー・アンマウントの違い](/books/react-learning/03-react-lifecycle)で確認できます。
+
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 ページを移動してもサイドバーのスクロール位置が戻らないの、地味だけど嬉しい…！
 </SpeechBubble>
