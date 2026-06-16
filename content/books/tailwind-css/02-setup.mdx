@@ -7,14 +7,20 @@ order: 2
 Tailwind CSS v4 から設定ファイルの仕組みが大きく変わりました。この章ではv4系（2024年以降の標準）のセットアップを中心に説明します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-ネットの記事だと `tailwind.config.js` を作れって書いてあるのに、最近作ったプロジェクトには無い…。どっちが正しいの？
+  ネットの記事だと `tailwind.config.js`
+  を作れって書いてあるのに、最近作ったプロジェクトには無い…。どっちが正しいの？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-それはバージョン差だね。v4から設定方法が大きく変わって `tailwind.config.js` は基本不要になったんだ。古い記事はv3前提のことが多いから注意しよう。
+  それはバージョン差だね。v4から設定方法が大きく変わって `tailwind.config.js`
+  は基本不要になったんだ。古い記事はv3前提のことが多いから注意しよう。
 </SpeechBubble>
 
-<Figure src="/images/deskwork_check_man_color.png" alt="Tailwindをセットアップしているイメージ" maxWidth="220px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="Tailwindをセットアップしているイメージ"
+  maxWidth="220px"
+/>
 
 ---
 
@@ -38,13 +44,14 @@ npm install tailwindcss @tailwindcss/vite
 `app/globals.css`（または `styles/globals.css`）に追記します。
 
 ```css
-@import "tailwindcss";
+@import 'tailwindcss';
 ```
 
 v4 では `tailwind.config.js` は不要で、CSS の `@import` だけで有効になります。
 
 <Callout type="note">
-v4ではPostCSSの設定も不要になりました。Viteプラグインを使うか、CSS内の `@import "tailwindcss"` だけで動作します。v3から移行する場合は公式のアップグレードガイドを参照してください。
+  v4ではPostCSSの設定も不要になりました。Viteプラグインを使うか、CSS内の `@import "tailwindcss"`
+  だけで動作します。v3から移行する場合は公式のアップグレードガイドを参照してください。
 </Callout>
 
 ### Next.jsでの最小構成
@@ -65,7 +72,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ```
 
 <Callout type="warning" title="古い記事との違いに注意">
-Tailwind v3の記事では `tailwind.config.js`、`postcss.config.js`、`@tailwind base` などが登場します。v4の新規プロジェクトでは構成がかなり簡略化されているため、検索するときは「Tailwind CSS v4」「Next.js App Router」まで入れると混乱しにくくなります。
+  Tailwind v3の記事では `tailwind.config.js`、`postcss.config.js`、`@tailwind base`
+  などが登場します。v4の新規プロジェクトでは構成がかなり簡略化されているため、検索するときは「Tailwind
+  CSS v4」「Next.js App Router」まで入れると混乱しにくくなります。
 </Callout>
 
 ---
@@ -79,20 +88,18 @@ npm install tailwindcss @tailwindcss/vite
 `vite.config.ts` にプラグインを追加します。
 
 ```ts
-import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from 'vite';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-  ],
-})
+  plugins: [tailwindcss()],
+});
 ```
 
 `src/index.css` などのCSSエントリーに追記します。
 
 ```css
-@import "tailwindcss";
+@import 'tailwindcss';
 ```
 
 ---
@@ -114,7 +121,7 @@ module.exports = {
     extend: {},
   },
   plugins: [],
-}
+};
 ```
 
 ```css

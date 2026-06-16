@@ -9,7 +9,9 @@ APIとのデータのやり取り、`localStorage` への保存、設定ファ�
 この章では、その2メソッドの引数を表で整理し、ディープコピーへの応用、そして「`Date` が文字列になる」「`undefined` が消える」といった**ハマりやすい落とし穴**までを実務目線で見ていきます。
 
 <Callout type="note" title="この章のメソッド表記について">
-メソッドは `メソッド名(引数1, 引数2?)` という形（シグネチャ）を示し、続けて**引数の表**と「戻り値」を載せます（`引数?` は省略できる引数）。MDNのリファレンス代わりに使ってください。
+  メソッドは `メソッド名(引数1, 引数2?)`
+  という形（シグネチャ）を示し、続けて**引数の表**と「戻り値」を載せます（`引数?`
+  は省略できる引数）。MDNのリファレンス代わりに使ってください。
 </Callout>
 
 ## 目次
@@ -39,19 +41,24 @@ const user = { name: '太郎', age: 25 };
 const json = '{"name":"太郎","age":25}';
 ```
 
-<Figure src="/images/fork_suit_man_color.png" alt="データを変換してやり取りするイメージ" maxWidth="120px" />
+<Figure
+  src="/images/fork_suit_man_color.png"
+  alt="データを変換してやり取りするイメージ"
+  maxWidth="120px"
+/>
 
 JavaScriptオブジェクトとの主な違いは次のとおりです。
 
-| 観点 | JavaScriptオブジェクト | JSON |
-| ---- | ---------------------- | ---- |
-| 正体 | プログラム上の値 | **文字列** |
-| キーの引用符 | 省略可（`name:`） | **必ずダブルクオート**（`"name":`） |
+| 観点           | JavaScriptオブジェクト     | JSON                                               |
+| -------------- | -------------------------- | -------------------------------------------------- |
+| 正体           | プログラム上の値           | **文字列**                                         |
+| キーの引用符   | 省略可（`name:`）          | **必ずダブルクオート**（`"name":`）                |
 | 値に使えるもの | 関数・`undefined` なども可 | 文字列・数値・真偽値・null・配列・オブジェクトのみ |
-| 末尾カンマ | 許される | **不可** |
+| 末尾カンマ     | 許される                   | **不可**                                           |
 
 <Callout type="info">
-JSON自体の文法やデータ形式としての位置づけ（XMLとの比較など）は、[HTTPとWeb APIの本：JSONとデータ形式](/books/http-and-web-api/06-json-and-data-format)で詳しく扱っています。この章はJavaScriptから**JSONをどう読み書きするか**に焦点を当てます。
+  JSON自体の文法やデータ形式としての位置づけ（XMLとの比較など）は、[HTTPとWeb
+  APIの本：JSONとデータ形式](/books/http-and-web-api/06-json-and-data-format)で詳しく扱っています。この章はJavaScriptから**JSONをどう読み書きするか**に焦点を当てます。
 </Callout>
 
 <a id="section-2"></a>
@@ -62,11 +69,11 @@ JavaScriptの値をJSON文字列に変換します。APIへの送信や `localSt
 
 **構文：** `JSON.stringify(value, replacer?, space?)`
 
-| 引数 | 説明 |
-| ---- | ---- |
-| `value` | 変換したい値（オブジェクト・配列・数値など） |
-| `replacer`（省略可） | 出力をフィルタ・加工する関数、または残したいキー名の配列 |
-| `space`（省略可） | インデント。数値（スペース数）や `'\t'` を渡すと**整形して読みやすく**なる |
+| 引数                 | 説明                                                                       |
+| -------------------- | -------------------------------------------------------------------------- |
+| `value`              | 変換したい値（オブジェクト・配列・数値など）                               |
+| `replacer`（省略可） | 出力をフィルタ・加工する関数、または残したいキー名の配列                   |
+| `space`（省略可）    | インデント。数値（スペース数）や `'\t'` を渡すと**整形して読みやすく**なる |
 
 **戻り値：** JSON文字列
 
@@ -90,7 +97,7 @@ JSON.stringify(user, ['name', 'age']);
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-第2引数の `null` って何…？インデントしたいだけなのに、なんで `null` を挟むの？
+  第2引数の `null` って何…？インデントしたいだけなのに、なんで `null` を挟むの？
 </SpeechBubble>
 
 `space`（インデント）は**第3引数**なので、間の `replacer`（第2引数）を使わないときは `null` で飛ばす必要があるのです。「フィルタは要らないけど整形はしたい」→ `JSON.stringify(value, null, 2)` という頻出パターンとして覚えてしまいましょう。
@@ -103,9 +110,9 @@ JSON文字列をJavaScriptの値に戻します。APIのレスポンスや `loca
 
 **構文：** `JSON.parse(text, reviver?)`
 
-| 引数 | 説明 |
-| ---- | ---- |
-| `text` | パースするJSON文字列 |
+| 引数                | 説明                                                           |
+| ------------------- | -------------------------------------------------------------- |
+| `text`              | パースするJSON文字列                                           |
 | `reviver`（省略可） | 各値を変換しながら復元する関数（日付文字列を `Date` に戻す等） |
 
 **戻り値：** 文字列を解釈したJavaScriptの値（オブジェクト・配列など）
@@ -136,11 +143,13 @@ safeParse('壊れた文字列'); // null（例外を握りつぶして既定値�
 ```
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-`stringify` は基本失敗しないけど、`parse` は外から来た文字列を相手にするぶん失敗しやすい。だから `parse` には `try/catch` をセットで、と覚えておこう。
+  `stringify` は基本失敗しないけど、`parse` は外から来た文字列を相手にするぶん失敗しやすい。だから
+  `parse` には `try/catch` をセットで、と覚えておこう。
 </SpeechBubble>
 
 <Callout type="warning" title="例外処理の詳しい書き方は専用章へ">
-`try/catch` の挙動や、エラーを握りつぶさず適切に扱う設計については[エラーハンドリング](/books/javascript/14-error-handling)で詳しく解説しています。
+  `try/catch`
+  の挙動や、エラーを握りつぶさず適切に扱う設計については[エラーハンドリング](/books/javascript/14-error-handling)で詳しく解説しています。
 </Callout>
 
 <a id="section-4"></a>
@@ -149,11 +158,11 @@ safeParse('壊れた文字列'); // null（例外を握りつぶして既定値�
 
 `JSON.stringify` → `JSON.parse` を通すと、ネストしたオブジェクトを丸ごと複製（ディープコピー）できます。ただし現在は専用の `structuredClone` が使えるため、まずはそちらが第一候補です。
 
-| 方法 | 特徴 |
-| ---- | ---- |
-| `structuredClone(obj)` | **推奨**。`Date`・`Map`・`Set` などもそのままコピーでき、循環参照もOK |
+| 方法                              | 特徴                                                                        |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| `structuredClone(obj)`            | **推奨**。`Date`・`Map`・`Set` などもそのままコピーでき、循環参照もOK       |
 | `JSON.parse(JSON.stringify(obj))` | 手軽だが、`Date` が文字列化・`undefined`/関数が消えるなどJSONの制約を受ける |
-| スプレッド `{ ...obj }` | **浅いコピー**。ネストした中身は共有されたまま（ディープコピーではない） |
+| スプレッド `{ ...obj }`           | **浅いコピー**。ネストした中身は共有されたまま（ディープコピーではない）    |
 
 ```js
 const original = { user: { name: '太郎' }, tags: ['a', 'b'] };
@@ -165,7 +174,8 @@ original.user.name; // "太郎"（元は影響を受けない）
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-スプレッド構文 `{ ...obj }` でコピーしたはずなのに、ネストした中身を書き換えたら元まで変わっちゃった…！
+  スプレッド構文 `{...obj}`
+  でコピーしたはずなのに、ネストした中身を書き換えたら元まで変わっちゃった…！
 </SpeechBubble>
 
 スプレッドは**1階層だけ**のコピー（浅いコピー）です。ネストしたオブジェクトは参照が共有されたままなので、深い階層まで独立させたいときは `structuredClone` を使います。浅いコピー／スプレッドの詳細は[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)を参照してください。
@@ -191,16 +201,18 @@ JSON.stringify(data);
 
 何が起きたかを整理すると次のとおりです。
 
-| 元の値 | JSON化の結果 |
-| ------ | ------------ |
-| `Date` | **文字列**になる（`parse` で戻しても `Date` には戻らない） |
-| 関数 / `undefined` / `Symbol` | キーごと**消える** |
-| `NaN` / `Infinity` | `null` になる |
-| `BigInt` | **例外**を投げる（変換不可） |
-| 循環参照（自分自身を含む） | **例外**を投げる |
+| 元の値                        | JSON化の結果                                               |
+| ----------------------------- | ---------------------------------------------------------- |
+| `Date`                        | **文字列**になる（`parse` で戻しても `Date` には戻らない） |
+| 関数 / `undefined` / `Symbol` | キーごと**消える**                                         |
+| `NaN` / `Infinity`            | `null` になる                                              |
+| `BigInt`                      | **例外**を投げる（変換不可）                               |
+| 循環参照（自分自身を含む）    | **例外**を投げる                                           |
 
 <Callout type="warning" title="Date は往復で戻らない">
-`JSON.parse(JSON.stringify(date))` を通すと `Date` は文字列になったまま戻りません。日付を保持したい場合は、`parse` の `reviver` で `new Date(値)` に変換するか、`structuredClone` を使います。
+  `JSON.parse(JSON.stringify(date))` を通すと `Date`
+  は文字列になったまま戻りません。日付を保持したい場合は、`parse` の `reviver` で `new Date(値)`
+  に変換するか、`structuredClone` を使います。
 </Callout>
 
 ```js
@@ -214,20 +226,24 @@ JSON.stringify(a); // TypeError: Converting circular structure to JSON
 
 ## 早見表
 
-| やりたいこと | 使うもの |
-| ------------ | -------- |
-| オブジェクト → JSON文字列 | `JSON.stringify(obj)` |
-| 読みやすく整形して出力 | `JSON.stringify(obj, null, 2)` |
-| JSON文字列 → オブジェクト | `JSON.parse(text)`（`try/catch` 必須） |
-| 安全にパース | `try { JSON.parse(text) } catch { ... }` |
-| ディープコピー | `structuredClone(obj)`（推奨） |
-| 浅いコピー | `{ ...obj }`（ネストは共有される点に注意） |
+| やりたいこと              | 使うもの                                   |
+| ------------------------- | ------------------------------------------ |
+| オブジェクト → JSON文字列 | `JSON.stringify(obj)`                      |
+| 読みやすく整形して出力    | `JSON.stringify(obj, null, 2)`             |
+| JSON文字列 → オブジェクト | `JSON.parse(text)`（`try/catch` 必須）     |
+| 安全にパース              | `try { JSON.parse(text) } catch { ... }`   |
+| ディープコピー            | `structuredClone(obj)`（推奨）             |
+| 浅いコピー                | `{ ...obj }`（ネストは共有される点に注意） |
 
 <a id="section-7"></a>
 
 ## よくあるハマりどころ
 
-<Figure src="/images/deskwork_check_man_color.png" alt="JSON処理のハマりどころを確認するイメージ" maxWidth="120px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="JSON処理のハマりどころを確認するイメージ"
+  maxWidth="120px"
+/>
 
 ### 1. parse を try/catch せずにクラッシュ
 

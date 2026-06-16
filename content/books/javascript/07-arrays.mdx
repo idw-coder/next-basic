@@ -10,7 +10,7 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 この章では、配列の「メソッド」とは何かという前提から始めて、実務で頻出する `map`・`filter`・`reduce`・`find`・`some`・`every` を用途別に整理します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`map` とか `filter` とか、名前は聞くけど…結局どれをいつ使えばいいのか毎回迷っちゃう。
+  `map` とか `filter` とか、名前は聞くけど…結局どれをいつ使えばいいのか毎回迷っちゃう。
 </SpeechBubble>
 
 この章を読めば「変換は `map`、絞り込みは `filter`、集約は `reduce`」のように、**やりたいことから逆引きで**選べるようになります。
@@ -84,14 +84,20 @@ Array.from(nodes).map((node) => node.textContent);
 この前提を押さえたうえで、実務で特に使用頻度の高いメソッドを見ていきます。
 
 <Callout type="note" title="この章のメソッド表記について">
-配列メソッドの多くは**コールバック関数**を引数に取ります。そのコールバックは `(element, index, array)` の3つの引数を受け取れる、という形が共通です（`index`・`array` は省略可能で、使わなければ書かなくてかまいません）。各メソッドでは「コールバックが何を返すと、メソッド自身が最終的に何を返すか（戻り値）」に注目すると整理しやすくなります。
+  配列メソッドの多くは**コールバック関数**を引数に取ります。そのコールバックは `(element, index,
+  array)` の3つの引数を受け取れる、という形が共通です（`index`・`array`
+  は省略可能で、使わなければ書かなくてかまいません）。各メソッドでは「コールバックが何を返すと、メソッド自身が最終的に何を返すか（戻り値）」に注目すると整理しやすくなります。
 </Callout>
 
 <a id="map"></a>
 
 ## map — 各要素を変換して新しい配列を作る
 
-<Figure src="/images/boomerang_woman_color.png" alt="mapが変換結果を新しい配列として返すイメージ" maxWidth="120px" />
+<Figure
+  src="/images/boomerang_woman_color.png"
+  alt="mapが変換結果を新しい配列として返すイメージ"
+  maxWidth="120px"
+/>
 
 `map` は配列の各要素にコールバック関数を適用し、その戻り値で構成された**新しい配列**を返します。
 元の配列は変更されません（非破壊）。
@@ -108,11 +114,11 @@ console.log(numbers); // [1, 2, 3, 4, 5]（元の配列はそのまま）
 
 コールバックは最大3つの引数を受け取ります。
 
-| 引数 | 意味 |
-| ---- | ---- |
-| 第1引数 `element` | 現在処理している要素 |
+| 引数                      | 意味                          |
+| ------------------------- | ----------------------------- |
+| 第1引数 `element`         | 現在処理している要素          |
 | 第2引数 `index`（省略可） | 現在のインデックス（0始まり） |
-| 第3引数 `array`（省略可） | 元の配列そのもの |
+| 第3引数 `array`（省略可） | 元の配列そのもの              |
 
 ```js
 const result = ['a', 'b', 'c'].map((element, index, array) => {
@@ -227,11 +233,11 @@ const sum = numbers.reduce((accumulator, current) => {
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`reduce` だけ急に難しい…！`accumulator` って何者…？
+  `reduce` だけ急に難しい…！`accumulator` って何者…？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-`accumulator`（アキュムレータ）は「途中経過を入れておく箱」。要素を1つ処理するたびに箱の中身を更新して、最後にその箱を返す——そうイメージすると一気にわかりやすくなるよ。
+  `accumulator`（アキュムレータ）は「途中経過を入れておく箱」。要素を1つ処理するたびに箱の中身を更新して、最後にその箱を返す——そうイメージすると一気にわかりやすくなるよ。
 </SpeechBubble>
 
 ### 引数の構造
@@ -421,11 +427,11 @@ console.log(isFormValid); // false（passwordが invalid）
 const sentences = ['Hello world', 'Good morning'];
 
 // map だと配列の配列になる
-sentences.map(s => s.split(' '));
+sentences.map((s) => s.split(' '));
 // [["Hello", "world"], ["Good", "morning"]]
 
 // flatMap なら1段階平坦化される
-sentences.flatMap(s => s.split(' '));
+sentences.flatMap((s) => s.split(' '));
 // ["Hello", "world", "Good", "morning"]
 ```
 
@@ -441,15 +447,17 @@ const items = [
 ];
 
 // filter + map
-items.filter(i => i.inStock).map(i => i.name);
+items.filter((i) => i.inStock).map((i) => i.name);
 
 // flatMap で同じことを1回で
-items.flatMap(i => i.inStock ? [i.name] : []);
+items.flatMap((i) => (i.inStock ? [i.name] : []));
 // ["PC", "モニター"]
 ```
 
 <Callout type="column" title="flatMap vs filter + map">
-`filter` + `map` の方が読みやすいケースが多いです。`flatMap` は「変換の結果が可変長の配列になる」ケース（1対多の変換）で真価を発揮します。単純な絞り込み + 変換なら `filter` + `map` で問題ありません。
+  `filter` + `map` の方が読みやすいケースが多いです。`flatMap`
+  は「変換の結果が可変長の配列になる」ケース（1対多の変換）で真価を発揮します。単純な絞り込み +
+  変換なら `filter` + `map` で問題ありません。
 </Callout>
 
 ---
@@ -471,8 +479,8 @@ const transactions = [
 
 // 6月の支出合計を計算
 const juneExpenses = transactions
-  .filter(t => t.type === 'expense')      // 支出だけ
-  .filter(t => t.date === '2024-06')      // 6月だけ
+  .filter((t) => t.type === 'expense') // 支出だけ
+  .filter((t) => t.date === '2024-06') // 6月だけ
   .reduce((sum, t) => sum + t.amount, 0); // 合計
 // 8000
 ```
@@ -485,7 +493,7 @@ const juneExpenses = transactions
 
 ```js
 // 一時変数に切り出す
-const expenses = transactions.filter(t => t.type === 'expense');
+const expenses = transactions.filter((t) => t.type === 'expense');
 console.log('expenses:', expenses);
 const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 ```
@@ -511,7 +519,11 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 
 ## よくあるハマりどころ
 
-<Figure src="/images/deskwork_check_man_color.png" alt="配列メソッドのハマりどころを確認するイメージ" maxWidth="120px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="配列メソッドのハマりどころを確認するイメージ"
+  maxWidth="120px"
+/>
 
 ### 元の配列を壊すメソッドと壊さないメソッド
 

@@ -9,7 +9,8 @@ order: 14
 前章までで `throw` で例外を「投げる」側は見ました。この章は、投げられた例外を**受け止めて処理を続ける**側、つまり `try...catch...finally` と、自分でエラーの種類を設計する**カスタムエラークラス**、そして非同期処理（`async/await`・Promise）でのエラーの捕まえ方を整理します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`try...catch` は書けるけど、`catch (e)` の `e` に何が入ってるのか、`finally` をいつ使うのか、よく分かってない…。`await` のエラーが捕まえられなくてハマったこともある。
+  `try...catch` は書けるけど、`catch (e)` の `e` に何が入ってるのか、`finally`
+  をいつ使うのか、よく分かってない…。`await` のエラーが捕まえられなくてハマったこともある。
 </SpeechBubble>
 
 その「なんとなく」を一つずつ潰していきましょう。`throw` 自体の基礎（`throw` は文、文字列を投げない、など）は[制御構文の章](/books/javascript/04-control-flow)で扱っているので、ここでは**捕まえる側**に集中します。
@@ -48,7 +49,8 @@ console.log('処理は続行する'); // catch で受け止めたので、ここ
 `try` ブロックの中でエラーが起きると、JavaScriptは残りの `try` を飛ばして即座に `catch` ブロックへジャンプします。受け止めたあとは、`try...catch` の**外側の処理はそのまま続きます**。
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-ポイントは「`try` の中でエラーが起きた瞬間に、残りの行は飛ばして `catch` に移る」こと。`try` を最後まで実行してから `catch` に行くわけじゃないんだ。
+  ポイントは「`try` の中でエラーが起きた瞬間に、残りの行は飛ばして `catch` に移る」こと。`try`
+  を最後まで実行してから `catch` に行くわけじゃないんだ。
 </SpeechBubble>
 
 実行の流れを図にすると次のようになります。`finally`（後述）まで含めると、分岐があってもゴールは1か所に集まります。
@@ -72,6 +74,7 @@ flowchart TD
     class B,C,D stmt
     class D err
     class E,F done
+
 `}
 />
 
@@ -81,12 +84,12 @@ flowchart TD
 
 `catch (error)` の `error` には、`throw` された値が入ります。慣習に従って `Error` オブジェクトが投げられていれば、デバッグに使える情報がプロパティとして詰まっています。
 
-| プロパティ | 説明 |
-| ---------- | ---- |
-| `name` | エラーの種類名。`"Error"`・`"TypeError"` など。エラーの分類に使う |
-| `message` | コンストラクタに渡した説明文。`new Error('xxx')` の `'xxx'` がここに入る |
-| `stack` | エラー発生箇所までの呼び出し履歴（スタックトレース）。デバッグ用。標準化はされていないがほぼ全環境で使える |
-| `cause` | 原因となった元のエラー（ES2022で追加。後述） |
+| プロパティ | 説明                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| `name`     | エラーの種類名。`"Error"`・`"TypeError"` など。エラーの分類に使う                                          |
+| `message`  | コンストラクタに渡した説明文。`new Error('xxx')` の `'xxx'` がここに入る                                   |
+| `stack`    | エラー発生箇所までの呼び出し履歴（スタックトレース）。デバッグ用。標準化はされていないがほぼ全環境で使える |
+| `cause`    | 原因となった元のエラー（ES2022で追加。後述）                                                               |
 
 ```js
 try {
@@ -99,7 +102,8 @@ try {
 ```
 
 <Callout type="info" title="ログには message だけでなく error 全体を渡す">
-`console.error(error.message)` だけだと `stack`（どこで起きたか）が失われます。デバッグ時は `console.error(error)` のように **error オブジェクトごと**渡すと、発生箇所まで追えます。
+  `console.error(error.message)` だけだと `stack`（どこで起きたか）が失われます。デバッグ時は
+  `console.error(error)` のように **error オブジェクトごと**渡すと、発生箇所まで追えます。
 </Callout>
 
 ### catch の引数は省略できる
@@ -119,7 +123,7 @@ function isValidJson(text) {
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`catch (e) {}` って書いてたけど、使わないなら `catch {}` でいいんだ。
+  `catch (e) {}` って書いてたけど、使わないなら `catch {}` でいいんだ。
 </SpeechBubble>
 
 <a id="built-in-errors"></a>
@@ -128,14 +132,14 @@ function isValidJson(text) {
 
 JavaScriptには、状況に応じた**組み込みのエラー型**があります。すべて `Error` を継承していて、`error.name` で種類を見分けられます。自分でエラーを投げるときも、内容に合った型を選ぶと、受け取る側が分類しやすくなります。
 
-| 型 | どんなときに発生するか |
-| ---- | ---- |
-| `TypeError` | 値が期待した型でない。`null` のプロパティ参照、関数でないものの呼び出しなど（最頻出） |
-| `RangeError` | 値が許容範囲外。配列長に負数を入れる、再帰が深すぎるなど |
-| `ReferenceError` | 存在しない変数を参照した |
-| `SyntaxError` | 構文エラー。`JSON.parse` の失敗もこれ |
-| `URIError` | `decodeURIComponent` などに不正な文字列を渡した |
-| `AggregateError` | 複数のエラーをまとめたもの。`Promise.any` が全部失敗したときなど |
+| 型               | どんなときに発生するか                                                                |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `TypeError`      | 値が期待した型でない。`null` のプロパティ参照、関数でないものの呼び出しなど（最頻出） |
+| `RangeError`     | 値が許容範囲外。配列長に負数を入れる、再帰が深すぎるなど                              |
+| `ReferenceError` | 存在しない変数を参照した                                                              |
+| `SyntaxError`    | 構文エラー。`JSON.parse` の失敗もこれ                                                 |
+| `URIError`       | `decodeURIComponent` などに不正な文字列を渡した                                       |
+| `AggregateError` | 複数のエラーをまとめたもの。`Promise.any` が全部失敗したときなど                      |
 
 ```js
 // 値の型がおかしい → TypeError
@@ -177,7 +181,9 @@ function loadData() {
 ```
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-`try` と `catch` の両方に `hideSpinner()` を書くと、消し忘れや重複の温床になる。「どっちのルートでも通る後始末」は `finally` に一本化するのが定石だよ。
+  `try` と `catch` の両方に `hideSpinner()`
+  を書くと、消し忘れや重複の温床になる。「どっちのルートでも通る後始末」は `finally`
+  に一本化するのが定石だよ。
 </SpeechBubble>
 
 <Callout type="warning" title="finally の中で return しない">
@@ -213,7 +219,11 @@ function loadConfig(path) {
 }
 ```
 
-<Figure src="/images/boomerang_woman_color.png" alt="投げ直したエラーが上の呼び出し元に戻っていくイメージ" maxWidth="140px" />
+<Figure
+  src="/images/boomerang_woman_color.png"
+  alt="投げ直したエラーが上の呼び出し元に戻っていくイメージ"
+  maxWidth="140px"
+/>
 
 最もやってはいけないのが、`catch` で受け止めておきながら**何もしない**「握りつぶし」です。エラーが起きても画面上は正常に見えるため、原因不明のバグとして後から苦しむことになります。
 
@@ -227,7 +237,7 @@ try {
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-とりあえず `try...catch` で囲んでおけば落ちないから安心、って思ってた…。
+  とりあえず `try...catch` で囲んでおけば落ちないから安心、って思ってた…。
 </SpeechBubble>
 
 「落ちない」のと「正しく動く」のは別物です。`catch` に入ったら、**最低でもログを残す**、対処できないなら**再スローする**、ユーザーに**エラーを伝える**——このいずれかは必ず行いましょう。
@@ -269,7 +279,8 @@ try {
 ```
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-`error.message` の文字列で `if (message.includes('...'))` と判定するのは脆い。**型（クラス）で分岐**できるようにしておくと、メッセージを変えても壊れないんだ。
+  `error.message` の文字列で `if (message.includes('...'))`
+  と判定するのは脆い。**型（クラス）で分岐**できるようにしておくと、メッセージを変えても壊れないんだ。
 </SpeechBubble>
 
 ### cause で「元のエラー」を保持する
@@ -278,9 +289,9 @@ try {
 
 **構文：** `new Error(message, options?)`
 
-| 引数 | 説明 |
-| ---- | ---- |
-| `message` | エラーの説明文（`error.message` に入る） |
+| 引数                | 説明                                                               |
+| ------------------- | ------------------------------------------------------------------ |
+| `message`           | エラーの説明文（`error.message` に入る）                           |
 | `options`（省略可） | `{ cause: 元のエラー }` を渡すと、`error.cause` から原因をたどれる |
 
 ```js
@@ -295,7 +306,8 @@ async function loadUser(id) {
 ```
 
 <Callout type="note" title="name を確実にする小ワザ">
-カスタムエラーを継承で重ねると `name` の設定漏れが起きがちです。`this.name = this.constructor.name;` と書いておくと、クラス名が自動的に `name` に入ります。
+  カスタムエラーを継承で重ねると `name` の設定漏れが起きがちです。`this.name =
+  this.constructor.name;` と書いておくと、クラス名が自動的に `name` に入ります。
 </Callout>
 
 <a id="async-error-handling"></a>
@@ -325,7 +337,12 @@ async function showUser(id) {
 ```
 
 <Callout type="warning" title="fetch は HTTP エラーでは reject しない">
-`fetch` がエラーになる（reject する）のは、ネットワーク不通などの**通信そのものの失敗**だけです。404 や 500 が返ってきても **Promise は成功（fulfilled）扱い**になります。`res.ok`（ステータスが200番台か）を必ずチェックし、ダメなら自分で `throw` しましょう。HTTPステータスコードの意味は[HTTPステータスコード一覧](/books/http-and-web-api/03-status-codes)で整理しています。
+  `fetch` がエラーになる（reject
+  する）のは、ネットワーク不通などの**通信そのものの失敗**だけです。404 や 500 が返ってきても
+  **Promise
+  は成功（fulfilled）扱い**になります。`res.ok`（ステータスが200番台か）を必ずチェックし、ダメなら自分で
+  `throw`
+  しましょう。HTTPステータスコードの意味は[HTTPステータスコード一覧](/books/http-and-web-api/03-status-codes)で整理しています。
 </Callout>
 
 ### Promise — .catch() でつなぐ
@@ -340,7 +357,7 @@ fetch('/api/users/1')
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`async/await` と `.then().catch()`、どっちで書けばいいの？
+  `async/await` と `.then().catch()`、どっちで書けばいいの？
 </SpeechBubble>
 
 新しく書くなら、同期コードと同じ見た目で読める **`async/await` + `try...catch`** が基本です。`.catch()` は、短い単発の処理や、既存の Promise チェーンに合わせるときに使います。
@@ -349,11 +366,11 @@ fetch('/api/users/1')
 
 複数の Promise をまとめて扱うとき、**1つ失敗したらどうするか**で使うメソッドが変わります。
 
-| メソッド | 1つ失敗したときの挙動 | 戻り値 |
-| -------- | ---- | ------ |
-| `Promise.all(iterable)` | **即座に reject**。1つでもコケると全体が失敗扱い | 全成功なら結果の配列 |
-| `Promise.allSettled(iterable)` | reject しない。**全部の結果を待つ** | 各要素が `{ status, value/reason }` の配列 |
-| `Promise.any(iterable)` | 1つでも成功すれば成功。全部失敗で `AggregateError` | 最初に成功した値 |
+| メソッド                       | 1つ失敗したときの挙動                              | 戻り値                                     |
+| ------------------------------ | -------------------------------------------------- | ------------------------------------------ |
+| `Promise.all(iterable)`        | **即座に reject**。1つでもコケると全体が失敗扱い   | 全成功なら結果の配列                       |
+| `Promise.allSettled(iterable)` | reject しない。**全部の結果を待つ**                | 各要素が `{ status, value/reason }` の配列 |
+| `Promise.any(iterable)`        | 1つでも成功すれば成功。全部失敗で `AggregateError` | 最初に成功した値                           |
 
 ```js
 // all：1つでも失敗したら catch に飛ぶ（成功した分の結果も受け取れない）
@@ -369,14 +386,19 @@ const ok = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
 ```
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-「全部そろわないと意味がない」なら `all`、「コケたものは飛ばして、取れたものだけ使いたい」なら `allSettled`。この使い分けは実務で本当によく出てくるよ。
+  「全部そろわないと意味がない」なら `all`、「コケたものは飛ばして、取れたものだけ使いたい」なら
+  `allSettled`。この使い分けは実務で本当によく出てくるよ。
 </SpeechBubble>
 
 <a id="common-pitfalls"></a>
 
 ## よくあるハマりどころ
 
-<Figure src="/images/deskwork_check_man_color.png" alt="非同期エラーのハマりどころを確認するイメージ" maxWidth="130px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="非同期エラーのハマりどころを確認するイメージ"
+  maxWidth="130px"
+/>
 
 ### 1. await を付け忘れると try...catch で捕まえられない
 
@@ -403,7 +425,8 @@ async function good() {
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`catch` が動かないからエラーハンドリングが壊れてると思ってたけど、原因は `await` の付け忘れだったのか…！
+  `catch` が動かないからエラーハンドリングが壊れてると思ってたけど、原因は `await`
+  の付け忘れだったのか…！
 </SpeechBubble>
 
 ### 2. 同期の try...catch では非同期エラーを捕まえられない
@@ -437,7 +460,9 @@ try {
 ```
 
 <Callout type="note" title="未処理のエラーを最後にすくう網">
-どこでも捕まえられなかったエラーは、ブラウザでは `window.addEventListener('unhandledrejection', ...)`（Promise のreject）や `'error'` イベントで最終的に検知できます。Sentry などのエラー監視は、この網を使って本番のエラーを収集しています。
+  どこでも捕まえられなかったエラーは、ブラウザでは `window.addEventListener('unhandledrejection',
+  ...)`（Promise のreject）や `'error'` イベントで最終的に検知できます。Sentry
+  などのエラー監視は、この網を使って本番のエラーを収集しています。
 </Callout>
 
 <a id="checklist"></a>
@@ -453,4 +478,8 @@ try {
 
 次の章では、コードをファイル単位で分割して再利用する **[モジュール（import / export）](/books/javascript/15-modules)** を扱います。エラーを投げるユーティリティやカスタムエラークラスを別ファイルに切り出して使い回す、という形でも自然につながっていきます。
 
-<Figure src="/images/stepup_suit_man_color-1.png" alt="エラーハンドリングを習得してステップアップするイメージ" maxWidth="200px" />
+<Figure
+  src="/images/stepup_suit_man_color-1.png"
+  alt="エラーハンドリングを習得してステップアップするイメージ"
+  maxWidth="200px"
+/>

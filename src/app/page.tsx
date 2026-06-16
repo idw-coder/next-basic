@@ -1,24 +1,22 @@
-import Link from 'next/link';
-import Image from 'next/image';
+import BookCard from '@/app/books/_components/BookCard';
+import { SectionHeading } from '@/components/SectionHeading';
+import { NewsList } from '@/components/news-list';
+import { Button } from '@/components/ui/button';
+import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
 import {
-  Sparkles,
+  ArrowRight,
   BadgeCheck,
+  ChevronRight,
   Clock,
-  RotateCcw,
   Flame,
+  RotateCcw,
+  Sparkles,
   Target,
   TrendingUp,
   UserCircle,
-  ArrowRight,
-  ChevronRight,
-  Shuffle,
-  Search,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { SectionHeading } from '@/components/SectionHeading';
-import { NewsList } from '@/components/news-list';
-import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
-import BookCard from '@/app/books/_components/BookCard';
+import Image from 'next/image';
+import Link from 'next/link';
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
@@ -579,7 +577,10 @@ export default async function Home() {
             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-primary rotate-45" />
           </div>
         </div>
-        <SectionHeading className="mb-6 md:mb-8" subtitle={`16カテゴリ・全${totalCount > 0 ? totalCount : 500}問以上から挑戦しよう`}>
+        <SectionHeading
+          className="mb-6 md:mb-8"
+          subtitle={`16カテゴリ・全${totalCount > 0 ? totalCount : 500}問以上から挑戦しよう`}
+        >
           クイズカテゴリ
         </SectionHeading>
 
@@ -592,19 +593,37 @@ export default async function Home() {
                 href={`/quiz/${cat.slug}`}
                 className={`group relative overflow-hidden flex flex-col rounded-xl ${cat.badgeBg} p-3 sm:p-5 transition hover:brightness-[0.96] dark:hover:brightness-110`}
               >
-                <div className={`absolute -bottom-8 sm:-bottom-10 -right-8 sm:-right-10 size-24 sm:size-36 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.10] pointer-events-none`} aria-hidden="true" />
-                <div className={`absolute -bottom-3 sm:-bottom-4 -right-3 sm:-right-4 size-16 sm:size-24 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.07] pointer-events-none`} aria-hidden="true" />
-                <div className={`absolute -bottom-1 -right-1 size-10 sm:size-14 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.05] pointer-events-none`} aria-hidden="true" />
+                <div
+                  className={`absolute -bottom-8 sm:-bottom-10 -right-8 sm:-right-10 size-24 sm:size-36 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.10] pointer-events-none`}
+                  aria-hidden="true"
+                />
+                <div
+                  className={`absolute -bottom-3 sm:-bottom-4 -right-3 sm:-right-4 size-16 sm:size-24 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.07] pointer-events-none`}
+                  aria-hidden="true"
+                />
+                <div
+                  className={`absolute -bottom-1 -right-1 size-10 sm:size-14 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.05] pointer-events-none`}
+                  aria-hidden="true"
+                />
                 <div className="flex items-baseline justify-between mb-1 sm:mb-1.5 relative">
                   <p className={`text-xs sm:text-sm font-bold ${cat.color}`}>{cat.name}</p>
                   {count > 0 && (
-                    <span className={`text-[10px] sm:text-[11px] tabular-nums ${cat.badgeText}`}>{count}問</span>
+                    <span className={`text-[10px] sm:text-[11px] tabular-nums ${cat.badgeText}`}>
+                      {count}問
+                    </span>
                   )}
                 </div>
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-2.5 line-clamp-2 leading-relaxed relative">{cat.description}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-2.5 line-clamp-2 leading-relaxed relative">
+                  {cat.description}
+                </p>
                 <div className="flex flex-wrap gap-0.5 sm:gap-1 mt-auto relative">
                   {cat.topics.map((t) => (
-                    <span key={t} className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded bg-white/60 dark:bg-white/10 ${cat.badgeText} font-medium`}>{t}</span>
+                    <span
+                      key={t}
+                      className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded bg-white/60 dark:bg-white/10 ${cat.badgeText} font-medium`}
+                    >
+                      {t}
+                    </span>
                   ))}
                 </div>
               </Link>
@@ -651,14 +670,14 @@ export default async function Home() {
       {/* 会員登録CTA */}
       <section className="mb-12 md:mb-16">
         <div className="flex justify-center mb-3">
-          <span className="inline-block bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full px-3 py-1 tracking-wide">FREE</span>
+          <span className="inline-block bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full px-3 py-1 tracking-wide">
+            FREE
+          </span>
         </div>
-        <SectionHeading
-          className="mb-2"
-        >
-          無料会員登録で学習をもっと便利に
-        </SectionHeading>
-        <p className="text-center text-sm text-muted-foreground mb-6">登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。</p>
+        <SectionHeading className="mb-2">無料会員登録で学習をもっと便利に</SectionHeading>
+        <p className="text-center text-sm text-muted-foreground mb-6">
+          登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。
+        </p>
         <div className="grid grid-cols-2 gap-x-8 gap-y-3 lg:grid-cols-4 max-w-3xl mx-auto mb-6">
           {[
             {
@@ -713,7 +732,9 @@ export default async function Home() {
               ランダムクイズに挑戦
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground mb-4">
-              全カテゴリからランダムに出題<br />5問・10問など問題数を選んでサクッと力試し
+              全カテゴリからランダムに出題
+              <br />
+              5問・10問など問題数を選んでサクッと力試し
             </p>
             <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-white bg-blue-600 dark:bg-blue-500 rounded-full px-6 py-2 mx-auto group-hover:bg-blue-700 dark:group-hover:bg-blue-600 transition-colors">
               挑戦する
@@ -737,7 +758,9 @@ export default async function Home() {
               キーワードで探す
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground mb-4">
-              クイズも教科書も横断検索<br />「Promise」「型ガード」「API設計」などから探せます
+              クイズも教科書も横断検索
+              <br />
+              「Promise」「型ガード」「API設計」などから探せます
             </p>
             <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-white bg-violet-600 dark:bg-violet-500 rounded-full px-6 py-2 mx-auto group-hover:bg-violet-700 dark:group-hover:bg-violet-600 transition-colors">
               検索する
@@ -745,7 +768,7 @@ export default async function Home() {
             </span>
             <div className="flex items-end justify-center mt-auto pt-4 h-28 sm:h-36">
               <Image
-                src="/images/deta_man_color.png"
+                src="/images/search_woman_color.png"
                 alt=""
                 width={400}
                 height={400}

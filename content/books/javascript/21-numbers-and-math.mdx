@@ -9,7 +9,9 @@ order: 21
 この章では、JavaScriptの数値（`number` 型）の前提から始めて、**文字列⇄数値の変換**・**浮動小数点の誤差**・**数値の整形（`toFixed` など）**・**`Number` / `Math` の主要メソッド**を、引数つきの表で逆引きできるように整理します。
 
 <Callout type="note" title="この章のメソッド表記について">
-メソッドは `メソッド名(引数1, 引数2?)` という形（シグネチャ）を示し、続けて**引数の表**と「戻り値」を載せます（`引数?` は省略できる引数）。MDNのリファレンス代わりに、「何を渡すと何が返るか」を確認しながら使ってください。
+  メソッドは `メソッド名(引数1, 引数2?)`
+  という形（シグネチャ）を示し、続けて**引数の表**と「戻り値」を載せます（`引数?`
+  は省略できる引数）。MDNのリファレンス代わりに、「何を渡すと何が返るか」を確認しながら使ってください。
 </Callout>
 
 ## 目次
@@ -54,13 +56,16 @@ console.log(typeof NaN); // "number"（NaNの型はnumber）
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`NaN` の型が `number` なの、ちょっと混乱する…。「数値じゃない」のに「数値型」？
+  `NaN` の型が `number` なの、ちょっと混乱する…。「数値じゃない」のに「数値型」？
 </SpeechBubble>
 
 `NaN` は「**数値の演算をした結果、有効な数値にならなかった**」ことを表す特別な `number` 値、と捉えると腑に落ちます。`NaN` の判定には後述の `Number.isNaN()` を使います（`=== NaN` では判定できません。理由はハマりどころで解説します）。
 
 <Callout type="column" title="BigInt — もう1つの数値型">
-厳密には `number` のほかに `BigInt`（`10n` のように末尾に `n` を付ける）という整数専用の型もあります。`number` が安全に扱える整数の上限（`Number.MAX_SAFE_INTEGER` ≒ 9000兆）を超える巨大な整数を扱うときに使いますが、日常的な計算ではまず `number` だけで十分です。
+  厳密には `number` のほかに `BigInt`（`10n` のように末尾に `n`
+  を付ける）という整数専用の型もあります。`number`
+  が安全に扱える整数の上限（`Number.MAX_SAFE_INTEGER` ≒
+  9000兆）を超える巨大な整数を扱うときに使いますが、日常的な計算ではまず `number` だけで十分です。
 </Callout>
 
 <a id="section-2"></a>
@@ -71,12 +76,12 @@ console.log(typeof NaN); // "number"（NaNの型はnumber）
 
 ### 文字列 → 数値
 
-| 方法 | 引数 | 戻り値・特徴 |
-| ---- | ---- | ------------ |
-| `Number(value)` | `value`：変換する値 | 数値。**全体が数値でないと `NaN`**（`Number('12px')` → `NaN`） |
-| `parseInt(string, radix)` | `string`：対象文字列 / `radix`：基数（通常 `10`） | 整数。**先頭から読める所まで**変換（`parseInt('12px', 10)` → `12`） |
-| `parseFloat(string)` | `string`：対象文字列 | 小数を含む数値。先頭から読める所まで（`parseFloat('1.5em')` → `1.5`） |
-| `+value`（単項プラス） | — | `Number()` とほぼ同じ。最短で書けるが可読性は落ちる |
+| 方法                      | 引数                                              | 戻り値・特徴                                                          |
+| ------------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
+| `Number(value)`           | `value`：変換する値                               | 数値。**全体が数値でないと `NaN`**（`Number('12px')` → `NaN`）        |
+| `parseInt(string, radix)` | `string`：対象文字列 / `radix`：基数（通常 `10`） | 整数。**先頭から読める所まで**変換（`parseInt('12px', 10)` → `12`）   |
+| `parseFloat(string)`      | `string`：対象文字列                              | 小数を含む数値。先頭から読める所まで（`parseFloat('1.5em')` → `1.5`） |
+| `+value`（単項プラス）    | —                                                 | `Number()` とほぼ同じ。最短で書けるが可読性は落ちる                   |
 
 ```js
 Number('100'); // 100
@@ -90,16 +95,18 @@ parseFloat('100.5px'); // 100.5
 ```
 
 <Callout type="warning" title="parseInt には必ず基数（第2引数）を渡す">
-`parseInt('08')` のように基数を省略すると、環境によって意図しない解釈をされる歴史的な落とし穴があります。**`parseInt(str, 10)` のように常に `10` を明示**するのが鉄則です（10進数として読む、の意味）。
+  `parseInt('08')`
+  のように基数を省略すると、環境によって意図しない解釈をされる歴史的な落とし穴があります。**`parseInt(str,
+  10)` のように常に `10` を明示**するのが鉄則です（10進数として読む、の意味）。
 </Callout>
 
 ### 数値 → 文字列
 
-| 方法 | 引数 | 戻り値・特徴 |
-| ---- | ---- | ------------ |
-| `String(value)` | `value`：変換する値 | 文字列。`null`/`undefined` も安全に変換できる |
-| `num.toString(radix?)` | `radix`（省略可）：基数 | 文字列。`(255).toString(16)` → `"ff"`（16進数）など基数変換に便利 |
-| `` `${num}` ``（テンプレートリテラル） | — | 最も読みやすい。実務での第一候補 |
+| 方法                                   | 引数                    | 戻り値・特徴                                                      |
+| -------------------------------------- | ----------------------- | ----------------------------------------------------------------- |
+| `String(value)`                        | `value`：変換する値     | 文字列。`null`/`undefined` も安全に変換できる                     |
+| `num.toString(radix?)`                 | `radix`（省略可）：基数 | 文字列。`(255).toString(16)` → `"ff"`（16進数）など基数変換に便利 |
+| `` `${num}` ``（テンプレートリテラル） | —                       | 最も読みやすい。実務での第一候補                                  |
 
 ```js
 String(42); // "42"
@@ -119,13 +126,13 @@ console.log(0.1 + 0.2 === 0.3); // false（！）
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-えっ、`0.1 + 0.2` が `0.3` じゃない…？バグ？それともJavaScriptが壊れてる？
+  えっ、`0.1 + 0.2` が `0.3` じゃない…？バグ？それともJavaScriptが壊れてる？
 </SpeechBubble>
 
 バグではありません。コンピュータは数値を**2進数**で表現しますが、`0.1` や `0.2` は2進数では割り切れない（無限小数になる）ため、ごくわずかな誤差が生じます。10進数で `1/3 = 0.333...` が割り切れないのと同じ理屈です。
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-「コンピュータの小数は、ほんの少しだけズレることがある」とだけ覚えておけばOK。大事なのは“どう対処するか”だよ。
+  「コンピュータの小数は、ほんの少しだけズレることがある」とだけ覚えておけばOK。大事なのは“どう対処するか”だよ。
 </SpeechBubble>
 
 ### 対処法1: 表示は toFixed で丸める
@@ -167,8 +174,8 @@ const totalYen = totalCents / 100; // 0.3
 
 **構文：** `num.toFixed(digits?)`
 
-| 引数 | 説明 |
-| ---- | ---- |
+| 引数               | 説明                                       |
+| ------------------ | ------------------------------------------ |
 | `digits`（省略可） | 小数点以下の桁数（0〜100）。省略すると `0` |
 
 **戻り値：** 指定桁に丸めた**文字列**（数値ではない点に注意）
@@ -183,9 +190,9 @@ const totalYen = totalCents / 100; // 0.3
 
 **構文：** `num.toLocaleString(locales?, options?)`
 
-| 引数 | 説明 |
-| ---- | ---- |
-| `locales`（省略可） | 言語・地域（`'ja-JP'` など）。省略すると実行環境の設定 |
+| 引数                | 説明                                                            |
+| ------------------- | --------------------------------------------------------------- |
+| `locales`（省略可） | 言語・地域（`'ja-JP'` など）。省略すると実行環境の設定          |
 | `options`（省略可） | 表示オプション（`{ style: 'currency', currency: 'JPY' }` など） |
 
 **戻り値：** 地域の慣習に従って整形した**文字列**
@@ -200,7 +207,8 @@ const totalYen = totalCents / 100; // 0.3
 ```
 
 <Callout type="info" title="桁区切りは自前で書かない">
-「1234567 → 1,234,567」のようなカンマ区切りは、正規表現で自作せず `toLocaleString()` に任せるのが定番です。通貨記号やパーセント表示も `options` で対応できます。
+  「1234567 → 1,234,567」のようなカンマ区切りは、正規表現で自作せず `toLocaleString()`
+  に任せるのが定番です。通貨記号やパーセント表示も `options` で対応できます。
 </Callout>
 
 <a id="section-5"></a>
@@ -209,14 +217,14 @@ const totalYen = totalCents / 100; // 0.3
 
 `Number` には、数値の判定や定数として使う静的メンバーが用意されています。
 
-| メンバー | 引数 | 戻り値・用途 |
-| -------- | ---- | ------------ |
-| `Number.isInteger(value)` | `value`：調べる値 | `boolean`（整数か） |
-| `Number.isNaN(value)` | `value`：調べる値 | `boolean`（`NaN` か。**安全な NaN 判定**） |
-| `Number.isFinite(value)` | `value`：調べる値 | `boolean`（有限の数値か。`Infinity` を弾ける） |
-| `Number.parseInt(str, radix)` | `str` / `radix` | グローバルの `parseInt` と同じ（モジュール的に明示できる） |
-| `Number.MAX_SAFE_INTEGER` | — | 安全に扱える整数の最大値（約 9007兆） |
-| `Number.EPSILON` | — | 浮動小数点比較に使う「ごく小さな値」 |
+| メンバー                      | 引数              | 戻り値・用途                                               |
+| ----------------------------- | ----------------- | ---------------------------------------------------------- |
+| `Number.isInteger(value)`     | `value`：調べる値 | `boolean`（整数か）                                        |
+| `Number.isNaN(value)`         | `value`：調べる値 | `boolean`（`NaN` か。**安全な NaN 判定**）                 |
+| `Number.isFinite(value)`      | `value`：調べる値 | `boolean`（有限の数値か。`Infinity` を弾ける）             |
+| `Number.parseInt(str, radix)` | `str` / `radix`   | グローバルの `parseInt` と同じ（モジュール的に明示できる） |
+| `Number.MAX_SAFE_INTEGER`     | —                 | 安全に扱える整数の最大値（約 9007兆）                      |
+| `Number.EPSILON`              | —                 | 浮動小数点比較に使う「ごく小さな値」                       |
 
 ```js
 Number.isInteger(42); // true
@@ -226,7 +234,9 @@ Number.isFinite(1 / 0); // false（Infinityは有限でない）
 ```
 
 <Callout type="warning" title="グローバルの isNaN() ではなく Number.isNaN() を使う">
-古い `isNaN('abc')` は、引数をいったん数値に変換してから判定するため `true` を返してしまい直感に反します。`Number.isNaN()` は変換せず厳密に判定するので、**`Number.isNaN()` を使う**のが安全です。
+  古い `isNaN('abc')` は、引数をいったん数値に変換してから判定するため `true`
+  を返してしまい直感に反します。`Number.isNaN()` は変換せず厳密に判定するので、**`Number.isNaN()`
+  を使う**のが安全です。
 </Callout>
 
 <a id="section-6"></a>
@@ -235,20 +245,24 @@ Number.isFinite(1 / 0); // false（Infinityは有限でない）
 
 `Math` は計算用の関数・定数をまとめた組み込みオブジェクトです。`new Math()` のようにインスタンス化はせず、**`Math.round(...)` のように直接呼び出します**。
 
-<Figure src="/images/planning_suit_man_color.png" alt="数値を計算・加工するイメージ" maxWidth="120px" />
+<Figure
+  src="/images/planning_suit_man_color.png"
+  alt="数値を計算・加工するイメージ"
+  maxWidth="120px"
+/>
 
-| メソッド | 引数 | 戻り値・用途 |
-| -------- | ---- | ------------ |
-| `Math.round(x)` | `x`：数値 | 四捨五入した整数 |
-| `Math.floor(x)` | `x`：数値 | 切り捨て（小さい方の整数へ） |
-| `Math.ceil(x)` | `x`：数値 | 切り上げ（大きい方の整数へ） |
-| `Math.trunc(x)` | `x`：数値 | 小数部を捨てる（符号はそのまま） |
-| `Math.abs(x)` | `x`：数値 | 絶対値 |
-| `Math.max(...nums)` | 複数の数値 | 最大値 |
-| `Math.min(...nums)` | 複数の数値 | 最小値 |
+| メソッド              | 引数                     | 戻り値・用途                     |
+| --------------------- | ------------------------ | -------------------------------- |
+| `Math.round(x)`       | `x`：数値                | 四捨五入した整数                 |
+| `Math.floor(x)`       | `x`：数値                | 切り捨て（小さい方の整数へ）     |
+| `Math.ceil(x)`        | `x`：数値                | 切り上げ（大きい方の整数へ）     |
+| `Math.trunc(x)`       | `x`：数値                | 小数部を捨てる（符号はそのまま） |
+| `Math.abs(x)`         | `x`：数値                | 絶対値                           |
+| `Math.max(...nums)`   | 複数の数値               | 最大値                           |
+| `Math.min(...nums)`   | 複数の数値               | 最小値                           |
 | `Math.pow(base, exp)` | `base`：底 / `exp`：指数 | べき乗（`base ** exp` でも同じ） |
-| `Math.sqrt(x)` | `x`：数値 | 平方根 |
-| `Math.random()` | — | `0` 以上 `1` 未満の乱数 |
+| `Math.sqrt(x)`        | `x`：数値                | 平方根                           |
+| `Math.random()`       | —                        | `0` 以上 `1` 未満の乱数          |
 
 ```js
 Math.round(2.5); // 3
@@ -271,7 +285,9 @@ Math.max(...scores); // 95（スプレッドで展開）
 ```
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-`Math.max(...arr)` のスプレッド渡しは頻出パターン。[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)で扱った `...` がここでも活きてくるよ。
+  `Math.max(...arr)`
+  のスプレッド渡しは頻出パターン。[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)で扱った
+  `...` がここでも活きてくるよ。
 </SpeechBubble>
 
 ### よく使うパターン: 範囲指定のランダムな整数
@@ -291,24 +307,28 @@ randomInt(1, 6); // サイコロ（1〜6のいずれか）
 
 ## 早見表
 
-| やりたいこと | 使うもの |
-| ------------ | -------- |
-| 文字列を整数に | `parseInt(str, 10)` |
-| 文字列を数値に（小数含む） | `Number(str)` |
-| 小数の桁を揃えて表示 | `num.toFixed(2)`（戻り値は文字列） |
-| 3桁区切り・通貨表示 | `num.toLocaleString('ja-JP', ...)` |
+| やりたいこと                   | 使うもの                                  |
+| ------------------------------ | ----------------------------------------- |
+| 文字列を整数に                 | `parseInt(str, 10)`                       |
+| 文字列を数値に（小数含む）     | `Number(str)`                             |
+| 小数の桁を揃えて表示           | `num.toFixed(2)`（戻り値は文字列）        |
+| 3桁区切り・通貨表示            | `num.toLocaleString('ja-JP', ...)`        |
 | 四捨五入 / 切り捨て / 切り上げ | `Math.round` / `Math.floor` / `Math.ceil` |
-| 絶対値 | `Math.abs(x)` |
-| 配列の最大・最小 | `Math.max(...arr)` / `Math.min(...arr)` |
-| 範囲指定の乱数 | `Math.floor(Math.random() * 幅) + min` |
-| 整数かどうか判定 | `Number.isInteger(x)` |
-| NaN かどうか判定 | `Number.isNaN(x)` |
+| 絶対値                         | `Math.abs(x)`                             |
+| 配列の最大・最小               | `Math.max(...arr)` / `Math.min(...arr)`   |
+| 範囲指定の乱数                 | `Math.floor(Math.random() * 幅) + min`    |
+| 整数かどうか判定               | `Number.isInteger(x)`                     |
+| NaN かどうか判定               | `Number.isNaN(x)`                         |
 
 <a id="section-8"></a>
 
 ## よくあるハマりどころ
 
-<Figure src="/images/deskwork_check_man_color.png" alt="数値処理のハマりどころを確認するイメージ" maxWidth="120px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="数値処理のハマりどころを確認するイメージ"
+  maxWidth="120px"
+/>
 
 ### 1. `NaN === NaN` が false になる
 

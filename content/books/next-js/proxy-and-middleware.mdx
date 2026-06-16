@@ -18,7 +18,7 @@ Next.jsでは、そうした「リクエストの入口で行う処理」を `pr
 </SpeechBubble>
 
 <Figure
-  src="/images/deskwork_check_man_color.png"
+  src="/images/deskwork_check_woman_color.png"
   alt="リクエストの入口でチェックしているイメージ"
   maxWidth="220px"
 />
@@ -56,7 +56,9 @@ proxy.ts        ← ここで認証、リダイレクト、rewrite、ヘッダ�
 page.tsx / route.ts
 ```
 
-<MermaidDiagram id="next-proxy-flow" chart={`
+<MermaidDiagram
+  id="next-proxy-flow"
+  chart={`
 flowchart LR
     A["ブラウザからリクエスト"] --> B["proxy.ts"]
     B --> C{"処理を分岐"}
@@ -64,7 +66,8 @@ flowchart LR
     C -- "別URLへ移動" --> E["redirect"]
     C -- "内部的に行き先変更" --> F["rewrite"]
     F --> D
-`} />
+`}
+/>
 
 たとえば、次のような処理に向いています。
 
@@ -196,6 +199,7 @@ sequenceDiagram
         P->>D: NextResponse.next()
         D-->>U: dashboardを表示
     end
+
 `} />
 
 <Callout type="warning" title="Proxyだけで認可を完結させない">
@@ -326,6 +330,7 @@ flowchart LR
         E
         F
     end
+
 `} />
 
 <Callout type="note" title="Next.jsのバージョンでランタイムの扱いが変わっている">
@@ -359,7 +364,10 @@ Edge Runtimeという考え方自体は、Vercelだけのものではありま�
 
 ## Next.js 16の変更 — `middleware.ts` から `proxy.ts` へ
 
-<Marker>Next.js 16では、従来の `middleware.ts` というファイル規約が非推奨になり、`proxy.ts` にリネームされました。</Marker>
+<Marker>
+  Next.js 16では、従来の `middleware.ts` というファイル規約が非推奨になり、`proxy.ts`
+  にリネームされました。
+</Marker>
 
 ```diff
 - src/middleware.ts
@@ -368,14 +376,17 @@ Edge Runtimeという考え方自体は、Vercelだけのものではありま�
 
 関数名も変わります。
 
-<MermaidDiagram id="next-proxy-rename-flow" chart={`
+<MermaidDiagram
+  id="next-proxy-rename-flow"
+  chart={`
 flowchart LR
     A["Next.js 15以前"] --> B["middleware.ts"]
     B --> C["middleware(request)"]
     C --> D["Next.js 16以降"]
     D --> E["proxy.ts"]
     E --> F["proxy(request)"]
-`} />
+`}
+/>
 
 ```diff
 - export function middleware(request: NextRequest) {

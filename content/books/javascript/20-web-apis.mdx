@@ -9,7 +9,10 @@ order: 20
 この章では、アプリ開発で使う頻度が高いWeb APIを、用途・構文・戻り値・注意点まで整理します。`Promise` やDOM操作の知識と組み合わせて読むと、ブラウザ上で「データを取得し、保存し、必要なタイミングで画面を更新する」流れがつながります。
 
 <Callout type="note" title="JavaScript標準機能とWeb APIは別物">
-`Array`、`Map`、`JSON`、`Date` はJavaScript言語の標準機能です。一方、`localStorage`、`document.querySelector`、`IntersectionObserver` はブラウザ環境が提供するWeb APIです。Node.jsにはDOMやStorageがありません。Node.js 18以降では `fetch` を使えますが、CookieやCORSの扱いはブラウザと一致しません。
+  `Array`、`Map`、`JSON`、`Date`
+  はJavaScript言語の標準機能です。一方、`localStorage`、`document.querySelector`、`IntersectionObserver`
+  はブラウザ環境が提供するWeb APIです。Node.jsにはDOMやStorageがありません。Node.js 18以降では
+  `fetch` を使えますが、CookieやCORSの扱いはブラウザと一致しません。
 </Callout>
 
 ## 目次
@@ -45,19 +48,23 @@ button.addEventListener('click', () => {
 });
 ```
 
-<Figure src="/images/pc-work-woman01.png" alt="ブラウザ上でWeb APIを使っているイメージ" maxWidth="180px" />
+<Figure
+  src="/images/pc-work-woman01.png"
+  alt="ブラウザ上でWeb APIを使っているイメージ"
+  maxWidth="180px"
+/>
 
 代表的なWeb APIは次の通りです。
 
-| API | 何をするか | よく使う場面 |
-| --- | --- | --- |
-| `fetch` | HTTPリクエストを送る | APIからJSONを取得、フォーム送信 |
-| `localStorage` | ブラウザに永続保存する | テーマ設定、簡単な入力途中データ |
-| `sessionStorage` | タブを閉じるまで保存する | 一時的な画面状態、確認画面の入力値 |
-| `IntersectionObserver` | 要素が画面に入ったか検知する | 遅延読み込み、無限スクロール、表示時アニメーション |
-| `MutationObserver` | DOMの追加・削除・属性変更を検知する | 外部スクリプトが書き換えるDOMの監視 |
-| `URL` / `URLSearchParams` | URLを安全に組み立てる | クエリ文字列の読み書き |
-| `navigator.clipboard` | クリップボードを読み書きする | コピーボタン、招待URLのコピー |
+| API                       | 何をするか                          | よく使う場面                                       |
+| ------------------------- | ----------------------------------- | -------------------------------------------------- |
+| `fetch`                   | HTTPリクエストを送る                | APIからJSONを取得、フォーム送信                    |
+| `localStorage`            | ブラウザに永続保存する              | テーマ設定、簡単な入力途中データ                   |
+| `sessionStorage`          | タブを閉じるまで保存する            | 一時的な画面状態、確認画面の入力値                 |
+| `IntersectionObserver`    | 要素が画面に入ったか検知する        | 遅延読み込み、無限スクロール、表示時アニメーション |
+| `MutationObserver`        | DOMの追加・削除・属性変更を検知する | 外部スクリプトが書き換えるDOMの監視                |
+| `URL` / `URLSearchParams` | URLを安全に組み立てる               | クエリ文字列の読み書き                             |
+| `navigator.clipboard`     | クリップボードを読み書きする        | コピーボタン、招待URLのコピー                      |
 
 <a id="section-2"></a>
 
@@ -67,9 +74,9 @@ button.addEventListener('click', () => {
 
 **構文：** `fetch(input, init?)`
 
-| 引数 | 説明 |
-| ---- | ---- |
-| `input` | URL文字列、または `Request` オブジェクト |
+| 引数             | 説明                                                                            |
+| ---------------- | ------------------------------------------------------------------------------- |
+| `input`          | URL文字列、または `Request` オブジェクト                                        |
 | `init`（省略可） | `method`、`headers`、`body`、`credentials`、`signal` を指定する設定オブジェクト |
 
 **戻り値：** `Promise<Response>`
@@ -98,7 +105,9 @@ async function fetchUser(id) {
 ```
 
 <Callout type="warning" title="res.ok を必ず確認する">
-`response.ok` はステータスコードが `200` 〜 `299` のとき `true` です。API通信では `await fetch(...)` の直後に `response.ok` を確認し、失敗時の処理を明示します。詳しい例外処理は[エラーハンドリング](/books/javascript/14-error-handling)で扱っています。
+  `response.ok` はステータスコードが `200` 〜 `299` のとき `true` です。API通信では `await
+  fetch(...)` の直後に `response.ok`
+  を確認し、失敗時の処理を明示します。詳しい例外処理は[エラーハンドリング](/books/javascript/14-error-handling)で扱っています。
 </Callout>
 
 ### JSONをPOSTする
@@ -132,14 +141,14 @@ const result = await response.json();
 
 ### よく使うinitオプション
 
-| オプション | 役割 | 例 |
-| ---------- | ---- | -- |
-| `method` | HTTPメソッド | `'GET'`, `'POST'`, `'PUT'`, `'DELETE'` |
-| `headers` | HTTPヘッダー | `{ 'Content-Type': 'application/json' }` |
-| `body` | 送信本文 | `JSON.stringify(data)` |
-| `credentials` | Cookie送信の扱い | `'include'`, `'same-origin'`, `'omit'` |
-| `signal` | 中断用のシグナル | `controller.signal` |
-| `cache` | キャッシュ制御 | `'no-store'`, `'reload'` |
+| オプション    | 役割             | 例                                       |
+| ------------- | ---------------- | ---------------------------------------- |
+| `method`      | HTTPメソッド     | `'GET'`, `'POST'`, `'PUT'`, `'DELETE'`   |
+| `headers`     | HTTPヘッダー     | `{ 'Content-Type': 'application/json' }` |
+| `body`        | 送信本文         | `JSON.stringify(data)`                   |
+| `credentials` | Cookie送信の扱い | `'include'`, `'same-origin'`, `'omit'`   |
+| `signal`      | 中断用のシグナル | `controller.signal`                      |
+| `cache`       | キャッシュ制御   | `'no-store'`, `'reload'`                 |
 
 <a id="section-3"></a>
 
@@ -160,15 +169,15 @@ const response = await fetch(request);
 
 `Response` には、ステータスやヘッダー、本文を読むためのメソッドがあります。
 
-| プロパティ / メソッド | 役割 |
-| --------------------- | ---- |
-| `response.ok` | ステータスが `200` 〜 `299` なら `true` |
-| `response.status` | ステータスコード |
-| `response.statusText` | ステータス文言 |
-| `response.headers` | レスポンスヘッダー |
-| `response.json()` | 本文をJSONとして読み、JavaScriptの値にする |
-| `response.text()` | 本文を文字列として読む |
-| `response.blob()` | 本文をBlobとして読む |
+| プロパティ / メソッド | 役割                                       |
+| --------------------- | ------------------------------------------ |
+| `response.ok`         | ステータスが `200` 〜 `299` なら `true`    |
+| `response.status`     | ステータスコード                           |
+| `response.statusText` | ステータス文言                             |
+| `response.headers`    | レスポンスヘッダー                         |
+| `response.json()`     | 本文をJSONとして読み、JavaScriptの値にする |
+| `response.text()`     | 本文を文字列として読む                     |
+| `response.blob()`     | 本文をBlobとして読む                       |
 
 ```js
 const response = await fetch('/api/profile');
@@ -180,7 +189,9 @@ const profile = await response.json();
 ```
 
 <Callout type="warning" title="レスポンス本文は基本的に1回だけ読む">
-`response.json()` や `response.text()` は本文ストリームを消費します。同じ `Response` に対して複数回読むと失敗します。ログ用と処理用で両方必要な場合は、先に `const text = await response.text()` で文字列として読み、必要に応じて `JSON.parse(text)` します。
+  `response.json()` や `response.text()` は本文ストリームを消費します。同じ `Response`
+  に対して複数回読むと失敗します。ログ用と処理用で両方必要な場合は、先に `const text = await
+  response.text()` で文字列として読み、必要に応じて `JSON.parse(text)` します。
 </Callout>
 
 <a id="section-4"></a>
@@ -191,10 +202,10 @@ const profile = await response.json();
 
 **構文：** `new AbortController()`
 
-| プロパティ / メソッド | 役割 |
-| --------------------- | ---- |
-| `controller.signal` | `fetch` に渡す中断シグナル |
-| `controller.abort()` | 中断を通知する |
+| プロパティ / メソッド | 役割                       |
+| --------------------- | -------------------------- |
+| `controller.signal`   | `fetch` に渡す中断シグナル |
+| `controller.abort()`  | 中断を通知する             |
 
 ```js
 const controller = new AbortController();
@@ -225,20 +236,20 @@ try {
 
 Storage APIは、ブラウザにキーと値を保存するAPIです。`localStorage` と `sessionStorage` は同じメソッドを持ちますが、保存期間が違います。
 
-| API | 保存期間 | 使う場面 |
-| --- | -------- | -------- |
-| `localStorage` | 明示的に削除するまで残る | テーマ、表示設定、最後に開いたタブ |
-| `sessionStorage` | タブを閉じるまで残る | 入力途中の一時データ、ページ遷移中だけ必要な値 |
+| API              | 保存期間                 | 使う場面                                       |
+| ---------------- | ------------------------ | ---------------------------------------------- |
+| `localStorage`   | 明示的に削除するまで残る | テーマ、表示設定、最後に開いたタブ             |
+| `sessionStorage` | タブを閉じるまで残る     | 入力途中の一時データ、ページ遷移中だけ必要な値 |
 
 **構文：** `storage.setItem(key, value)` / `storage.getItem(key)`
 
-| メソッド | 役割 |
-| -------- | ---- |
-| `setItem(key, value)` | 文字列を保存する |
-| `getItem(key)` | 文字列を取得する。存在しない場合は `null` |
-| `removeItem(key)` | 指定キーを削除する |
-| `clear()` | そのオリジンのストレージを全削除する |
-| `key(index)` | 指定位置のキー名を取得する |
+| メソッド              | 役割                                      |
+| --------------------- | ----------------------------------------- |
+| `setItem(key, value)` | 文字列を保存する                          |
+| `getItem(key)`        | 文字列を取得する。存在しない場合は `null` |
+| `removeItem(key)`     | 指定キーを削除する                        |
+| `clear()`             | そのオリジンのストレージを全削除する      |
+| `key(index)`          | 指定位置のキー名を取得する                |
 
 ```js
 localStorage.setItem('theme', 'dark');
@@ -266,7 +277,9 @@ const parsed = saved === null ? null : JSON.parse(saved);
 ```
 
 <Callout type="warning" title="Storageに秘密情報を保存しない">
-`localStorage` と `sessionStorage` はブラウザのJavaScriptから読めます。アクセストークン、パスワード、個人情報、決済情報のような秘密情報は保存しません。認証情報を扱う場合は、JavaScriptから読めない `HttpOnly` Cookieを使います。
+  `localStorage` と `sessionStorage`
+  はブラウザのJavaScriptから読めます。アクセストークン、パスワード、個人情報、決済情報のような秘密情報は保存しません。認証情報を扱う場合は、JavaScriptから読めない
+  `HttpOnly` Cookieを使います。
 </Callout>
 
 ### Storageは同期API
@@ -281,12 +294,12 @@ const parsed = saved === null ? null : JSON.parse(saved);
 
 **構文：** `new IntersectionObserver(callback, options?)`
 
-| 引数 | 説明 |
-| ---- | ---- |
-| `callback` | 交差状態が変わったときに呼ばれる関数 |
-| `options.root` | 基準にするスクロール領域。省略時はビューポート |
-| `options.rootMargin` | 判定領域の余白。例: `'200px 0px'` |
-| `options.threshold` | どの割合見えたら通知するか。`0` 〜 `1` |
+| 引数                 | 説明                                           |
+| -------------------- | ---------------------------------------------- |
+| `callback`           | 交差状態が変わったときに呼ばれる関数           |
+| `options.root`       | 基準にするスクロール領域。省略時はビューポート |
+| `options.rootMargin` | 判定領域の余白。例: `'200px 0px'`              |
+| `options.threshold`  | どの割合見えたら通知するか。`0` 〜 `1`         |
 
 ```js
 const target = document.querySelector('#load-more');
@@ -311,7 +324,11 @@ observer.observe(target);
 
 `rootMargin: '200px 0px'` は、画面に入る200px手前で通知する設定です。画像の遅延読み込みや無限スクロールでは、実際に見えてから動くより少し早めに処理を始める方が自然です。
 
-<Figure src="/images/deskwork_check_man_color.png" alt="表示領域に入った要素を確認するイメージ" maxWidth="140px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="表示領域に入った要素を確認するイメージ"
+  maxWidth="140px"
+/>
 
 ### 監視を止める
 
@@ -332,11 +349,11 @@ document.querySelectorAll('.fade-in').forEach((element) => {
 });
 ```
 
-| メソッド | 役割 |
-| -------- | ---- |
-| `observe(element)` | 要素の監視を開始する |
+| メソッド             | 役割                   |
+| -------------------- | ---------------------- |
+| `observe(element)`   | 要素の監視を開始する   |
 | `unobserve(element)` | 指定要素の監視を止める |
-| `disconnect()` | すべての監視を止める |
+| `disconnect()`       | すべての監視を止める   |
 
 <a id="section-7"></a>
 
@@ -346,8 +363,8 @@ document.querySelectorAll('.fade-in').forEach((element) => {
 
 **構文：** `new MutationObserver(callback)`
 
-| 引数 | 説明 |
-| ---- | ---- |
+| 引数       | 説明                                  |
+| ---------- | ------------------------------------- |
 | `callback` | DOM変更が記録されたときに呼ばれる関数 |
 
 ```js
@@ -369,12 +386,12 @@ observer.observe(target, {
 
 `observe` の第2引数で、何を監視するかを明示します。
 
-| オプション | 監視する変更 |
-| ---------- | ------------ |
-| `childList` | 子要素の追加・削除 |
-| `attributes` | 属性の変更 |
-| `characterData` | テキストノードの変更 |
-| `subtree` | 子孫要素まで監視する |
+| オプション        | 監視する変更         |
+| ----------------- | -------------------- |
+| `childList`       | 子要素の追加・削除   |
+| `attributes`      | 属性の変更           |
+| `characterData`   | テキストノードの変更 |
+| `subtree`         | 子孫要素まで監視する |
 | `attributeFilter` | 監視する属性名を絞る |
 
 ```js
@@ -385,7 +402,9 @@ observer.observe(target, {
 ```
 
 <Callout type="warning" title="MutationObserverを通常の状態管理に使わない">
-自分のアプリが変更している状態は、変数、React state、URL、サーバーデータで管理します。`MutationObserver` は、外部スクリプト、ブラウザ拡張、埋め込みウィジェットがDOMを書き換える場面で使います。
+  自分のアプリが変更している状態は、変数、React
+  state、URL、サーバーデータで管理します。`MutationObserver`
+  は、外部スクリプト、ブラウザ拡張、埋め込みウィジェットがDOMを書き換える場面で使います。
 </Callout>
 
 <a id="section-8"></a>
@@ -426,30 +445,30 @@ button.addEventListener('click', async () => {
 
 ブラウザ内保存には複数の選択肢があります。
 
-| 保存先 | 特徴 |
-| ------ | ---- |
-| Cookie | HTTPリクエストに自動で付く。認証やサーバー連携向き |
-| `localStorage` | 文字列の小規模保存。JavaScriptから読める |
-| `sessionStorage` | タブ単位の一時保存 |
-| IndexedDB | 大きな構造化データを非同期に保存できる |
-| Cache Storage | Service Workerと組み合わせてレスポンスをキャッシュする |
+| 保存先           | 特徴                                                   |
+| ---------------- | ------------------------------------------------------ |
+| Cookie           | HTTPリクエストに自動で付く。認証やサーバー連携向き     |
+| `localStorage`   | 文字列の小規模保存。JavaScriptから読める               |
+| `sessionStorage` | タブ単位の一時保存                                     |
+| IndexedDB        | 大きな構造化データを非同期に保存できる                 |
+| Cache Storage    | Service Workerと組み合わせてレスポンスをキャッシュする |
 
 <a id="section-9"></a>
 
 ## 早見表
 
-| やりたいこと | 使うもの |
-| ------------ | -------- |
-| APIからJSONを取得する | `fetch(url)` → `response.ok` → `response.json()` |
-| JSONをPOSTする | `fetch(url, { method: 'POST', headers, body: JSON.stringify(data) })` |
-| fetchを中断する | `AbortController` と `signal` |
-| 小さな設定値を保存する | `localStorage.setItem(key, value)` |
-| タブを閉じるまで値を保存する | `sessionStorage` |
-| オブジェクトをStorageに保存する | `JSON.stringify` / `JSON.parse` |
-| 要素が表示領域に入ったら処理する | `IntersectionObserver` |
-| DOMの追加・削除を検知する | `MutationObserver` |
-| クエリ文字列を作る・読む | `URL` / `URLSearchParams` |
-| テキストをコピーする | `navigator.clipboard.writeText(text)` |
+| やりたいこと                     | 使うもの                                                              |
+| -------------------------------- | --------------------------------------------------------------------- |
+| APIからJSONを取得する            | `fetch(url)` → `response.ok` → `response.json()`                      |
+| JSONをPOSTする                   | `fetch(url, { method: 'POST', headers, body: JSON.stringify(data) })` |
+| fetchを中断する                  | `AbortController` と `signal`                                         |
+| 小さな設定値を保存する           | `localStorage.setItem(key, value)`                                    |
+| タブを閉じるまで値を保存する     | `sessionStorage`                                                      |
+| オブジェクトをStorageに保存する  | `JSON.stringify` / `JSON.parse`                                       |
+| 要素が表示領域に入ったら処理する | `IntersectionObserver`                                                |
+| DOMの追加・削除を検知する        | `MutationObserver`                                                    |
+| クエリ文字列を作る・読む         | `URL` / `URLSearchParams`                                             |
+| テキストをコピーする             | `navigator.clipboard.writeText(text)`                                 |
 
 <a id="section-10"></a>
 

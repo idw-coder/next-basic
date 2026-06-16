@@ -11,7 +11,7 @@ ES2015で追加されたこれらは、「キーの柔軟さ」や「値の一�
 この章ではMap・Set・WeakMap・WeakSet・WeakRefの順に、それぞれの特性と実務での使いどころを整理します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-オブジェクトがあるのに Map って必要なの？Set も配列で代用できそうだけど…何が違うの？
+  オブジェクトがあるのに Map って必要なの？Set も配列で代用できそうだけど…何が違うの？
 </SpeechBubble>
 
 ## 目次
@@ -43,8 +43,8 @@ m.set(42, 'the answer');
 m.set(true, 'yes');
 
 console.log(m.get('name')); // "Alice"
-console.log(m.get(42));     // "the answer"
-console.log(m.size);        // 3
+console.log(m.get(42)); // "the answer"
+console.log(m.size); // 3
 ```
 
 コンストラクタに `[key, value]` ペアの配列を渡して初期化することもできます。
@@ -60,7 +60,7 @@ console.log(config.get('lang')); // "ja"
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-オブジェクトをキーにできるって、具体的にどういうこと？
+  オブジェクトをキーにできるって、具体的にどういうこと？
 </SpeechBubble>
 
 たとえばDOM要素をキーにして、その要素に紐づくデータを管理できます。
@@ -79,7 +79,11 @@ metadata.get(btn).clickCount++;
 
 ### キーの同値判定 — SameValueZero
 
-<Figure src="/images/deskwork_check_man_color.png" alt="キーの同値判定を確認するイメージ" maxWidth="120px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="キーの同値判定を確認するイメージ"
+  maxWidth="120px"
+/>
 
 MapのキーもSetと同じく **SameValueZero** アルゴリズムで比較されます。
 ほぼ `===` と同じですが、`NaN` 同士は同一とみなされます。
@@ -88,8 +92,8 @@ MapのキーもSetと同じく **SameValueZero** アルゴリズムで比較さ�
 const m = new Map();
 m.set(NaN, 'not a number');
 m.set(NaN, 'overwritten');
-console.log(m.size);       // 1 — NaN同士は同じキーとして扱われる
-console.log(m.get(NaN));   // "overwritten"
+console.log(m.size); // 1 — NaN同士は同じキーとして扱われる
+console.log(m.get(NaN)); // "overwritten"
 ```
 
 オブジェクトキーは **参照で比較** されます。見た目が同じでも別のオブジェクトは別のキーです。
@@ -114,26 +118,24 @@ console.log(m.get(key)); // "Alice"
 
 **構文：** `new Map()` または `new Map(iterable)`
 
-| メソッド              | 説明                             | 戻り値                |
-| --------------------- | -------------------------------- | --------------------- |
-| `set(key, value)`     | キーと値のペアを追加・上書き     | Map自身               |
-| `get(key)`            | キーに対応する値を取得           | 値 or `undefined`     |
-| `has(key)`            | キーが存在するか                 | `boolean`             |
-| `delete(key)`         | キーと値のペアを削除             | 削除できたら `true`   |
-| `clear()`             | 全要素を削除                     | `undefined`           |
-| `forEach(fn)`         | 各ペアに対してコールバック実行   | `undefined`           |
+| メソッド          | 説明                           | 戻り値              |
+| ----------------- | ------------------------------ | ------------------- |
+| `set(key, value)` | キーと値のペアを追加・上書き   | Map自身             |
+| `get(key)`        | キーに対応する値を取得         | 値 or `undefined`   |
+| `has(key)`        | キーが存在するか               | `boolean`           |
+| `delete(key)`     | キーと値のペアを削除           | 削除できたら `true` |
+| `clear()`         | 全要素を削除                   | `undefined`         |
+| `forEach(fn)`     | 各ペアに対してコールバック実行 | `undefined`         |
 
 `set` はMap自身を返すので、メソッドチェーンが可能です。
 
 ```js
-const m = new Map()
-  .set('a', 1)
-  .set('b', 2)
-  .set('c', 3);
+const m = new Map().set('a', 1).set('b', 2).set('c', 3);
 ```
 
 <Callout type="warning">
-`get` で存在しないキーを参照すると `undefined` が返ります。値として `undefined` を格納している場合と区別がつかないため、キーの存在確認には必ず `has` を使いましょう。
+  `get` で存在しないキーを参照すると `undefined` が返ります。値として `undefined`
+  を格納している場合と区別がつかないため、キーの存在確認には必ず `has` を使いましょう。
 </Callout>
 
 ### Mapはイテラブル
@@ -161,37 +163,42 @@ for (const [key, value] of m) {
 `keys()`・`values()`・`entries()` の各メソッドでイテレータを取得することもできます。
 
 ```js
-console.log([...m.keys()]);    // ["name", "age", "city"]
-console.log([...m.values()]);  // ["Alice", 25, "Tokyo"]
+console.log([...m.keys()]); // ["name", "age", "city"]
+console.log([...m.values()]); // ["Alice", 25, "Tokyo"]
 console.log([...m.entries()]); // [["name", "Alice"], ["age", 25], ["city", "Tokyo"]]
 ```
 
 ### Object との使い分け
 
-<Figure src="/images/fork_suit_man_color.png" alt="ObjectとMapの使い分けを考えるイメージ" maxWidth="120px" />
+<Figure
+  src="/images/fork_suit_man_color.png"
+  alt="ObjectとMapの使い分けを考えるイメージ"
+  maxWidth="120px"
+/>
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-結局、普通のオブジェクトと Map はどう使い分ければいいの？
+  結局、普通のオブジェクトと Map はどう使い分ければいいの？
 </SpeechBubble>
 
-| 観点                     | Object (`{}`)                              | Map                                    |
-| ------------------------ | ------------------------------------------ | -------------------------------------- |
-| キーに使える型           | 文字列・Symbol のみ                        | あらゆる型                             |
-| キーの順序               | 基本は挿入順だが数値キーが先に来る         | 常に挿入順                             |
-| サイズの取得             | `Object.keys(obj).length`                  | `map.size`（O(1)）                     |
-| イテレーション           | `Object.entries()` 等で変換が必要          | そのまま `for...of` で回せる           |
-| プロトタイプ汚染のリスク | `toString` 等の既存キーと衝突する可能性    | キー空間が完全にクリーン               |
-| JSON との相互変換        | `JSON.stringify` でそのまま変換可能        | 直接変換できない（手動変換が必要）     |
-| パフォーマンス           | 少量のデータ、静的な構造に最適化           | 頻繁な追加・削除に強い                 |
+| 観点                     | Object (`{}`)                           | Map                                |
+| ------------------------ | --------------------------------------- | ---------------------------------- |
+| キーに使える型           | 文字列・Symbol のみ                     | あらゆる型                         |
+| キーの順序               | 基本は挿入順だが数値キーが先に来る      | 常に挿入順                         |
+| サイズの取得             | `Object.keys(obj).length`               | `map.size`（O(1)）                 |
+| イテレーション           | `Object.entries()` 等で変換が必要       | そのまま `for...of` で回せる       |
+| プロトタイプ汚染のリスク | `toString` 等の既存キーと衝突する可能性 | キー空間が完全にクリーン           |
+| JSON との相互変換        | `JSON.stringify` でそのまま変換可能     | 直接変換できない（手動変換が必要） |
+| パフォーマンス           | 少量のデータ、静的な構造に最適化        | 頻繁な追加・削除に強い             |
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-迷ったら「キーが文字列で、構造が固定なら Object」「キーが動的・非文字列、頻繁に追加削除するなら Map」と覚えると実務で困らないよ。
+  迷ったら「キーが文字列で、構造が固定なら Object」「キーが動的・非文字列、頻繁に追加削除するなら
+  Map」と覚えると実務で困らないよ。
 </SpeechBubble>
 
 #### 文字列キーでも Map を選ぶケース
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-キーが全部文字列なら、Object で十分じゃない？わざわざ Map にする意味あるの？
+  キーが全部文字列なら、Object で十分じゃない？わざわざ Map にする意味あるの？
 </SpeechBubble>
 
 キーが文字列だけでも、**キーの中身が事前に決まっていない（動的な）場合**はMapの方が安全で便利です。
@@ -212,33 +219,37 @@ m.set('toString', 'safe'); // 何の問題もない
 
 ```js
 const obj = { a: 1, b: 2, c: 3 };
-const map = new Map([['a', 1], ['b', 2], ['c', 3]]);
+const map = new Map([
+  ['a', 1],
+  ['b', 2],
+  ['c', 3],
+]);
 
 // サイズ取得
 Object.keys(obj).length; // 3（毎回キー配列を生成）
-map.size;                // 3（プロパティアクセスだけ、O(1)）
+map.size; // 3（プロパティアクセスだけ、O(1)）
 
 // キーの存在確認
-'a' in obj;              // true（プロトタイプチェーンも見てしまう）
+'a' in obj; // true（プロトタイプチェーンも見てしまう）
 Object.hasOwn(obj, 'a'); // true（安全だが冗長）
-map.has('a');             // true（シンプル）
+map.has('a'); // true（シンプル）
 
 // 削除
-delete obj.b;            // true だが、もとから無いキーでも true
-map.delete('b');         // true（実際に削除できたときだけ true）
+delete obj.b; // true だが、もとから無いキーでも true
+map.delete('b'); // true（実際に削除できたときだけ true）
 ```
 
 実務での判断基準をまとめると次のようになります。
 
-| シナリオ                                         | 選択   | 理由                                           |
-| ------------------------------------------------ | ------ | ---------------------------------------------- |
+| シナリオ                                           | 選択   | 理由                                           |
+| -------------------------------------------------- | ------ | ---------------------------------------------- |
 | 構造が固定（`{ name, age }` のような型付きデータ） | Object | TypeScriptの型推論が効く、JSONとの親和性が高い |
-| キーが動的（ユーザー入力、辞書的な用途）         | Map    | プロトタイプ汚染の心配がない、メソッドが便利   |
-| 頻繁に追加・削除を繰り返す                       | Map    | パフォーマンス面で有利                         |
-| サイズを頻繁にチェックする                       | Map    | `size` がO(1)で取得できる                      |
+| キーが動的（ユーザー入力、辞書的な用途）           | Map    | プロトタイプ汚染の心配がない、メソッドが便利   |
+| 頻繁に追加・削除を繰り返す                         | Map    | パフォーマンス面で有利                         |
+| サイズを頻繁にチェックする                         | Map    | `size` がO(1)で取得できる                      |
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-「キーが文字列か否か」より「構造が固定か動的か」で選ぶのが実務的なコツだね。動的なキー・値ペアを扱うなら、文字列キーでもMapの方が自然だよ。
+  「キーが文字列か否か」より「構造が固定か動的か」で選ぶのが実務的なコツだね。動的なキー・値ペアを扱うなら、文字列キーでもMapの方が自然だよ。
 </SpeechBubble>
 
 ### 実務でよく使うパターン
@@ -277,7 +288,9 @@ console.log(counter);
 ```
 
 <Callout type="note">
-`counter.get(word) ?? 0` は、キーが未登録（`undefined`）なら `0` を使う、というイディオムです。Objectで同じことをすると `obj[word] = (obj[word] || 0) + 1` と書きますが、`||` は `0` も偽値として扱ってしまうため `??`（Nullish Coalescing）の方が安全です。
+  `counter.get(word) ?? 0` は、キーが未登録（`undefined`）なら `0`
+  を使う、というイディオムです。Objectで同じことをすると `obj[word] = (obj[word] || 0) + 1`
+  と書きますが、`||` は `0` も偽値として扱ってしまうため `??`（Nullish Coalescing）の方が安全です。
 </Callout>
 
 #### キャッシュ・メモ化
@@ -451,30 +464,31 @@ alice = null; // alice への参照がなくなる
 
 弱い参照であるがゆえの制約があります。
 
-| できること | できないこと |
-|---|---|
-| `get(key)` / `set(key, value)` / `has(key)` / `delete(key)` | `size` の取得 |
-| オブジェクトキーの使用 | `for...of` による列挙 |
-| | `keys()` / `values()` / `entries()` |
-| | 文字列・数値をキーにすること |
+| できること                                                  | できないこと                        |
+| ----------------------------------------------------------- | ----------------------------------- |
+| `get(key)` / `set(key, value)` / `has(key)` / `delete(key)` | `size` の取得                       |
+| オブジェクトキーの使用                                      | `for...of` による列挙               |
+|                                                             | `keys()` / `values()` / `entries()` |
+|                                                             | 文字列・数値をキーにすること        |
 
 GCのタイミングは予測できないため、「今いくつ入っているか」を知る手段がありません。列挙もできません。
 
 ### WeakMapの実務での使いどころ
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-普通の Map を使って、不要になったら `delete` すればいいのでは？
+  普通の Map を使って、不要になったら `delete` すればいいのでは？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-手動で `delete` するのは漏れやすい。WeakMap なら「不要になったら勝手に消える」から、メモリリークのリスクがそもそもないんだ。
+  手動で `delete` するのは漏れやすい。WeakMap
+  なら「不要になったら勝手に消える」から、メモリリークのリスクがそもそもないんだ。
 </SpeechBubble>
 
-| ユースケース | 説明 |
-|---|---|
-| **DOM要素へのメタデータ付与** | 要素が削除されたら自動的にメタデータも消える |
-| **プライベートデータの格納** | クラスインスタンスに外部からアクセスできない情報を紐づける |
-| **キャッシュ** | 元のオブジェクトが不要になったらキャッシュも自動解放 |
+| ユースケース                  | 説明                                                       |
+| ----------------------------- | ---------------------------------------------------------- |
+| **DOM要素へのメタデータ付与** | 要素が削除されたら自動的にメタデータも消える               |
+| **プライベートデータの格納**  | クラスインスタンスに外部からアクセスできない情報を紐づける |
+| **キャッシュ**                | 元のオブジェクトが不要になったらキャッシュも自動解放       |
 
 ```js
 // DOM要素にメタデータを紐づける
@@ -509,7 +523,8 @@ WeakSetの制約もWeakMapと同様で、`size`・列挙・イテレーション
 ## WeakRef・FinalizationRegistry — 弱参照と後始末
 
 <Callout type="column" title="上級者向けの機能">
-WeakRef と FinalizationRegistry は日常的に使う機能ではありません。ライブラリやフレームワークの内部実装で使われることがほとんどで、アプリケーションコードで直接使う場面はまれです。ここでは「こういうものがある」という理解にとどめれば十分です。
+  WeakRef と FinalizationRegistry
+  は日常的に使う機能ではありません。ライブラリやフレームワークの内部実装で使われることがほとんどで、アプリケーションコードで直接使う場面はまれです。ここでは「こういうものがある」という理解にとどめれば十分です。
 </Callout>
 
 **WeakRef** は任意のオブジェクトへの弱い参照を作ります。WeakMapと違い、キー・値のペアではなく、単体のオブジェクトへの弱い参照です。

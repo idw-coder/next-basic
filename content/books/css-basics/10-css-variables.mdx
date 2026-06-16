@@ -7,12 +7,16 @@ order: 10
 **CSS変数（カスタムプロパティ）**を使うと、色・サイズ・余白などの値を一箇所で定義して使い回せます。「この青をサイト全体で少し暗くしたい」という変更が、値を1つ書き換えるだけで完了します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-同じ色をあちこちにベタ書きしてて、変更のたびに全部直すのが大変…一箇所で管理できないの？
+  同じ色をあちこちにベタ書きしてて、変更のたびに全部直すのが大変…一箇所で管理できないの？
 </SpeechBubble>
 
 まさにその課題を解決するのがCSS変数です。Sassの変数（`$color`）と似ていますが、CSS変数は**ブラウザが実行時に解決する**ため、JavaScriptからの操作やメディアクエリでの切り替えが可能です。
 
-<Figure src="/images/planning_suit_man_color.png" alt="CSS変数でデザイントークンを設計しているイメージ" maxWidth="260px" />
+<Figure
+  src="/images/planning_suit_man_color.png"
+  alt="CSS変数でデザイントークンを設計しているイメージ"
+  maxWidth="260px"
+/>
 
 ---
 
@@ -96,11 +100,11 @@ CSS変数はCSSのカスケードに従い、**定義した要素とその子孫
 
 ```css
 :root {
-  --btn-bg: #2563eb;       /* ページ全体で有効 */
+  --btn-bg: #2563eb; /* ページ全体で有効 */
 }
 
 .btn-danger {
-  --btn-bg: #dc2626;       /* このクラスの中だけ上書き */
+  --btn-bg: #dc2626; /* このクラスの中だけ上書き */
 }
 
 .btn {
@@ -110,7 +114,7 @@ CSS変数はCSSのカスケードに従い、**定義した要素とその子孫
 ```
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-Sassの変数（`$color`）はビルド時に解決されて固定値になるけど、CSS変数はブラウザが実行時に解決する。だからメディアクエリで値を切り替えたり、JavaScriptから動的に変えたりできるんだ。これが最大の違いだよ。
+  Sassの変数（`$color`）はビルド時に解決されて固定値になるけど、CSS変数はブラウザが実行時に解決する。だからメディアクエリで値を切り替えたり、JavaScriptから動的に変えたりできるんだ。これが最大の違いだよ。
 </SpeechBubble>
 
 ---
@@ -157,7 +161,9 @@ Sassの変数（`$color`）はビルド時に解決されて固定値になる�
 ```
 
 <Callout type="note" title="命名規則のコツ">
-CSS変数の命名は `--カテゴリ-用途` の形が見通しやすいです。`--color-primary`、`--spacing-md`、`--radius-lg` のように。「この値を変えると何に影響するか」が名前から分かるのが理想です。
+  CSS変数の命名は `--カテゴリ-用途`
+  の形が見通しやすいです。`--color-primary`、`--spacing-md`、`--radius-lg`
+  のように。「この値を変えると何に影響するか」が名前から分かるのが理想です。
 </Callout>
 
 ---
@@ -197,7 +203,7 @@ body {
 ```
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-すごい…変数の値を変えるだけで全部切り替わるの？コンポーネント側は何も触らなくていいんだ。
+  すごい…変数の値を変えるだけで全部切り替わるの？コンポーネント側は何も触らなくていいんだ。
 </SpeechBubble>
 
 そのとおりです。コンポーネント側は `var(--color-bg)` と書いておくだけで、ライトモードでもダークモードでも適切な色が適用されます。
@@ -224,7 +230,8 @@ document.documentElement.classList.toggle('dark');
 ```
 
 <Callout type="info" title="Tailwind CSSとCSS変数">
-Tailwind CSSやshadcn/uiなどのモダンなフレームワークも、内部的にCSS変数を活用してテーマカラーを管理しています。CSS変数の仕組みを理解しておくと、フレームワークのカスタマイズも容易になります。
+  Tailwind
+  CSSやshadcn/uiなどのモダンなフレームワークも、内部的にCSS変数を活用してテーマカラーを管理しています。CSS変数の仕組みを理解しておくと、フレームワークのカスタマイズも容易になります。
 </Callout>
 
 ---
@@ -256,7 +263,11 @@ CSS変数をコンポーネントの「外部インターフェース」とし�
 }
 ```
 
-<Figure src="/images/deskwork_check_man_color.png" alt="コンポーネント設計を確認するイメージ" maxWidth="180px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="コンポーネント設計を確認するイメージ"
+  maxWidth="180px"
+/>
 
 コンポーネントの内部CSSには触れず、**変数だけを上書きしてバリエーションを作れる**のがポイントです。
 
@@ -316,12 +327,20 @@ DevToolsで値が空になっていたら、変数名のスペルを確認しま
 
 ```css
 /* ❌ 数値だけの変数をcalcでpxに変換しようとする */
-:root { --spacing: 16; }
-.box { padding: calc(var(--spacing) * 1px); } /* 動くがやめた方がいい */
+:root {
+  --spacing: 16;
+}
+.box {
+  padding: calc(var(--spacing) * 1px);
+} /* 動くがやめた方がいい */
 
 /* ⭕ 最初から単位付きで定義する */
-:root { --spacing: 16px; }
-.box { padding: var(--spacing); }
+:root {
+  --spacing: 16px;
+}
+.box {
+  padding: var(--spacing);
+}
 ```
 
 ---

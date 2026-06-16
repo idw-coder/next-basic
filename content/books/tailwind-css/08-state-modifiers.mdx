@@ -9,14 +9,19 @@ order: 8
 CSSでいう `:hover` や `:focus` などの**擬似クラス**を、`hover:` `focus:` のような**プレフィックス**としてクラス名の先頭に付けるだけで使えます。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-ホバーで色を変えたいだけなのに、わざわざCSSファイルに `:hover` を書くのは面倒だなあ…。
+  ホバーで色を変えたいだけなのに、わざわざCSSファイルに `:hover` を書くのは面倒だなあ…。
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSファイルを開かずにHTML（JSX）の中で完結するよ。
+  Tailwindなら `hover:bg-blue-700`
+  のようにクラスを足すだけ。CSSファイルを開かずにHTML（JSX）の中で完結するよ。
 </SpeechBubble>
 
-<Figure src="/images/relief_man_color.png" alt="ホバーやフォーカスのインタラクションが完成したときの安心感" maxWidth="220px" />
+<Figure
+  src="/images/relief_man_color.png"
+  alt="ホバーやフォーカスのインタラクションが完成したときの安心感"
+  maxWidth="220px"
+/>
 
 ---
 
@@ -31,7 +36,7 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 - [group / group-hover: — 親要素のホバーに連動](#section-7)
 - [peer / peer-checked: — 兄弟要素の状態に連動](#section-8)
 - [focus-within: — 子要素がフォーカスされたとき](#section-9)
-- [aria-* / data-* 修飾子 — 属性に応じたスタイル](#section-10)
+- [aria-_ / data-_ 修飾子 — 属性に応じたスタイル](#section-10)
 - [修飾子は組み合わせて重ねられる](#section-11)
 - [よくある状態修飾子 早見表](#section-12)
 - [よくあるハマりどころ](#section-13)
@@ -65,7 +70,8 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 つまり Tailwind が裏側で `:hover` 付きのCSSを生成してくれているわけです。自分でセレクタを書く必要はありません。同じ要領で、`focus:` `active:` `disabled:` などあらゆる状態に対応できます。
 
 <Callout type="note" title="ベース → 状態の順で書く">
-`bg-blue-600 hover:bg-blue-700` のように、**通常時のスタイルを先、状態時のスタイルを後**に書くのが読みやすい慣例です。CSSの詳細度ではなく記述順で上書きされるわけではありませんが、人間が読むときに「通常はこう、ホバーでこう変わる」と追いやすくなります。
+  `bg-blue-600 hover:bg-blue-700`
+  のように、**通常時のスタイルを先、状態時のスタイルを後**に書くのが読みやすい慣例です。CSSの詳細度ではなく記述順で上書きされるわけではありませんが、人間が読むときに「通常はこう、ホバーでこう変わる」と追いやすくなります。
 </Callout>
 
 ---
@@ -78,9 +84,7 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 
 ```html
 <!-- ホバーで背景色を変える -->
-<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-  ボタン
-</button>
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">ボタン</button>
 
 <!-- ホバーで下線 -->
 <a class="text-blue-600 hover:underline">リンク</a>
@@ -97,7 +101,10 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
     <button className="rounded-md border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-600 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
       アウトライン
     </button>
-    <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white opacity-50 disabled:cursor-not-allowed" disabled>
+    <button
+      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white opacity-50 disabled:cursor-not-allowed"
+      disabled
+    >
       無効
     </button>
   </div>
@@ -106,7 +113,9 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 状態修飾子は単体で覚えるより、ボタンや入力欄の完成形として覚えると実務で使いやすくなります。ボタンなら `hover:`、`focus-visible:`、`disabled:` を最初からセットで考えると、マウス・キーボード・無効状態のどれにも対応できます。
 
 <Callout type="warning" title="hover: はタッチ端末では効きにくい">
-スマホやタブレットには「マウスを乗せる」操作がありません。`hover:` だけに頼った重要な情報の出し分け（ホバーで初めて表示されるメニューなど）は、タッチユーザーが操作できなくなります。重要な操作は `hover:` 以外でも到達できるように設計しましょう。
+  スマホやタブレットには「マウスを乗せる」操作がありません。`hover:`
+  だけに頼った重要な情報の出し分け（ホバーで初めて表示されるメニューなど）は、タッチユーザーが操作できなくなります。重要な操作は
+  `hover:` 以外でも到達できるように設計しましょう。
 </Callout>
 
 ---
@@ -131,7 +140,10 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 ```
 
 <Callout type="note" title="focus: と focus-visible: の違い">
-`focus:` は**クリックでもフォーカスリングが出ます**。`focus-visible:` は**キーボード操作時のみ**表示されます。マウスクリックのたびにリングが出ると煩わしいので、ボタンには `focus-visible:` を使うのがモダンなプラクティスです。一方、入力欄は `focus:` でもよいでしょう（クリックで選択したことが視覚的にわかるため）。
+  `focus:` は**クリックでもフォーカスリングが出ます**。`focus-visible:`
+  は**キーボード操作時のみ**表示されます。マウスクリックのたびにリングが出ると煩わしいので、ボタンには
+  `focus-visible:` を使うのがモダンなプラクティスです。一方、入力欄は `focus:`
+  でもよいでしょう（クリックで選択したことが視覚的にわかるため）。
 </Callout>
 
 ---
@@ -143,9 +155,7 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 押している間だけ適用されます。`scale` と組み合わせると「押し込んだ」感触を出せます。
 
 ```html
-<button class="bg-blue-600 active:scale-95 transition-transform">
-  クリックで縮む
-</button>
+<button class="bg-blue-600 active:scale-95 transition-transform">クリックで縮む</button>
 ```
 
 ---
@@ -193,20 +203,18 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 ## group / group-hover: — 親要素のホバーに連動
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-カード全体にマウスを乗せたら、中のタイトルの色も一緒に変えたい…。これってJavaScriptが必要？
+  カード全体にマウスを乗せたら、中のタイトルの色も一緒に変えたい…。これってJavaScriptが必要？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-いや、`group` を使えばCSSだけでできるよ。親に `group`、子に `group-hover:` を付けるだけ。
+  いや、`group` を使えばCSSだけでできるよ。親に `group`、子に `group-hover:` を付けるだけ。
 </SpeechBubble>
 
 親要素にマウスを乗せたとき、**子要素**のスタイルを変えたいケースです。親に `group` を付け、子で `group-hover:` を使います。カードのホバーエフェクトの定番です。
 
 ```html
 <div class="group border rounded p-4 hover:bg-blue-50 transition-colors">
-  <h3 class="font-semibold group-hover:text-blue-600 transition-colors">
-    タイトル
-  </h3>
+  <h3 class="font-semibold group-hover:text-blue-600 transition-colors">タイトル</h3>
   <p class="text-gray-500 group-hover:text-gray-700">
     親カードにホバーすると、この文字色も一緒に変わる
   </p>
@@ -215,7 +223,9 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 
 <TailwindPreview title="group-hover でカード全体に反応させる">
   <div className="group max-w-sm rounded-md border border-slate-200 bg-white p-4 transition-colors hover:border-blue-200 hover:bg-blue-50">
-    <p className="text-xs font-semibold uppercase text-slate-400 transition-colors group-hover:text-blue-500">Article</p>
+    <p className="text-xs font-semibold uppercase text-slate-400 transition-colors group-hover:text-blue-500">
+      Article
+    </p>
     <h3 className="mt-1 text-base font-semibold text-slate-900 transition-colors group-hover:text-blue-700">
       カードに触れるとタイトルも変わる
     </h3>
@@ -245,8 +255,8 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 ```
 
 <Callout type="note" title="group と peer の違い">
-- **group** … 「**親**にホバー/フォーカスしたら**子**を変える」（入れ子の関係）
-- **peer** … 「ある要素の状態に応じて**兄弟**を変える」（並びの関係。`peer` は対象より前に置く）
+  - **group** … 「**親**にホバー/フォーカスしたら**子**を変える」（入れ子の関係） - **peer** …
+  「ある要素の状態に応じて**兄弟**を変える」（並びの関係。`peer` は対象より前に置く）
 </Callout>
 
 ---
@@ -267,15 +277,13 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 
 <a id="section-10"></a>
 
-## aria-* / data-* 修飾子 — 属性に応じたスタイル
+## aria-_ / data-_ 修飾子 — 属性に応じたスタイル
 
 モダンなTailwindでは、`aria-*` 属性や `data-*` 属性の値に応じてスタイルを切り替えられます。アクセシビリティ対応や、状態を `data-*` で管理するUIライブラリ（Radix UIなど）との相性が良い機能です。
 
 ```html
 <!-- aria-expanded="true" のときだけ回転 -->
-<button aria-expanded="true" class="aria-expanded:rotate-180 transition-transform">
-  ▼
-</button>
+<button aria-expanded="true" class="aria-expanded:rotate-180 transition-transform">▼</button>
 
 <!-- data-state="active" のとき下線 -->
 <div data-state="active" class="data-[state=active]:underline">タブ</div>
@@ -303,19 +311,19 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 
 ## よくある状態修飾子 早見表
 
-| 修飾子            | 適用されるタイミング                 | 対応するCSS擬似クラス |
-| ----------------- | ------------------------------------ | --------------------- |
-| `hover:`          | マウスを乗せている間                 | `:hover`              |
-| `focus:`          | フォーカスされている間               | `:focus`              |
-| `focus-visible:`  | キーボードでフォーカスされた間       | `:focus-visible`      |
-| `focus-within:`   | 内側の要素がフォーカスされた間       | `:focus-within`       |
-| `active:`         | クリック/タップしている瞬間          | `:active`             |
-| `disabled:`       | `disabled` 属性が付いているとき      | `:disabled`           |
-| `checked:`        | チェックされているとき               | `:checked`            |
-| `first:` / `last:`| 最初の / 最後の子要素                | `:first-child` 等     |
-| `odd:` / `even:`  | 奇数番目 / 偶数番目                  | `:nth-child(odd)` 等  |
-| `group-hover:`    | 親（`group`）にホバーしたとき        | `.group:hover &`      |
-| `peer-checked:`   | 兄弟（`peer`）がチェックされたとき    | `.peer:checked ~ &`   |
+| 修飾子             | 適用されるタイミング               | 対応するCSS擬似クラス |
+| ------------------ | ---------------------------------- | --------------------- |
+| `hover:`           | マウスを乗せている間               | `:hover`              |
+| `focus:`           | フォーカスされている間             | `:focus`              |
+| `focus-visible:`   | キーボードでフォーカスされた間     | `:focus-visible`      |
+| `focus-within:`    | 内側の要素がフォーカスされた間     | `:focus-within`       |
+| `active:`          | クリック/タップしている瞬間        | `:active`             |
+| `disabled:`        | `disabled` 属性が付いているとき    | `:disabled`           |
+| `checked:`         | チェックされているとき             | `:checked`            |
+| `first:` / `last:` | 最初の / 最後の子要素              | `:first-child` 等     |
+| `odd:` / `even:`   | 奇数番目 / 偶数番目                | `:nth-child(odd)` 等  |
+| `group-hover:`     | 親（`group`）にホバーしたとき      | `.group:hover &`      |
+| `peer-checked:`    | 兄弟（`peer`）がチェックされたとき | `.peer:checked ~ &`   |
 
 ---
 
@@ -323,7 +331,11 @@ Tailwindなら `hover:bg-blue-700` のようにクラスを足すだけ。CSSフ
 
 ## よくあるハマりどころ
 
-<Figure src="/images/deskwork_check_man_color.png" alt="状態修飾子のハマりどころを確認するイメージ" maxWidth="120px" />
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="状態修飾子のハマりどころを確認するイメージ"
+  maxWidth="120px"
+/>
 
 **1. `transition-` を付け忘れてカクつく**
 
