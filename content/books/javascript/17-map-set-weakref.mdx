@@ -1,12 +1,19 @@
 ---
-title: 'Map・Set・WeakRef — コレクション型の使いどころ'
+title: 'Map・Set・WeakRef — コレクションの使いどころ'
 description: 'Map・Set・WeakMap・WeakSetの特性と使いどころ、Objectとの違い、WeakRefとFinalizationRegistryを紹介します。'
 order: 17
 ---
 
-JavaScriptには、オブジェクトや配列とは別に **Map** と **Set** という組み込みのコレクション型があります。
-ES2015で追加されたこれらは、「キーの柔軟さ」や「値の一意性」といった、
-従来のオブジェクト・配列では扱いにくかった要件をシンプルに解決します。
+JavaScriptの仕様では、**Map**・**Set**・**WeakMap**・**WeakSet** は
+[Keyed Collections](https://tc39.es/ecma262/multipage/keyed-collections.html)（キー付きコレクション）として整理されています。
+MDNのJavaScriptガイドにも
+[キー付きコレクション](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Keyed_collections)
+という章があります。
+
+この章で扱うコレクションとは、複数の値、またはキーと値のペアをまとめて保持するためのオブジェクトです。
+Mapはキーと値のペアを保持し、Setは重複しない値の集まりを保持します。
+ES2015で追加されたMapとSetは、「任意の値をキーにできる」「重複しない値だけを保持する」といった、
+従来のオブジェクト・配列では扱いにくかった要件を明確なAPIで解決します。
 
 この章ではMap・Set・WeakMap・WeakSet・WeakRefの順に、それぞれの特性と実務での使いどころを整理します。
 
