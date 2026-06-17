@@ -264,73 +264,6 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-const CATEGORY_COLORS: Record<string, { border: string; hoverBg: string }> = {
-  'html-basic': {
-    border: 'border-orange-400',
-    hoverBg: 'group-hover:bg-orange-50 dark:group-hover:bg-orange-500/10',
-  },
-  'css-basic': {
-    border: 'border-blue-400',
-    hoverBg: 'group-hover:bg-blue-50 dark:group-hover:bg-blue-500/10',
-  },
-  'javascript-basic': {
-    border: 'border-yellow-400',
-    hoverBg: 'group-hover:bg-amber-50 dark:group-hover:bg-amber-500/10',
-  },
-  'react-basic': {
-    border: 'border-cyan-400',
-    hoverBg: 'group-hover:bg-cyan-50 dark:group-hover:bg-cyan-500/10',
-  },
-  'vue-basic': {
-    border: 'border-emerald-400',
-    hoverBg: 'group-hover:bg-emerald-50 dark:group-hover:bg-emerald-500/10',
-  },
-  'nodejs-basic': {
-    border: 'border-green-500',
-    hoverBg: 'group-hover:bg-green-50 dark:group-hover:bg-green-500/10',
-  },
-  nextjs: {
-    border: 'border-gray-500',
-    hoverBg: 'group-hover:bg-gray-100 dark:group-hover:bg-gray-500/10',
-  },
-  'git-basic': {
-    border: 'border-rose-500',
-    hoverBg: 'group-hover:bg-rose-50 dark:group-hover:bg-rose-500/10',
-  },
-  'aws-basic': {
-    border: 'border-orange-500',
-    hoverBg: 'group-hover:bg-orange-50 dark:group-hover:bg-orange-500/10',
-  },
-  'nginx-basic': {
-    border: 'border-teal-500',
-    hoverBg: 'group-hover:bg-teal-50 dark:group-hover:bg-teal-500/10',
-  },
-  'ts-general': {
-    border: 'border-indigo-400',
-    hoverBg: 'group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10',
-  },
-  'security-general': {
-    border: 'border-red-500',
-    hoverBg: 'group-hover:bg-red-50 dark:group-hover:bg-red-500/10',
-  },
-  'sql-basic': {
-    border: 'border-fuchsia-500',
-    hoverBg: 'group-hover:bg-fuchsia-50 dark:group-hover:bg-fuchsia-500/10',
-  },
-  'cs-basic': {
-    border: 'border-purple-400',
-    hoverBg: 'group-hover:bg-purple-50 dark:group-hover:bg-purple-500/10',
-  },
-  docker: {
-    border: 'border-sky-400',
-    hoverBg: 'group-hover:bg-sky-50 dark:group-hover:bg-sky-500/10',
-  },
-  linux: {
-    border: 'border-lime-500',
-    hoverBg: 'group-hover:bg-lime-50 dark:group-hover:bg-lime-500/10',
-  },
-};
-
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
     date: '2026/05/26',
@@ -389,209 +322,175 @@ export default async function Home() {
   const totalCount = Object.values(counts).reduce((sum, c) => sum + c, 0);
   const bookList = getAllBooks();
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+    <div className="bg-[#fbf2e9] text-[#2f302f]">
       {/* ヒーロー */}
-      <section className="mb-12 md:mb-16 relative">
-        <svg
-          className="absolute left-1/2 top-0 -translate-x-1/2 w-screen h-full pointer-events-none select-none"
-          aria-hidden="true"
-          viewBox="0 0 400 300"
-          preserveAspectRatio="none"
-          fill="none"
-        >
-          <path
-            d="M -10 285 C 120 278 280 180 410 15 L 410 55 C 280 220 120 295 -10 300 Z"
-            fill="#e5e7eb"
-            opacity="0.45"
-          />
-        </svg>
-        <div
-          className="absolute top-2 right-6 sm:right-14 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-primary/10 pointer-events-none"
-          aria-hidden="true"
+      <section className="relative overflow-hidden px-4 pt-8 pb-8 md:pt-16 md:pb-20">
+        <Image
+          src="/images/creative_color.png"
+          alt=""
+          width={738}
+          height={452}
+          priority
+          className="pointer-events-none absolute left-1/2 top-4 hidden w-[52rem] max-w-none -translate-x-1/2 rotate-[15deg] opacity-[0.06] blur-[2px] saturate-75 lg:block"
         />
-        <div
-          className="absolute top-1/3 right-1 sm:right-4 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/8 pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute bottom-8 right-1/4 w-6 h-6 rounded-full bg-amber-200/30 pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute top-1 left-1/4 w-4 h-4 rounded-full bg-gray-300/50 pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute bottom-1/3 left-4 sm:left-8 w-7 h-7 rounded-full bg-primary/8 pointer-events-none"
-          aria-hidden="true"
-        />
-        <div className="relative flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-4 sm:gap-8">
-          <div className="flex justify-center sm:justify-start">
-            <Image
-              src="/inpiration_man_color.png"
-              alt="ひらめきを得て学習している人のイラスト"
-              width={588}
-              height={761}
-              priority
-              className="w-full max-w-[120px] sm:max-w-[160px] md:max-w-[200px] h-auto -scale-x-100"
-            />
-          </div>
-          <div className="text-center sm:text-left sm:flex-1 sm:max-w-xl">
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground mb-3 sm:mb-4 md:text-5xl leading-tight">
-              ウェブ知識を
-              <span className="inline-block">
-                <span className="text-red-500">スキマ時間</span>で学習
-              </span>
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground md:text-lg mb-3 sm:mb-4">
-              1問30秒から。4択クイズでサクッと力試し
+        <div className="relative mx-auto grid max-w-6xl gap-5 md:gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div className="relative z-10 text-center lg:text-left">
+            <p className="mb-3 inline-flex rounded-full border border-[#df796b]/30 bg-white/70 px-3 py-1 text-[11px] font-bold text-[#df796b] sm:text-xs">
+              1問30秒から始める基礎練習
             </p>
-            <div className="relative flex flex-wrap justify-center sm:justify-start gap-1.5 mb-4 sm:mb-6">
-              <Sparkles
-                className="absolute -top-2.5 -left-1 sm:-left-3 size-3.5 sm:size-4 text-amber-400 pointer-events-none"
-                aria-hidden="true"
-              />
-              <Sparkles
-                className="absolute -top-1 right-4 sm:right-auto sm:left-[70%] size-3 sm:size-3.5 text-red-400/25 pointer-events-none -rotate-12"
-                aria-hidden="true"
-              />
-              <Sparkles
-                className="absolute top-1/2 -right-1 sm:right-auto sm:left-[90%] size-3.5 sm:size-4 text-amber-300/60 pointer-events-none rotate-6"
-                aria-hidden="true"
-              />
-              <Sparkles
-                className="absolute -bottom-2 left-[30%] sm:left-[45%] size-3 sm:size-3.5 text-red-400/30 pointer-events-none rotate-12"
-                aria-hidden="true"
-              />
-              {[
-                { name: 'HTML', cls: 'text-orange-600 bg-orange-50 border-orange-200' },
-                { name: 'CSS', cls: 'text-blue-600 bg-blue-50 border-blue-200' },
-                { name: 'JavaScript', cls: 'text-amber-600 bg-amber-50 border-amber-200' },
-                { name: 'React', cls: 'text-cyan-600 bg-cyan-50 border-cyan-200' },
-                { name: 'Vue', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-                { name: 'Node.js', cls: 'text-green-600 bg-green-50 border-green-200' },
-                { name: 'TypeScript', cls: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
-                { name: 'AWS', cls: 'text-amber-700 bg-amber-50 border-amber-200' },
-                { name: 'Git', cls: 'text-rose-600 bg-rose-50 border-rose-200' },
-                { name: 'Next.js', cls: 'text-slate-700 bg-slate-50 border-slate-200' },
-                { name: 'Docker', cls: 'text-sky-600 bg-sky-50 border-sky-200' },
-                { name: 'Linux', cls: 'text-lime-600 bg-lime-50 border-lime-200' },
-                { name: 'SQL', cls: 'text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200' },
-              ].map((tag) => (
-                <span
-                  key={tag.name}
-                  className={`text-[10px] sm:text-xs font-semibold rounded-full px-2 py-0.5 sm:px-2.5 sm:py-0.5 border ${tag.cls}`}
-                >
-                  {tag.name}
-                </span>
-              ))}
-            </div>
-            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
-              <Button size="lg" className="rounded-full px-8" asChild>
-                <Link href="#categories" className="inline-flex items-center gap-2 font-bold">
-                  学習を始める
+            <h1 className="text-3xl font-black leading-tight tracking-normal text-[#242424] sm:text-5xl md:text-6xl">
+              <span className="block text-[#df796b]">良い理解を</span>
+              <span className="block">積み上げる</span>
+            </h1>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#56514c] sm:mt-5 sm:text-base sm:leading-8 lg:mx-0">
+              HTML、CSS、JavaScript、React、Next.js まで。クイズで手早く確認し、教科書で体系的に戻れる学習サイトです。
+            </p>
+            <div className="mt-5 flex flex-row items-center justify-center gap-3 lg:justify-start">
+              <Button size="lg" className="h-11 rounded-full bg-[#2f86c9] px-5 text-sm font-bold hover:bg-[#2476b4] sm:h-12 sm:px-8 sm:text-base" asChild>
+                <Link href="#categories" className="inline-flex items-center gap-2">
+                  クイズを選ぶ
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
-              <span className="text-[10px] sm:text-xs text-muted-foreground">
-                会員登録なしですぐ始められます
-              </span>
+              <Button variant="outline" size="lg" className="h-11 rounded-full border-[#56514c]/25 bg-white/75 px-5 text-sm font-bold text-[#2f302f] hover:bg-white sm:h-12 sm:px-8 sm:text-base" asChild>
+                <Link href="/books">教科書を読む</Link>
+              </Button>
             </div>
-            <div className="mt-4 sm:mt-6 flex justify-center sm:justify-start">
-              <div className="inline-flex items-center gap-3 sm:gap-5 rounded-md border border-gray-200 bg-white/80 px-4 sm:px-5 py-2 sm:py-2.5 shadow-sm">
+            <div className="mt-5 flex justify-center lg:justify-start">
+              <div className="inline-flex items-center gap-3 rounded-[24px] border-2 border-[#2f302f]/70 bg-white px-4 py-2.5 shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:gap-5 sm:px-5 sm:py-3">
                 <div className="text-center">
-                  <p className="text-lg sm:text-2xl font-black text-red-500 leading-none">16</p>
-                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">カテゴリ</p>
+                  <p className="text-lg font-black leading-none text-[#df796b] sm:text-2xl">16</p>
+                  <p className="mt-1 text-[10px] text-[#6d6760]">カテゴリ</p>
                 </div>
-                <div className="h-6 sm:h-7 w-px bg-gray-200" />
+                <div className="h-7 w-px bg-[#2f302f]/15 sm:h-8" />
                 <div className="text-center">
-                  <p className="text-lg sm:text-2xl font-black text-foreground leading-none">
+                  <p className="text-lg font-black leading-none text-[#2f302f] sm:text-2xl">
                     {totalCount > 0 ? totalCount : 500}
-                    <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">
-                      +
-                    </span>
+                    <span className="text-xs font-normal text-[#6d6760]">+</span>
                   </p>
-                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">問題数</p>
+                  <p className="mt-1 text-[10px] text-[#6d6760]">問題数</p>
                 </div>
-                <div className="h-6 sm:h-7 w-px bg-gray-200" />
+                <div className="h-7 w-px bg-[#2f302f]/15 sm:h-8" />
                 <div className="text-center">
-                  <p className="text-xs sm:text-sm font-bold text-green-600 leading-none">無料</p>
-                  <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-0.5">
-                    で利用可能
-                  </p>
+                  <p className="text-sm font-black leading-none text-[#2f86c9]">無料</p>
+                  <p className="mt-1 text-[10px] text-[#6d6760]">すぐ開始</p>
                 </div>
               </div>
+            </div>
+          </div>
+          <div className="relative mx-auto mt-2 h-28 w-full max-w-xs sm:hidden">
+            <div className="absolute inset-x-4 bottom-0 h-24 rounded-[1.5rem] border-2 border-[#2f302f]/70 bg-[#bde9ec]" />
+            <Image
+              src="/images/pc-work-woman01.png"
+              alt="パソコンで学習する人のイラスト"
+              width={260}
+              height={260}
+              priority
+              className="absolute bottom-0 left-1/2 h-32 w-auto -translate-x-1/2 object-contain"
+            />
+          </div>
+          <div className="relative mx-auto hidden h-40 w-full max-w-sm sm:block sm:h-64 sm:max-w-xl md:h-80">
+            <div className="absolute right-0 top-0 h-[74%] w-[68%] rounded-t-[2.25rem] border-2 border-[#2f302f]/70 bg-[#a7d66f] sm:rounded-t-[2.75rem]">
+              <Image
+                src="/images/running_man_color-1.png"
+                alt="気分転換しながら学習を続ける人のイラスト"
+                width={500}
+                height={533}
+                priority
+                className="absolute -bottom-5 left-1/2 h-[110%] w-auto -translate-x-1/2 object-contain sm:-bottom-9 sm:h-[118%]"
+              />
+            </div>
+            <div className="absolute bottom-5 left-0 h-[50%] w-[48%] rounded-[1.5rem] border-2 border-[#2f302f]/70 bg-[#bde9ec] sm:bottom-8 sm:rounded-[2rem]">
+              <Image
+                src="/images/pc-work-woman01.png"
+                alt="パソコンで学習する人のイラスト"
+                width={260}
+                height={260}
+                priority
+                className="absolute -bottom-3 left-1/2 h-[118%] w-auto -translate-x-1/2 object-contain sm:-bottom-5"
+              />
+            </div>
+            <div className="absolute left-[12%] top-3 hidden h-[32%] w-[40%] overflow-hidden rounded-t-[1.5rem] border-2 border-[#2f302f]/55 bg-white/80 sm:block">
+              <Image
+                src="/images/creative_color.png"
+                alt=""
+                width={738}
+                height={452}
+                className="absolute left-1/2 top-1/2 h-[130%] w-auto -translate-x-1/2 -translate-y-1/2 object-contain opacity-80"
+              />
             </div>
           </div>
         </div>
       </section>
 
-      {/* 特徴 */}
-      <section className="mb-12 md:mb-16 bg-muted/40 rounded-md px-5 py-8 md:px-8">
-        <SectionHeading className="mb-6" icon={<Sparkles className="size-5 text-red-400" />}>
-          このサイトの特徴
-        </SectionHeading>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 md:grid-cols-4">
+      <div className="bg-white">
+      <div className="mx-auto max-w-6xl px-4 pt-6 pb-10 md:pt-8 md:pb-14">
+        {/* 特徴 */}
+        <section className="mb-12 rounded-[2rem] bg-[#fbf2e9]/55 px-5 py-8 md:mb-16 md:px-10">
+          <SectionHeading className="mb-7" icon={<Sparkles className="size-5 text-[#df796b]" />}>
+            このサイトの特徴
+          </SectionHeading>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 md:grid-cols-4">
           {[
             {
               icon: BadgeCheck,
-              color: 'text-primary',
+              color: 'text-[#2f86c9]',
               title: '無料で利用可能',
               desc: '会員登録なしでもすぐに問題を解ける',
             },
             {
               icon: Clock,
-              color: 'text-primary',
+              color: 'text-[#df796b]',
               title: 'スキマ時間で学べる',
               desc: '1問ずつ短時間で解答できる設計',
             },
             {
               icon: RotateCcw,
-              color: 'text-primary',
+              color: 'text-[#2f86c9]',
               title: '復習しやすい',
               desc: '間違えた問題を繰り返し解き直せる',
             },
             {
               icon: TrendingUp,
-              color: 'text-primary',
+              color: 'text-[#df796b]',
               title: '成長を実感',
               desc: '正答率や学習日数をプロフィールで確認',
             },
           ].map((f) => (
-            <div key={f.title} className="flex items-start gap-3">
-              <f.icon className={`size-5 ${f.color} shrink-0 mt-0.5`} />
+            <div key={f.title} className="flex items-start gap-3 rounded-2xl bg-white p-4">
+              <f.icon className={`mt-0.5 size-5 ${f.color} shrink-0`} />
               <div>
-                <p className="font-semibold text-foreground text-sm mb-0.5">{f.title}</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+                <p className="mb-0.5 text-sm font-bold text-[#2f302f]">{f.title}</p>
+                <p className="text-xs leading-relaxed text-[#6d6760]">{f.desc}</p>
               </div>
             </div>
           ))}
-        </div>
-      </section>
+          </div>
+        </section>
 
       {/* 学習カテゴリ */}
-      <section id="categories" className="mb-12 md:mb-16 relative py-8 md:py-10 overflow-hidden">
-        <div className="flex justify-center mb-3">
-          <div className="relative inline-block bg-primary text-primary-foreground text-xs sm:text-sm font-medium rounded-lg px-4 py-1.5">
-            どのカテゴリから始める？
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-primary rotate-45" />
+        <section id="categories" className="relative mb-12 overflow-hidden rounded-[2rem] bg-white px-5 py-8 md:mb-16 md:px-10 md:py-12">
+          <div className="mb-4 flex justify-center">
+            <div className="relative inline-block rounded-full bg-[#2f86c9] px-5 py-1.5 text-xs font-bold text-white sm:text-sm">
+              どのカテゴリから始める？
+              <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rotate-45 bg-[#2f86c9]" />
+            </div>
           </div>
-        </div>
-        <SectionHeading
-          className="mb-6 md:mb-8"
-          subtitle={`16カテゴリ・全${totalCount > 0 ? totalCount : 500}問以上から挑戦しよう`}
-        >
-          クイズカテゴリ
-        </SectionHeading>
+          <SectionHeading
+            className="mb-6 md:mb-8"
+            subtitle={`16カテゴリ・全${totalCount > 0 ? totalCount : 500}問以上から挑戦しよう`}
+          >
+            クイズカテゴリ
+          </SectionHeading>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
           {CATEGORIES.map((cat) => {
             const count = counts[cat.slug] ?? 0;
             return (
               <Link
                 key={cat.slug}
                 href={`/quiz/${cat.slug}`}
-                className={`group relative overflow-hidden flex flex-col rounded-xl ${cat.badgeBg} p-3 sm:p-5 transition hover:brightness-[0.96] dark:hover:brightness-110`}
+                className={`group relative flex min-h-32 flex-col overflow-hidden rounded-[1.35rem] border-2 border-[#2f302f]/60 ${cat.bgColor} p-3 transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_rgba(47,48,47,0.08)] sm:p-5`}
               >
                 <div
                   className={`absolute -bottom-8 sm:-bottom-10 -right-8 sm:-right-10 size-24 sm:size-36 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.10] pointer-events-none`}
@@ -605,7 +504,7 @@ export default async function Home() {
                   className={`absolute -bottom-1 -right-1 size-10 sm:size-14 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.05] pointer-events-none`}
                   aria-hidden="true"
                 />
-                <div className="flex items-baseline justify-between mb-1 sm:mb-1.5 relative">
+                <div className="relative mb-1 flex items-baseline justify-between sm:mb-1.5">
                   <p className={`text-xs sm:text-sm font-bold ${cat.color}`}>{cat.name}</p>
                   {count > 0 && (
                     <span className={`text-[10px] sm:text-[11px] tabular-nums ${cat.badgeText}`}>
@@ -613,14 +512,14 @@ export default async function Home() {
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-2.5 line-clamp-2 leading-relaxed relative">
+                <p className="relative mb-2 line-clamp-2 text-[10px] leading-relaxed text-[#6d6760] sm:mb-2.5 sm:text-xs">
                   {cat.description}
                 </p>
-                <div className="flex flex-wrap gap-0.5 sm:gap-1 mt-auto relative">
+                <div className="relative mt-auto flex flex-wrap gap-0.5 sm:gap-1">
                   {cat.topics.map((t) => (
                     <span
                       key={t}
-                      className={`text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 rounded bg-white/60 dark:bg-white/10 ${cat.badgeText} font-medium`}
+                      className={`rounded-full border border-current/15 bg-white/75 px-1 py-0.5 text-[9px] font-medium sm:px-1.5 sm:text-[10px] ${cat.badgeText}`}
                     >
                       {t}
                     </span>
@@ -629,15 +528,20 @@ export default async function Home() {
               </Link>
             );
           })}
-        </div>
-      </section>
+          </div>
+        </section>
 
       {/* 教科書 */}
-      <section id="books" className="mb-12 md:mb-16">
-        <SectionHeading className="mb-6 md:mb-8" subtitle="基礎から体系的に学べる技術書コンテンツ">
-          教科書
-        </SectionHeading>
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 max-w-4xl mx-auto">
+        <section id="books" className="mb-12 md:mb-16">
+          <div className="mb-8 grid gap-4 md:grid-cols-[0.8fr_1fr] md:items-end">
+            <SectionHeading center={false} subtitle="基礎から体系的に学べる技術書コンテンツ">
+              教科書
+            </SectionHeading>
+            <p className="text-sm leading-7 text-[#6d6760]">
+              クイズだけで曖昧だったところは、短い章ごとの教科書に戻って確認できます。迷ったときの次の一手がすぐ見つかる構成です。
+            </p>
+          </div>
+          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           {bookList.slice(0, 6).map((book) => {
             const chapters = getChaptersByBook(book.bookSlug);
             return (
@@ -656,29 +560,29 @@ export default async function Home() {
               />
             );
           })}
-        </div>
-        <div className="text-center mt-6">
-          <Button variant="outline" className="rounded-full px-6" size="sm" asChild>
+          </div>
+          <div className="mt-6 text-center">
+          <Button variant="outline" className="rounded-full border-[#2f302f]/25 bg-white px-6" size="sm" asChild>
             <Link href="/books" className="inline-flex items-center gap-1 text-xs font-semibold">
               すべての教科書を見る（全{bookList.length}冊）
               <ChevronRight className="size-3.5" />
             </Link>
           </Button>
-        </div>
-      </section>
+          </div>
+        </section>
 
       {/* 会員登録CTA */}
-      <section className="mb-12 md:mb-16">
-        <div className="flex justify-center mb-3">
-          <span className="inline-block bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full px-3 py-1 tracking-wide">
+        <section className="mb-12 rounded-[2rem] border-2 border-[#2f302f]/60 bg-white px-5 py-8 md:mb-16 md:px-10">
+          <div className="mb-3 flex justify-center">
+            <span className="inline-block rounded-full bg-[#e8f6eb] px-3 py-1 text-xs font-bold tracking-wide text-green-700">
             FREE
-          </span>
-        </div>
-        <SectionHeading className="mb-2">無料会員登録で学習をもっと便利に</SectionHeading>
-        <p className="text-center text-sm text-muted-foreground mb-6">
-          登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。
-        </p>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-3 lg:grid-cols-4 max-w-3xl mx-auto mb-6">
+            </span>
+          </div>
+          <SectionHeading className="mb-2">無料会員登録で学習をもっと便利に</SectionHeading>
+          <p className="mb-6 text-center text-sm text-[#6d6760]">
+            登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。
+          </p>
+          <div className="mx-auto mb-6 grid max-w-3xl grid-cols-2 gap-x-8 gap-y-3 lg:grid-cols-4">
           {[
             {
               icon: Target,
@@ -706,41 +610,41 @@ export default async function Home() {
             },
           ].map((f) => (
             <div key={f.title} className="flex items-start gap-2.5">
-              <f.icon className={`size-4 ${f.color} shrink-0 mt-0.5`} />
+              <f.icon className={`mt-0.5 size-4 ${f.color} shrink-0`} />
               <div>
-                <p className="font-semibold text-foreground text-sm">{f.title}</p>
-                <p className="text-xs text-muted-foreground">{f.desc}</p>
+                <p className="text-sm font-bold text-[#2f302f]">{f.title}</p>
+                <p className="text-xs text-[#6d6760]">{f.desc}</p>
               </div>
             </div>
           ))}
-        </div>
-        <div className="text-center">
-          <Button className="rounded-full px-8" size="lg" asChild>
+          </div>
+          <div className="text-center">
+          <Button className="rounded-full bg-[#df796b] px-8 hover:bg-[#cf685a]" size="lg" asChild>
             <Link href="/register" className="inline-flex items-center gap-2 font-bold">
               無料で会員登録する
               <ChevronRight className="size-4" />
             </Link>
           </Button>
-        </div>
-      </section>
+          </div>
+        </section>
 
       {/* ランダムクイズ & キーワード検索 CTA */}
-      <section className="mb-12 md:mb-16 grid gap-4 sm:grid-cols-2">
+        <section className="mb-12 grid gap-4 md:mb-16 sm:grid-cols-2">
         <Link href="/quiz/random" className="group block">
-          <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 p-6 sm:p-8 text-center transition hover:shadow-md h-full flex flex-col">
-            <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-1.5">
+          <div className="flex h-full flex-col rounded-[2rem] border-2 border-[#2f302f]/60 bg-[#e9f6f8] p-6 text-center transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:p-8">
+            <h2 className="mb-1.5 text-base font-extrabold text-[#2f302f] sm:text-lg">
               ランダムクイズに挑戦
             </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-4">
+            <p className="mb-4 text-xs text-[#6d6760] sm:text-sm">
               全カテゴリからランダムに出題
               <br />
               5問・10問など問題数を選んでサクッと力試し
             </p>
-            <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-white bg-blue-600 dark:bg-blue-500 rounded-full px-6 py-2 mx-auto group-hover:bg-blue-700 dark:group-hover:bg-blue-600 transition-colors">
+            <span className="mx-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-[#2f86c9] px-6 py-2 text-sm font-bold text-white transition-colors group-hover:bg-[#2476b4]">
               挑戦する
               <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
             </span>
-            <div className="flex items-end justify-center mt-auto pt-4 h-28 sm:h-36">
+            <div className="mt-auto flex h-28 items-end justify-center pt-4 sm:h-36">
               <Image
                 src="/images/plan_selection_man_color.png"
                 alt=""
@@ -753,20 +657,20 @@ export default async function Home() {
         </Link>
 
         <Link href="/search" className="group block">
-          <div className="rounded-xl bg-violet-50 dark:bg-violet-950/30 p-6 sm:p-8 text-center transition hover:shadow-md h-full flex flex-col">
-            <h2 className="text-base sm:text-lg font-extrabold text-foreground mb-1.5">
+          <div className="flex h-full flex-col rounded-[2rem] border-2 border-[#2f302f]/60 bg-[#fff3dc] p-6 text-center transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:p-8">
+            <h2 className="mb-1.5 text-base font-extrabold text-[#2f302f] sm:text-lg">
               キーワードで探す
             </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mb-4">
+            <p className="mb-4 text-xs text-[#6d6760] sm:text-sm">
               クイズも教科書も横断検索
               <br />
               「Promise」「型ガード」「API設計」などから探せます
             </p>
-            <span className="inline-flex items-center justify-center gap-1.5 text-sm font-bold text-white bg-violet-600 dark:bg-violet-500 rounded-full px-6 py-2 mx-auto group-hover:bg-violet-700 dark:group-hover:bg-violet-600 transition-colors">
+            <span className="mx-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-[#df796b] px-6 py-2 text-sm font-bold text-white transition-colors group-hover:bg-[#cf685a]">
               検索する
               <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
             </span>
-            <div className="flex items-end justify-center mt-auto pt-4 h-28 sm:h-36">
+            <div className="mt-auto flex h-28 items-end justify-center pt-4 sm:h-36">
               <Image
                 src="/images/search_woman_color.png"
                 alt=""
@@ -777,17 +681,17 @@ export default async function Home() {
             </div>
           </div>
         </Link>
-      </section>
+        </section>
 
       {/* 学習のすすめ方 */}
-      <section className="mb-12 md:mb-16 bg-gray-50 dark:bg-gray-900/50 rounded-md px-5 py-8 md:px-8">
-        <div className="flex justify-center mb-3">
-          <div className="relative inline-block bg-amber-500 text-white text-xs sm:text-sm font-medium rounded-lg px-4 py-1.5">
+        <section className="mb-12 rounded-[2rem] bg-white/65 px-5 py-8 md:mb-16 md:px-10">
+          <div className="mb-3 flex justify-center">
+            <div className="relative inline-block rounded-full bg-[#df796b] px-4 py-1.5 text-xs font-bold text-white sm:text-sm">
             5ステップで効率的に！
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-amber-500 rotate-45" />
+              <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rotate-45 bg-[#df796b]" />
+            </div>
           </div>
-        </div>
-        <SectionHeading className="mb-6">学習のすすめ方</SectionHeading>
+          <SectionHeading className="mb-6">学習のすすめ方</SectionHeading>
         {(() => {
           const steps = [
             {
@@ -820,15 +724,15 @@ export default async function Home() {
             <>
               {/* Desktop: timeline */}
               <div className="hidden sm:block relative">
-                <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10" />
+                <div className="absolute left-[10%] right-[10%] top-5 h-0.5 bg-[#2f302f]/20" />
                 <div className="grid grid-cols-5 gap-4">
                   {steps.map((s) => (
                     <div key={s.step} className="flex flex-col items-center text-center">
-                      <div className="relative z-10 flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold mb-3 ring-4 ring-gray-50 dark:ring-gray-900/50">
+                      <div className="relative z-10 mb-3 flex size-10 items-center justify-center rounded-full bg-[#2f86c9] text-sm font-bold text-white ring-4 ring-white/80">
                         {String(s.step).padStart(2, '0')}
                       </div>
-                      <p className="font-semibold text-foreground text-sm mb-0.5">{s.title}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
+                      <p className="mb-0.5 text-sm font-bold text-[#2f302f]">{s.title}</p>
+                      <p className="text-xs leading-relaxed text-[#6d6760]">{s.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -837,12 +741,12 @@ export default async function Home() {
               <div className="sm:hidden space-y-3">
                 {steps.map((s) => (
                   <div key={s.step} className="flex items-start gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#2f86c9] text-xs font-bold text-white">
                       {String(s.step).padStart(2, '0')}
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground text-sm mb-0.5">{s.title}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
+                      <p className="mb-0.5 text-sm font-bold text-[#2f302f]">{s.title}</p>
+                      <p className="text-xs leading-relaxed text-[#6d6760]">{s.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -850,19 +754,21 @@ export default async function Home() {
             </>
           );
         })()}
-      </section>
+        </section>
 
       {/* お知らせ */}
-      <section id="news" className="mb-8">
-        <SectionHeading className="mb-6">お知らせ</SectionHeading>
-        <div className="max-w-2xl mx-auto">
+        <section id="news" className="mb-8">
+          <SectionHeading className="mb-6">お知らせ</SectionHeading>
+          <div className="mx-auto max-w-2xl rounded-[2rem] bg-white px-5 py-4">
           <NewsList items={NEWS} />
-          <div className="border-t border-border py-3 space-y-1">
-            <span className="text-xs text-muted-foreground">今後の予定</span>
-            <p className="text-sm text-foreground">間違っているコード2択クイズなどを順次追加予定</p>
+          <div className="space-y-1 border-t border-[#2f302f]/10 py-3">
+            <span className="text-xs text-[#6d6760]">今後の予定</span>
+            <p className="text-sm text-[#2f302f]">間違っているコード2択クイズなどを順次追加予定</p>
           </div>
-        </div>
-      </section>
+          </div>
+        </section>
+      </div>
+      </div>
     </div>
   );
 }

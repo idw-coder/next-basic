@@ -51,10 +51,9 @@ export function SectionHeading({
           .filter(Boolean)
           .join(" ")}
       >
-        <span className={`${dotSize} rounded-full bg-red-400`} />
-        <span className={`${dotSize} rounded-full bg-blue-400`} />
-        <span className={`${dotSize} rounded-full bg-amber-400`} />
-        <span className={`${dotSize} rounded-full bg-green-400`} />
+        <span className={`${dotSize} rounded-full bg-[#df796b]`} />
+        <span className={`${dotSize} rounded-full bg-[#2f86c9]`} />
+        <span className={`${dotSize} rounded-full bg-[#f3c875]`} />
       </div>
       {subtitle && (
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>

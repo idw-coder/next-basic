@@ -60,10 +60,10 @@ export default function BookCard({
       <Link
         href={`/books/${bookSlug}`}
         className={cn(
-          'relative flex h-full flex-col rounded-lg bg-white p-3.5 sm:p-6',
-          'border border-gray-200 shadow-sm overflow-hidden',
+          'relative flex h-full flex-col rounded-[1.35rem] bg-white p-3.5 sm:p-6',
+          'border-2 border-[#2f302f]/60 overflow-hidden',
           'transition-all duration-200',
-          'hover:shadow-md hover:border-gray-300',
+          'hover:-translate-y-0.5 hover:shadow-[6px_6px_0_rgba(47,48,47,0.08)]',
         )}
       >
         {/* 背景の装飾アイコン */}
@@ -84,7 +84,7 @@ export default function BookCard({
         <div className="flex items-start justify-between mb-2 sm:mb-3">
           <div
             className={cn(
-              'flex size-7 sm:size-9 items-center justify-center rounded-lg',
+              'flex size-7 sm:size-9 items-center justify-center rounded-full',
               theme.iconBg,
               theme.iconText,
             )}
@@ -135,7 +135,7 @@ export default function BookCard({
         <div
           className={cn(
             'absolute left-0 right-0 top-full z-30 -mt-1',
-            'rounded-lg border border-gray-200 bg-white shadow-xl',
+            'rounded-[1.25rem] border-2 border-[#2f302f]/50 bg-white shadow-xl',
             'animate-in fade-in slide-in-from-top-1 duration-150',
           )}
           onMouseEnter={handleEnter}
