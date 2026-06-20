@@ -18,6 +18,13 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Auto Scaling',
     'NAT Gateway',
     'VPC Endpoint',
+    'OpenSearch',
+    'Kinesis',
+    'Firehose',
+    'Glue',
+    'Athena',
+    'ECS',
+    'CloudWatch',
   ],
 
   'http-and-web-api': ['CORS'],

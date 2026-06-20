@@ -1,13 +1,13 @@
 ---
-title: 'データ取り込みと分析 — Kinesis・Glue・Athena・DataSync'
-description: 'Kinesis Data Streams、Kinesis Data Firehose、Glue、Athena、S3、Redshift、DataSync、Transfer Familyでデータ取り込みと変換を設計します。'
+title: 'データ取り込みと分析 — Kinesis・Glue・Athena・OpenSearch・DataSync'
+description: 'Kinesis Data Streams、Kinesis Data Firehose、Glue、Athena、Amazon OpenSearch Service、Redshift、DataSync、Transfer Familyでデータ取り込みと変換・検索を設計します。'
 order: 14
 ---
 
-<Callout type="warning">
-### この章は現在執筆中です
+<Callout type="info">
+### コンテンツ追加予定
 
-このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+この章は現在の内容をベースに、さらにコンテンツを追加予定です。
 
 </Callout>
 
@@ -29,6 +29,7 @@ SAA-C03では、ストリーミングデータ、ログ収集、ETL、S3上の�
 | Kinesis Data Firehose | S3、Redshift、OpenSearchへ簡単に配信 |
 | AWS Glue | ETL、データカタログ |
 | Amazon Athena | S3上のデータをSQLでクエリ |
+| Amazon OpenSearch Service | ログ分析、全文検索、リアルタイムダッシュボード |
 | AWS DataSync | オンプレミスや他ストレージからAWSへデータ転送 |
 | AWS Transfer Family | SFTP/FTPS/FTPでS3やEFSへ転送 |
 
@@ -71,6 +72,69 @@ Athenaは便利ですが、クエリでスキャンしたデータ量に課金�
 
 ---
 
+## Amazon OpenSearch Service
+
+Amazon OpenSearch Serviceは、Elasticsearch互換のフルマネージドな検索・分析サービスです。ログ分析、全文検索、リアルタイムダッシュボードに使います。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+CloudWatch Logsでもログは見られますが、OpenSearchを使う場面はどう違いますか？
+</SpeechBubble>
+
+CloudWatch Logsは個別のログ確認やメトリクスベースのアラームに強いですが、大量のログを横断的に検索・可視化したい場合はOpenSearchが向いています。
+
+| 要件 | 選択肢 |
+|---|---|
+| ログの全文検索・横断分析 | OpenSearch Service |
+| 個別ログの確認・メトリクスアラーム | CloudWatch Logs |
+| ログ検索 + リアルタイムダッシュボード | OpenSearch Service + OpenSearch Dashboards |
+| 既存のElasticsearchワークロードをAWSに移行 | OpenSearch Service |
+
+### ECSアプリケーションのログ分析構成
+
+ECSで動かしているサービスのログは、CloudWatch Logsに送るのが最もシンプルです。しかし、マイクロサービスが増えてくると「あるリクエストIDで全サービスのログを横断検索したい」「エラー傾向をダッシュボードで見たい」といった要件が出てきます。
+
+```text
+ECS Task (awslogs driver)
+  -> CloudWatch Logs
+  -> サブスクリプションフィルター
+  -> Kinesis Data Firehose
+  -> OpenSearch Service
+  -> OpenSearch Dashboards で検索・可視化
+```
+
+<Callout type="note">
+### CloudWatch Logsとの使い分け
+
+CloudWatch Logsだけでも運用は可能ですが、複数サービスのログを横断的にグラフ化・全文検索したい場合はOpenSearchが適しています。CloudWatch Logs Insightsでもクエリはできますが、ダッシュボードの柔軟さや検索速度ではOpenSearchに優位性があります。
+
+</Callout>
+
+### OpenSearchの設計ポイント
+
+| 項目 | 設計判断 |
+|---|---|
+| ドメインのAZ配置 | Multi-AZで高可用性を確保 |
+| データノード | インスタンスタイプとストレージをログ量に合わせる |
+| アクセス制御 | VPC内に配置 + きめ細かなアクセスポリシー |
+| Firehose連携 | Firehoseからの直接配信で運用をシンプルに |
+| インデックス管理 | ISM（Index State Management）で古いインデックスを自動削除 |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+試験ではどういう問われ方をしますか？
+</SpeechBubble>
+
+SAA-C03では「ログの全文検索」「リアルタイムダッシュボード」「Elasticsearch互換」というキーワードが出たらOpenSearch Serviceを選びます。Firehoseの配信先としてもよく登場します。
+
+### 参考リンク
+
+- [Amazon OpenSearch Service（公式）](https://aws.amazon.com/jp/opensearch-service/)
+- [Amazon OpenSearch Service デベロッパーガイド](https://docs.aws.amazon.com/ja_jp/opensearch-service/latest/developerguide/what-is.html)
+- [Amazon Data Firehose デベロッパーガイド](https://docs.aws.amazon.com/ja_jp/firehose/latest/dev/what-is-this-service.html)
+- [CloudWatch Logs サブスクリプションフィルターの使用](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/SubscriptionFilters.html)
+- [Amazon ECS のログ記録](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/using_awslogs.html)
+
+---
+
 ## まとめ
 
 データ取り込みと分析では、リアルタイム性と運用負荷を見てサービスを選びます。
@@ -79,6 +143,7 @@ Athenaは便利ですが、クエリでスキャンしたデータ量に課金�
 - 配信中心ならKinesis Data Firehose
 - ETLとカタログはGlue
 - S3上のSQL分析はAthena
+- ログの全文検索・ダッシュボードはOpenSearch Service
 - オンプレ転送はDataSyncやTransfer Family
 
 次の章からは、コスト最適化としてストレージ、コンピューティング、DB、ネットワークを順に扱います。
