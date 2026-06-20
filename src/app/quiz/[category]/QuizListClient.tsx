@@ -3,15 +3,14 @@
 import { useTransition, useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Search, ChevronRight, CircleCheck, CircleX, Trash2 } from 'lucide-react';
+import { Search, ChevronRight, CircleCheck, CircleX, Trash2, BookOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
 import type { Quiz, Tag } from './page';
-import type { SectionTagConfig } from './sectionTagMap';
+import type { SectionTagConfig, SectionBookLink } from './sectionTagMap';
 
 interface QuizListClientProps {
   initialQuizzes: Quiz[];
@@ -27,6 +26,7 @@ interface QuizSection {
   slug: string;
   label: string;
   quizzes: Quiz[];
+  bookLinks?: SectionBookLink[];
 }
 
 function buildSections(quizzes: Quiz[], sectionTags: SectionTagConfig[]): QuizSection[] {
@@ -34,6 +34,7 @@ function buildSections(quizzes: Quiz[], sectionTags: SectionTagConfig[]): QuizSe
     slug: st.slug,
     label: st.label,
     quizzes: [],
+    bookLinks: st.bookLinks,
   }));
 
   const sectionSlugs = new Set(sectionTags.map((st) => st.slug));
@@ -77,49 +78,36 @@ function QuizCard({
     quiz.createdAt &&
     Date.now() - new Date(quiz.createdAt).getTime() < 14 * 24 * 60 * 60 * 1000;
   return (
-    <Link href={`/quiz/${categorySlug}/${quiz.id}`} className="block">
-      <Card className="transition-colors hover:border-blue-500/40 hover:bg-blue-400/10 py-0">
-        <CardContent className="flex items-center gap-4 p-2 sm:p-4">
-          <Badge
-            variant="outline"
-            className={cn(
-              'size-6 sm:size-8 shrink-0 rounded-md p-0 flex items-center justify-center font-bold border-0 text-white',
-              index % 2 === 0 ? 'bg-blue-600' : 'bg-blue-500',
-            )}
-          >
-            {index + 1}
+    <Link
+      href={`/quiz/${categorySlug}/${quiz.id}`}
+      className="flex items-center gap-3 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:border-blue-500/30 hover:bg-blue-400/5"
+    >
+      <span
+        className={cn(
+          'size-5 sm:size-6 shrink-0 rounded p-0 flex items-center justify-center text-xs font-bold text-white',
+          index % 2 === 0 ? 'bg-blue-600' : 'bg-blue-500',
+        )}
+      >
+        {index + 1}
+      </span>
+      <p className="flex-1 min-w-0 text-foreground text-sm leading-snug line-clamp-2 whitespace-pre-line">
+        {quiz.question}
+      </p>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {isNew && (
+          <Badge className="bg-red-500 hover:bg-red-500 text-white text-[10px] px-1.5 py-0 leading-4">
+            NEW
           </Badge>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-foreground font-medium line-clamp-2 text-sm sm:text-base whitespace-pre-line">
-                {quiz.question}
-              </p>
-              {isNew && (
-                <Badge className="shrink-0 bg-red-500 hover:bg-red-500 text-white text-[10px] px-1.5 py-0 leading-4">
-                  NEW
-                </Badge>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {quiz.tags.map((t) => (
-                <span key={t.id} className="text-xs text-blue-700/80 dark:text-blue-300/80">
-                  #{t.name}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {latestAnswer ? (
-              latestAnswer.isCorrect ? (
-                <CircleCheck className="size-5 text-green-500" />
-              ) : (
-                <CircleX className="size-5 text-red-500" />
-              )
-            ) : null}
-            <ChevronRight className="size-5 text-blue-600 dark:text-blue-400" />
-          </div>
-        </CardContent>
-      </Card>
+        )}
+        {latestAnswer ? (
+          latestAnswer.isCorrect ? (
+            <CircleCheck className="size-4 text-green-500" />
+          ) : (
+            <CircleX className="size-4 text-red-500" />
+          )
+        ) : null}
+        <ChevronRight className="size-4 text-muted-foreground" />
+      </div>
     </Link>
   );
 }
@@ -134,14 +122,14 @@ function SectionGroup({
   getLatestAnswer: (quizId: number) => { isCorrect: boolean } | null;
 }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <h3 className="text-base font-bold text-foreground">{section.label}</h3>
-        <Badge variant="secondary" className="text-xs">
-          {section.quizzes.length}
-        </Badge>
+    <div>
+      <div className="flex items-center gap-2 border-b-2 border-blue-500 pb-1.5 mb-3">
+        <h3 className="text-[15px] font-bold text-foreground">{section.label}</h3>
+        <span className="text-xs text-muted-foreground font-medium">
+          {section.quizzes.length}問
+        </span>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-0.5">
         {section.quizzes.map((quiz, i) => (
           <QuizCard
             key={quiz.id}
@@ -152,6 +140,20 @@ function SectionGroup({
           />
         ))}
       </div>
+      {section.bookLinks && section.bookLinks.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {section.bookLinks.map((link) => (
+            <Link
+              key={`${link.bookSlug}/${link.chapterSlug}`}
+              href={`/books/${link.bookSlug}/${link.chapterSlug}`}
+              className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 text-xs text-amber-900 transition-colors"
+            >
+              <BookOpen className="size-3 shrink-0" />
+              <span className="line-clamp-1">{link.title}</span>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
