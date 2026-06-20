@@ -27,6 +27,12 @@ export async function createTodo(formData: FormData) {
 }
 ```
 
+<Callout type="warning" title="'use server' の関数は async にする">
+`"use server"` は、Next.jsのServer Actions用のディレクティブです。ファイルの先頭に `"use server"` を書いた場合、そのファイルからエクスポートする関数は `async` 関数である必要があります。
+
+たとえば `formatMSmail` のような同期の整形関数に `"use server"` を付けると、Server Actionとして扱われるにもかかわらず `async` ではないためエラーになります。単なる同期ユーティリティは `"use server"` の付いたファイルに置かず、通常の関数として別ファイルに分けましょう。
+</Callout>
+
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
 ポイントは「APIのURLを設計しなくていい」こと。関数をそのまま呼ぶ感覚で、サーバーの処理を実行できる。データ更新の定型作業がぐっと減るんだ。
 </SpeechBubble>
@@ -121,6 +127,7 @@ Server Actionの中では、(1) 入力値のバリデーション（型・必須
 ## まとめ
 
 - Server Actionは `"use server"` を付けた**サーバーで実行される関数**。APIルートを別途作らずにデータ更新できる
+- `"use server"` の付いたファイルからエクスポートする関数は `async` にする。同期ユーティリティは通常のファイルに分ける
 - `<form action={アクション}>` に渡すと、入力が `FormData` として届く（`name` がキー）
 - 更新後は `revalidatePath` / `revalidateTag` でキャッシュを破棄して画面を最新化、`redirect` で遷移
 - 送信中の状態やエラーは `useActionState`（Client Component）で扱う

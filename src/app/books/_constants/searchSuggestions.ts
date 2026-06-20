@@ -14,6 +14,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Map',
     '配列',
     '文字列',
+    '分割代入',
     'class',
     'this',
   ],
@@ -46,6 +47,8 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
   'cs-basics': ['CPU', 'メモリ', 'データ構造', 'ネットワーク', 'デバッグ'],
 
   'next-js': [
+    'use client',
+    'use server',
     'Server Components',
     'Client Components',
     'Route Handler',
