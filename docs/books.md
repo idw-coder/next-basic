@@ -221,7 +221,9 @@ const categoryToBookMap: Record<string, string> = {
 
 該当する本のディレクトリに MDX ファイルを追加する。Velite はファイル名を直接 `chapterSlug` として使う。章の表示順はファイル名ではなく、frontmatter の `order` でソートされる。
 
-既存章に差し込む場合、**既存ファイル名（= 既存URL）は変更しない**。SEO評価・外部リンク・サイト内リンクを維持するため。新規章は、連番ではなく意味ベースの slug を推奨する。
+既存章に差し込む場合、**既存ファイル名（= 既存URL）は変更しない**。SEO評価・外部リンク・サイト内リンクを維持するため。
+
+一方で、**これから新しく作る章ファイルには、既存本・新規本を問わず原則として連番を付けない**。Velite はファイル名をそのまま URL の `chapterSlug` にするため、`08-route-handlers.mdx` のように番号を入れると、その番号が URL に残り続ける。章の並び順は frontmatter の `order` で管理し、ファイル名は `route-handlers.mdx` のような意味ベース slug にする。
 
 ```
 content/books/next-js/route-handlers.mdx   ← 追加
@@ -235,12 +237,22 @@ order: 8
 ---
 ```
 
-上記の場合、URL は `/books/next-js/route-handlers` になる。既存章が `08-loading-and-error.mdx` のような番号付きファイル名でも、新規章まで番号付きに合わせる必要はない。番号はURLに残り続けるため、今後の差し込みに弱くなる。
+上記の場合、URL は `/books/next-js/route-handlers` になる。
+
+避ける例:
+
+```
+content/books/next-js/08-route-handlers.mdx
+content/books/aws-saa-c03/01-iam-and-least-privilege.mdx
+```
+
+既存章が `08-loading-and-error.mdx` のような番号付きファイル名でも、新しく追加する章まで番号付きに合わせない。新規本を作る場合も同じで、最初から `01-...mdx`、`02-...mdx` のようにしない。番号はURLに残り続け、章の追加・差し込み・並べ替えに弱くなるため。
 
 既存本へ章を差し込むときの方針:
 
 - 既存ファイル名は変更しない
-- 新規ファイル名は `route-handlers.mdx` のような意味ベース slug にする
+- 新規ファイル名は既存本・新規本を問わず `route-handlers.mdx` のような意味ベース slug にする
+- 新規ファイル名に `01-`、`02-`、`08-` のような並び順の番号を入れない
 - 並び順は `order` で調整する
 - 章末の「次の章」リンクや本文中の章番号表記だけ更新する
 

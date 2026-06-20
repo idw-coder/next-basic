@@ -1,0 +1,81 @@
+---
+title: 'データベースのコスト最適化 — RDS・Aurora・DynamoDB・ElastiCache'
+description: 'RDS Reserved Instances、Aurora Serverless、DynamoDB On-Demand/Provisioned、DAX、ElastiCache、Read Replicaのコスト最適化を扱います。'
+order: 17
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="データベースコストを確認する人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+データベースは性能を落とすと怖いので、コスト最適化してよい範囲が分かりません。
+</SpeechBubble>
+
+データベースは性能と可用性を重視する一方で、過剰なスペックや読み取り設計の不足でコストが膨らみやすい領域です。
+
+---
+
+## RDSとAuroraのコスト
+
+見るポイント:
+
+- インスタンスサイズが過剰ではないか
+- Multi-AZが必要な環境か
+- Read Replicaが過剰ではないか
+- ストレージタイプと容量は適切か
+- 長期利用ならReserved Instancesを使えるか
+
+本番ではMulti-AZが必要でも、開発環境では停止スケジュールや小さいインスタンスタイプで十分なことがあります。
+
+---
+
+## Aurora Serverless
+
+Aurora Serverlessは、負荷変動が大きいワークロードで有効な場合があります。
+
+向いている例:
+
+- 開発・検証環境
+- 利用時間が限られるアプリ
+- 急な負荷変動があるが常時最大性能は不要
+
+ただし、常時高負荷ならプロビジョンド構成の方が読みやすく、安くなることもあります。
+
+---
+
+## DynamoDBの課金モード
+
+| モード | 向いている用途 |
+|---|---|
+| On-Demand | 予測不能、急増するアクセス |
+| Provisioned | 安定したアクセス、キャパシティを読める |
+| Provisioned + Auto Scaling | ある程度予測可能な変動 |
+
+DynamoDBでは、テーブル設計が悪いと不要なGSI、ホットパーティション、過剰な読み書きでコストが増えます。
+
+<Callout type="note">
+### キャッシュはDBコスト削減にも効く
+
+ElastiCacheやDAXを使うと、DBへの読み取り負荷を下げられます。ただしキャッシュ自体のコストと、キャッシュ整合性の設計も必要です。
+
+</Callout>
+
+---
+
+## まとめ
+
+DBコストは、性能要件、可用性要件、アクセスパターンに合わせて最適化します。
+
+- RDS/Auroraはサイズ、Multi-AZ、Read Replica、RIを見直す
+- 変動が大きいならAurora Serverlessを検討する
+- DynamoDBはOn-DemandとProvisionedを使い分ける
+- ElastiCacheやDAXで読み取り負荷を下げる
+- 開発環境と本番環境で同じ構成にしない
+
+次の章では、NAT Gateway、CloudFront、VPC Endpoint、データ転送のコスト最適化を扱います。

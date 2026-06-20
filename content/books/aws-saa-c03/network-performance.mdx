@@ -1,0 +1,83 @@
+---
+title: 'ネットワーク性能 — CloudFront・Route 53・Global Accelerator・VPC Endpoint'
+description: 'CloudFront、Route 53、Global Accelerator、VPC Endpoint、Direct Connect、Site-to-Site VPN、Transit Gatewayで高性能なネットワークを設計します。'
+order: 13
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/running_man_color-1.png" alt="高速化をイメージする人のイラスト" maxWidth="300px" />
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+CloudFront、Route 53、Global Acceleratorは、どれも通信をよくするサービスに見えます。
+</SpeechBubble>
+
+ネットワーク性能では、ユーザーに近い場所から配信する、適切に名前解決する、閉域接続を使う、データ転送経路を最適化する、といった観点が重要です。
+
+---
+
+## グローバル配信
+
+| サービス | 用途 |
+|---|---|
+| CloudFront | 静的・動的コンテンツをエッジで配信するCDN |
+| Route 53 | DNS、ヘルスチェック、ルーティング |
+| Global Accelerator | Anycast IPでグローバルな入口を最適化 |
+
+静的ファイルや画像、動画、Webサイト配信ではCloudFrontがよく使われます。ALBやS3をオリジンにして、ユーザーに近いエッジロケーションから配信します。
+
+<Callout type="note">
+### CloudFrontとGlobal Accelerator
+
+CloudFrontはHTTP/HTTPSコンテンツ配信に強いCDNです。Global Acceleratorは固定Anycast IPでTCP/UDPアプリケーションへの経路を最適化します。Webコンテンツ配信ならCloudFrontが第一候補です。
+
+</Callout>
+
+---
+
+## Route 53のルーティング
+
+Route 53はDNSサービスです。単なる名前解決だけでなく、複数のルーティングポリシーがあります。
+
+| ポリシー | 用途 |
+|---|---|
+| Simple | 単純な名前解決 |
+| Weighted | 重み付きで段階移行やA/B |
+| Latency | レイテンシが低いリージョンへ誘導 |
+| Failover | ヘルスチェックに応じて切り替え |
+| Geolocation | 地理条件で振り分け |
+
+DR要件では、Route 53 Failover Routingがよく出ます。
+
+---
+
+## 閉域接続とハイブリッド
+
+| 要件 | 選択肢 |
+|---|---|
+| VPCからS3やDynamoDBへ閉域アクセス | Gateway VPC Endpoint |
+| VPCからSecrets ManagerやCloudWatchへ閉域アクセス | Interface VPC Endpoint |
+| オンプレミスとAWSを専用線接続 | Direct Connect |
+| オンプレミスとAWSをVPN接続 | Site-to-Site VPN |
+| 複数VPCやオンプレを集約接続 | Transit Gateway |
+
+実務では、NAT Gateway経由でAWSサービスへ出るより、VPC Endpointを使った方がセキュリティとコストの両面で有利なことがあります。
+
+---
+
+## まとめ
+
+ネットワーク性能は、配信場所、名前解決、接続経路で改善します。
+
+- コンテンツ配信はCloudFront
+- DNS制御はRoute 53
+- グローバルな入口最適化はGlobal Accelerator
+- AWSサービスへの閉域アクセスはVPC Endpoint
+- オンプレ連携はDirect Connect、VPN、Transit Gateway
+
+次の章では、Kinesis、Glue、Athena、DataSyncなどのデータ取り込みと変換を扱います。

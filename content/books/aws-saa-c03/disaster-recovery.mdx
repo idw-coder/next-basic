@@ -1,0 +1,77 @@
+---
+title: '災害対策と復旧設計 — RTO・RPO・Backup・Multi-Region'
+description: 'RTO、RPO、AWS Backup、RDS Snapshot、S3 Replication、Route 53 Failover、Elastic Disaster Recovery、Multi-Region構成を整理します。'
+order: 9
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/relief_man_color.png" alt="復旧して安心する人のイラスト" maxWidth="300px" />
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+Multi-AZにしていれば、災害対策もできていると考えていいですか？
+</SpeechBubble>
+
+高可用性はAZ障害などに備える設計ですが、災害対策（DR）はリージョン障害や大規模障害からどう復旧するかを考える設計です。SAA-C03では、RTO、RPO、バックアップ、マルチリージョン構成がよく問われます。
+
+---
+
+## RTOとRPO
+
+| 指標 | 意味 |
+|---|---|
+| RTO | どれくらいの時間で復旧する必要があるか |
+| RPO | どれくらいのデータ損失まで許容できるか |
+
+RTOとRPOが短いほど、コストと設計難易度は上がります。
+
+---
+
+## DR戦略
+
+| 戦略 | コスト | 復旧速度 | 概要 |
+|---|---:|---:|---|
+| Backup and Restore | 低 | 遅い | バックアップから復元 |
+| Pilot Light | 中 | 中 | 最小構成だけ別リージョンに用意 |
+| Warm Standby | 高 | 速い | 縮小版の本番環境を常時稼働 |
+| Multi-Site Active/Active | 最高 | 最速 | 複数リージョンで常時稼働 |
+
+試験では、「最小コストでDR要件を満たす」選択肢がよく出ます。必要以上にActive/Activeを選ぶと過剰設計になることがあります。
+
+---
+
+## 代表サービス
+
+| 要件 | サービス・機能 |
+|---|---|
+| EC2ワークロードのDR | AWS Elastic Disaster Recovery |
+| 複数サービスのバックアップ管理 | AWS Backup |
+| S3のリージョン間複製 | S3 Cross-Region Replication |
+| RDSの復旧 | Snapshot、Automated Backup、Read Replica |
+| DNSフェイルオーバー | Route 53 Failover Routing |
+| グローバルな入口 | CloudFront、Global Accelerator |
+
+<Callout type="note">
+### DRは復旧演習まで含めて設計
+
+バックアップやレプリケーションを設定していても、実際に切り替えられなければDRにはなりません。実務では復旧手順、権限、DNS切り替え、データ整合性、定期訓練まで設計します。
+
+</Callout>
+
+---
+
+## まとめ
+
+DR設計では、RTO/RPOに応じてコストと復旧速度のバランスを取ります。
+
+- RTOは復旧時間、RPOは許容データ損失
+- Backup and Restoreは低コストだが復旧に時間がかかる
+- Warm StandbyやActive/Activeは速いが高コスト
+- Route 53、S3 Replication、AWS Backup、Elastic Disaster Recoveryを使い分ける
+
+次の章では、高パフォーマンスなストレージ選択としてS3、EBS、EFS、FSxを扱います。

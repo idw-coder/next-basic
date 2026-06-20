@@ -1,0 +1,84 @@
+---
+title: 'データ保護 — KMS・暗号化・バックアップ・レプリケーション'
+description: 'AWS KMS、S3暗号化、EBS暗号化、RDS暗号化、DynamoDB暗号化、AWS Backup、S3 Replication、CloudTrailを整理します。'
+order: 6
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/deta_man_color.png" alt="データを確認する人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+暗号化を有効にしていれば、データ保護はもう十分と言えますか？
+</SpeechBubble>
+
+データセキュリティでは、保存時の暗号化、転送時の暗号化、鍵管理、バックアップ、削除防止、監査を組み合わせます。SAA-C03では、KMS、S3、EBS、RDS、DynamoDB、AWS Backupの選択がよく問われます。
+
+---
+
+## 暗号化の基本
+
+| 対象 | 代表的な仕組み |
+|---|---|
+| 保存時の暗号化 | KMS、S3 SSE、EBS encryption、RDS encryption |
+| 転送時の暗号化 | TLS、HTTPS、ACM |
+| 鍵管理 | AWS KMS、CloudHSM |
+| 監査 | CloudTrail、AWS Config |
+
+多くのAWSサービスはデフォルト暗号化に対応していますが、実務では「どのKMSキーで暗号化するか」「誰が復号できるか」まで設計します。
+
+---
+
+## KMSの判断軸
+
+**AWS KMS（Key Management Service）** は、暗号鍵を管理するマネージドサービスです。
+
+| 要件 | 選択肢 |
+|---|---|
+| AWSサービスの暗号鍵を管理したい | KMS |
+| 鍵の利用権限をIAMやKey Policyで制御したい | KMS |
+| 専用HSMを使いたい、厳格なコンプライアンス要件がある | CloudHSM |
+
+KMSでは、IAMポリシーだけでなくKey Policyも重要です。特にクロスアカウントで暗号化データを扱う場合、データ本体への権限とKMSキーへの権限の両方が必要になります。
+
+<Callout type="warning">
+### 暗号化データはKMS権限がないと読めない
+
+S3オブジェクトへの `s3:GetObject` があっても、SSE-KMSで暗号化されていてKMSキーの復号権限がなければ読めません。試験でも実務でもよくある落とし穴です。
+
+</Callout>
+
+---
+
+## バックアップと削除防止
+
+データ保護は暗号化だけでは足りません。誤削除、障害、ランサムウェア、リージョン障害に備えます。
+
+| 要件 | 代表サービス・機能 |
+|---|---|
+| 複数サービスのバックアップを集中管理 | AWS Backup |
+| S3の誤削除対策 | Versioning、MFA Delete、Object Lock |
+| リージョンをまたいだS3複製 | S3 Cross-Region Replication |
+| RDSの復旧 | Automated Backup、Snapshot、Point-in-time recovery |
+| DynamoDBの復旧 | PITR、On-demand backup |
+
+実務では、バックアップを取るだけでなく、復旧手順と復旧時間を確認します。バックアップは復元できて初めて価値があります。
+
+---
+
+## まとめ
+
+データ保護では、暗号化、鍵管理、バックアップ、監査をセットで考えます。
+
+- 保存時暗号化にはKMS連携を使う
+- 転送時暗号化にはTLSとACMを使う
+- S3、EBS、RDS、DynamoDBの暗号化方式を理解する
+- AWS Backupやサービス固有のバックアップを使う
+- CloudTrailとConfigで変更を追跡する
+
+次の章では、SQS、SNS、EventBridgeを使った疎結合アーキテクチャを扱います。

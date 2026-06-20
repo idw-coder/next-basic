@@ -1,0 +1,96 @@
+---
+title: 'アプリケーション保護 — WAF・Shield・Cognito・Secrets Manager'
+description: 'AWS WAF、AWS Shield、Amazon Cognito、Secrets Manager、Systems Manager Parameter Store、ACM、GuardDuty、Macieでアプリケーションを守ります。'
+order: 5
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/search_woman_color.png" alt="セキュリティ上の問題を探す人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+Security Groupで通信を絞っていれば、WAFやShieldまでは不要ではないですか？
+</SpeechBubble>
+
+ネットワークを閉じても、WebアプリケーションにはDDoS、SQLインジェクション、認証情報漏洩、不正ログインなどのリスクが残ります。SAA-C03では、アプリケーション層の保護に使うAWSサービスの選択が問われます。
+
+---
+
+## よく出るセキュリティサービス
+
+| サービス | 主な用途 |
+|---|---|
+| AWS WAF | HTTPリクエストをルールで検査し、SQLインジェクションやXSSを防ぐ |
+| AWS Shield | DDoS対策。Standardは自動、Advancedは追加保護 |
+| Amazon Cognito | Web/Mobileアプリのユーザー認証 |
+| AWS Secrets Manager | DBパスワードやAPIキーなどのシークレット管理 |
+| Systems Manager Parameter Store | 設定値や軽量なシークレット管理 |
+| AWS Certificate Manager | TLS証明書の発行・管理 |
+| Amazon GuardDuty | 脅威検知 |
+| Amazon Macie | S3内の機密データ検出 |
+
+試験では、「どの脅威に対してどのサービスか」を選ぶ問題が多いです。
+
+---
+
+## WAFを使う場面
+
+AWS WAFは、CloudFront、ALB、API Gatewayなどの前段に置いてHTTPリクエストを検査します。
+
+WAFが候補になる要件:
+
+- SQLインジェクションやXSSを防ぎたい
+- 特定IPアドレスからのアクセスを制限したい
+- レートベースで過剰リクエストを止めたい
+- CloudFrontやALBの前でWeb攻撃をブロックしたい
+
+<Callout type="note">
+### Security GroupとWAFの違い
+
+Security GroupはIPアドレス、ポート、プロトコルの制御が中心です。WAFはHTTPの中身を見て制御します。`/login` への大量アクセスやSQLインジェクション文字列を止めたいならWAFです。
+
+</Callout>
+
+---
+
+## シークレット管理
+
+DBパスワードやAPIキーをEC2の環境変数やソースコードに直接置くのは避けます。AWSでは主に次のサービスを使います。
+
+| 要件 | 選択肢 |
+|---|---|
+| DB認証情報を安全に保存し、自動ローテーションしたい | Secrets Manager |
+| 設定値や低コストなパラメータ管理をしたい | Systems Manager Parameter Store |
+| LambdaやECSからシークレットを取得したい | IAM RoleでSecrets Manager / Parameter Storeへアクセス |
+
+---
+
+## Cognitoを使う場面
+
+Amazon Cognitoは、アプリケーションのエンドユーザー認証に使います。社員がAWSコンソールへログインする仕組みではありません。
+
+| 要件 | 選択肢 |
+|---|---|
+| Webアプリのユーザー登録・ログイン | Cognito User Pools |
+| GoogleやAppleログインと連携 | Cognito User Pools + フェデレーション |
+| 一時的なAWS認証情報を払い出す | Cognito Identity Pools |
+
+---
+
+## まとめ
+
+アプリケーション保護では、脅威の種類からサービスを選びます。
+
+- Web攻撃にはAWS WAF
+- DDoSにはAWS Shield
+- アプリ利用者の認証にはAmazon Cognito
+- シークレット管理にはSecrets ManagerやParameter Store
+- TLS証明書にはACM
+- 脅威検知にはGuardDuty、機密データ検出にはMacie
+
+次の章では、KMS、S3暗号化、バックアップ、レプリケーションなどのデータ保護を扱います。

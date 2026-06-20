@@ -1,0 +1,105 @@
+---
+title: 'データベース選択 — RDS・Aurora・DynamoDB・ElastiCache・Redshift'
+description: 'RDS、Aurora、DynamoDB、ElastiCache、Redshift、DocumentDB、Neptuneを高パフォーマンスなデータベース設計として比較します。'
+order: 12
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/deta_man_color.png" alt="データベースの選択を考える人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+RDSとDynamoDBはどちらもデータベースですが、試験ではどういう条件で分かれますか？
+</SpeechBubble>
+
+データベース選択では、リレーショナルかNoSQLか、読み書きパターン、可用性、スケーリング、運用負荷を見ます。SAA-C03ではRDS、Aurora、DynamoDB、ElastiCache、Redshiftの使い分けが頻出です。
+
+---
+
+## 代表サービスの使い分け
+
+| サービス | 向いている用途 |
+|---|---|
+| RDS | MySQL、PostgreSQLなど一般的なRDB |
+| Aurora | 高性能・高可用なRDB、MySQL/PostgreSQL互換 |
+| DynamoDB | キーバリュー、ドキュメント、超スケーラブルなNoSQL |
+| ElastiCache | Redis/Memcachedによるキャッシュ |
+| Redshift | DWH、分析クエリ |
+| DocumentDB | MongoDB互換が必要な場合 |
+| Neptune | グラフデータベース |
+
+---
+
+## RDSとAurora
+
+RDSは一般的なリレーショナルデータベースをマネージドで使うサービスです。AuroraはAWS独自の分散ストレージを持つ高性能なRDBです。
+
+| 要件 | 選択肢 |
+|---|---|
+| 既存MySQL/PostgreSQLを移行したい | RDSまたはAurora |
+| 高い読み取り性能と可用性が必要 | Aurora + Aurora Replica |
+| フェイルオーバーを速くしたい | Aurora |
+| コストを抑えた小規模RDB | RDS |
+
+RDS Multi-AZは可用性、Read Replicaは読み取りスケールです。この違いは試験でよく問われます。
+
+---
+
+## DynamoDB
+
+DynamoDBは、フルマネージドなNoSQLデータベースです。高スループット、低レイテンシ、サーバーレスな運用が特徴です。
+
+向いている要件:
+
+- キーで高速に読み書きする
+- アクセスが急増する
+- サーバー管理を避けたい
+- グローバルにデータを複製したい
+
+代表機能:
+
+- On-demand capacity
+- Provisioned capacity
+- DAX
+- Global Tables
+- TTL
+- Streams
+
+<Callout type="warning">
+### DynamoDBはアクセスパターンから設計する
+
+RDBのように後から自由に検索条件を増やす設計には向きません。パーティションキー、ソートキー、GSIを、必要なクエリから逆算して設計します。
+
+</Callout>
+
+---
+
+## キャッシュと分析
+
+読み取り負荷が高い場合は、ElastiCacheやDAXを検討します。
+
+| 要件 | 選択肢 |
+|---|---|
+| RDSの読み取り負荷を下げたい | ElastiCache for Redis |
+| DynamoDBの読み取りを高速化したい | DAX |
+| 大量データを分析したい | Redshift |
+| S3上のデータをSQLで分析したい | Athena |
+
+---
+
+## まとめ
+
+DB選択では、データモデルとアクセスパターンを先に見ます。
+
+- RDBならRDS/Aurora
+- 高スケールなNoSQLならDynamoDB
+- キャッシュならElastiCacheやDAX
+- DWHならRedshift
+- S3上の分析ならAthena
+
+次の章では、CloudFront、Route 53、Global Accelerator、VPC Endpointなどのネットワーク性能を扱います。

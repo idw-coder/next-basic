@@ -1,0 +1,97 @@
+---
+title: 'ネットワークのコスト最適化と試験チェックリスト — NAT Gateway・CloudFront・VPC Endpoint'
+description: 'NAT Gateway、CloudFront、VPC Endpoint、Direct Connect、データ転送コスト、SAA-C03の問題文の読み方、実務設計チェックリストを整理します。'
+order: 18
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/toppa_suit_woman_color.png" alt="試験対策をやり切る人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+最後はサービス名を覚えるより、問題文から正解を絞る練習が大事ということですか？
+</SpeechBubble>
+
+ネットワークコストは見落とされがちですが、NAT Gateway、AZ間通信、リージョン間通信、インターネット転送、CloudFrontの有無で大きく変わります。最後に、SAA-C03の問題文を読むためのチェックリストも整理します。
+
+---
+
+## ネットワークコストの主な原因
+
+| 原因 | 対策 |
+|---|---|
+| NAT Gateway経由の大量通信 | VPC Endpoint、構成見直し |
+| AZ間通信 | 同一AZ配置、不要なクロスAZ通信の削減 |
+| リージョン間通信 | レプリケーション要件の見直し |
+| インターネットへの大量配信 | CloudFront |
+| オンプレ接続 | Direct ConnectやVPNの要件整理 |
+
+Private SubnetからS3へ大量アクセスする場合、NAT Gateway経由ではなくGateway VPC Endpointを使うと、セキュリティとコストの両面で有利になることがあります。
+
+---
+
+## CloudFrontによる配信最適化
+
+CloudFrontは性能改善だけでなく、オリジンへの負荷削減とデータ転送コスト削減にも効きます。
+
+向いている要件:
+
+- 静的アセットを世界中に配信したい
+- S3やALBへのアクセスをキャッシュしたい
+- オリジンの負荷を下げたい
+- WAFと組み合わせて入口を保護したい
+
+---
+
+## SAA-C03の問題文の読み方
+
+問題文では、次のキーワードに注目します。
+
+| キーワード | 疑うサービス・設計 |
+|---|---|
+| 最小の運用負荷 | マネージドサービス、サーバーレス |
+| 疎結合 | SQS、SNS、EventBridge |
+| 高可用性 | Multi-AZ、ALB、Auto Scaling、Route 53 |
+| グローバル配信 | CloudFront、Global Accelerator、Route 53 |
+| 低コスト | Savings Plans、Spot、S3 Lifecycle、VPC Endpoint |
+| セキュア | IAM、KMS、WAF、Private Subnet、CloudTrail |
+| 読み取り性能 | Read Replica、ElastiCache、DAX、CloudFront |
+
+<Callout type="note">
+### 「最も適切」は過剰設計を避ける
+
+試験では、技術的には動くが要件に対して高すぎる、運用が重すぎる、複雑すぎる選択肢があります。問題文の制約を満たす最小構成を選ぶ意識が重要です。
+
+</Callout>
+
+---
+
+## 実務設計チェックリスト
+
+AWS構成を考えるときは、次の順で確認します。
+
+1. 誰がアクセスするか: IAM、IAM Identity Center、Cognito
+2. どこから到達できるか: VPC、Subnet、Security Group、WAF
+3. 障害時に継続できるか: Multi-AZ、Auto Scaling、Backup、DR
+4. 負荷に耐えられるか: ELB、CloudFront、DynamoDB、キャッシュ
+5. データを守れるか: KMS、暗号化、S3 Versioning、AWS Backup
+6. 監査できるか: CloudTrail、CloudWatch、Config、GuardDuty
+7. コストは妥当か: Savings Plans、S3 Lifecycle、VPC Endpoint
+
+---
+
+## まとめ
+
+SAA-C03の出題範囲は、実務のAWS設計にそのままつながります。
+
+- サービス名ではなく、要件から設計を選ぶ
+- セキュリティ、可用性、性能、コストの順に考える
+- IAM、VPC、S3、EC2、RDS、DynamoDB、CloudFront、SQS、SNS、KMSは特に重要
+- 問題文の制約に対して、過剰でも不足でもない構成を選ぶ
+
+この本を読み終えたら、模擬問題を解きながら「なぜそのサービスが正解で、なぜ他が不正解か」を言語化していきましょう。

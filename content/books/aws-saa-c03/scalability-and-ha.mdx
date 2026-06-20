@@ -1,0 +1,91 @@
+---
+title: 'スケーラビリティと高可用性 — ELB・Auto Scaling・Multi-AZ'
+description: 'ALB、NLB、Auto Scaling、EC2 Auto Scaling、RDS Multi-AZ、Aurora、Route 53、ヘルスチェックで高可用性を設計します。'
+order: 8
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="負荷に合わせて段階的に伸ばすイメージのイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Auto Scalingを入れれば、それだけで高可用性になるんですか？
+</SpeechBubble>
+
+弾力性に優れたアーキテクチャでは、負荷が増えても処理でき、障害が起きてもサービスを継続できる構成を作ります。SAA-C03では、ELB、Auto Scaling、Multi-AZ、Route 53の判断が頻出です。
+
+---
+
+## 単一障害点を避ける
+
+単一のEC2、単一AZ、単一DBに依存すると、その要素が落ちたときにシステム全体が止まります。
+
+基本構成:
+
+<MermaidDiagram chart={`
+flowchart TD
+    U["Users"] --> R53["Route 53"]
+    R53 --> ALB["Application Load Balancer"]
+    ALB --> EC2A["EC2 Auto Scaling\\nAZ-a"]
+    ALB --> EC2B["EC2 Auto Scaling\\nAZ-c"]
+    EC2A --> RDS["RDS Multi-AZ"]
+    EC2B --> RDS
+`} />
+
+---
+
+## ELBの使い分け
+
+| 種類 | 主な用途 |
+|---|---|
+| ALB | HTTP/HTTPS、パスベースルーティング、Webアプリ |
+| NLB | TCP/UDP、高スループット、固定IPが必要な場合 |
+| GWLB | セキュリティアプライアンスの挿入 |
+
+WebアプリケーションではALBが最もよく使われます。TCPレベルの高性能な負荷分散や固定IP要件があればNLBを検討します。
+
+---
+
+## Auto Scaling
+
+Auto Scalingは、負荷に応じてEC2インスタンス数を増減します。
+
+よく使うスケーリング指標:
+
+- CPU使用率
+- ALB Request Count Per Target
+- SQSキューの長さ
+- カスタムCloudWatchメトリクス
+
+実務では、スケールアウトだけでなくスケールイン時の影響も考えます。処理中のリクエストを安全に終わらせるには、ALBのderegistration delayやアプリケーションのgraceful shutdownが重要です。
+
+---
+
+## RDS Multi-AZとリードレプリカ
+
+| 機能 | 目的 |
+|---|---|
+| RDS Multi-AZ | 可用性向上、自動フェイルオーバー |
+| RDS Read Replica | 読み取りスケール、分析用途 |
+| Aurora Replica | 読み取りスケールと高速フェイルオーバー |
+
+試験では、Multi-AZとRead Replicaの目的を混同しないことが重要です。可用性ならMulti-AZ、読み取り性能ならRead Replicaです。
+
+---
+
+## まとめ
+
+高可用性とスケーラビリティでは、単一障害点をなくし、負荷に応じて伸縮できる構成を作ります。
+
+- ALB/NLBで複数ターゲットに分散する
+- EC2 Auto Scalingで台数を調整する
+- RDS Multi-AZでDB障害に備える
+- Route 53のヘルスチェックやルーティングも活用する
+- 可用性目的と性能目的を区別する
+
+次の章では、RTO、RPO、バックアップ、マルチリージョンを使ったDR設計を扱います。

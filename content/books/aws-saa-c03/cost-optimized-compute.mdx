@@ -1,0 +1,74 @@
+---
+title: 'コンピューティングのコスト最適化 — Savings Plans・Spot・Fargate'
+description: 'EC2 Savings Plans、Reserved Instances、Spot Instances、Auto Scaling、Lambda、Fargate、Compute Optimizerでコンピューティングコストを最適化します。'
+order: 16
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/oksign_man_color.png" alt="コスト削減の判断をする人のイラスト" maxWidth="300px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Savings Plans、Reserved Instances、Spot Instancesは、全部安くする仕組みに見えます。
+</SpeechBubble>
+
+コンピューティングコストは、利用時間、インスタンスタイプ、購入方式、スケーリング設定で大きく変わります。SAA-C03では、Savings Plans、Reserved Instances、Spot Instances、Auto Scaling、Lambdaの判断が出ます。
+
+---
+
+## 購入方式の使い分け
+
+| 方式 | 向いている用途 |
+|---|---|
+| On-Demand | 短期、予測不能、検証 |
+| Savings Plans | 継続利用するコンピューティング全般 |
+| Reserved Instances | 特定のRDSやEC2利用が安定している場合 |
+| Spot Instances | 中断可能なバッチ、分散処理 |
+
+常時稼働の本番EC2やFargate、Lambda利用がある程度読めるならSavings Plansを検討します。中断されてもよい処理ならSpot Instancesが候補です。
+
+---
+
+## Auto Scalingで無駄を減らす
+
+Auto Scalingは可用性だけでなくコスト最適化にも効きます。負荷が低い時間帯に台数を減らせるためです。
+
+設計ポイント:
+
+- 最小台数が過剰ではないか
+- スケールアウト条件が遅すぎないか
+- スケールイン条件が厳しすぎないか
+- 予測可能な負荷にはScheduled Scalingを使えるか
+
+---
+
+## サーバーレスとコンテナ
+
+LambdaやFargateは、サーバー管理を減らせる一方、使い方によっては高くなることもあります。
+
+| 要件 | コスト観点 |
+|---|---|
+| 短時間で不定期な処理 | Lambdaが有利になりやすい |
+| 常時高負荷の処理 | EC2やECS on EC2が有利な場合がある |
+| 運用負荷を下げたい | Fargateが候補 |
+
+実務では、料金だけでなく運用コストも含めて判断します。
+
+---
+
+## まとめ
+
+コンピューティングコストは、利用パターンに合わせて購入方式と実行基盤を選ぶことで下げられます。
+
+- 常時利用にはSavings PlansやReserved Instances
+- 中断可能な処理にはSpot Instances
+- 負荷変動にはAuto Scaling
+- 短時間イベント処理にはLambda
+- 権限・監視・運用工数もコストとして考える
+
+次の章では、RDS、Aurora、DynamoDB、ElastiCacheのコスト最適化を扱います。

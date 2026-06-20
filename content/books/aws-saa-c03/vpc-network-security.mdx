@@ -1,0 +1,90 @@
+---
+title: 'VPCネットワークセキュリティ — Subnet・Security Group・NACL・NAT Gateway'
+description: 'VPC、Public Subnet、Private Subnet、Route Table、Internet Gateway、NAT Gateway、Security Group、Network ACLを設計します。'
+order: 4
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/planning_suit_man_color.png" alt="ネットワーク構成を計画する人のイラスト" maxWidth="330px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Public SubnetとPrivate Subnetの違いは名前では分かります。でも、実際に何をどこへ置けばいいんでしょう？
+</SpeechBubble>
+
+AWS上の多くのシステムは **VPC（Virtual Private Cloud）** の中に構築します。VPC設計では、インターネットに公開するもの、内部に閉じるもの、外向き通信だけ許可するものを分けることが重要です。
+
+SAA-C03では、VPC、サブネット、ルートテーブル、Internet Gateway、NAT Gateway、Security Group、Network ACLの組み合わせが頻出です。
+
+---
+
+## Public SubnetとPrivate Subnet
+
+| サブネット | 特徴 | 置くもの |
+|---|---|---|
+| Public Subnet | Internet Gatewayへのルートを持つ | ALB、NAT Gateway、踏み台が必要な場合のBastion |
+| Private Subnet | 直接インターネットから到達できない | EC2、ECS Task、RDS、ElastiCache |
+
+Webアプリケーションでは、ALBだけをPublic Subnetに置き、アプリケーションサーバーやDBはPrivate Subnetに置く構成が基本です。
+
+<MermaidDiagram chart={`
+flowchart LR
+    U["User"] --> ALB["ALB\\nPublic Subnet"]
+    ALB --> APP["EC2 / ECS\\nPrivate Subnet"]
+    APP --> DB["RDS / ElastiCache\\nPrivate Subnet"]
+    APP --> NAT["NAT Gateway\\nPublic Subnet"]
+    NAT --> NET["Internet"]
+`} />
+
+---
+
+## Security GroupとNACL
+
+| | Security Group | Network ACL |
+|---|---|---|
+| 適用対象 | ENI、EC2、ALB、RDSなど | サブネット |
+| 状態 | ステートフル | ステートレス |
+| ルール | Allowのみ | AllowとDeny |
+| よく使う用途 | 通常のアクセス制御 | サブネット境界の追加制御 |
+
+実務では、まずSecurity Groupで設計します。NACLは追加の境界防御や明示的な拒否が必要な場合に使います。
+
+<Callout type="warning">
+### NACLは戻り通信も考える
+
+NACLはステートレスです。インバウンドを許可しても、戻りのアウトバウンドが許可されていなければ通信できません。試験ではSecurity Groupとの違いを問われやすいです。
+
+</Callout>
+
+---
+
+## NAT GatewayとVPC Endpoint
+
+Private SubnetのEC2やECS Taskが外部APIやパッケージレジストリへアクセスするには、NAT Gatewayを使います。ただしNAT Gatewayはコストが高くなりやすいです。
+
+AWSサービスへ閉域でアクセスしたい場合は **VPC Endpoint** を検討します。
+
+| 要件 | 選択肢 |
+|---|---|
+| Private Subnetからインターネットへ出たい | NAT Gateway |
+| Private SubnetからS3へ閉域アクセスしたい | Gateway Endpoint for S3 |
+| Private SubnetからSecrets ManagerやCloudWatchへ閉域アクセスしたい | Interface Endpoint |
+
+---
+
+## まとめ
+
+VPCセキュリティは、公開範囲を小さくする設計です。
+
+- Public SubnetにはALBやNAT Gatewayなど最小限だけ置く
+- アプリケーションとDBはPrivate Subnetに置く
+- 通常のアクセス制御はSecurity Groupで行う
+- NACLはサブネット単位の追加制御に使う
+- AWSサービスへの閉域アクセスにはVPC Endpointを検討する
+
+次の章では、WAF、Shield、Cognito、Secrets Managerなどを使ったアプリケーション保護を扱います。

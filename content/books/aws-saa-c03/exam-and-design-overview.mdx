@@ -1,0 +1,124 @@
+---
+title: 'SAA-C03の全体像 — 試験範囲をAWS設計の地図として読む'
+description: 'SAA-C03の4分野、AWS Well-Architected、IAM、VPC、EC2、S3、RDS、DynamoDB、CloudFrontなど主要サービスの学び方を整理します。'
+order: 1
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/plan_selection_man_color.png" alt="学習計画を整理する人のイラスト" maxWidth="320px" />
+
+AWS Certified Solutions Architect - Associate (SAA-C03) は、AWSサービス名を暗記する試験ではありません。問われるのは、要件を読んで「どのAWSサービスを、どの構成で使うべきか」を判断する力です。
+
+この本では、公式試験ガイドの出題範囲に沿って、合格に必要な知識を実務の設計判断に接続して整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+AWSのサービスが多すぎて、どこから覚えればいいのかわかりません。
+</SpeechBubble>
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+サービス単体ではなく、「安全にする」「落ちにくくする」「速くする」「安くする」という設計目的で分類すると理解しやすくなります。
+</SpeechBubble>
+
+---
+
+## SAA-C03の「C03」とは何か
+
+`SAA-C03` は、AWS Certified Solutions Architect - Associate 試験の試験コードです。
+
+| 部分 | 意味 |
+|---|---|
+| `SAA` | Solutions Architect - Associate |
+| `C03` | この試験のバージョン |
+
+AWS認定試験は、AWSサービスの変化や実務で求められる設計スキルに合わせて、定期的に出題範囲が更新されます。以前の教材で `SAA-C02` のような表記を見ることがありますが、これは前のバージョンの試験です。
+
+<Callout type="note">
+### 今から学ぶならC03で問題ない？
+
+はい。この本では、現在の AWS Certified Solutions Architect - Associate の試験ガイドで示されている **SAA-C03** を前提に学習します。古い `SAA-C02` 対応教材だけで学ぶと、現在の出題範囲とズレる可能性があります。
+
+試験を申し込む前には、必ず [AWS公式の認定ページ](https://aws.amazon.com/certification/certified-solutions-architect-associate/) と [SAA-C03 試験ガイド](https://d1.awsstatic.com/ja_JP/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) を確認してください。AWS公式ページでは、試験時間、問題数、受験方法、最新の試験ガイドへのリンクを確認できます。
+
+</Callout>
+
+バージョンが変わると、試験の大きな目的が急に別物になるというより、AWSサービスの現在の使われ方に合わせて、問われるサービス、設計パターン、重み付けが更新されます。たとえば、セキュリティ、耐障害性、パフォーマンス、コスト最適化という設計軸は継続して重要ですが、その中でどのAWSサービスをどう選ぶかは試験バージョンによって変わります。
+
+この本では、`C03` の出題範囲に沿って、IAM、VPC、S3、EC2、RDS、DynamoDB、CloudFront、SQS、SNS、KMSなどを「試験で問われる判断」と「実務で使う設計判断」の両方から扱います。
+
+---
+
+## SAA-C03の4分野
+
+SAA-C03の出題範囲は次の4分野です。配点は [SAA-C03 試験ガイド](https://d1.awsstatic.com/ja_JP/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) に記載されている重みです。
+
+| 分野 | 配点 | 設計で問われること |
+|---|---:|---|
+| [セキュアなアーキテクチャの設計](/books/aws-saa-c03/iam-and-least-privilege) | 30% | IAM、VPC、暗号化、監査、脅威対策 |
+| [弾力性に優れたアーキテクチャの設計](/books/aws-saa-c03/decoupled-architecture) | 26% | Auto Scaling、ELB、Multi-AZ、DR、疎結合 |
+| [高パフォーマンスなアーキテクチャの設計](/books/aws-saa-c03/storage-selection) | 24% | S3、EBS、EFS、EC2、Lambda、RDS、DynamoDB、CloudFront |
+| [コストを最適化したアーキテクチャの設計](/books/aws-saa-c03/cost-optimized-storage) | 20% | Savings Plans、Reserved Instances、S3 Lifecycle、NAT Gateway削減 |
+
+配点だけを見ると、セキュリティと可用性だけで半分以上を占めます。実務でも同じで、まず守る、次に落ちにくくする、そのうえで速く安くする、という順番で設計します。
+
+<Callout type="info">
+### この表の読み方
+
+リンク先は各分野の入口になる章です。セキュリティ分野はIAMから始めてVPC、アプリケーション保護、データ保護へ進みます。弾力性は疎結合、高可用性、DRへ進みます。高パフォーマンスはストレージ、コンピューティング、データベース、ネットワーク、データ分析へ進みます。コスト最適化はストレージ、コンピューティング、データベース、ネットワークの順に確認します。
+
+</Callout>
+
+---
+
+## サービス名より判断軸を覚える
+
+試験問題は、たとえば次のような形で出ます。
+
+- インターネットから直接アクセスさせたくない
+- 複数AZで障害に耐えたい
+- 読み取りが多いのでキャッシュしたい
+- 低頻度アクセスのデータを安く保存したい
+- 管理負荷を下げたい
+
+このとき、単に `EC2` や `S3` を覚えているだけでは解けません。どの要件なら `ALB`、`Auto Scaling`、`RDS Multi-AZ`、`DynamoDB`、`CloudFront`、`SQS`、`S3 Lifecycle` が候補になるのかを判断する必要があります。
+
+<Callout type="note">
+### この本でのサービスの扱い
+
+各章では、サービスの細かい全機能ではなく、SAA-C03と実務でよく使う設計判断に絞ります。たとえばS3なら、バケット作成手順ではなく、ストレージクラス、暗号化、ライフサイクル、レプリケーション、CloudFront連携を中心に扱います。
+
+</Callout>
+
+---
+
+## 実務での読み替え
+
+SAA-C03の問題文は、実務の設計レビューに近いです。
+
+| 問題文の表現 | 実務での意味 |
+|---|---|
+| 高可用性が必要 | 単一AZ、単一インスタンス、単一DBを避ける |
+| 運用負荷を下げたい | マネージドサービスを優先する |
+| 疎結合にしたい | SQS、SNS、EventBridgeで直接依存を減らす |
+| コスト効率が重要 | 利用パターンに合わせて購入方式・ストレージクラスを選ぶ |
+| セキュアにしたい | 最小権限、暗号化、閉域化、監査を組み合わせる |
+
+実務でAWSを扱うときも、最初からサービスを決めるのではなく、要件、制約、リスク、運用体制を見て構成を選びます。
+
+---
+
+## まとめ
+
+SAA-C03は、AWSの主要サービスを「設計目的」から選ぶ試験です。
+
+- セキュリティは IAM、VPC、KMS、WAF、CloudTrail などで設計する
+- 可用性は Multi-AZ、Auto Scaling、ELB、SQS などで設計する
+- パフォーマンスはストレージ、コンピューティング、DB、ネットワークの選択で決まる
+- コストは購入方式、マネージドサービス、データ転送、保存期間で最適化する
+
+次の章では、最も配点が高いセキュリティ分野の入口として、IAMと最小権限を扱います。

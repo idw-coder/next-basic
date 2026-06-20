@@ -1,0 +1,83 @@
+---
+title: 'マルチアカウントとフェデレーション — Organizations・SCP・IAM Identity Center'
+description: 'AWS Organizations、SCP、Control Tower、IAM Identity Center、STS、クロスアカウントアクセス、フェデレーション認証を整理します。'
+order: 3
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/meeting_color.png" alt="複数チームでアカウント管理を相談するイラスト" maxWidth="340px" />
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+AWSアカウントは1つだけでも使えるのに、なぜわざわざ複数アカウントに分けるんですか？
+</SpeechBubble>
+
+実務のAWS環境では、1つのAWSアカウントにすべてを詰め込むより、用途ごとにアカウントを分けることが多いです。開発、本番、監査、ログ保管、セキュリティ管理を分離することで、権限と影響範囲を制御しやすくなります。
+
+SAA-C03では、複数アカウント管理、クロスアカウントアクセス、AWS Organizations、SCP、AWS IAM Identity Centerが問われます。
+
+---
+
+## アカウントを分ける理由
+
+| 分離単位 | 目的 |
+|---|---|
+| dev / stg / prod | 環境ごとの事故を分離する |
+| workloadごと | チームやシステム単位で権限を分ける |
+| security account | GuardDuty、Security Hub、監査ログを集中管理する |
+| log archive account | CloudTrailやVPC Flow Logsを改ざんされにくく保管する |
+
+本番アカウントと開発アカウントを分けると、開発者が誤って本番RDSや本番S3を削除するリスクを下げられます。
+
+---
+
+## OrganizationsとSCP
+
+**AWS Organizations** は、複数のAWSアカウントを組織として管理するサービスです。OU（Organizational Unit）でアカウントをグルーピングし、**SCP（Service Control Policy）** で組織全体の上限権限を決めます。
+
+<Callout type="note">
+### SCPは許可を追加しない
+
+SCPは「このアカウントで最大どこまで許すか」を決めるガードレールです。SCPで許可しても、IAMポリシーで許可されていなければ操作はできません。SCPとIAMの両方で許可されて初めて実行できます。
+
+</Callout>
+
+よくあるSCPの使い方:
+
+- 特定リージョン以外の利用を禁止する
+- CloudTrailの停止を禁止する
+- ルートユーザーでの操作を制限する
+- 本番OUでは危険な削除操作を禁止する
+
+---
+
+## IAM Identity Center
+
+**AWS IAM Identity Center** は、複数アカウントへの人のログインをまとめて管理するサービスです。Google Workspace、Microsoft Entra ID、Oktaなどの外部IdPと連携し、SSOでAWSアカウントにアクセスできます。
+
+実務では、IAMユーザーを各アカウントに個別作成するより、IAM Identity Centerでユーザーと権限セットを管理する方が運用しやすくなります。
+
+| 要件 | 選択肢 |
+|---|---|
+| 社員に複数AWSアカウントへのログインを提供したい | IAM Identity Center |
+| 既存IdPの認証をAWSに連携したい | フェデレーション |
+| 一時的に別アカウントの権限を使いたい | STS AssumeRole |
+
+---
+
+## まとめ
+
+複数アカウント設計では、個別アカウント内のIAMだけでなく、組織全体のガードレールを設計します。
+
+- AWS Organizationsでアカウントをまとめる
+- SCPで許可範囲の上限を制御する
+- IAM Identity Centerで人のアクセスを集中管理する
+- クロスアカウントアクセスにはIAM RoleとSTSを使う
+- ログ保管やセキュリティ監査用アカウントを分ける
+
+次の章では、VPC、サブネット、Security Group、NACLを使ったネットワークセキュリティを扱います。

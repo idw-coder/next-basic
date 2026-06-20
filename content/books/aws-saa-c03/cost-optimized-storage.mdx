@@ -1,0 +1,75 @@
+---
+title: 'ストレージのコスト最適化 — S3 Lifecycle・Glacier・EBS gp3'
+description: 'S3 Lifecycle、S3 Intelligent-Tiering、Glacier、EBS gp3、EFS Infrequent Access、FSx、AWS Backupのコスト最適化を扱います。'
+order: 15
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/plan_selection_man_color.png" alt="コストを見ながら保存先を選ぶ人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+S3は安い印象がありますが、ストレージコストの問題でよく出るのはなぜですか？
+</SpeechBubble>
+
+ストレージはデータが増えるほど継続的にコストが積み上がります。SAA-C03では、アクセス頻度、保持期間、復元時間に応じたストレージ選択が問われます。
+
+---
+
+## S3ストレージクラス
+
+| ストレージクラス | 向いているデータ |
+|---|---|
+| S3 Standard | 頻繁にアクセスするデータ |
+| S3 Standard-IA | 低頻度だがすぐ取り出したいデータ |
+| S3 One Zone-IA | 再作成可能で低頻度なデータ |
+| S3 Intelligent-Tiering | アクセス頻度が読みにくいデータ |
+| Glacier Instant Retrieval | アーカイブだが即時取得したい |
+| Glacier Flexible Retrieval | 数分から数時間でよいアーカイブ |
+| Glacier Deep Archive | 長期保管、復元は遅くてよい |
+
+Lifecycleで古いログをGlacierへ移す構成は、試験でも実務でも定番です。
+
+---
+
+## EBSの最適化
+
+EBSでは、古い世代のボリュームを使い続けるより、gp3へ移行することでコストと性能を調整しやすくなります。
+
+見るポイント:
+
+- ボリュームタイプは適切か
+- 過剰な容量を確保していないか
+- スナップショットが不要に残っていないか
+- io2など高性能タイプが本当に必要か
+
+---
+
+## EFSとFSx
+
+EFSは便利ですが、容量が増えるとコストも増えます。低頻度アクセスにはEFS Infrequent Accessを検討します。
+
+| 要件 | 選択肢 |
+|---|---|
+| Linux共有ファイルを安く運用したい | EFS Lifecycle Management |
+| Windowsファイル共有 | FSx for Windows File Server |
+| HPC向け高性能ファイルシステム | FSx for Lustre |
+
+---
+
+## まとめ
+
+ストレージコストは、アクセス頻度と保持期間で最適化します。
+
+- S3 Lifecycleで古いデータを低コスト層へ移す
+- アクセス頻度が不明ならS3 Intelligent-Tieringを検討する
+- EBSはgp3、容量、スナップショットを見直す
+- EFSはIAやライフサイクルを使う
+- バックアップの保持期間もコストに含める
+
+次の章では、EC2、Lambda、Fargate、Savings Plansなどコンピューティングのコスト最適化を扱います。

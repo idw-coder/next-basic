@@ -1,0 +1,84 @@
+---
+title: 'データ取り込みと分析 — Kinesis・Glue・Athena・DataSync'
+description: 'Kinesis Data Streams、Kinesis Data Firehose、Glue、Athena、S3、Redshift、DataSync、Transfer Familyでデータ取り込みと変換を設計します。'
+order: 14
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/inspiration_color.png" alt="データ活用のアイデアを考えるイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Kinesis、Glue、Athenaは普段のWebアプリ開発では見かけにくくて、イメージしづらいです。
+</SpeechBubble>
+
+SAA-C03では、ストリーミングデータ、ログ収集、ETL、S3上の分析、オンプレミスからのデータ移行が問われます。実務でも、アプリケーションの裏側でデータ基盤をどう作るかは重要です。
+
+---
+
+## データ取り込みサービス
+
+| サービス | 主な用途 |
+|---|---|
+| Kinesis Data Streams | ストリーミングデータを低レイテンシで処理 |
+| Kinesis Data Firehose | S3、Redshift、OpenSearchへ簡単に配信 |
+| AWS Glue | ETL、データカタログ |
+| Amazon Athena | S3上のデータをSQLでクエリ |
+| AWS DataSync | オンプレミスや他ストレージからAWSへデータ転送 |
+| AWS Transfer Family | SFTP/FTPS/FTPでS3やEFSへ転送 |
+
+---
+
+## Kinesisの使い分け
+
+| 要件 | 選択肢 |
+|---|---|
+| ストリームをアプリで細かく処理したい | Kinesis Data Streams |
+| S3やRedshiftへ簡単に流し込みたい | Kinesis Data Firehose |
+| Kafka互換が必要 | Amazon MSK |
+
+Firehoseは運用が簡単ですが、Streamsほど細かい制御には向きません。リアルタイム処理の自由度が必要ならStreamsを選びます。
+
+---
+
+## S3を中心にした分析
+
+S3はデータレイクの保存先としてよく使われます。
+
+典型構成:
+
+```text
+アプリログ / IoT / 業務データ
+  -> Kinesis Firehose / DataSync
+  -> S3
+  -> Glue Data Catalog
+  -> Athena / Redshift Spectrum
+```
+
+実務では、S3のプレフィックス設計、ファイル形式、パーティション、ライフサイクルも性能とコストに影響します。
+
+<Callout type="note">
+### AthenaはS3スキャン量がコストに直結する
+
+Athenaは便利ですが、クエリでスキャンしたデータ量に課金されます。Parquetなどの列指向フォーマット、圧縮、パーティション分割でコストと速度を改善できます。
+
+</Callout>
+
+---
+
+## まとめ
+
+データ取り込みと分析では、リアルタイム性と運用負荷を見てサービスを選びます。
+
+- 細かいストリーム処理はKinesis Data Streams
+- 配信中心ならKinesis Data Firehose
+- ETLとカタログはGlue
+- S3上のSQL分析はAthena
+- オンプレ転送はDataSyncやTransfer Family
+
+次の章からは、コスト最適化としてストレージ、コンピューティング、DB、ネットワークを順に扱います。

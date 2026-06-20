@@ -1,0 +1,80 @@
+---
+title: '疎結合アーキテクチャ — SQS・SNS・EventBridge・Step Functions'
+description: 'Amazon SQS、SNS、EventBridge、Step Functions、Lambda、DLQを使ってスケーラブルで疎結合なアーキテクチャを設計します。'
+order: 7
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/creative_color.png" alt="処理のつながりを考えるイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+APIで直接呼び出せばシンプルなのに、なぜわざわざSQSやSNSを挟むんですか？
+</SpeechBubble>
+
+システム同士を直接呼び合う構成は、片方の障害や負荷がもう片方へ伝わりやすくなります。SAA-C03の「スケーラブルで疎結合なアーキテクチャ」では、SQS、SNS、EventBridge、Step Functionsがよく登場します。
+
+---
+
+## 疎結合にする理由
+
+直接同期呼び出しだけで構成すると、次の問題が起きます。
+
+- 呼び出し先が落ちると呼び出し元も失敗する
+- 一時的なアクセス増加を吸収しにくい
+- 処理が長いとユーザー応答が遅くなる
+- サービス追加時に既存システムへの影響が大きい
+
+キューやイベントを挟むと、処理を非同期化し、負荷を平準化できます。
+
+---
+
+## SQS、SNS、EventBridgeの使い分け
+
+| サービス | 得意なこと | 典型例 |
+|---|---|---|
+| SQS | キューで処理をためる | 注文処理、画像変換、バッチ連携 |
+| SNS | 複数の購読者へ通知する | メール通知、SQSへのfan-out |
+| EventBridge | イベントルーティング | SaaS連携、AWSイベント連携、ドメインイベント |
+| Step Functions | ワークフロー制御 | 承認、リトライ、分岐、複数Lambdaの制御 |
+
+<Callout type="note">
+### 「1対1でためる」ならSQS、「1対多で配る」ならSNS
+
+注文を1件ずつ確実に処理したいならSQSが候補です。同じイベントを在庫、メール、分析など複数システムに配りたいならSNSやEventBridgeを検討します。
+
+</Callout>
+
+---
+
+## DLQとリトライ
+
+非同期処理では、失敗したメッセージをどう扱うかが重要です。SQSでは **DLQ（Dead Letter Queue）** を設定し、何度も失敗したメッセージを退避できます。
+
+実務で見るべき項目:
+
+- Visibility Timeoutは処理時間より長いか
+- リトライ回数は適切か
+- DLQに溜まったメッセージを監視しているか
+- 冪等性を考慮しているか
+
+同じメッセージが複数回処理されても壊れないように、処理側は冪等に設計します。
+
+---
+
+## まとめ
+
+疎結合設計では、同期呼び出しを減らし、キューやイベントで依存を弱めます。
+
+- SQSは処理待ち行列
+- SNSは通知のfan-out
+- EventBridgeはイベントルーティング
+- Step Functionsはワークフロー制御
+- DLQ、リトライ、冪等性をセットで設計する
+
+次の章では、ELB、Auto Scaling、Multi-AZを使った可用性とスケーラビリティを扱います。

@@ -146,6 +146,36 @@ HTTPSがないと、通信経路上の第三者がリクエストの中身（パ
 
 </Callout>
 
+<Callout type="column">
+### GitHubのcloneで見るHTTPSとSSHの違い
+
+GitHubでリポジトリをcloneするとき、URLとして **HTTPS** と **SSH** を選べます。
+
+```bash
+# HTTPS
+git clone https://github.com/example/app.git
+
+# SSH
+git clone git@github.com:example/app.git
+```
+
+どちらも「GitHubのサーバーと安全に通信する」ための方法ですが、使っている仕組みが違います。
+
+| | HTTPS clone | SSH clone |
+|---|---|---|
+| 通信の仕組み | HTTPをTLSで暗号化する | SSHプロトコルで暗号化する |
+| 認証方法 | GitHubのユーザー名 + Personal Access Tokenなど | PCに置いた秘密鍵 + GitHubに登録した公開鍵 |
+| URLの例 | `https://github.com/user/repo.git` | `git@github.com:user/repo.git` |
+| よく使う場面 | 初回設定を少なく始めたいとき、社内プロキシ環境 | 開発用PCから頻繁にpush/pullするとき |
+
+HTTPSはこの章で扱っているWeb通信の延長にあります。ブラウザでWebサイトを見るときと同じく、TLSで通信内容を暗号化します。ただしGitHubではパスワード認証ではなく、Personal Access Tokenなどを使います。
+
+SSHはHTTPとは別のプロトコルです。サーバーにログインしたり、Git操作を安全に行ったりするためによく使われます。SSHでは、手元のPCに **秘密鍵** を置き、対応する **公開鍵** をGitHubに登録して「このPCからの接続は本人だ」と確認します。
+
+迷ったら、まずはHTTPSでcloneして問題ありません。pushやpullを頻繁に行う開発用PCでは、SSH鍵を設定してSSH cloneを使うと、認証情報の入力が少なくなり運用しやすくなります。
+
+</Callout>
+
 ---
 
 ## DevToolsで実際に確認する
@@ -225,6 +255,7 @@ Webの通信は **DNS → TCP → HTTP** の3段階で進みます。
 - **TCP** で信頼性のある通信路を確立する
 - **HTTP** でリクエストとレスポンスをやりとりする
 - **HTTPS** はHTTPをTLSで暗号化したもので、現代のWebでは必須
+- **SSH** はHTTPとは別の安全な通信プロトコルで、GitHubのSSH cloneなどで使われる
 
 この全体像を押さえておくと、「サーバーに繋がらない」「レスポンスがおかしい」といったトラブルのとき、どの層で問題が起きているかを切り分けられるようになります。
 

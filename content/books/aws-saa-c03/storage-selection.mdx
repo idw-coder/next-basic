@@ -1,0 +1,94 @@
+---
+title: 'ストレージ選択 — S3・EBS・EFS・FSxを使い分ける'
+description: 'Amazon S3、EBS、EFS、FSx、S3 Storage Class、S3 Lifecycle、Storage Gatewayを高パフォーマンスと実務観点で整理します。'
+order: 10
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/boomerang_woman_color.png" alt="保存先の選択に迷う人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+S3、EBS、EFSは全部データを保存するサービスですよね。問題文ではどう見分ければいいですか？
+</SpeechBubble>
+
+AWSのストレージ選択では、オブジェクト、ブロック、ファイルの違いを理解することが重要です。SAA-C03では、S3、EBS、EFS、FSx、Storage Gatewayの使い分けが頻出です。
+
+---
+
+## ストレージの大分類
+
+| 種類 | サービス | 使いどころ |
+|---|---|---|
+| オブジェクトストレージ | S3 | 画像、ログ、バックアップ、静的ファイル、データレイク |
+| ブロックストレージ | EBS | EC2のディスク、DBのストレージ |
+| ファイルストレージ | EFS、FSx | 複数サーバーで共有するファイルシステム |
+
+S3はファイルシステムではなくオブジェクトストレージです。EC2にマウントする通常のディスクが必要ならEBS、複数EC2から共有したいならEFSやFSxを検討します。
+
+---
+
+## S3の設計判断
+
+S3は可用性、耐久性、スケーラビリティに優れたマネージドストレージです。
+
+よく使う機能:
+
+- S3 Standard、Standard-IA、One Zone-IA、Glacier Instant Retrieval、Glacier Flexible Retrieval、Deep Archive
+- S3 Lifecycle
+- S3 Versioning
+- S3 Replication
+- S3 Object Lock
+- S3 Transfer Acceleration
+
+<Callout type="note">
+### 低頻度アクセスはストレージクラスで最適化
+
+アクセス頻度が低いデータは、S3 Standardに置き続けるより、LifecycleでIAやGlacier系へ移すとコストを下げられます。ただし取り出し料金や復元時間も考慮します。
+
+</Callout>
+
+---
+
+## EBS、EFS、FSx
+
+| サービス | 特徴 |
+|---|---|
+| EBS | EC2にアタッチするブロックストレージ。gp3、io2などを選ぶ |
+| EFS | Linux向け共有ファイルストレージ。複数AZからアクセス可能 |
+| FSx for Windows File Server | Windowsファイル共有 |
+| FSx for Lustre | HPCや機械学習など高性能ファイルシステム |
+| FSx for NetApp ONTAP | ONTAP互換機能が必要な場合 |
+
+複数EC2から同じファイルを共有したい要件では、EBSではなくEFSやFSxが候補になります。
+
+---
+
+## オンプレミス連携
+
+オンプレミスからAWSストレージを使う要件では、**AWS Storage Gateway** や **AWS DataSync** が出ます。
+
+| 要件 | 選択肢 |
+|---|---|
+| オンプレミスからS3をファイル共有のように使いたい | File Gateway |
+| オンプレミスデータをAWSへ高速移行したい | DataSync |
+| 大量データを物理的に移行したい | Snow Family |
+
+---
+
+## まとめ
+
+ストレージ選択では、データの形とアクセスパターンを見ます。
+
+- オブジェクトならS3
+- EC2のディスクならEBS
+- 複数サーバー共有ならEFSやFSx
+- アーカイブはS3 Glacier系
+- オンプレ連携はStorage GatewayやDataSync
+
+次の章では、EC2、Lambda、ECS、Fargateなどのコンピューティング選択を扱います。

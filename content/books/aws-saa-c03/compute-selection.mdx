@@ -1,0 +1,99 @@
+---
+title: 'コンピューティング選択 — EC2・Lambda・ECS・Fargate・EKS'
+description: 'EC2、Auto Scaling、Lambda、ECS、Fargate、EKS、Elastic Beanstalk、Batchを高パフォーマンスで伸縮性ある設計として比較します。'
+order: 11
+---
+
+<Callout type="warning">
+### この章は現在執筆中です
+
+このページはSAA-C03の出題範囲に沿った骨子です。実務例、構成図、試験問題での判断パターン、吹き出しや図解を追加して、教科書として読める密度に拡充予定です。
+
+</Callout>
+
+<Figure src="/images/pc-work-woman01.png" alt="アプリケーションの実行基盤を考える人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+EC2、Lambda、ECS、Fargateは、どれもアプリを動かせますよね。何を基準に選ぶんですか？
+</SpeechBubble>
+
+コンピューティングサービスは、アプリケーションをどこで動かすかを決める領域です。SAA-C03では、EC2、Lambda、ECS、Fargate、EKS、Elastic Beanstalkの選択が問われます。
+
+---
+
+## 代表サービスの使い分け
+
+| サービス | 向いている用途 |
+|---|---|
+| EC2 | OSやミドルウェアを細かく制御したい |
+| Lambda | イベント駆動、短時間処理、サーバーレス |
+| ECS | コンテナをAWSネイティブに運用したい |
+| Fargate | サーバー管理なしでコンテナを動かしたい |
+| EKS | Kubernetesを使いたい |
+| Elastic Beanstalk | アプリを簡単にデプロイしたい |
+| AWS Batch | 大量のバッチジョブを実行したい |
+
+試験では「運用負荷を下げたい」「イベント発生時だけ処理したい」「コンテナを使いたい」といった要件から候補を絞ります。
+
+---
+
+## EC2を選ぶ場面
+
+EC2は自由度が高い反面、OSパッチ、スケーリング、監視、可用性設計を自分で考える必要があります。
+
+EC2が候補になる要件:
+
+- OSやカーネル設定を制御したい
+- 特定のエージェントやミドルウェアが必要
+- GPUや特殊なインスタンスタイプを使いたい
+- 既存アプリをそのまま移行したい
+
+Auto ScalingとALBを組み合わせることで、可用性と伸縮性を高めます。
+
+---
+
+## Lambdaを選ぶ場面
+
+Lambdaは、サーバー管理なしでコードを実行するサービスです。
+
+向いている処理:
+
+- S3にファイルが置かれたら処理する
+- API Gateway経由で軽量APIを実行する
+- EventBridgeのスケジュールで定期実行する
+- SQSメッセージを処理する
+
+注意点:
+
+- 実行時間の上限がある
+- コールドスタートがある
+- ステートレスに設計する
+- VPC内接続が必要な場合はネットワーク設計も考える
+
+---
+
+## コンテナ: ECS/Fargate/EKS
+
+コンテナを使う場合、SAA-C03ではECSとFargateがよく出ます。
+
+| 要件 | 選択肢 |
+|---|---|
+| AWSでシンプルにコンテナ運用したい | ECS |
+| EC2管理なしでコンテナを動かしたい | ECS on Fargate |
+| Kubernetesエコシステムを使いたい | EKS |
+
+実務では、Kubernetesの明確な理由がなければ、ECS on Fargateの方が運用負荷を下げやすいことがあります。
+
+---
+
+## まとめ
+
+コンピューティング選択では、制御したい範囲と運用負荷のバランスを見ます。
+
+- 自由度が必要ならEC2
+- イベント駆動ならLambda
+- コンテナならECS/Fargate
+- Kubernetes要件があるならEKS
+- 簡単なデプロイならElastic Beanstalk
+
+次の章では、RDS、Aurora、DynamoDB、ElastiCache、Redshiftなどのデータベース選択を扱います。
