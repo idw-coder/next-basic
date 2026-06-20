@@ -19,6 +19,7 @@ import { SectionHeading } from '@/components/SectionHeading';
 import QuizListClient from './QuizListClient';
 import { getCategorySeoContent, type CategorySeoContent } from './categoryContent';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
+import { getSectionTags } from './sectionTagMap';
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
@@ -35,6 +36,8 @@ export interface Quiz {
   id: number;
   slug: string;
   question: string;
+  createdAt?: string;
+  updatedAt?: string;
   tags: Tag[];
 }
 
@@ -234,6 +237,7 @@ export default async function CategoryQuizPage({
 
   const seoContent = getCategorySeoContent(categorySlug);
   const jsonLdList = buildJsonLd(category, quizzes, categorySlug, seoContent);
+  const sectionTags = getSectionTags(categorySlug);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
@@ -379,6 +383,7 @@ export default async function CategoryQuizPage({
           categorySlug={categorySlug}
           currentQuery={q}
           currentTagSlug={tagSlug}
+          sectionTags={sectionTags}
         />
       </section>
 
