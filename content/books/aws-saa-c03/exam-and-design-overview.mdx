@@ -57,25 +57,57 @@ AWS認定試験は、AWSサービスの変化や実務で求められる設計�
 
 SAA-C03の出題範囲は次の4分野です。配点は [SAA-C03 試験ガイド](https://d1.awsstatic.com/ja_JP/training-and-certification/docs-sa-assoc/AWS-Certified-Solutions-Architect-Associate_Exam-Guide.pdf) に記載されている重みです。
 
-| 分野 | 配点 | 設計で問われること |
-|---|---:|---|
-| [セキュアなアーキテクチャの設計](/books/aws-saa-c03/iam-and-least-privilege) | 30% | IAM、VPC、暗号化、監査、脅威対策 |
-| [弾力性に優れたアーキテクチャの設計](/books/aws-saa-c03/decoupled-architecture) | 26% | Auto Scaling、ELB、Multi-AZ、DR、疎結合 |
-| [高パフォーマンスなアーキテクチャの設計](/books/aws-saa-c03/storage-selection) | 24% | S3、EBS、EFS、EC2、Lambda、RDS、DynamoDB、CloudFront |
-| [コストを最適化したアーキテクチャの設計](/books/aws-saa-c03/cost-optimized-storage) | 20% | Savings Plans、Reserved Instances、S3 Lifecycle、NAT Gateway削減 |
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+4分野あると、どこから手をつけていいか迷います。
+</SpeechBubble>
 
-配点だけを見ると、セキュリティと可用性だけで半分以上を占めます。実務でも同じで、まず守る、次に落ちにくくする、そのうえで速く安くする、という順番で設計します。
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+配点が大きいセキュリティと可用性だけで56%を占めます。まず守る、次に落ちにくくする、そのうえで速く安くする、という順番で進めると効率的です。
+</SpeechBubble>
 
-<Callout type="info">
-### この表の読み方
+### セキュアなアーキテクチャの設計（30%）
 
-リンク先は各分野の入口になる章です。セキュリティ分野はIAMから始めてVPC、アプリケーション保護、データ保護へ進みます。弾力性は疎結合、高可用性、DRへ進みます。高パフォーマンスはストレージ、コンピューティング、データベース、ネットワーク、データ分析へ進みます。コスト最適化はストレージ、コンピューティング、データベース、ネットワークの順に確認します。
+IAM、VPC、暗号化、監査、脅威対策を中心に、AWSリソースへのアクセス制御とデータ保護を設計します。
 
-</Callout>
+- [IAMと最小権限](/books/aws-saa-c03/iam-and-least-privilege) — ユーザー・グループ・ロール・ポリシー
+- [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) — Subnet・Security Group・NACL・NAT Gateway
+- [マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation) — Organizations・SCP・IAM Identity Center
+- [アプリケーション保護](/books/aws-saa-c03/application-security) — WAF・Shield・Cognito・Secrets Manager
+- [データ保護](/books/aws-saa-c03/data-security) — KMS・暗号化・バックアップ・レプリケーション
+- [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) — CloudWatch Metrics・Logs・Logs Insights・EventBridge
+
+### 弾力性に優れたアーキテクチャの設計（26%）
+
+Auto Scaling、ELB、Multi-AZ、疎結合、DRを中心に、障害に強くスケーラブルな構成を設計します。
+
+- [スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha) — ELB・Auto Scaling・Multi-AZ
+- [疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture) — SQS・SNS・EventBridge・Step Functions
+- [災害対策と復旧設計](/books/aws-saa-c03/disaster-recovery) — RTO・RPO・Backup・Multi-Region
+
+### 高パフォーマンスなアーキテクチャの設計（24%）
+
+ストレージ、コンピューティング、データベース、ネットワーク、データ分析の各レイヤーで最適なサービスを選択します。
+
+- [ストレージ選択](/books/aws-saa-c03/storage-selection) — S3・EBS・EFS・FSx
+- [コンピューティング選択](/books/aws-saa-c03/compute-selection) — EC2・Lambda・ECS・Fargate・EKS
+- [データベース選択](/books/aws-saa-c03/database-selection) — RDS・Aurora・DynamoDB・ElastiCache・Redshift
+- [ネットワーク性能](/books/aws-saa-c03/network-performance) — CloudFront・Route 53・Global Accelerator・VPC Endpoint
+- [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) — Kinesis・Glue・Athena・OpenSearch
+
+### コストを最適化したアーキテクチャの設計（20%）
+
+購入方式、ストレージクラス、マネージドサービス、データ転送コストを軸に最適化します。
+
+- [ストレージのコスト最適化](/books/aws-saa-c03/cost-optimized-storage) — S3 Lifecycle・Glacier・EBS gp3
+- [コンピューティングのコスト最適化](/books/aws-saa-c03/cost-optimized-compute) — Savings Plans・Spot・Fargate
+- [データベースのコスト最適化](/books/aws-saa-c03/cost-optimized-database) — RDS・Aurora・DynamoDB・ElastiCache
+- [ネットワークのコスト最適化と試験チェックリスト](/books/aws-saa-c03/cost-optimized-network-and-checklist) — NAT Gateway・CloudFront・VPC Endpoint
 
 ---
 
 ## サービス名より判断軸を覚える
+
+<Figure src="/images/search_woman_color.png" alt="情報を調べている人のイラスト" maxWidth="320px" />
 
 試験問題は、たとえば次のような形で出ます。
 
@@ -86,6 +118,10 @@ SAA-C03の出題範囲は次の4分野です。配点は [SAA-C03 試験ガイ�
 - 管理負荷を下げたい
 
 このとき、単に `EC2` や `S3` を覚えているだけでは解けません。どの要件なら `ALB`、`Auto Scaling`、`RDS Multi-AZ`、`DynamoDB`、`CloudFront`、`SQS`、`S3 Lifecycle` が候補になるのかを判断する必要があります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+サービスの機能をひとつずつ覚えるのは大変そうですが、全部必要ですか？
+</SpeechBubble>
 
 <Callout type="note">
 ### この本でのサービスの扱い
@@ -98,6 +134,8 @@ SAA-C03の出題範囲は次の4分野です。配点は [SAA-C03 試験ガイ�
 
 ## 実務での読み替え
 
+<Figure src="/images/deskwork_check_woman_color.png" alt="設計レビューをしている人のイラスト" maxWidth="320px" />
+
 SAA-C03の問題文は、実務の設計レビューに近いです。
 
 | 問題文の表現 | 実務での意味 |
@@ -109,6 +147,10 @@ SAA-C03の問題文は、実務の設計レビューに近いです。
 | セキュアにしたい | 最小権限、暗号化、閉域化、監査を組み合わせる |
 
 実務でAWSを扱うときも、最初からサービスを決めるのではなく、要件、制約、リスク、運用体制を見て構成を選びます。
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+試験の選択肢を迷ったときも、この「実務ならどう判断するか」の視点で消去法を使うと正答にたどり着きやすくなります。
+</SpeechBubble>
 
 ---
 

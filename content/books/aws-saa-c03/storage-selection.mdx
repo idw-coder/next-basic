@@ -1,7 +1,7 @@
 ---
 title: 'ストレージ選択 — S3・EBS・EFS・FSxを使い分ける'
 description: 'Amazon S3、EBS、EFS、FSx、S3 Storage Class、S3 Lifecycle、Storage Gatewayを高パフォーマンスと実務観点で整理します。'
-order: 10
+order: 11
 ---
 
 <Callout type="info">
@@ -18,6 +18,95 @@ S3、EBS、EFSは全部データを保存するサービスですよね。問題
 </SpeechBubble>
 
 AWSのストレージ選択では、オブジェクト、ブロック、ファイルの違いを理解することが重要です。SAA-C03では、S3、EBS、EFS、FSx、Storage Gatewayの使い分けが頻出です。
+
+---
+
+## Amazon S3とは
+
+Amazon S3（Simple Storage Service）は、AWSが提供するオブジェクトストレージサービスです。ファイルを「オブジェクト」として保存し、容量の上限なく、高い耐久性（99.999999999% = イレブンナイン）でデータを保管できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+オブジェクトストレージって、普通のファイルシステムと何が違うんですか？
+</SpeechBubble>
+
+通常のファイルシステム（EBSやEFS）はディレクトリ構造でファイルを管理します。一方、オブジェクトストレージはフラットな構造で、各オブジェクトに一意のキーとメタデータを付けて管理します。フォルダのように見える `/images/photo.jpg` も、実際にはフォルダが存在するのではなく、`images/photo.jpg` という1つのキーです。
+
+<Figure src="/images/deta_man_color.png" alt="データの管理方法を考える人のイラスト" maxWidth="320px" />
+
+### S3の基本用語
+
+| 用語 | 説明 |
+|---|---|
+| バケット（Bucket） | オブジェクトを入れる器。グローバルで一意な名前が必要。リージョンを指定して作成する |
+| オブジェクト（Object） | S3に保存されるデータの単位。ファイル本体 + メタデータで構成される |
+| オブジェクトキー（Key） | バケット内でオブジェクトを一意に識別する名前。`logs/2024/access.log` のようにスラッシュで階層を表現できる |
+| バージョンID | バージョニング有効時に付与される識別子。同じキーに上書きしても過去のバージョンを保持・復元できる |
+| メタデータ | オブジェクトに付随する情報。Content-Type、暗号化方式、カスタムヘッダーなど |
+| ライフサイクルルール | 一定期間後にストレージクラスを変更したり、オブジェクトを自動削除するルール |
+| バケットポリシー | バケット単位のアクセス制御。JSON形式のIAMポリシーで、誰がどの操作を許可・拒否されるかを定義する |
+| ACL（アクセス制御リスト） | オブジェクトやバケット単位の旧式なアクセス制御。現在はバケットポリシーの使用が推奨されている |
+
+### S3の構造を図で見る
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    B["S3 Bucket"] --> O1["Object"]
+    B --> O2["Object"]
+    B --> O3["Object"]
+    O1 --> K1["Key: images/logo.png"]
+    O1 --> D1["Data: file body"]
+    O1 --> M1["Metadata: Content-Type, etc."]
+    O1 --> V1["Version ID: v1, v2..."]
+    O2 --> K2["Key: logs/access.log"]
+    O3 --> K3["Key: backup/db.sql.gz"]
+`}
+/>
+
+バケットの中にオブジェクトがフラットに並び、各オブジェクトはキー・データ本体・メタデータ・バージョンIDで構成されます。ディレクトリ構造に見える `/` はキー名の一部にすぎません。
+
+### バケットポリシーの実務と試験
+
+バケットポリシーはS3のアクセス制御の中核で、試験でも頻出です。JSON形式でPrincipal（誰が）、Action（何を）、Resource（どのバケット/オブジェクトに）、Effect（許可/拒否）を指定します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+IAMポリシーでもS3のアクセス制御はできますよね。バケットポリシーとどう使い分けるんですか？
+</SpeechBubble>
+
+IAMポリシーは「ユーザーやロールに対して何を許可するか」、バケットポリシーは「バケットに対して誰のアクセスを許可するか」という視点の違いがあります。
+
+| 方式 | 視点 | 主な用途 |
+|---|---|---|
+| IAMポリシー | ユーザー/ロール側 | 自アカウント内のユーザーにS3の操作権限を付与 |
+| バケットポリシー | リソース（バケット）側 | クロスアカウントアクセス、パブリックアクセス制御、特定IPからの制限 |
+
+#### 試験でよく問われるバケットポリシーのパターン
+
+| パターン | ポリシーの要点 |
+|---|---|
+| 特定アカウントにのみ読み取りを許可 | PrincipalにクロスアカウントのARNを指定し `s3:GetObject` を許可 |
+| HTTPS通信のみを許可 | Conditionで `aws:SecureTransport: false` のリクエストを `Deny` |
+| 特定のVPCエンドポイントからのみアクセス | Conditionで `aws:sourceVpce` を指定して `Deny` |
+| CloudFrontからのみアクセス（OAC） | Principalに `cloudfront.amazonaws.com` を指定 |
+| Data Firehoseからの書き込みを許可 | Principalに `firehose.amazonaws.com` を指定し `s3:PutObject` を許可 |
+
+<Callout type="warning">
+### ACLではなくバケットポリシーを使う
+
+S3のアクセス制御にはACLもありますが、AWSは**バケットポリシーの使用を推奨**しています。新規バケットはデフォルトでACL無効（BucketOwnerEnforced）です。試験でもバケットポリシーが正解になるケースが多いです。
+
+</Callout>
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+バケットポリシーの具体的な書き方は [S3 バケットポリシーの例（公式）](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/example-bucket-policies.html) を参照してください。試験では書き方の暗記よりも「どのパターンでバケットポリシーを使うか」の判断が問われます。
+</SpeechBubble>
+
+### 参考リンク
+
+- [Amazon S3（公式）](https://aws.amazon.com/jp/s3/)
+- [Amazon S3 ユーザーガイド](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/Welcome.html)
+- [S3 ストレージクラス](https://aws.amazon.com/jp/s3/storage-classes/)
+- [S3 バケットポリシーの例](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/example-bucket-policies.html)
 
 ---
 

@@ -25,6 +25,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Athena',
     'ECS',
     'CloudWatch',
+    'バケットポリシー',
   ],
 
   'http-and-web-api': ['CORS'],

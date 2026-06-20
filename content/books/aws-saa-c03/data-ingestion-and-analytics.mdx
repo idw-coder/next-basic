@@ -1,7 +1,7 @@
 ---
 title: 'データ取り込みと分析 — Kinesis・Glue・Athena・OpenSearch・DataSync'
 description: 'Kinesis Data Streams、Kinesis Data Firehose、Glue、Athena、Amazon OpenSearch Service、Redshift、DataSync、Transfer Familyでデータ取り込みと変換・検索を設計します。'
-order: 14
+order: 15
 ---
 
 <Callout type="info">
@@ -44,6 +44,64 @@ SAA-C03では、ストリーミングデータ、ログ収集、ETL、S3上の�
 | Kafka互換が必要 | Amazon MSK |
 
 Firehoseは運用が簡単ですが、Streamsほど細かい制御には向きません。リアルタイム処理の自由度が必要ならStreamsを選びます。
+
+---
+
+## Amazon Data Firehose
+
+<Figure src="/images/running_man_color-1.png" alt="データをリアルタイムに配信するイメージ" maxWidth="320px" />
+
+Amazon Data Firehose（旧 Kinesis Data Firehose）は、ストリーミングデータを**変換なし、またはLambdaで軽い変換をしてから、配信先へリアルタイムに届ける**フルマネージドサービスです。サーバーの管理やスケーリングは不要で、データを流し込むだけで配信先に届きます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Firehoseの配信先はS3だけですか？Datadogのような外部ツールにも送れますか？
+</SpeechBubble>
+
+S3だけではありません。AWSサービスに加えて、Datadog、Splunk、New RelicなどのサードパーティSaaS、任意のHTTPエンドポイントにもストリーミング配信できます。
+
+### データ配信のフロー
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    SRC["Data Source"] --> KDS["Kinesis Data Streams"]
+    SRC --> CWL["CloudWatch Logs"]
+    KDS --> FH["Data Firehose"]
+    CWL -->|"Subscription Filter"| FH
+    SRC --> FH
+    FH --> S3["S3"]
+    FH --> OS["OpenSearch"]
+    FH --> RS["Redshift"]
+    FH --> DD["Datadog / Splunk"]
+    FH --> HTTP["HTTP Endpoint"]
+`}
+/>
+
+| 配信先 | 用途 |
+|---|---|
+| S3 | ログのアーカイブ、データレイクへの蓄積 |
+| OpenSearch Service | ログの全文検索・リアルタイムダッシュボード |
+| Redshift | DWHへのデータロード |
+| Datadog / Splunk / New Relic | サードパーティの監視・分析ツール |
+| カスタムHTTPエンドポイント | 任意のAPI |
+
+### Firehoseの配信とバケットポリシー
+
+FirehoseからS3に配信する場合、S3バケット側で `firehose.amazonaws.com` からの書き込みを許可する[バケットポリシー](/books/aws-saa-c03/storage-selection#バケットポリシーの実務と試験)が必要です。Firehose用のIAMロールと合わせて設定します。
+
+<Callout type="note">
+### Firehoseの特徴まとめ
+
+- フルマネージド — サーバー管理・スケーリング不要
+- ニアリアルタイム — 最短60秒のバッファリング間隔で配信
+- 変換可能 — Lambdaを使ったデータ変換をインラインで実行できる
+- S3への自動バックアップ — 配信失敗時にS3へフォールバック可能
+
+</Callout>
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+試験で「ログをS3やOpenSearchに簡単に配信したい」「サードパーティの分析ツールにストリーミングで送りたい」と出たらFirehoseです。運用の手間なく配信できるのが最大の特徴です。
+</SpeechBubble>
 
 ---
 

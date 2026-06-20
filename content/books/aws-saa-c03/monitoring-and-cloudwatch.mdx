@@ -1,0 +1,281 @@
+---
+title: '監視と運用 — CloudWatch Metrics・Logs・Logs Insights・EventBridge'
+description: 'Amazon CloudWatch Metrics、CloudWatch Logs、Logs Insights、EventBridgeでAWSリソースの監視・ログ分析・イベント駆動の運用を設計します。'
+order: 7
+---
+
+<Callout type="info">
+### コンテンツ追加予定
+
+この章は現在の内容をベースに、さらにコンテンツを追加予定です。
+
+</Callout>
+
+<Figure src="/images/planning_suit_man_color.png" alt="システムの監視状況を確認する人のイラスト" maxWidth="320px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+CloudWatchはよく名前を見ますが、Metrics、Logs、Alarmなど機能が多くて整理できません。
+</SpeechBubble>
+
+Amazon CloudWatchは、AWSリソースの**監視・ログ管理・アラーム・イベント駆動**を担う中心的なサービスです。SAA-C03では、CloudWatchの各機能がどんな要件で使われるかを判断する力が問われます。
+
+---
+
+## CloudWatchの全体像
+
+CloudWatchは1つのサービスですが、役割ごとに複数の機能を持っています。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    CW["Amazon CloudWatch"] --> M["Metrics"]
+    CW --> L["Logs"]
+    CW --> A["Alarms"]
+    CW --> D["Dashboards"]
+    CW --> LI["Logs Insights"]
+    CW --> EB["EventBridge"]
+    M -->|"CPU, Network, Custom"| A
+    A -->|"SNS, Auto Scaling"| ACT["Action"]
+    L -->|"Query"| LI
+    L -->|"Subscription Filter"| DEST["S3 / OpenSearch / Lambda"]
+    EB -->|"Event Rule"| TGT["Lambda / SQS / Step Functions"]
+`}
+/>
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+CloudWatchは「数値を見る（Metrics）」「ログを見る（Logs）」「異常に反応する（Alarms / EventBridge）」の3つの視点で整理すると分かりやすいです。
+</SpeechBubble>
+
+---
+
+## CloudWatch Metrics
+
+CloudWatch Metricsは、AWSリソースの**数値データを時系列で収集・可視化**する機能です。EC2のCPU使用率、ELBのリクエスト数、RDSの接続数など、多くのAWSサービスが自動的にメトリクスを送信します。
+
+### 標準メトリクスとカスタムメトリクス
+
+| 種類 | 説明 | 例 |
+|---|---|---|
+| 標準メトリクス | AWSが自動で収集。追加費用なし | EC2: CPUUtilization、NetworkIn |
+| カスタムメトリクス | ユーザーが独自に送信する | メモリ使用率、アプリのキュー長 |
+
+<Callout type="warning">
+### EC2のメモリ使用率は標準メトリクスに含まれない
+
+EC2の標準メトリクスにはCPU使用率やネットワークは含まれますが、**メモリ使用率やディスク使用率は含まれません**。これらを監視するにはCloudWatch Agentをインストールしてカスタムメトリクスとして送信する必要があります。試験でもよく問われるポイントです。
+
+</Callout>
+
+### メトリクスの期間と保持
+
+| 期間 | 保持期間 |
+|---|---|
+| 1秒（高解像度） | 3時間 |
+| 60秒（標準） | 15日 |
+| 5分 | 63日 |
+| 1時間 | 15ヶ月 |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+メトリクスを元に自動で何かさせたい場合はどうしますか？
+</SpeechBubble>
+
+それが **CloudWatch Alarms** の役割です。メトリクスがしきい値を超えたら、SNS通知を送ったり、Auto Scalingのスケールアウトをトリガーしたり、EC2インスタンスを停止・再起動したりできます。
+
+---
+
+## CloudWatch Logs
+
+<Figure src="/images/search_woman_color.png" alt="ログを調査している人のイラスト" maxWidth="320px" />
+
+CloudWatch Logsは、AWSリソースやアプリケーションの**ログを収集・保存・検索**するサービスです。
+
+### ログの階層構造
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    LG["Log Group"] --> LS1["Log Stream 1"]
+    LG --> LS2["Log Stream 2"]
+    LG --> LS3["Log Stream 3"]
+    LS1 --> E1["Log Event"]
+    LS1 --> E2["Log Event"]
+    LS1 --> E3["Log Event"]
+`}
+/>
+
+| 用語 | 説明 |
+|---|---|
+| ロググループ（Log Group） | ログの保持期間やアクセス制御を共有するログストリームのまとまり。通常はサービスやアプリ単位で作成する |
+| ログストリーム（Log Stream） | 時系列のログイベントの連続。通常はインスタンスやコンテナ単位で作成される |
+| ログイベント（Log Event） | タイムスタンプとメッセージで構成される1件のログ |
+
+### 主なログ送信元
+
+| 送信元 | 方法 |
+|---|---|
+| EC2 | CloudWatch Agent をインストール |
+| ECS / Fargate | `awslogs` ログドライバーを指定 |
+| Lambda | 自動で `/aws/lambda/{関数名}` に送信 |
+| API Gateway | ステージの設定で有効化 |
+| VPC Flow Logs | VPC・Subnet・ENI単位で有効化 |
+| Route 53 | DNSクエリログ |
+
+<Callout type="note">
+### ログの保持期間はデフォルト「無期限」
+
+CloudWatch Logsのロググループは、デフォルトでログを無期限に保持します。長期運用ではログ量に応じたコストが増えるため、保持期間（1日〜10年）を設定するか、S3へエクスポートすることを検討します。
+
+</Callout>
+
+### サブスクリプションフィルター
+
+ログをリアルタイムに別サービスへ転送する機能です。[データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics)の章で扱ったECS → OpenSearchの構成でも使われます。
+
+| 転送先 | 用途 |
+|---|---|
+| Kinesis Data Firehose | S3やOpenSearchへの配信 |
+| Lambda | ログのリアルタイム加工・通知 |
+| Kinesis Data Streams | ストリーム処理 |
+
+---
+
+## CloudWatch Logs Insights
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+CloudWatch Logsに貯まったログを分析したいとき、全部目で見るのは無理ですよね？
+</SpeechBubble>
+
+CloudWatch Logs Insightsは、ロググループに対して**SQLライクなクエリで検索・集計・可視化**できる機能です。大量のログから特定のパターンを抽出したり、エラーの傾向を集計したりできます。
+
+### クエリの例
+
+```text
+fields @timestamp, @message
+| filter @message like /ERROR/
+| sort @timestamp desc
+| limit 20
+```
+
+上記のクエリは「ERRORを含むログを新しい順に20件取得する」という意味です。
+
+<Figure src="/images/creative_color.png" alt="分析結果からインサイトを得る人のイラスト" maxWidth="320px" />
+
+### Logs Insightsの特徴
+
+| 特徴 | 説明 |
+|---|---|
+| スキャンベースの課金 | スキャンしたデータ量に応じた従量課金 |
+| 複数ロググループの横断クエリ | 最大50のロググループを同時に検索できる |
+| 自動フィールド検出 | JSON形式のログは自動でフィールドをパースする |
+| 可視化 | クエリ結果を棒グラフや折れ線グラフで表示できる |
+
+<Callout type="note">
+### Logs InsightsとOpenSearchの使い分け
+
+Logs Insightsはクエリごとのアドホック分析に向いています。常時稼働のダッシュボードや大規模な全文検索が必要な場合は、[OpenSearch Service](/books/aws-saa-c03/data-ingestion-and-analytics#amazon-opensearch-service) の方が適しています。
+
+</Callout>
+
+---
+
+## Amazon EventBridge
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+EventBridgeはCloudWatchの一部なんですか？別のサービスですか？
+</SpeechBubble>
+
+Amazon EventBridgeは、もともと **CloudWatch Events** という名前でした。現在は独立したサービスとして進化していますが、機能的にはAWSリソースの**状態変化をイベントとして検知し、ルールに基づいてアクションを実行**するサービスです。
+
+<Figure src="/images/meeting_color.png" alt="イベント駆動の連携を設計するイラスト" maxWidth="320px" />
+
+### EventBridgeの仕組み
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    SRC["Event Source"] -->|"Event"| BUS["Event Bus"]
+    BUS --> R1["Rule 1"]
+    BUS --> R2["Rule 2"]
+    R1 --> T1["Lambda"]
+    R2 --> T2["SQS"]
+    R2 --> T3["Step Functions"]
+`}
+/>
+
+| 構成要素 | 説明 |
+|---|---|
+| イベントソース | AWSサービス、SaaSアプリ、カスタムアプリからイベントを発生させる |
+| イベントバス | イベントを受け取るパイプライン。デフォルトバスの他にカスタムバスも作れる |
+| ルール | イベントパターンまたはスケジュールに基づいてターゲットを呼び出す |
+| ターゲット | Lambda、SQS、SNS、Step Functions、ECS Taskなど |
+
+### よく使われるパターン
+
+| ユースケース | イベントソース | ターゲット |
+|---|---|---|
+| EC2インスタンスが停止したら通知 | EC2 State Change | SNS |
+| S3にファイルがアップロードされたら処理 | S3 PutObject | Lambda |
+| 毎日深夜にバッチ処理を実行 | スケジュール（cron） | Lambda / ECS Task |
+| AWS Health イベントを検知して対応 | AWS Health | Lambda / SNS |
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+EventBridgeは[疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture)の章でも扱っています。試験では「AWSサービスの状態変化に自動対応する」要件でEventBridgeが正解になります。
+</SpeechBubble>
+
+<Callout type="note">
+### EventBridge vs SNS
+
+どちらもイベントを配信しますが、EventBridgeは**イベントの内容でフィルタリング**できるのが強みです。SNSはシンプルなPub/Subで、EventBridgeはイベントパターンマッチングによる細かいルーティングが可能です。
+
+</Callout>
+
+---
+
+## 監視設計の全体像
+
+実務では、これらの機能を組み合わせて監視を設計します。
+
+```text
+AWSリソース
+  -> CloudWatch Metrics（数値を収集）
+  -> CloudWatch Alarms（しきい値で検知）
+  -> SNS / Auto Scaling（通知・自動対応）
+
+アプリケーション / AWSサービス
+  -> CloudWatch Logs（ログを収集）
+  -> Logs Insights（アドホック分析）
+  -> サブスクリプションフィルター -> OpenSearch（常時ダッシュボード）
+
+AWSリソースの状態変化
+  -> EventBridge（イベント検知）
+  -> Lambda / SQS / Step Functions（自動処理）
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+試験ではどのように問われますか？
+</SpeechBubble>
+
+SAA-C03では「メモリ使用率を監視したい → カスタムメトリクス + CloudWatch Agent」「ログを横断分析したい → Logs Insights or OpenSearch」「AWSリソースの変化に自動対応したい → EventBridge」のように、**要件からどの機能を選ぶか**が問われます。
+
+---
+
+## 参考リンク
+
+- [Amazon CloudWatch（公式）](https://aws.amazon.com/jp/cloudwatch/)
+- [CloudWatch ユーザーガイド](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html)
+- [CloudWatch Logs ユーザーガイド](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html)
+- [CloudWatch Logs Insights クエリ構文](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html)
+- [Amazon EventBridge ユーザーガイド](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-what-is.html)
+
+---
+
+## まとめ
+
+CloudWatchとEventBridgeは、AWSの運用・監視の土台です。
+
+- **Metrics** — AWSリソースの数値を収集・可視化。メモリ監視にはカスタムメトリクスが必要
+- **Logs** — ログの収集・保存。サブスクリプションフィルターで他サービスへ転送可能
+- **Logs Insights** — ログに対するSQLライクなクエリ分析。アドホックな調査に最適
+- **EventBridge** — AWSリソースの状態変化やスケジュールで自動アクションを実行
+
+次の章では、疎結合アーキテクチャとしてSQS、SNS、EventBridge、Step Functionsの使い分けを扱います。
