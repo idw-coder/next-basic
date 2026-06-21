@@ -12,6 +12,12 @@ interface Choice {
   display_order?: number;
 }
 
+interface QuizTag {
+  id: number;
+  slug: string;
+  name: string;
+}
+
 const API_BASE_URL =
   process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
 
@@ -22,6 +28,7 @@ interface QuizDetail {
   question: string;
   explanation?: string;
   choices: Choice[];
+  tags?: QuizTag[];
 }
 
 async function getQuiz(quizId: string): Promise<QuizDetail | null> {

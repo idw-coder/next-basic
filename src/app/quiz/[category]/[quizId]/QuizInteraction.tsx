@@ -3,12 +3,22 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, Trophy, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Tags, Trophy, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
+import api from '@/lib/api';
 import {
   getRandomSession,
   saveRandomSession,
@@ -24,6 +34,12 @@ interface Choice {
   display_order?: number;
 }
 
+interface QuizTag {
+  id: number;
+  slug: string;
+  name: string;
+}
+
 interface QuizDetail {
   id: number;
   slug: string;
@@ -31,6 +47,7 @@ interface QuizDetail {
   question: string;
   explanation?: string;
   choices: Choice[];
+  tags?: QuizTag[];
 }
 
 interface QuizInteractionProps {
@@ -51,8 +68,31 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [randomSession, setRandomSession] = useState<RandomQuizSession | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentTags, setCurrentTags] = useState<QuizTag[]>(quiz.tags ?? []);
+  const [tagSheetOpen, setTagSheetOpen] = useState(false);
+  const [allTags, setAllTags] = useState<QuizTag[]>([]);
+  const [selectedTagSlugs, setSelectedTagSlugs] = useState<string[]>(
+    () => quiz.tags?.map((tag) => tag.slug) ?? [],
+  );
+  const [tagLoading, setTagLoading] = useState(false);
+  const [tagSaving, setTagSaving] = useState(false);
+  const [tagError, setTagError] = useState<string | null>(null);
+  const [newTagSlug, setNewTagSlug] = useState('');
+  const [newTagName, setNewTagName] = useState('');
+  const [creatingTag, setCreatingTag] = useState(false);
   const { addAnswer } = useQuizHistory();
   const router = useRouter();
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user');
+    if (!stored) return;
+    try {
+      setIsAdmin(JSON.parse(stored)?.role === 'admin');
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
 
   useEffect(() => {
     const session = getRandomSession();
@@ -63,6 +103,22 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
       }
     }
   }, [quiz.id]);
+
+  useEffect(() => {
+    if (!tagSheetOpen || !isAdmin || allTags.length > 0) return;
+    (async () => {
+      setTagLoading(true);
+      setTagError(null);
+      try {
+        const res = await api.get('/api/quiz/tags');
+        setAllTags(res.data);
+      } catch {
+        setTagError('タグ一覧の取得に失敗しました');
+      } finally {
+        setTagLoading(false);
+      }
+    })();
+  }, [allTags.length, isAdmin, tagSheetOpen]);
 
   const shuffledChoices = useMemo(() => shuffleArray(quiz.choices), [quiz.choices]);
 
@@ -105,6 +161,51 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
     setRandomSession(null);
   };
 
+  const toggleTag = (tagSlug: string) => {
+    setSelectedTagSlugs((prev) =>
+      prev.includes(tagSlug) ? prev.filter((slug) => slug !== tagSlug) : [...prev, tagSlug],
+    );
+  };
+
+  const handleCreateTag = async () => {
+    const slug = newTagSlug.trim();
+    const name = newTagName.trim();
+    if (!slug || !name) return;
+    setCreatingTag(true);
+    setTagError(null);
+    try {
+      const res = await api.post('/api/quiz/tags', { slug, name });
+      const created = res.data as QuizTag;
+      setAllTags((prev) => [...prev, created].sort((a, b) => a.slug.localeCompare(b.slug, 'ja')));
+      setSelectedTagSlugs((prev) => (prev.includes(created.slug) ? prev : [...prev, created.slug]));
+      setNewTagSlug('');
+      setNewTagName('');
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setTagError(msg ?? 'タグの作成に失敗しました');
+    } finally {
+      setCreatingTag(false);
+    }
+  };
+
+  const handleSaveTags = async () => {
+    setTagSaving(true);
+    setTagError(null);
+    try {
+      const res = await api.put(`/api/quiz/${quiz.id}`, { tags: selectedTagSlugs });
+      const tags = (res.data.tags ?? []) as QuizTag[];
+      setCurrentTags(tags);
+      setSelectedTagSlugs(tags.map((tag) => tag.slug));
+      setTagSheetOpen(false);
+      router.refresh();
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      setTagError(status === 403 ? 'タグを更新する権限がありません' : 'タグの更新に失敗しました');
+    } finally {
+      setTagSaving(false);
+    }
+  };
+
   const isLastRandomQuiz = randomSession
     ? randomSession.currentIndex + 1 >= randomSession.quizzes.length
     : false;
@@ -115,6 +216,41 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
 
   return (
     <div className="space-y-6">
+      {isAdmin && (
+        <div className="rounded-md border border-dashed border-primary/40 bg-white/70 p-3 shadow-sm dark:bg-gray-900/70">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                管理者メニュー
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {currentTags.length > 0 ? (
+                  currentTags.map((tag) => (
+                    <Badge key={tag.slug} variant="secondary">
+                      {tag.name}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">タグ未設定</span>
+                )}
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/admin/quizzes/${quiz.id}/edit`}>
+                  <Pencil className="size-3.5" />
+                  編集ページへ
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setTagSheetOpen(true)}>
+                <Tags className="size-3.5" />
+                タグ編集
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ランダムクイズ進捗バー */}
       {randomSession && (
         <div className="space-y-2">
@@ -266,6 +402,91 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
           )}
         </div>
       )}
+
+      <Sheet open={tagSheetOpen} onOpenChange={setTagSheetOpen}>
+        <SheetContent className="w-[92vw] sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>クイズのタグを編集</SheetTitle>
+            <SheetDescription>この問題に紐づけるタグを選択できます。</SheetDescription>
+          </SheetHeader>
+
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
+            {tagError && (
+              <Alert variant="destructive">
+                <AlertDescription>{tagError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="rounded-md border p-3">
+              <div className="mb-2 text-sm font-bold">新規タグ</div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <Input
+                  placeholder="slug"
+                  value={newTagSlug}
+                  onChange={(e) => setNewTagSlug(e.target.value)}
+                />
+                <Input
+                  placeholder="表示名"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!newTagSlug.trim() || !newTagName.trim() || creatingTag}
+                  onClick={handleCreateTag}
+                >
+                  <Plus className="size-3.5" />
+                  {creatingTag ? '追加中' : '追加'}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <div className="text-sm font-bold">既存タグ</div>
+                <Badge variant="secondary">{selectedTagSlugs.length} 選択中</Badge>
+              </div>
+              {tagLoading ? (
+                <div className="text-sm text-muted-foreground">読み込み中...</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map((tag) => {
+                    const selected = selectedTagSlugs.includes(tag.slug);
+                    return (
+                      <button
+                        key={tag.slug}
+                        type="button"
+                        onClick={() => toggleTag(tag.slug)}
+                        className={cn(
+                          'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                          selected
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border bg-background hover:bg-muted',
+                        )}
+                      >
+                        {tag.name}
+                      </button>
+                    );
+                  })}
+                  {allTags.length === 0 && !tagLoading && (
+                    <div className="text-sm text-muted-foreground">タグがまだありません</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <SheetFooter className="border-t">
+            <Button type="button" variant="outline" onClick={() => setTagSheetOpen(false)}>
+              キャンセル
+            </Button>
+            <Button type="button" disabled={tagSaving} onClick={handleSaveTags}>
+              {tagSaving ? '保存中...' : '保存'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

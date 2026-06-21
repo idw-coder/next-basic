@@ -135,6 +135,34 @@ export default function UserManagePage() {
     setUsers((prev) => prev.filter((u) => u.id !== user.id));
   };
 
+  const renderActions = (user: User) => (
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+      <Tooltip title="編集">
+        <IconButton
+          size="small"
+          color="primary"
+          onClick={() => openEdit(user)}
+          aria-label={`${user.name}を編集`}
+        >
+          <Pencil size={16} />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title={user.id === currentUserId ? '自分自身は削除できません' : '削除'}>
+        <span>
+          <IconButton
+            size="small"
+            color="error"
+            disabled={user.id === currentUserId}
+            onClick={() => handleDelete(user)}
+            aria-label={`${user.name}を削除`}
+          >
+            <Trash2 size={16} />
+          </IconButton>
+        </span>
+      </Tooltip>
+    </Box>
+  );
+
   return (
     <Box>
       <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 2 }}>
@@ -147,15 +175,78 @@ export default function UserManagePage() {
         </Alert>
       )}
 
+      {loading && <LinearProgress sx={{ mb: 2 }} />}
+
+      <Box sx={{ display: { xs: 'grid', md: 'none' }, gap: 1.5 }}>
+        {users.length === 0 && !loading ? (
+          <Paper
+            variant="outlined"
+            sx={{ p: 3, textAlign: 'center', color: 'text.disabled', borderRadius: 2 }}
+          >
+            ユーザーがいません
+          </Paper>
+        ) : (
+          users.map((user) => (
+            <Paper key={user.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>
+                      {user.name}
+                    </Typography>
+                    {user.id === currentUserId && (
+                      <Chip label="自分" size="small" variant="outlined" />
+                    )}
+                  </Box>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5, overflowWrap: 'anywhere' }}
+                  >
+                    {user.email}
+                  </Typography>
+                </Box>
+                {renderActions(user)}
+              </Box>
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr',
+                  gap: 1,
+                  mt: 1.5,
+                  color: 'text.secondary',
+                  fontSize: 13,
+                }}
+              >
+                <Box>ID</Box>
+                <Box sx={{ fontFamily: 'monospace' }}>{user.id}</Box>
+                <Box>ロール</Box>
+                <Box>
+                  <Chip
+                    label={ROLE_LABELS[user.role] ?? user.role}
+                    size="small"
+                    color={user.role === 'admin' ? 'primary' : 'default'}
+                    variant={user.role === 'admin' ? 'filled' : 'outlined'}
+                  />
+                </Box>
+                <Box>登録日</Box>
+                <Box>{formatDate(user.createdAt)}</Box>
+              </Box>
+            </Paper>
+          ))
+        )}
+      </Box>
+
       <Paper
         variant="outlined"
         sx={{
+          display: { xs: 'none', md: 'block' },
           overflow: 'hidden',
           borderRadius: 2,
           boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)',
         }}
       >
-        {loading && <LinearProgress />}
         <TableContainer>
           <Table size="small" sx={{ minWidth: 760 }}>
             <TableHead>
@@ -215,31 +306,7 @@ export default function UserManagePage() {
                     </TableCell>
                     <TableCell>{formatDate(user.createdAt)}</TableCell>
                     <TableCell align="right">
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
-                        <Tooltip title="編集">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => openEdit(user)}
-                            aria-label={`${user.name}を編集`}
-                          >
-                            <Pencil size={16} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={user.id === currentUserId ? '自分自身は削除できません' : '削除'}>
-                          <span>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              disabled={user.id === currentUserId}
-                              onClick={() => handleDelete(user)}
-                              aria-label={`${user.name}を削除`}
-                            >
-                              <Trash2 size={16} />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      </Box>
+                      {renderActions(user)}
                     </TableCell>
                   </TableRow>
                 ))

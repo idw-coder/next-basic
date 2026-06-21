@@ -18,6 +18,7 @@ import {
   Plus,
   Trash2,
   Copy,
+  ExternalLink,
 } from "lucide-react";
 
 interface QuizCategory {
@@ -137,6 +138,9 @@ export default function QuizEditPage() {
   const [explanation, setExplanation] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [newTagSlug, setNewTagSlug] = useState("");
+  const [newTagName, setNewTagName] = useState("");
+  const [creatingTag, setCreatingTag] = useState(false);
   const [choices, setChoices] = useState<Choice[]>(createDefaultChoices());
   const [correctIndex, setCorrectIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -191,6 +195,37 @@ export default function QuizEditPage() {
         ? prev.filter((s) => s !== tagSlug)
         : [...prev, tagSlug]
     );
+  };
+
+  const handleCreateTag = async () => {
+    const tagSlug = newTagSlug.trim();
+    const tagName = newTagName.trim();
+    if (!tagSlug || !tagName) return;
+
+    setError(null);
+    setCreatingTag(true);
+    try {
+      const res = await api.post("/api/quiz/tags", {
+        slug: tagSlug,
+        name: tagName,
+      });
+      const created = res.data as QuizTag;
+      setAllTags((prev) =>
+        [...prev, created].sort((a, b) => a.slug.localeCompare(b.slug, "ja"))
+      );
+      setSelectedTags((prev) =>
+        prev.includes(created.slug) ? prev : [...prev, created.slug]
+      );
+      setNewTagSlug("");
+      setNewTagName("");
+      showToast("タグを追加しました");
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response
+        ?.data?.error;
+      setError(msg ?? "タグの追加に失敗しました");
+    } finally {
+      setCreatingTag(false);
+    }
   };
 
   const addChoice = () =>
@@ -309,6 +344,12 @@ export default function QuizEditPage() {
     showToast("JSONをコピーしました");
   };
 
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const quizPageHref =
+    !isNew && quizId.current && selectedCategory
+      ? `/quiz/${selectedCategory.slug}/${quizId.current}`
+      : null;
+
   return (
     <div>
       <Link href="/admin/quizzes">
@@ -325,6 +366,14 @@ export default function QuizEditPage() {
               {isNew ? "新規クイズ作成" : "クイズを編集"}
             </h1>
             <div className="flex gap-2">
+              {quizPageHref && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={quizPageHref} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    クイズページを開く
+                  </Link>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -442,6 +491,35 @@ export default function QuizEditPage() {
                     </Badge>
                   ))
                 )}
+              </div>
+              <div className="mt-3 rounded-md border bg-gray-50 p-3">
+                <div className="text-sm font-medium mb-2">新規タグを追加</div>
+                <div className="grid gap-2 sm:grid-cols-[160px_1fr_auto]">
+                  <Input
+                    placeholder="slug"
+                    value={newTagSlug}
+                    onChange={(e) => setNewTagSlug(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreateTag()}
+                  />
+                  <Input
+                    placeholder="表示名"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreateTag()}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!newTagSlug.trim() || !newTagName.trim() || creatingTag}
+                    onClick={handleCreateTag}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    {creatingTag ? "追加中..." : "追加して選択"}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  追加したタグはこのクイズの選択済みタグに自動で入ります。
+                </p>
               </div>
             </div>
 
