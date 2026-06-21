@@ -19,6 +19,7 @@ const categoryToBookMap: Record<string, string> = {
   'cs-basic': 'cs-basics',
   'css-basic': 'css-basics',
   'tailwind-css': 'tailwind-css',
+  'aws-basic': 'aws-saa-c03',
 };
 
 /** 書籍一覧の表示順（先頭が先に表示される） */

@@ -3,15 +3,14 @@ import Image from 'next/image';
 import { Metadata } from 'next';
 import {
   ArrowLeft,
+  BookOpen,
   BookOpenCheck,
   ChevronRight,
-  Shuffle,
   Lightbulb,
   Target,
   Users,
   HelpCircle,
   ArrowRight,
-  Library,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,7 @@ import { SectionHeading } from '@/components/SectionHeading';
 import QuizListClient from './QuizListClient';
 import { getCategorySeoContent, type CategorySeoContent } from './categoryContent';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
+import { getBookTheme } from '@/lib/book-theme';
 import { getSectionTags } from './sectionTagMap';
 
 const API_BASE_URL =
@@ -251,7 +251,7 @@ export default async function CategoryQuizPage({
       ))}
 
       {/* パンくずリスト */}
-      <nav aria-label="パンくずリスト" className="mb-6 text-sm">
+      <nav aria-label="パンくずリスト" className="mb-4 text-sm sm:mb-6">
         <ol className="flex items-center gap-1 text-muted-foreground">
           <li>
             <Link href="/" className="hover:text-foreground transition-colors">
@@ -266,7 +266,7 @@ export default async function CategoryQuizPage({
       </nav>
 
       {/* ヘッダー */}
-      <section className="mb-10 relative overflow-hidden">
+      <section className="relative mb-5 overflow-hidden sm:mb-10">
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none select-none"
           aria-hidden="true"
@@ -300,78 +300,97 @@ export default async function CategoryQuizPage({
           className="absolute bottom-1/3 left-1 sm:left-5 w-6 h-6 rounded-full bg-primary/8 pointer-events-none"
           aria-hidden="true"
         />
-        <div className="relative flex flex-col-reverse justify-center sm:flex-row sm:items-center gap-6">
-          <div className="flex justify-center sm:justify-start">
-            <Image
-              src="/inpiration_man_color.png"
-              alt=""
-              width={588}
-              height={761}
-              className="w-full max-w-[120px] md:max-w-[160px] h-auto -scale-x-100"
-            />
-          </div>
-          <div className="sm:flex-1">
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground mb-2 md:text-3xl flex items-center gap-2">
-              <BookOpenCheck className="size-6 shrink-0 text-primary" />
+        <div className="relative flex items-center gap-3 sm:flex-row sm:gap-6">
+          <div className="relative z-10 min-w-0 flex-1">
+            <h1 className="mb-2 flex items-center gap-1.5 text-lg font-extrabold tracking-tight text-foreground sm:gap-2 sm:text-2xl md:text-3xl">
+              <BookOpenCheck className="size-5 shrink-0 text-primary sm:size-6" />
               {category.category_name} 問題集
             </h1>
             {category.description && (
-              <p className="text-muted-foreground leading-relaxed">{category.description}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+                {category.description}
+              </p>
             )}
             <p className="text-sm text-muted-foreground mt-2">
               全 <span className="font-semibold text-foreground">{quizzes.length}</span> 問
               {tags.length > 0 && ` ・ ${tags.length} タグ`}
             </p>
           </div>
+          <div className="relative z-10 flex w-[58px] shrink-0 justify-end sm:w-auto sm:justify-start">
+            <Image
+              src="/inpiration_man_color.png"
+              alt=""
+              width={588}
+              height={761}
+              className="h-auto w-[58px] -scale-x-100 sm:w-full sm:max-w-[120px] md:max-w-[160px]"
+            />
+          </div>
         </div>
       </section>
 
-      {/* 関連する教科書への導線 */}
+      {/* 学習導線 */}
       {(() => {
         const relatedBook = getBookForCategory(categorySlug);
-        if (!relatedBook) return null;
-        const chapterCount = getChaptersByBook(relatedBook.bookSlug).length;
+        const hasBook = !!relatedBook;
         return (
-          <section className="mb-8">
-            <Link href={`/books/${relatedBook.bookSlug}`} className="block group">
-              <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 hover:bg-amber-100/80 p-3 sm:p-4 transition-colors">
-                <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 group-hover:bg-amber-200 transition-colors">
-                  <Library className="size-4 sm:size-5 text-amber-700" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-foreground text-sm sm:text-base">
-                    {relatedBook.title}
+          <section className={`mb-4 grid min-w-0 gap-2 ${hasBook ? 'grid-cols-2' : 'max-w-[220px] sm:max-w-[260px]'}`}>
+            {relatedBook && (() => {
+              const chapterCount = getChaptersByBook(relatedBook.bookSlug).length;
+              const bookTheme = getBookTheme(relatedBook.bookSlug);
+              return (
+                <Link href={`/books/${relatedBook.bookSlug}`} className="group block h-full min-w-0">
+                  <div
+                    className={`relative flex h-full overflow-hidden rounded-lg border border-black/10 ${bookTheme.cardBg} px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5`}
+                  >
+                    <BookOpen
+                      className={`pointer-events-none absolute right-1/4 top-1/2 size-14 -translate-y-1/2 -rotate-12 ${bookTheme.iconText} opacity-[0.05] sm:size-16`}
+                      aria-hidden="true"
+                    />
+                    <div className="relative z-10 min-w-0 flex-1">
+                      <div className="mb-0.5 flex items-center gap-1.5">
+                        <span
+                          className={`rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none ${bookTheme.badgeText} sm:text-[10px]`}
+                        >
+                          教科書
+                        </span>
+                        <span className="text-[9px] font-medium text-muted-foreground sm:text-[10px]">全{chapterCount}章</span>
+                      </div>
+                      <p className="line-clamp-1 text-[11px] font-bold leading-snug text-foreground sm:text-[13px]">
+                        {relatedBook.title}
+                      </p>
+                      <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+                        解説で理解を深める
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })()}
+
+            <Link href={`/quiz/random?category=${category.slug}`} className="group block h-full min-w-0">
+              <div className="relative flex h-full overflow-hidden rounded-lg border border-primary/15 bg-blue-50 px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5">
+                <HelpCircle
+                  className="pointer-events-none absolute right-1/4 top-1/2 size-14 -translate-y-1/2 rotate-12 text-primary opacity-[0.05] sm:size-16"
+                  aria-hidden="true"
+                />
+                <div className="relative z-10 min-w-0 flex-1">
+                  <div className="mb-0.5">
+                    <span className="rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none text-primary sm:text-[10px]">
+                      連続演習
+                    </span>
+                  </div>
+                  <p className="line-clamp-1 text-[11px] font-bold leading-snug text-foreground sm:text-[13px]">
+                    ランダムに解く
                   </p>
-                  <p className="text-[11px] sm:text-xs text-muted-foreground">
-                    まずは教科書でインプット（全{chapterCount}章）
+                  <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+                    問題を選ばず続けて練習
                   </p>
                 </div>
-                <ArrowRight className="size-5 text-amber-700 shrink-0 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
           </section>
         );
       })()}
-
-      {/* ランダムクイズへの導線 */}
-      <section className="mb-8">
-        <Link href={`/quiz/random?category=${category.slug}`} className="block group">
-          <div className="flex items-center gap-3 rounded-md border border-primary/20 bg-primary/5 hover:bg-primary/10 p-3 sm:p-4 transition-colors">
-            <div className="flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/15 transition-colors">
-              <Shuffle className="size-4 sm:size-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-foreground text-sm sm:text-base">
-                {category.category_name} ランダムクイズ
-              </p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground">
-                問題数を選んでランダムに出題
-              </p>
-            </div>
-            <ArrowRight className="size-5 text-primary shrink-0 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </Link>
-      </section>
 
       {/* 問題一覧 */}
       <section className="mb-10">
