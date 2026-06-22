@@ -1,10 +1,10 @@
 ---
 title: '知っておきたいWeb API — fetch・Storage・IntersectionObserver'
-description: 'fetch API・localStorage/sessionStorage・IntersectionObserver・MutationObserverを、用途・構文・戻り値・注意点まで整理します。'
+description: 'fetch API・localStorage/sessionStorage・CookieStore API・IntersectionObserver・MutationObserverを、用途・構文・戻り値・注意点まで整理します。'
 order: 20
 ---
 
-ブラウザには、JavaScript本体とは別に**Web API**が用意されています。この章で扱うのは、HTTP通信を行う `fetch`、ブラウザに小さなデータを保存する `localStorage` / `sessionStorage`、要素が画面に入ったかを検知する `IntersectionObserver`、DOMの変更を監視する `MutationObserver` です。
+ブラウザには、JavaScript本体とは別に**Web API**が用意されています。この章で扱うのは、HTTP通信を行う `fetch`、ブラウザに小さなデータを保存する `localStorage` / `sessionStorage`、JavaScriptからCookieを読み書きする `cookieStore`、要素が画面に入ったかを検知する `IntersectionObserver`、DOMの変更を監視する `MutationObserver` です。
 
 この章では、アプリ開発で使う頻度が高いWeb APIを、用途・構文・戻り値・注意点まで整理します。`Promise` やDOM操作の知識と組み合わせて読むと、ブラウザ上で「データを取得し、保存し、必要なタイミングで画面を更新する」流れがつながります。
 
@@ -22,6 +22,7 @@ order: 20
 - [Request / Response — fetchの入出力](#section-3)
 - [AbortController — fetchを中断する](#section-4)
 - [Storage API — localStorageとsessionStorage](#section-5)
+- [CookieStore API — JavaScriptからCookieを読み書きする](#section-5-cookie-store)
 - [IntersectionObserver — 要素が見えたかを検知する](#section-6)
 - [MutationObserver — DOMの変更を監視する](#section-7)
 - [そのほかよく使うWeb API](#section-8)
@@ -61,6 +62,7 @@ button.addEventListener('click', () => {
 | `fetch`                   | HTTPリクエストを送る                | APIからJSONを取得、フォーム送信                    |
 | `localStorage`            | ブラウザに永続保存する              | テーマ設定、簡単な入力途中データ                   |
 | `sessionStorage`          | タブを閉じるまで保存する            | 一時的な画面状態、確認画面の入力値                 |
+| `cookieStore`             | JavaScriptからCookieを読み書きする  | テーマや言語設定など、サーバーにも送る小さな値     |
 | `IntersectionObserver`    | 要素が画面に入ったか検知する        | 遅延読み込み、無限スクロール、表示時アニメーション |
 | `MutationObserver`        | DOMの追加・削除・属性変更を検知する | 外部スクリプトが書き換えるDOMの監視                |
 | `URL` / `URLSearchParams` | URLを安全に組み立てる               | クエリ文字列の読み書き                             |
@@ -286,6 +288,76 @@ const parsed = saved === null ? null : JSON.parse(saved);
 
 `localStorage.getItem()` や `setItem()` は同期的に動きます。大量データを頻繁に読み書きするとメインスレッドを止めます。保存するのは小さな設定値や軽い一時データに限定します。大きなデータや検索可能なデータを保存する場合は、IndexedDBを使います。
 
+<a id="section-5-cookie-store"></a>
+
+### CookieStore API — JavaScriptからCookieを読み書きする
+
+Cookie Store APIは、ブラウザが用意した **`cookieStore` インスタンス** からCookieを読み書きするWeb APIです。`Map` や `Date` のように `new CookieStore()` で自分で作るのではなく、ページに最初から存在するグローバルオブジェクトを使います。
+
+従来は `document.cookie` に `"name=value; path=/"` のような文字列を代入して操作していました。文字列の組み立てとパースが面倒で、非同期処理とも相性が悪かったため、Promiseベースの `cookieStore` が追加されました。
+
+**構文：** グローバルの `cookieStore` をそのまま使う
+
+| メソッド                        | 戻り値                            | 役割                     |
+| ------------------------------- | --------------------------------- | ------------------------ |
+| `get(name)`                     | `Promise<CookieListItem \| null>` | 指定名のCookieを取得する |
+| `set(name, value)` / `set(...)` | `Promise<undefined>`              | Cookieを設定する         |
+| `delete(name)` / `delete(...)`  | `Promise<undefined>`              | Cookieを削除する         |
+| `getAll()`                      | `Promise<CookieListItem[]>`       | すべてのCookieを取得する |
+
+```js
+await cookieStore.set({
+  name: 'theme',
+  value: 'dark',
+  expires: Date.now() + 86400000,
+  path: '/',
+});
+
+const theme = await cookieStore.get('theme');
+console.log(theme?.value); // "dark"
+
+await cookieStore.delete('theme');
+```
+
+`set` には名前と値だけを渡す短い形もあります。
+
+```js
+await cookieStore.set('lang', 'ja');
+```
+
+取得結果の `CookieListItem` には `name`、`value`、`domain`、`path`、`expires` などのプロパティがあります。存在しないCookieを `get` した場合は `null` が返ります。
+
+### document.cookieとの違い
+
+| | `document.cookie` | `cookieStore` |
+| --- | --- | --- |
+| 戻り値 | セミコロン区切りの文字列 | `Promise` でオブジェクトを返す |
+| 書き込み | 文字列を代入する | `set()` で属性をオブジェクト指定できる |
+| 削除 | 期限切れ日時を過去にするなど間接的 | `delete()` で明示的に削除できる |
+| 変更の監視 | 自前でポーリングが必要 | `change` イベントで検知できる |
+
+```js
+cookieStore.addEventListener('change', (event) => {
+  for (const { name, value } of event.changed) {
+    console.log('changed', name, value);
+  }
+
+  for (const { name } of event.deleted) {
+    console.log('deleted', name);
+  }
+});
+```
+
+<Callout type="warning" title="HttpOnly Cookieには触れない">
+  `cookieStore` から読み書きできるのは、JavaScriptからアクセス可能なCookieだけです。セッションIDなどに使う
+  `HttpOnly` Cookieは、サーバーが `Set-Cookie` で設定し、JavaScriptからは読めません。認証トークンを
+  `cookieStore` に保存する設計も避けます。
+</Callout>
+
+<Callout type="note" title="Secure Contextが必要">
+  `cookieStore` は HTTPS または `localhost` などの Secure Context でのみ使えます。対応ブラウザでも、HTTPの本番サイトでは利用できません。
+</Callout>
+
 <a id="section-6"></a>
 
 ## IntersectionObserver — 要素が見えたかを検知する
@@ -448,6 +520,7 @@ button.addEventListener('click', async () => {
 | 保存先           | 特徴                                                   |
 | ---------------- | ------------------------------------------------------ |
 | Cookie           | HTTPリクエストに自動で付く。認証やサーバー連携向き     |
+| `cookieStore`    | JavaScriptからPromiseでCookieを読み書きする            |
 | `localStorage`   | 文字列の小規模保存。JavaScriptから読める               |
 | `sessionStorage` | タブ単位の一時保存                                     |
 | IndexedDB        | 大きな構造化データを非同期に保存できる                 |
@@ -465,6 +538,8 @@ button.addEventListener('click', async () => {
 | 小さな設定値を保存する           | `localStorage.setItem(key, value)`                                    |
 | タブを閉じるまで値を保存する     | `sessionStorage`                                                      |
 | オブジェクトをStorageに保存する  | `JSON.stringify` / `JSON.parse`                                       |
+| JavaScriptからCookieを読む       | `await cookieStore.get(name)`                                         |
+| JavaScriptからCookieを書く       | `await cookieStore.set({ name, value, ... })`                         |
 | 要素が表示領域に入ったら処理する | `IntersectionObserver`                                                |
 | DOMの追加・削除を検知する        | `MutationObserver`                                                    |
 | クエリ文字列を作る・読む         | `URL` / `URLSearchParams`                                             |
@@ -490,7 +565,11 @@ button.addEventListener('click', async () => {
 
 StorageはJavaScriptから読めます。XSSが起きると保存した値を盗まれます。秘密情報の保存先として使いません。
 
-### 5. Observerを解除しない
+### 5. cookieStoreでセッションIDを管理する
+
+`cookieStore` はJavaScriptから読めるCookieを操作するAPIです。`localStorage` と同様、XSSで値を盗まれる可能性があります。ログイン状態の管理には、サーバーが設定する `HttpOnly` Cookieを使います。
+
+### 6. Observerを解除しない
 
 不要になった監視を放置すると、意図しない処理やメモリ使用につながります。一度だけの処理なら `unobserve`、画面を離れるときは `disconnect` します。
 
@@ -504,6 +583,7 @@ StorageはJavaScriptから読めます。XSSが起きると保存した値を盗
 - `Response` の本文は基本的に1回だけ読む
 - `localStorage` / `sessionStorage` は文字列だけを保存する。オブジェクトはJSONに変換する
 - Storageに秘密情報を入れない
+- `cookieStore` はグローバルインスタンスを `await` で操作する。`HttpOnly` Cookieには触れない
 - `IntersectionObserver` は表示検知、`MutationObserver` はDOM変更検知に使う
 - 監視が不要になったら `unobserve` または `disconnect` で止める
 
