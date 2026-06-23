@@ -14,6 +14,8 @@ order: 2
 
 この章では、単体テストを読みやすく保つための基本構造を整理します。
 
+<Figure src="/images/deskwork_check_woman_color.png" alt="テストコードをチェックしている人のイラスト" maxWidth="280px" />
+
 ## 単体テストはAAAパターンで書く
 
 単体テストの記述はAAAパターンで記述するのが基本です。
@@ -62,6 +64,10 @@ describe('Unit Test', () => {
 - テストに必要な値はArrangeに集める
 - テスト対象の実行はActに1つだけ置く
 - 結果の検証はAssertに集める
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+AAAは「テストコードの目次」です。読む人が、準備・実行・検証を迷わず追える状態を作ります。
+</SpeechBubble>
 
 <Callout type="note" title="コメントは最初の補助輪">
 `// Arrange`、`// Act`、`// Assert` のコメントは必須ではありません。
@@ -117,6 +123,8 @@ describe('validateRegisterInput', () => {
 ```
 
 このテストで大事なのは、`validateRegisterInput` の内部でどのように判定しているかではなく、「不正なメールアドレスを渡したら、メールアドレスのエラーが返る」という振る舞いを検証している点です。
+
+<Figure src="/images/plan_selection_man_color.png" alt="テストケースを選んでいる人のイラスト" maxWidth="220px" />
 
 ## テスト名は「条件」と「期待する振る舞い」を書く
 
@@ -222,6 +230,14 @@ describe('Cart', () => {
 
 「そのテストが主役として検証したい操作」がActです。
 
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+Arrangeの中でメソッドを呼ぶこともあるなら、Actとの違いが分かりにくいです。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そのテストが失敗したときに主原因として調べたい操作がActです。前提を作るための操作はArrangeに置きます。
+</SpeechBubble>
+
 ## Assertは「結果」を見る
 
 Assertでは、できるだけ外部から観測できる結果を検証します。
@@ -310,6 +326,8 @@ describe('User', () => {
 ただし、何でも `beforeEach` に寄せれば良いわけではありません。
 
 フィクスチャが大きくなると、各テストを読むたびに上の方へ戻って前提を確認する必要が出ます。
+
+<Figure src="/images/planning_suit_man_color.png" alt="テストの準備を整理している人のイラスト" maxWidth="240px" />
 
 ## フィクスチャを使う判断基準
 

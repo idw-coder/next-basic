@@ -8,6 +8,8 @@ order: 4
 モックとスタブ、どっちも「偽物」だよね？違いがよく分からなくて、いつも雰囲気で使ってる…。
 </SpeechBubble>
 
+<Figure src="/images/question_woman_04_color.png" alt="モックとスタブの違いに悩む人のイラスト" maxWidth="240px" />
+
 ## モックとスタブの違いについて
 
 どちらもテスト用の偽物ですが、役割が違います。
@@ -32,6 +34,155 @@ flowchart LR
 
 `}
 />
+
+## スタブは入力を作るために使う
+
+スタブは、テスト対象が処理を進めるために必要な値を返す偽物です。
+
+たとえば、会員ランクによって割引率を変える処理があるとします。
+
+```typescript
+type MemberRepository = {
+  findRank(userId: string): 'standard' | 'premium';
+};
+
+class DiscountService {
+  constructor(private memberRepository: MemberRepository) {}
+
+  getDiscountRate(userId: string) {
+    const rank = this.memberRepository.findRank(userId);
+
+    return rank === 'premium' ? 0.2 : 0.05;
+  }
+}
+```
+
+この場合、`MemberRepository` はテストに必要な入力を与えるためにスタブ化できます。
+
+```typescript
+it('プレミアム会員の場合、割引率は20%になる', () => {
+  const memberRepository = {
+    findRank: () => 'premium' as const,
+  };
+  const service = new DiscountService(memberRepository);
+
+  const rate = service.getDiscountRate('user-1');
+
+  expect(rate).toBe(0.2);
+});
+```
+
+ここでは `findRank` が呼ばれたかどうかは検証していません。
+
+重要なのは「プレミアム会員なら20%割引になる」という戻り値です。
+
+## モックは出力を確認するために使う
+
+モックは、テスト対象が外部へ正しく働きかけたかを検証するために使います。
+
+たとえば、注文確定時にメールを送る処理です。
+
+```typescript
+type Mailer = {
+  sendOrderCompleted(to: string): void;
+};
+
+class OrderService {
+  constructor(private mailer: Mailer) {}
+
+  completeOrder(email: string) {
+    this.mailer.sendOrderCompleted(email);
+  }
+}
+```
+
+メール送信は戻り値で確認しにくく、外部への出力そのものが重要です。
+
+この場合は、モックで呼び出しを検証する価値があります。
+
+```typescript
+it('注文完了時に確認メールを送信する', () => {
+  const mailer = {
+    sendOrderCompleted: vi.fn(),
+  };
+  const service = new OrderService(mailer);
+
+  service.completeOrder('alice@example.com');
+
+  expect(mailer.sendOrderCompleted).toHaveBeenCalledWith('alice@example.com');
+});
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+同じ `vi.fn()` でも、値を返して入力を作るならスタブ、呼び出しを検証するならモックです。
+</SpeechBubble>
+
+## モックを使いすぎると壊れやすい
+
+モックは便利ですが、使いすぎるとテストが実装の詳細に寄りやすくなります。
+
+次のようなテストは注意が必要です。
+
+```typescript
+it('割引計算の内部処理を呼び出す', () => {
+  const calculator = {
+    calculateBasePrice: vi.fn(),
+    applyCoupon: vi.fn(),
+    applyTax: vi.fn(),
+  };
+
+  const service = new PriceService(calculator);
+
+  service.calculate();
+
+  expect(calculator.calculateBasePrice).toHaveBeenCalled();
+  expect(calculator.applyCoupon).toHaveBeenCalled();
+  expect(calculator.applyTax).toHaveBeenCalled();
+});
+```
+
+このテストは、価格計算の結果ではなく、内部の手順を検証しています。
+
+同じ金額が返るなら、内部手順を変えられる方がリファクタリングしやすいです。
+
+```typescript
+it('クーポン適用後の税込価格を返す', () => {
+  const service = new PriceService();
+
+  const price = service.calculate({
+    basePrice: 1000,
+    coupon: 100,
+    taxRate: 0.1,
+  });
+
+  expect(price).toBe(990);
+});
+```
+
+モックを使う前に、戻り値や状態変化で検証できないかを確認しましょう。
+
+<Figure src="/images/fork_suit_man_color.png" alt="モックを使うか判断している人のイラスト" maxWidth="240px" />
+
+## モックを使うべき場面
+
+モックが有効なのは、外部への出力がその処理の重要な振る舞いである場合です。
+
+| 場面 | モックの価値 |
+| --- | --- |
+| メール送信 | 実際に送らず、送信対象と内容を確認できる |
+| 決済APIの呼び出し | 実決済を発生させず、リクエスト内容を確認できる |
+| 通知イベントの発行 | イベント名やpayloadを確認できる |
+| ログ出力 | 重要な監査ログが出ることを確認できる |
+
+ただし、DBやファイルのように状態を確認できるものは、モックではなくテスト用の実装やインメモリ実装で確認した方が読みやすいこともあります。
+
+## モック設計のチェックリスト
+
+- その呼び出しはユーザーや外部システムから見て重要か
+- 戻り値や状態変化では検証できないか
+- 呼び出し回数を厳密に見る必要があるか
+- 引数の全項目を検証する必要があるか
+- モックの設定がテスト本体より長くなっていないか
 
 <Callout type="column">
 
