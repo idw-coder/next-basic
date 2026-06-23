@@ -15,6 +15,35 @@ interface QuizTag {
   name: string;
 }
 
+interface BulkImportResult {
+  created: QuizTag[];
+  skipped: string[];
+  failed: { slug: string; error: string }[];
+}
+
+function parseBulkTags(json: string): Pick<QuizTag, "slug" | "name">[] {
+  const parsed: unknown = JSON.parse(json);
+  if (!Array.isArray(parsed)) {
+    throw new Error("JSONは配列で入力してください");
+  }
+
+  return parsed.map((item, index) => {
+    if (!item || typeof item !== "object") {
+      throw new Error(`${index + 1}件目がオブジェクトではありません`);
+    }
+    const tag = item as { slug?: unknown; name?: unknown };
+    if (typeof tag.slug !== "string" || typeof tag.name !== "string") {
+      throw new Error(`${index + 1}件目のslug/nameが文字列ではありません`);
+    }
+    const slug = tag.slug.trim();
+    const name = tag.name.trim();
+    if (!slug || !name) {
+      throw new Error(`${index + 1}件目のslug/nameが空です`);
+    }
+    return { slug, name };
+  });
+}
+
 export default function QuizTagManagePage() {
   const [tags, setTags] = useState<QuizTag[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,6 +57,10 @@ export default function QuizTagManagePage() {
   const [editSlug, setEditSlug] = useState("");
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [bulkJson, setBulkJson] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkResult, setBulkResult] = useState<BulkImportResult | null>(null);
 
   const sortedTags = useMemo(
     () => [...tags].sort((a, b) => a.slug.localeCompare(b.slug, "ja")),
@@ -60,6 +93,56 @@ export default function QuizTagManagePage() {
       setError(msg ?? "作成に失敗しました");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleBulkCreate = async () => {
+    setError(null);
+    setBulkResult(null);
+
+    let parsedTags: Pick<QuizTag, "slug" | "name">[];
+    try {
+      parsedTags = parseBulkTags(bulkJson);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "JSONの解析に失敗しました");
+      return;
+    }
+
+    setBulkImporting(true);
+    const existingSlugs = new Set(tags.map((tag) => tag.slug));
+    const inputSlugs = new Set<string>();
+    const created: QuizTag[] = [];
+    const skipped: string[] = [];
+    const failed: { slug: string; error: string }[] = [];
+
+    try {
+      for (const tag of parsedTags) {
+        if (existingSlugs.has(tag.slug) || inputSlugs.has(tag.slug)) {
+          skipped.push(tag.slug);
+          continue;
+        }
+        inputSlugs.add(tag.slug);
+
+        try {
+          const res = await api.post("/api/quiz/tags", tag);
+          created.push(res.data);
+          existingSlugs.add(tag.slug);
+        } catch (e: unknown) {
+          const msg = (e as { response?: { data?: { error?: string } } })
+            ?.response?.data?.error;
+          failed.push({ slug: tag.slug, error: msg ?? "作成に失敗しました" });
+        }
+      }
+
+      if (created.length > 0) {
+        setTags((prev) => [...prev, ...created]);
+      }
+      setBulkResult({ created, skipped, failed });
+      if (failed.length === 0 && created.length > 0) {
+        setBulkJson("");
+      }
+    } finally {
+      setBulkImporting(false);
     }
   };
 
@@ -137,6 +220,53 @@ export default function QuizTagManagePage() {
               {creating ? "追加中..." : "追加"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-medium">JSON一括追加</h2>
+              <p className="mt-1 text-xs text-gray-500">
+                形式: [{"{\"slug\":\"example\",\"name\":\"表示名\"}"}]
+              </p>
+            </div>
+            <Button
+              disabled={!bulkJson.trim() || bulkImporting}
+              onClick={handleBulkCreate}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              {bulkImporting ? "追加中..." : "一括追加"}
+            </Button>
+          </div>
+          <textarea
+            className="min-h-40 w-full rounded-md border bg-background px-3 py-2 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder={`[
+  { "slug": "css-flexbox", "name": "Flexbox" },
+  { "slug": "js-promise", "name": "Promise" }
+]`}
+            value={bulkJson}
+            onChange={(e) => setBulkJson(e.target.value)}
+          />
+          {bulkResult && (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <Badge variant="secondary">作成 {bulkResult.created.length}</Badge>
+              <Badge variant="outline">スキップ {bulkResult.skipped.length}</Badge>
+              <Badge variant={bulkResult.failed.length > 0 ? "destructive" : "outline"}>
+                失敗 {bulkResult.failed.length}
+              </Badge>
+              {bulkResult.failed.length > 0 && (
+                <div className="basis-full text-red-600">
+                  {bulkResult.failed.map((item) => (
+                    <div key={item.slug}>
+                      {item.slug}: {item.error}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
