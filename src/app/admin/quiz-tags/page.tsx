@@ -31,14 +31,15 @@ function parseBulkTags(json: string): Pick<QuizTag, "slug" | "name">[] {
     if (!item || typeof item !== "object") {
       throw new Error(`${index + 1}件目がオブジェクトではありません`);
     }
-    const tag = item as { slug?: unknown; name?: unknown };
-    if (typeof tag.slug !== "string" || typeof tag.name !== "string") {
-      throw new Error(`${index + 1}件目のslug/nameが文字列ではありません`);
+    const tag = item as { slug?: unknown; name?: unknown; label?: unknown };
+    const rawName = tag.name ?? tag.label;
+    if (typeof tag.slug !== "string" || typeof rawName !== "string") {
+      throw new Error(`${index + 1}件目のslug/nameまたはlabelが文字列ではありません`);
     }
     const slug = tag.slug.trim();
-    const name = tag.name.trim();
+    const name = rawName.trim();
     if (!slug || !name) {
-      throw new Error(`${index + 1}件目のslug/nameが空です`);
+      throw new Error(`${index + 1}件目のslug/nameまたはlabelが空です`);
     }
     return { slug, name };
   });
@@ -229,7 +230,7 @@ export default function QuizTagManagePage() {
             <div>
               <h2 className="text-sm font-medium">JSON一括追加</h2>
               <p className="mt-1 text-xs text-gray-500">
-                形式: [{"{\"slug\":\"example\",\"name\":\"表示名\"}"}]
+                形式: [{"{\"slug\":\"example\",\"name\":\"表示名\"}"}] または [{"{\"slug\":\"example\",\"label\":\"表示名\"}"}]
               </p>
             </div>
             <Button
