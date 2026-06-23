@@ -24,6 +24,19 @@ interface Tag {
   name: string;
 }
 
+const EXCLUDED_SUGGESTED_TAG_SLUGS = new Set([
+  'basic',
+  'convenience',
+  'error',
+  'test-tag',
+]);
+
+function buildSuggestedKeywords(tags: Tag[]): string[] {
+  return tags
+    .filter((tag) => !EXCLUDED_SUGGESTED_TAG_SLUGS.has(tag.slug))
+    .map((tag) => tag.name);
+}
+
 export interface SearchQuiz {
   id: number;
   slug: string;
@@ -189,7 +202,7 @@ export default async function SearchPage({
     trimmed ? Promise.resolve(searchBooks(trimmed)) : Promise.resolve([]),
   ]);
   const books = getAllBooks().map((b) => ({ bookSlug: b.bookSlug, title: b.title }));
-  const suggestedKeywords = tags.map((t) => t.name);
+  const suggestedKeywords = buildSuggestedKeywords(tags);
   const totalCount = quizResults.length + bookResults.length;
   const jsonLdList = buildJsonLd(trimmed || undefined, trimmed ? totalCount : undefined);
 

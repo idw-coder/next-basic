@@ -7,6 +7,7 @@ export interface SectionBookLink {
 export interface SectionTagConfig {
   slug: string;
   label: string;
+  aliases?: string[];
   bookLinks?: SectionBookLink[];
 }
 
@@ -142,16 +143,18 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     },
   ],
   'html-basic': [
-    { slug: 'form', label: 'フォーム' },
-    { slug: 'semantic', label: 'セマンティクスHTML' },
-    { slug: 'accessibility', label: 'アクセシビリティ' },
-    { slug: 'meta', label: 'メタ情報・SEO' },
+    { slug: 'html-element-attribute', label: 'HTML要素・属性' },
+    { slug: 'html-semantics', label: 'セマンティック要素・セクション' },
+    { slug: 'html-forms', label: 'フォーム' },
+    { slug: 'html-images', label: '画像・レスポンシブ画像' },
+    { slug: 'html-media', label: '音声・動画・字幕' },
   ],
   'css-basic': [
-    { slug: 'flexbox', label: 'Flexbox', bookLinks: [
+    { slug: 'css-display-position', label: 'display・position' },
+    { slug: 'css-flexbox', label: 'Flexbox', aliases: ['flexbox'], bookLinks: [
       { bookSlug: 'css-basics', chapterSlug: '04-flexbox', title: 'Flexboxで横並びレイアウトを作る' },
     ] },
-    { slug: 'grid', label: 'Grid', bookLinks: [
+    { slug: 'css-grid', label: 'Grid', aliases: ['grid'], bookLinks: [
       { bookSlug: 'css-basics', chapterSlug: '05-grid', title: 'CSS Gridで2次元レイアウトを組む' },
     ] },
     { slug: 'centering', label: '中央寄せ' },
@@ -166,90 +169,218 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     ] },
   ],
   'javascript-basic': [
-    { slug: 'scope', label: 'スコープ', bookLinks: [
-      { bookSlug: 'javascript', chapterSlug: '01-variables-and-scope', title: '変数宣言とスコープ — var・let・constの違いと使い分け' },
-    ] },
-    { slug: 'closure', label: 'クロージャ', bookLinks: [
-      { bookSlug: 'javascript', chapterSlug: '12-closures', title: 'クロージャ — スコープチェーンとデータの隠蔽' },
-    ] },
-    { slug: 'promise', label: 'Promise', bookLinks: [
-      { bookSlug: 'javascript', chapterSlug: '13-async-callback-promise', title: '非同期処理の基本 — コールバック・Promise・async/await' },
-    ] },
-    { slug: 'async-await', label: 'async/await', bookLinks: [
-      { bookSlug: 'javascript', chapterSlug: '13-async-callback-promise', title: '非同期処理の基本 — コールバック・Promise・async/await' },
-    ] },
-    { slug: 'event-loop', label: 'イベントループ' },
-    { slug: 'es6', label: 'ES6+', bookLinks: [
-      { bookSlug: 'javascript', chapterSlug: '09-destructuring-and-spread', title: '分割代入とスプレッド構文' },
-    ] },
-    { slug: 'this', label: 'this', bookLinks: [
-      { bookSlug: 'javascript', chapterSlug: '11-this-keyword', title: 'thisの正体 — 呼び出しパターンごとの挙動を整理する' },
-    ] },
     { slug: 'arrow-function', label: 'アロー関数', bookLinks: [
       { bookSlug: 'javascript', chapterSlug: '05-functions', title: '関数とアロー関数 — 定義方法・this・デフォルト引数' },
     ] },
-    { slug: 'es-modules', label: 'ES Modules', bookLinks: [
+    { slug: 'js-this', label: 'this', aliases: ['this'], bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '11-this-keyword', title: 'thisの正体 — 呼び出しパターンごとの挙動を整理する' },
+    ] },
+    { slug: 'js-objects', label: 'オブジェクト', bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '06-objects', title: 'オブジェクト — プロパティ・メソッド・参照の基本' },
+    ] },
+    { slug: 'js-arrays', label: '配列', bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '07-arrays', title: '配列 — map・filter・reduceを使いこなす' },
+    ] },
+    { slug: 'js-prototype-class', label: 'prototype・class', bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '10-prototype-and-class', title: 'prototypeとclass — 継承の仕組みを理解する' },
+    ] },
+    { slug: 'js-closure', label: 'クロージャ', aliases: ['closure'], bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '12-closures', title: 'クロージャ — スコープチェーンとデータの隠蔽' },
+    ] },
+    { slug: 'js-promise', label: 'Promise', aliases: ['promise', 'pending', 'fulfilled'], bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '13-async-callback-promise', title: '非同期処理の基本 — コールバック・Promise・async/await' },
+    ] },
+    { slug: 'js-async-await', label: 'async/await', aliases: ['async', 'async-await', 'asynchronous'], bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '13-async-callback-promise', title: '非同期処理の基本 — コールバック・Promise・async/await' },
+    ] },
+    { slug: 'js-event-loop', label: 'イベントループ', aliases: ['event-loop', 'microtask'] },
+    { slug: 'js-modules', label: 'ES Modules', aliases: ['es-modules'], bookLinks: [
       { bookSlug: 'javascript', chapterSlug: '15-modules', title: 'モジュールシステム — import/exportとCommonJSの違い' },
     ] },
-    { slug: 'web-apis', label: 'Web APIs', bookLinks: [
+    { slug: 'js-dom', label: 'DOM操作', bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '16-dom-manipulation', title: 'DOM操作 — 要素取得・イベント・更新の基本' },
+    ] },
+    { slug: 'js-web-apis', label: 'Web APIs', aliases: ['web-apis'], bookLinks: [
       { bookSlug: 'javascript', chapterSlug: '20-web-apis', title: '知っておきたいWeb API — fetch・Storage・IntersectionObserver' },
+    ] },
+    { slug: 'js-error-handling', label: 'エラー処理', bookLinks: [
+      { bookSlug: 'javascript', chapterSlug: '14-error-handling', title: 'エラー処理 — try/catchと例外設計' },
     ] },
   ],
   'vue-basic': [
-    { slug: 'v-if', label: 'v-if / v-show（条件付きレンダリング）' },
-    { slug: 'v-bind', label: 'v-bind（属性バインディング）' },
-    { slug: 'v-model', label: 'v-model（双方向バインディング）' },
-    { slug: 'v-slot', label: 'v-slot（スロット）' },
+    { slug: 'vue-directives', label: 'ディレクティブ' },
+    { slug: 'vue-v-if-v-show', label: '条件表示', aliases: ['v-if', 'v-show'] },
+    { slug: 'vue-v-bind', label: '属性バインディング', aliases: ['v-bind'] },
+    { slug: 'vue-v-model', label: '双方向バインディング', aliases: ['v-model'] },
+    { slug: 'vue-components', label: 'コンポーネント' },
+    { slug: 'vue-props-emits', label: 'props・emits' },
+    { slug: 'vue-composition-api', label: 'Composition API', aliases: ['composition-api'] },
+    { slug: 'vue-reactivity', label: 'リアクティビティ' },
+    { slug: 'vue-router', label: 'Vue Router' },
+    { slug: 'vue-pinia', label: 'Pinia', aliases: ['pinia'] },
+    { slug: 'vue-slot', label: 'スロット', aliases: ['v-slot'] },
     { slug: 'vuetify', label: 'Vuetify' },
-    { slug: 'composition-api', label: 'Composition API' },
-    { slug: 'pinia', label: 'Pinia（状態管理）' },
   ],
   'ts-general': [
-    { slug: 'type-system', label: '型システム', bookLinks: [
-      { bookSlug: 'typescript', chapterSlug: '02-basic-types', title: '基本の型 — プリミティブ・配列・オブジェクト' },
+    { slug: 'ts-union-literal', label: 'Union・Literal型', bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '04-union-and-literal', title: 'Union型とLiteral型' },
+    ] },
+    { slug: 'ts-interface-type-alias', label: 'interface・type', bookLinks: [
       { bookSlug: 'typescript', chapterSlug: '03-type-alias-and-interface', title: '型エイリアスとインターフェース' },
     ] },
-    { slug: 'utility-types', label: 'Utility Types', bookLinks: [
+    { slug: 'ts-narrowing', label: '型ガード・narrowing', bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '05-narrowing', title: '型の絞り込み — typeof・in・判別可能Union' },
+    ] },
+    { slug: 'ts-functions', label: '関数型', bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '06-functions', title: '関数の型 — 引数・戻り値・オーバーロード' },
+    ] },
+    { slug: 'ts-generics', label: 'ジェネリクス', aliases: ['generics'], bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '07-generics', title: 'ジェネリクス — 型を引数にする' },
+    ] },
+    { slug: 'ts-utility-types', label: 'Utility Types', aliases: ['utility-types'], bookLinks: [
       { bookSlug: 'typescript', chapterSlug: '09-utility-types', title: 'ユーティリティ型 — Partial・Pick・Omit・Record' },
     ] },
-    { slug: 'generics', label: 'ジェネリクス', bookLinks: [
-      { bookSlug: 'typescript', chapterSlug: '07-generics', title: 'ジェネリクス — 型を引数にする' },
+    { slug: 'ts-modules', label: 'モジュール', aliases: ['es-modules'], bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '10-modules', title: 'モジュール — import/exportと型の公開範囲' },
+    ] },
+    { slug: 'ts-tsconfig', label: 'tsconfig', bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '11-tsconfig', title: 'tsconfig — strict・target・moduleを理解する' },
+    ] },
+    { slug: 'ts-type-assertion', label: '型アサーション', bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '08-assertion-and-guard', title: '型アサーションと型ガード' },
+    ] },
+    { slug: 'ts-react', label: 'ReactとTypeScript', bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '13-react-and-typescript', title: 'ReactとTypeScript — props・event・childrenの型' },
+    ] },
+    { slug: 'type-system', label: '型システム', aliases: ['javascript'], bookLinks: [
+      { bookSlug: 'typescript', chapterSlug: '02-basic-types', title: '基本の型 — プリミティブ・配列・オブジェクト' },
+      { bookSlug: 'typescript', chapterSlug: '03-type-alias-and-interface', title: '型エイリアスとインターフェース' },
     ] },
     { slug: 'zod', label: 'Zod（バリデーション）' },
     { slug: 'typeorm', label: 'TypeORM' },
   ],
   'git-basic': [
-    { slug: 'rebase', label: 'rebase', bookLinks: [
+    { slug: 'git-branch', label: 'ブランチ', aliases: ['branch', 'git-checkout', 'git-switch'], bookLinks: [
+      { bookSlug: 'git-basic', chapterSlug: '04-branches', title: 'ブランチを理解する — checkoutとswitchの使い分け' },
+    ] },
+    { slug: 'git-merge', label: 'merge', bookLinks: [
       { bookSlug: 'git-basic', chapterSlug: '05-merge-vs-rebase', title: 'mergeとrebaseの違いと使い分け' },
+    ] },
+    { slug: 'git-rebase', label: 'rebase', aliases: ['rebase'], bookLinks: [
+      { bookSlug: 'git-basic', chapterSlug: '05-merge-vs-rebase', title: 'mergeとrebaseの違いと使い分け' },
+    ] },
+    { slug: 'git-conflict', label: 'コンフリクト', bookLinks: [
+      { bookSlug: 'git-basic', chapterSlug: '06-conflict', title: 'コンフリクトを恐れない — 発生原因と解決手順' },
+    ] },
+    { slug: 'git-reset-revert', label: 'reset・revert', aliases: ['reset-revert'], bookLinks: [
+      { bookSlug: 'git-basic', chapterSlug: '07-undo', title: '取り消し操作の完全ガイド — reset・revert・restore' },
+    ] },
+    { slug: 'git-stash', label: 'stash', aliases: ['stash'], bookLinks: [
+      { bookSlug: 'git-basic', chapterSlug: '09-stash', title: 'stashで作業を一時退避する' },
+    ] },
+    { slug: 'git-remote', label: 'remote', bookLinks: [
+      { bookSlug: 'git-basic', chapterSlug: '08-remote-sync', title: 'リモート同期 — fetch・pull・pushを理解する' },
     ] },
     { slug: 'github', label: 'GitHub', bookLinks: [
       { bookSlug: 'git-basic', chapterSlug: '10-team-development', title: 'GitHubでのチーム開発 — Pull Requestとマージ戦略' },
     ] },
     { slug: 'github-actions', label: 'GitHub Actions' },
-    { slug: 'branch', label: 'ブランチ・マージ', bookLinks: [
-      { bookSlug: 'git-basic', chapterSlug: '04-branches', title: 'ブランチを理解する — checkoutとswitchの使い分け' },
-      { bookSlug: 'git-basic', chapterSlug: '06-conflict', title: 'コンフリクトを恐れない — 発生原因と解決手順' },
-    ] },
-    { slug: 'reset-revert', label: 'reset / revert（取り消し）', bookLinks: [
-      { bookSlug: 'git-basic', chapterSlug: '07-undo', title: '取り消し操作の完全ガイド — reset・revert・restore' },
-    ] },
-    { slug: 'stash', label: 'stash', bookLinks: [
-      { bookSlug: 'git-basic', chapterSlug: '09-stash', title: 'stashで作業を一時退避する' },
+    { slug: 'git-pull-request', label: 'Pull Request', bookLinks: [
+      { bookSlug: 'git-basic', chapterSlug: '10-team-development', title: 'GitHubでのチーム開発 — Pull Requestとマージ戦略' },
     ] },
   ],
   nextjs: [
-    { slug: 'app-router', label: 'App Router', bookLinks: [
+    { slug: 'nextjs-app-router', label: 'App Router', aliases: ['app-router'], bookLinks: [
       { bookSlug: 'next-js', chapterSlug: '04-routing', title: 'ルーティングとページ — App Routerのファイルベースルーティング入門' },
     ] },
-    { slug: 'server-components', label: 'Server Components', bookLinks: [
+    { slug: 'nextjs-routing', label: 'ルーティング', bookLinks: [
+      { bookSlug: 'next-js', chapterSlug: '04-routing', title: 'ルーティングとページ — App Routerのファイルベースルーティング入門' },
+    ] },
+    { slug: 'nextjs-server-components', label: 'Server Components', aliases: ['server-components'], bookLinks: [
       { bookSlug: 'next-js', chapterSlug: '07-data-fetching', title: 'データ取得とキャッシュ — Server Componentのfetch' },
     ] },
-    { slug: 'vercel', label: 'Vercel', bookLinks: [
+    { slug: 'nextjs-client-components', label: 'Client Components', bookLinks: [
+      { bookSlug: 'next-js', chapterSlug: '03-components', title: 'コンポーネント — Server ComponentとClient Component' },
+    ] },
+    { slug: 'nextjs-data-fetching', label: 'データ取得', bookLinks: [
+      { bookSlug: 'next-js', chapterSlug: '07-data-fetching', title: 'データ取得とキャッシュ — Server Componentのfetch' },
+    ] },
+    { slug: 'nextjs-cache', label: 'キャッシュ', bookLinks: [
+      { bookSlug: 'next-js', chapterSlug: '07-data-fetching', title: 'データ取得とキャッシュ — Server Componentのfetch' },
+    ] },
+    { slug: 'nextjs-route-handlers', label: 'Route Handlers', aliases: ['api-routes'], bookLinks: [
+      { bookSlug: 'next-js', chapterSlug: 'route-handlers', title: 'Route HandlersとAPI Route — route.tsでAPIエンドポイントを作る' },
+    ] },
+    { slug: 'nextjs-server-actions', label: 'Server Actions', bookLinks: [
+      { bookSlug: 'next-js', chapterSlug: '10-server-actions', title: 'Server Actions — フォーム送信とサーバー更新' },
+    ] },
+    { slug: 'nextjs-middleware', label: 'Middleware', bookLinks: [
+      { bookSlug: 'next-js', chapterSlug: 'proxy-and-middleware', title: 'ProxyとMiddleware — リクエストを入口で制御する' },
+    ] },
+    { slug: 'nextjs-metadata-seo', label: 'Metadata・SEO', bookLinks: [
+      { bookSlug: 'next-js', chapterSlug: '09-metadata-and-seo', title: 'Metadata APIとSEO — title・OGP・構造化データ' },
+    ] },
+    { slug: 'nextjs-deploy', label: 'デプロイ', aliases: ['vercel'], bookLinks: [
       { bookSlug: 'next-js', chapterSlug: 'deploy-vercel-cloudflare', title: 'Next.jsのデプロイ — VercelとCloudflare Workersの違い' },
     ] },
     { slug: 'webpack', label: 'webpack' },
-    { slug: 'api-routes', label: 'API Routes', bookLinks: [
-      { bookSlug: 'next-js', chapterSlug: 'route-handlers', title: 'Route HandlersとAPI Route — route.tsでAPIエンドポイントを作る' },
+  ],
+  'nodejs-basic': [
+    { slug: 'node-npm', label: 'npm', aliases: ['npm', 'yarn'] },
+    { slug: 'node-async-io', label: '非同期I/O' },
+    { slug: 'node-file-system', label: 'fs' },
+    { slug: 'node-http-server', label: 'HTTPサーバー' },
+    { slug: 'node-env', label: '環境変数' },
+    { slug: 'node-security', label: 'セキュリティ', aliases: ['security', 'proxy'] },
+    { slug: 'express', label: 'Express' },
+  ],
+  docker: [
+    { slug: 'docker-image', label: 'イメージ' },
+    { slug: 'docker-container', label: 'コンテナ' },
+    { slug: 'dockerfile', label: 'Dockerfile' },
+    { slug: 'docker-compose', label: 'Docker Compose' },
+    { slug: 'docker-volume', label: 'ボリューム' },
+    { slug: 'docker-network', label: 'ネットワーク' },
+    { slug: 'docker-build', label: 'build' },
+  ],
+  linux: [
+    { slug: 'linux-commands', label: '基本コマンド', aliases: ['unix'] },
+    { slug: 'linux-filesystem', label: 'ファイルシステム' },
+    { slug: 'linux-permissions', label: '権限' },
+    { slug: 'linux-process', label: 'プロセス' },
+    { slug: 'linux-shell', label: 'シェル' },
+    { slug: 'linux-package-manager', label: 'パッケージ管理', aliases: ['wsl'] },
+  ],
+  'sql-basic': [
+    { slug: 'sql-select', label: 'SELECT' },
+    { slug: 'sql-where-order-limit', label: 'WHERE・ORDER BY・LIMIT' },
+    { slug: 'sql-join', label: 'JOIN' },
+    { slug: 'sql-aggregate', label: '集計' },
+    { slug: 'sql-group-by', label: 'GROUP BY' },
+    { slug: 'sql-subquery', label: 'サブクエリ' },
+    { slug: 'sql-index', label: 'インデックス' },
+    { slug: 'sql-transaction', label: 'トランザクション' },
+    { slug: 'sql-normalization', label: '正規化' },
+    { slug: 'sql-table-design', label: 'テーブル設計' },
+  ],
+  'cs-basic': [
+    { slug: 'cs-computer-basic', label: 'コンピュータ基礎', bookLinks: [
+      { bookSlug: 'cs-basics', chapterSlug: '01-computer-basics', title: 'コンピュータ基礎' },
+    ] },
+    { slug: 'cs-data-structures', label: 'データ構造', bookLinks: [
+      { bookSlug: 'cs-basics', chapterSlug: '02-data-structures', title: 'データ構造' },
+    ] },
+    { slug: 'cs-algorithms', label: 'アルゴリズム', bookLinks: [
+      { bookSlug: 'cs-basics', chapterSlug: '03-algorithms', title: 'アルゴリズム' },
+    ] },
+    { slug: 'cs-network', label: 'ネットワーク', bookLinks: [
+      { bookSlug: 'cs-basics', chapterSlug: '04-network', title: 'ネットワーク' },
+    ] },
+    { slug: 'cs-os', label: 'OS' },
+    { slug: 'cs-memory', label: 'メモリ' },
+    { slug: 'cs-database-basic', label: 'DB基礎' },
+    { slug: 'cs-error-debugging', label: 'エラー・デバッグ', bookLinks: [
+      { bookSlug: 'cs-basics', chapterSlug: '05-errors', title: 'エラーとの向き合い方' },
     ] },
   ],
 };

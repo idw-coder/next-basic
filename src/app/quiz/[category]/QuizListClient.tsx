@@ -37,7 +37,8 @@ function buildSections(quizzes: Quiz[], sectionTags: SectionTagConfig[]): QuizSe
     bookLinks: st.bookLinks,
   }));
 
-  const sectionSlugs = new Set(sectionTags.map((st) => st.slug));
+  const sectionSlugGroups = sectionTags.map((st) => new Set([st.slug, ...(st.aliases ?? [])]));
+  const sectionSlugs = new Set(sectionSlugGroups.flatMap((slugs) => [...slugs]));
   const uncategorized: Quiz[] = [];
 
   for (const quiz of quizzes) {
@@ -45,11 +46,14 @@ function buildSections(quizzes: Quiz[], sectionTags: SectionTagConfig[]): QuizSe
     if (!matchedAnySectionTag) {
       uncategorized.push(quiz);
     } else {
-      for (const section of sections) {
-        if (quiz.tags.some((t) => t.slug === section.slug)) {
-          section.quizzes.push(quiz);
+      sections.forEach((section, index) => {
+        const sectionSlugGroup = sectionSlugGroups[index];
+        if (quiz.tags.some((t) => sectionSlugGroup.has(t.slug))) {
+          if (!section.quizzes.some((q) => q.id === quiz.id)) {
+            section.quizzes.push(quiz);
+          }
         }
-      }
+      });
     }
   }
 
