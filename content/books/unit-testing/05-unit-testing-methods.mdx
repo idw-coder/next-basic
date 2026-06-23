@@ -1,6 +1,6 @@
 ---
 title: '単体テストのメソッド'
-description: '単体テストのメソッド'
+description: '出力値ベース、状態変化ベース、コミュニケーションベースの単体テスト手法を比較する'
 order: 5
 ---
 
@@ -100,4 +100,55 @@ flowchart LR
 
 ## 関数型プログラミングの導入で、ビジネスロジックと副作用の分離ができます
 
-現在執筆中です。
+単体テストしやすい設計にするには、ビジネスロジックと副作用を分けます。
+
+たとえば、注文合計を計算してDBに保存する処理があるとします。
+
+```typescript
+async function createOrder(items: Item[]) {
+  const total = items.reduce((sum, item) => sum + item.price, 0);
+
+  await orderRepository.save({
+    items,
+    total,
+  });
+}
+```
+
+この関数は、合計金額の計算とDB保存を同時に行っています。
+
+テストではDB保存をモックする必要があり、計算ロジックだけを確認したい場合でも準備が重くなります。
+
+計算を純粋関数として切り出すと、出力値ベースのテストを書けます。
+
+```typescript
+function calculateOrderTotal(items: Item[]) {
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+
+async function createOrder(items: Item[]) {
+  const total = calculateOrderTotal(items);
+
+  await orderRepository.save({
+    items,
+    total,
+  });
+}
+```
+
+```typescript
+it('商品の合計金額を返す', () => {
+  const items = [
+    { name: 'Book', price: 1000 },
+    { name: 'Pen', price: 200 },
+  ];
+
+  const total = calculateOrderTotal(items);
+
+  expect(total).toBe(1200);
+});
+```
+
+副作用を完全になくすことはできません。
+
+しかし、ビジネスロジックを副作用の外側に押し出すことで、重要な仕様を軽く、速く、壊れにくい単体テストで守れるようになります。
