@@ -905,9 +905,9 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     { slug: 'docker-build', label: 'build' },
   ],
   linux: [
-    { slug: 'linux-commands', label: '基本コマンド', aliases: ['unix'] },
-    { slug: 'linux-filesystem', label: 'ファイルシステム' },
-    { slug: 'linux-permissions', label: '権限' },
+    { slug: 'linux-commands', label: 'Linuxコマンド', aliases: ['unix'] },
+    { slug: 'linux-filesystem', label: 'Linuxファイルシステム' },
+    { slug: 'linux-permissions', label: 'Linux権限' },
     { slug: 'linux-process', label: 'プロセス' },
     { slug: 'linux-shell', label: 'シェル' },
     { slug: 'linux-package-manager', label: 'パッケージ管理', aliases: ['wsl'] },

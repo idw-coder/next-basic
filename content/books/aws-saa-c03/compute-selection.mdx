@@ -86,6 +86,145 @@ Lambdaは、サーバー管理なしでコードを実行するサービスで�
 
 ---
 
+## ECS・Fargate・タスク定義の全体像
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ECS、Fargate、タスク定義、サービス、クラスター…… 用語がたくさん出てきて関係性がわかりません。
+</SpeechBubble>
+
+ECSの構造は、次の5つの層で整理すると見通しが良くなります。
+
+| 層 | 役割 | たとえるなら |
+|---|---|---|
+| **タスク定義** | コンテナの設計図（どのイメージ、CPU/メモリ、環境変数、ポート等） | 料理のレシピ |
+| **タスク** | タスク定義から起動された実体（1つ以上のコンテナの集合） | レシピから実際に作った料理 |
+| **サービス** | タスクの望ましい数を維持し、ALB連携やデプロイ戦略を管理する | キッチンのシフト管理（常に3皿出す等） |
+| **クラスター** | サービスやタスクを論理的にまとめる器 | レストランそのもの |
+| **Fargate** | タスクが実際に動くサーバーレスコンピュート基盤 | 厨房設備をリースで用意してくれる業者 |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生">
+ECSは「何をどう動かすか」を管理するオーケストレーター。Fargateは「どこで動かすか」を担当するコンピュート基盤、という切り分けです。
+</SpeechBubble>
+
+Fargateと対になるのが **EC2起動タイプ** です。EC2起動タイプではEC2インスタンスをクラスターに登録して自分で管理します。Fargateを選ぶとインスタンス管理は不要になりますが、料金がやや高く、GPUアクセスや特定カーネルモジュールなどホストレベルの細かい制御はできません。
+
+---
+
+## タスク定義 — コンテナの実行仕様書
+
+タスク定義は、コンテナをどう動かすかをJSON形式でまとめた**テンプレート**です。タスク定義そのものがコンテナを動かすのではなく、「こう動かせ」という指示書にあたります。
+
+主な設定項目:
+
+| 項目 | 設定内容 |
+|---|---|
+| コンテナイメージ | ECRやDocker HubのイメージURI |
+| CPU / メモリ | タスク全体およびコンテナごとの割り当て |
+| 環境変数 | アプリケーションの設定値 |
+| ポートマッピング | ホスト↔コンテナのポート対応 |
+| ログ設定 | CloudWatch Logs等への出力先 |
+| IAMロール | タスクロール、タスク実行ロール |
+
+### リビジョン — タスク定義のバージョン管理
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+タスク定義を変更したいときはどうするんですか？直接編集できますか？
+</SpeechBubble>
+
+タスク定義は一度登録すると**変更不可（イミュータブル）**です。設定を変えたければ、新しい**リビジョン**として登録します。
+
+```
+my-app:1  ← 最初の登録
+my-app:2  ← メモリを増やした版
+my-app:3  ← 環境変数を追加した版
+```
+
+サービスは特定のリビジョンを参照して動くので、デプロイ時に新しいリビジョンを指定してローリングアップデートする流れになります。古いリビジョンは `deregister` できますが、完全削除ではなく **INACTIVE** 状態になるだけです。
+
+---
+
+## タスクロール vs タスク実行ロール
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+タスクロールとタスク実行ロール、名前が似すぎてどっちがどっちかわかりません……
+</SpeechBubble>
+
+この2つは試験でも実務でも混同しやすいですが、明確に別物です。
+
+| | タスク実行ロール（executionRoleArn） | タスクロール（taskRoleArn） |
+|---|---|---|
+| **誰が使う？** | ECSエージェント（インフラ側） | コンテナ内のアプリケーションコード |
+| **いつ使う？** | コンテナを**起動するまで** | コンテナが**動いている間** |
+| **代表的な権限** | ECRからのイメージプル、CloudWatch Logsへのログ送信、Secrets Manager / SSM Parameter Storeからの秘密値取得 | S3へのファイル保存、DynamoDBの読み書き、SQSへのメッセージ送信 |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生">
+ざっくり言えば、実行ロールは「インフラ側の権限」、タスクロールは「アプリ側の権限」です。EC2のインスタンスプロファイルに近いのはタスクロールの方ですね。
+</SpeechBubble>
+
+<Callout type="warning">
+### 試験でのポイント
+
+「ECSタスク内のアプリからS3にアクセスしたい」→ **タスクロール**に権限を付与。「ECRからプライベートイメージをプルしたい」→ **タスク実行ロール**に権限を付与。問題文で「何が」「いつ」権限を使うのかを読み取ることが正答のカギです。
+
+</Callout>
+
+---
+
+## ECSのログ出力設定
+
+タスク定義内のコンテナ定義で `logConfiguration` を指定することで、コンテナのログ出力先を設定します。
+
+### awslogs ログドライバー（最も一般的）
+
+CloudWatch Logsに直接送る構成で、最もシンプルです。
+
+設定する3つのパラメータ:
+
+| パラメータ | 内容 |
+|---|---|
+| `awslogs-group` | CloudWatch Logsのロググループ名 |
+| `awslogs-region` | ロググループが存在するリージョン |
+| `awslogs-stream-prefix` | ログストリーム名のプレフィックス |
+
+### Fargateで使えるログドライバー
+
+| ログドライバー | 用途 |
+|---|---|
+| `awslogs` | CloudWatch Logsへ直接送信（定番） |
+| `splunk` | Splunkへ送信 |
+| `awsfirelens` | Fluent Bit / Fluentdで柔軟にルーティング |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+FireLensって何が嬉しいんですか？awslogsで十分ではないですか？
+</SpeechBubble>
+
+awslogsはCloudWatch Logsに送るだけですが、**FireLens**を使うとFluent BitやFluentdコンテナを**サイドカー**として同じタスク内に立て、ログをS3、OpenSearch、Datadog等に柔軟にルーティングできます。「ログを複数の宛先に送りたい」「特定条件でフィルタリングしたい」といった要件が出たらFireLensが候補になります。
+
+---
+
+## Fargateとネットワークモード
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Fargateを使うと `awsvpc` が必須と聞きました。これは何ですか？
+</SpeechBubble>
+
+Fargateでは、ネットワークモードが **`awsvpc`** に限定されます。`awsvpc` モードでは、各タスクに**ENI（Elastic Network Interface）** が割り当てられ、タスクごとに独自のプライベートIPアドレスを持ちます。
+
+これにより:
+
+- タスク単位でセキュリティグループを適用できる
+- VPC内の他リソースと同じネットワークでプライベート通信できる
+- ALB / NLBのターゲットとして直接登録できる
+
+<Callout type="note">
+### ENIの上限に注意
+
+`awsvpc` モードでは、タスクごとにENIが必要です。サブネット内のIPアドレス数やENIの上限が、同時に起動できるタスク数の制約になることがあります。大規模な場合はサブネットのCIDR設計に注意してください。
+
+</Callout>
+
+---
+
 ## まとめ
 
 コンピューティング選択では、制御したい範囲と運用負荷のバランスを見ます。
