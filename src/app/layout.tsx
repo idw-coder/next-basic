@@ -3,7 +3,15 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Script from 'next/script';
+import { M_PLUS_Rounded_1c } from 'next/font/google';
 import './globals.css';
+
+const mPlusRounded = M_PLUS_Rounded_1c({
+  weight: ['400', '500', '700', '800'],
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+});
 import GoogleAdSense, { HideAdsForEntry } from '@/components/GoogleAdSense';
 import HeaderNav from '@/components/HeaderNav';
 
@@ -55,7 +63,7 @@ export default function RootLayout({
           <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
         )}
       </head>
-      <body>
+      <body className={mPlusRounded.className}>
         {clientId && !isDevelopment && (
           <Script
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientId}`}
