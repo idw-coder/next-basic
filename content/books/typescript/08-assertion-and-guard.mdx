@@ -178,6 +178,51 @@ function isUser(value: unknown): value is User {
 
 `is` キーワードを使って、関数の戻り値で型を絞り込む手法。APIレスポンスのバリデーションなどで活用するパターンを解説予定です。
 
+### ダブルアサーション（as unknown as T）の罠
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`as any` がダメなら `as unknown as` にすれば安全ですよね？ AIに「anyを使わないで」って指示したら、こっちに書き換えてくれたんですけど……
+</SpeechBubble>
+
+結論から言うと、**`as unknown as T` を書いている時点で型安全性は放棄しています**。`as any as T` と本質的な危険度は大差ありません。
+
+```tsx
+// どちらも「型チェックを黙らせる」行為
+const a = value as any as TargetType;
+const b = value as unknown as TargetType;
+```
+
+TypeScriptは通常、互換性のない型同士のアサーションをエラーにしてくれます。
+
+```tsx
+const n: number = 42;
+const s = n as string; // ❌ エラー：number と string は互換性がない
+```
+
+ダブルアサーションは、一度 `any` や `unknown` を経由することで**この安全装置を迂回**します。`unknown` 経由のほうが `@typescript-eslint/no-explicit-any` ルールに引っかからないぶん行儀が良く見えますが、やっていることは同じです。
+
+<Callout type="warning">
+### AI生成コードでよく見るパターン
+
+AIに「`any` を使わないで」と指示すると、`as any` を機械的に `as unknown as` へ置き換えることがあります。lint警告は消えますが、**型安全性は改善されていません**。「`any` を消す」のが目的ではなく、「型チェックが正しく機能する状態にする」のが本来の目的です。
+
+</Callout>
+
+ダブルアサーションが出てきたら、まず設計を見直します。
+
+| 状況 | 代わりにやること |
+|---|---|
+| APIレスポンスの型が合わない | ジェネリクスで型パラメータを渡す / Zodなどでバリデーション |
+| ライブラリの型定義が古い | `@types` を更新する / 型定義を拡張（declaration merging） |
+| テストでモックを作りたい | `Partial<T>` や `satisfies` を活用する |
+| 本当にどうしようもない | `as unknown as T` を使い、コメントで理由を残す |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生">
+`as unknown as` に統一すること自体は悪くありません。lintルールと整合しますし、コードレビューで「ここは意図的にキャストしている」と分かりやすくなります。ただ、**そもそもダブルアサーションが必要な設計自体を見直すほうが先**、という順番が大事です。
+</SpeechBubble>
+
+---
+
 ### constアサーション
 
 ```tsx
