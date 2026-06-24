@@ -404,7 +404,7 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
       )}
 
       <Sheet open={tagSheetOpen} onOpenChange={setTagSheetOpen}>
-        <SheetContent className="w-[92vw] sm:max-w-lg">
+        <SheetContent className="w-[92vw] sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
             <SheetTitle>クイズのタグを編集</SheetTitle>
             <SheetDescription>この問題に紐づけるタグを選択できます。</SheetDescription>

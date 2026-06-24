@@ -74,7 +74,7 @@ export default function HeaderNav() {
         </Link>
         <Link href="/#categories" className={linkClass}>
           <BookOpen className={iconClass} />
-          カテゴリ
+          クイズ
         </Link>
         <Link href="/books" className={linkClass}>
           <Library className={iconClass} />

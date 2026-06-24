@@ -65,7 +65,7 @@ export default function BooksPage() {
           </div>
 
           <div className="relative mx-auto h-44 w-full max-w-sm sm:h-64 sm:max-w-xl md:h-80">
-            <div className="absolute right-0 top-4 h-[68%] w-[72%] rounded-t-[2.25rem] border-2 border-[#2f302f]/70 bg-[#f3c875] sm:top-0 sm:rounded-t-[2.75rem]">
+            <div className="absolute right-0 top-4 h-[68%] w-[72%] rounded-[2.25rem] border-2 border-[#2f302f]/70 bg-[#f3c875] sm:top-0 sm:rounded-[2.75rem]">
               <Image
                 src="/images/stepup_suit_man_color-1.png"
                 alt="段階的に学習を進める人のイラスト"
@@ -77,12 +77,12 @@ export default function BooksPage() {
             </div>
             <div className="absolute bottom-6 left-0 h-[48%] w-[48%] rounded-[1.5rem] border-2 border-[#2f302f]/70 bg-[#bde9ec] sm:bottom-8 sm:rounded-[2rem]">
               <Image
-                src="/images/creative_color.png"
-                alt="学習内容を整理する画面のイラスト"
-                width={738}
-                height={452}
+                src="/images/readingbook_woman_color.png"
+                alt="教科書を読む人のイラスト"
+                width={400}
+                height={400}
                 priority
-                className="absolute left-1/2 top-1/2 h-[130%] w-auto -translate-x-1/2 -translate-y-1/2 object-contain"
+                className="absolute -bottom-3 left-1/2 h-[118%] w-auto -translate-x-1/2 object-contain sm:-bottom-5"
               />
             </div>
           </div>

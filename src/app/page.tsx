@@ -390,7 +390,7 @@ export default async function Home() {
             />
           </div>
           <div className="relative mx-auto hidden h-40 w-full max-w-sm sm:block sm:h-64 sm:max-w-xl md:h-80">
-            <div className="absolute right-0 top-0 h-[74%] w-[68%] rounded-t-[2.25rem] border-2 border-[#2f302f]/70 bg-[#a7d66f] sm:rounded-t-[2.75rem]">
+            <div className="absolute right-0 top-0 h-[74%] w-[68%] rounded-[2.25rem] border-2 border-[#2f302f]/70 bg-[#a7d66f] sm:rounded-[2.75rem]">
               <Image
                 src="/images/running_man_color-1.png"
                 alt="気分転換しながら学習を続ける人のイラスト"
@@ -408,15 +408,6 @@ export default async function Home() {
                 height={260}
                 priority
                 className="absolute -bottom-3 left-1/2 h-[118%] w-auto -translate-x-1/2 object-contain sm:-bottom-5"
-              />
-            </div>
-            <div className="absolute left-[12%] top-3 hidden h-[32%] w-[40%] overflow-hidden rounded-t-[1.5rem] border-2 border-[#2f302f]/55 bg-white/80 sm:block">
-              <Image
-                src="/images/creative_color.png"
-                alt=""
-                width={738}
-                height={452}
-                className="absolute left-1/2 top-1/2 h-[130%] w-auto -translate-x-1/2 -translate-y-1/2 object-contain opacity-80"
               />
             </div>
           </div>
@@ -469,7 +460,7 @@ export default async function Home() {
         </section>
 
       {/* 学習カテゴリ */}
-        <section id="categories" className="relative mb-12 overflow-hidden rounded-[2rem] bg-white px-5 py-8 md:mb-16 md:px-10 md:py-12">
+        <section id="categories" className="relative mb-12 overflow-hidden rounded-[2rem] bg-white px-3 py-6 md:mb-16 md:px-10 md:py-12">
           <div className="mb-4 flex justify-center">
             <div className="relative inline-block rounded-full bg-[#2f86c9] px-5 py-1.5 text-xs font-bold text-white sm:text-sm">
               どのカテゴリから始める？
@@ -532,7 +523,7 @@ export default async function Home() {
         </section>
 
       {/* 教科書 */}
-        <section id="books" className="mb-12 md:mb-16">
+        <section id="books" className="mb-12 rounded-[2rem] bg-white px-3 py-6 md:mb-16 md:px-10 md:py-12">
           <div className="mb-8 grid gap-4 md:grid-cols-[0.8fr_1fr] md:items-end">
             <SectionHeading center={false} subtitle="基礎から体系的に学べる技術書コンテンツ">
               教科書
