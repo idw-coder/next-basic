@@ -244,7 +244,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'state',
+      slug: 'react-state',
       label: '状態管理',
       bookLinks: [
         {
@@ -255,7 +255,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'component',
+      slug: 'react-component',
       label: 'コンポーネント設計',
       bookLinks: [
         {
@@ -266,7 +266,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'rendering',
+      slug: 'react-rendering',
       label: 'レンダリング・パフォーマンス',
       bookLinks: [
         {
@@ -287,7 +287,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'jsx',
+      slug: 'react-jsx',
       label: 'JSX',
       bookLinks: [
         {
