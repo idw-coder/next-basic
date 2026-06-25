@@ -309,6 +309,18 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
   'css-basic': [
     { slug: 'css-display-position', label: 'display・position' },
     {
+      slug: 'css-pseudo',
+      label: 'CSSの疑似クラスと擬似要素',
+      aliases: ['pseudo-class', 'pseudo-element'],
+      bookLinks: [
+        {
+          bookSlug: 'css-basics',
+          chapterSlug: '02-selectors',
+          title: 'CSSセレクタの種類と使い分け — 擬似クラス・擬似要素',
+        },
+      ],
+    },
+    {
       slug: 'css-flexbox',
       label: 'Flexbox',
       aliases: ['flexbox'],
