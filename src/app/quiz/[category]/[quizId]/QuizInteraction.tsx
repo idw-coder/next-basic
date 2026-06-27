@@ -111,7 +111,8 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
       setTagError(null);
       try {
         const res = await api.get('/api/quiz/tags');
-        setAllTags(res.data);
+        const tags = (res.data as QuizTag[]).sort((a, b) => a.slug.localeCompare(b.slug, 'ja'));
+        setAllTags(tags);
       } catch {
         setTagError('タグ一覧の取得に失敗しました');
       } finally {

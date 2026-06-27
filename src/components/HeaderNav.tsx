@@ -48,6 +48,7 @@ export default function HeaderNav() {
   const linkClass =
     "flex items-center gap-2.5 px-4 py-3 text-sm text-foreground hover:bg-muted sm:hover:bg-transparent sm:text-muted-foreground sm:hover:text-foreground sm:px-3 sm:py-2 sm:rounded-md transition-colors";
   const iconClass = "size-4 text-muted-foreground shrink-0";
+  const closeMenu = () => setOpen(false);
 
   return (
     <div className="sm:static">
@@ -68,41 +69,41 @@ export default function HeaderNav() {
           ${open ? "block" : "hidden sm:flex"}
         `}
       >
-        <Link href="/search" className={linkClass}>
+        <Link href="/search" className={linkClass} onClick={closeMenu}>
           <Search className={iconClass} />
           検索
         </Link>
-        <Link href="/#categories" className={linkClass}>
+        <Link href="/#categories" className={linkClass} onClick={closeMenu}>
           <BookOpen className={iconClass} />
           クイズ
         </Link>
-        <Link href="/books" className={linkClass}>
+        <Link href="/books" className={linkClass} onClick={closeMenu}>
           <Library className={iconClass} />
           教科書
         </Link>
-        <Link href="/#news" className={linkClass}>
+        <Link href="/#news" className={linkClass} onClick={closeMenu}>
           <Bell className={iconClass} />
           お知らせ
         </Link>
-        <Link href="/payment" className={linkClass}>
+        <Link href="/payment" className={linkClass} onClick={closeMenu}>
           <CreditCard className={iconClass} />
           プラン
         </Link>
         {/* entryのURLのみ表示 */}
         {showTech && (
-          <Link href="/about/tech" className={linkClass}>
+          <Link href="/about/tech" className={linkClass} onClick={closeMenu}>
             <Wrench className={iconClass} />
             技術構成
           </Link>
         )}
         {isAdmin && (
-          <Link href="/admin" className={linkClass}>
+          <Link href="/admin" className={linkClass} onClick={closeMenu}>
             <Shield className={iconClass} />
             管理
           </Link>
         )}
         {isLoggedIn ? (
-          <Link href="/profile" className={`${linkClass} sm:ml-1`} aria-label="プロフィール">
+          <Link href="/profile" className={`${linkClass} sm:ml-1`} aria-label="プロフィール" onClick={closeMenu}>
             {avatarSvg ? (
               <Image
                 src={avatarSvg}
@@ -119,12 +120,12 @@ export default function HeaderNav() {
           </Link>
         ) : (
           <>
-            <Link href="/login" className={`${linkClass} sm:hidden`}>
+            <Link href="/login" className={`${linkClass} sm:hidden`} onClick={closeMenu}>
               <LogIn className={iconClass} />
               ログイン
             </Link>
             <Button variant="outline" size="sm" className="hidden sm:inline-flex ml-1 rounded-full" asChild>
-              <Link href="/login">ログイン</Link>
+              <Link href="/login" onClick={closeMenu}>ログイン</Link>
             </Button>
           </>
         )}

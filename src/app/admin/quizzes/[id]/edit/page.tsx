@@ -164,7 +164,9 @@ export default function QuizEditPage() {
         api.get("/api/quiz/tags"),
       ]);
       setCategories(catRes.data);
-      setAllTags(tagRes.data);
+      setAllTags(
+        (tagRes.data as QuizTag[]).sort((a, b) => a.slug.localeCompare(b.slug, "ja")),
+      );
 
       if (!isNew && quizId.current) {
         const res = await api.get(`/api/quiz/${quizId.current}`);
