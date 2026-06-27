@@ -45,6 +45,7 @@ interface CategoryRandomStartCardProps {
   categoryId: number;
   categorySlug: string;
   categoryName: string;
+  tags: { slug: string; name: string }[];
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -60,10 +61,12 @@ export default function CategoryRandomStartCard({
   categoryId,
   categorySlug,
   categoryName,
+  tags,
 }: CategoryRandomStartCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [quizCount, setQuizCount] = useState<number>(10);
+  const [selectedTagSlug, setSelectedTagSlug] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +75,12 @@ export default function CategoryRandomStartCard({
     setError(null);
 
     try {
-      const res = await api.get(`/api/quiz/category/${categoryId}/quizzes`);
+      const params = new URLSearchParams();
+      if (selectedTagSlug !== 'all') params.set('tagSlug', selectedTagSlug);
+
+      const res = await api.get(
+        `/api/quiz/category/${categoryId}/quizzes${params.size ? `?${params.toString()}` : ''}`,
+      );
       const allQuizzes = (res.data as { id: number; question: string }[]).map((quiz) => ({
         id: quiz.id,
         categorySlug,
@@ -80,7 +88,7 @@ export default function CategoryRandomStartCard({
       }));
 
       if (allQuizzes.length === 0) {
-        setError('問題が見つかりませんでした');
+        setError('この条件の問題が見つかりませんでした');
         setIsLoading(false);
         return;
       }
@@ -180,6 +188,41 @@ export default function CategoryRandomStartCard({
                   })}
                 </div>
               </div>
+
+              {tags.length > 0 && (
+                <div>
+                  <div className="mb-2 text-sm font-bold">タグ</div>
+                  <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto rounded-md border bg-muted/20 p-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTagSlug('all')}
+                      className={cn(
+                        'rounded-md border px-2 py-1 text-xs font-semibold transition-colors',
+                        selectedTagSlug === 'all'
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border bg-background hover:bg-muted',
+                      )}
+                    >
+                      すべて
+                    </button>
+                    {tags.map((tag) => (
+                      <button
+                        key={tag.slug}
+                        type="button"
+                        onClick={() => setSelectedTagSlug(tag.slug)}
+                        className={cn(
+                          'rounded-md border px-2 py-1 text-xs font-semibold transition-colors',
+                          selectedTagSlug === tag.slug
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border bg-background hover:bg-muted',
+                        )}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <Alert variant="destructive">

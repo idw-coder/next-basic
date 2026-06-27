@@ -371,6 +371,7 @@ export default async function CategoryQuizPage({
               categoryId={category.id}
               categorySlug={category.slug}
               categoryName={category.category_name}
+              tags={tags}
             />
           </section>
         );
