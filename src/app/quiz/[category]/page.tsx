@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SectionHeading } from '@/components/SectionHeading';
 import QuizListClient from './QuizListClient';
+import CategoryRandomStartCard from './CategoryRandomStartCard';
 import { getCategorySeoContent, type CategorySeoContent } from './categoryContent';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getBookTheme } from '@/lib/book-theme';
@@ -366,27 +367,11 @@ export default async function CategoryQuizPage({
               );
             })()}
 
-            <Link href={`/quiz/random?category=${category.slug}`} className="group block h-full min-w-0">
-              <div className="relative flex h-full overflow-hidden rounded-lg border border-primary/15 bg-blue-50 px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5">
-                <HelpCircle
-                  className="pointer-events-none absolute right-1/4 top-1/2 size-14 -translate-y-1/2 rotate-12 text-primary opacity-[0.05] sm:size-16"
-                  aria-hidden="true"
-                />
-                <div className="relative z-10 min-w-0 flex-1">
-                  <div className="mb-0.5">
-                    <span className="rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none text-primary sm:text-[10px]">
-                      連続演習
-                    </span>
-                  </div>
-                  <p className="line-clamp-1 text-[11px] font-bold leading-snug text-foreground sm:text-[13px]">
-                    ランダムに解く
-                  </p>
-                  <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
-                    問題を選ばず続けて練習
-                  </p>
-                </div>
-              </div>
-            </Link>
+            <CategoryRandomStartCard
+              categoryId={category.id}
+              categorySlug={category.slug}
+              categoryName={category.category_name}
+            />
           </section>
         );
       })()}

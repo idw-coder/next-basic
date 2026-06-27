@@ -1,0 +1,204 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { HelpCircle, Loader2, Play, X } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import api from '@/lib/api';
+import { saveRandomSession, type RandomQuizSession } from '@/lib/randomQuizSession';
+
+const QUIZ_COUNTS = [5, 10, 15, 20] as const;
+
+const QUIZ_COUNT_STYLES: Record<
+  number,
+  { bg: string; border: string; text: string; label: string }
+> = {
+  5: {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    text: 'text-emerald-600',
+    label: 'text-emerald-500/70',
+  },
+  10: {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    text: 'text-blue-600',
+    label: 'text-blue-500/70',
+  },
+  15: {
+    bg: 'bg-violet-50',
+    border: 'border-violet-200',
+    text: 'text-violet-600',
+    label: 'text-violet-500/70',
+  },
+  20: {
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    text: 'text-amber-600',
+    label: 'text-amber-500/70',
+  },
+};
+
+interface CategoryRandomStartCardProps {
+  categoryId: number;
+  categorySlug: string;
+  categoryName: string;
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+export default function CategoryRandomStartCard({
+  categoryId,
+  categorySlug,
+  categoryName,
+}: CategoryRandomStartCardProps) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [quizCount, setQuizCount] = useState<number>(10);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleStart = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const res = await api.get(`/api/quiz/category/${categoryId}/quizzes`);
+      const allQuizzes = (res.data as { id: number; question: string }[]).map((quiz) => ({
+        id: quiz.id,
+        categorySlug,
+        question: quiz.question,
+      }));
+
+      if (allQuizzes.length === 0) {
+        setError('問題が見つかりませんでした');
+        setIsLoading(false);
+        return;
+      }
+
+      const picked = shuffleArray(allQuizzes).slice(0, Math.min(quizCount, allQuizzes.length));
+      const session: RandomQuizSession = {
+        quizzes: picked,
+        currentIndex: 0,
+        answers: [],
+        settings: { categoryId, count: quizCount },
+      };
+
+      saveRandomSession(session);
+      router.push(`/quiz/${categorySlug}/${picked[0].id}`);
+    } catch {
+      setError('問題の取得に失敗しました。もう一度お試しください。');
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="group block h-full min-w-0 text-left">
+        <div className="relative flex h-full overflow-hidden rounded-lg border border-primary/15 bg-blue-50 px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5">
+          <HelpCircle
+            className="pointer-events-none absolute right-1/4 top-1/2 size-14 -translate-y-1/2 rotate-12 text-primary opacity-[0.05] sm:size-16"
+            aria-hidden="true"
+          />
+          <div className="relative z-10 min-w-0 flex-1">
+            <div className="mb-0.5">
+              <span className="rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none text-primary sm:text-[10px]">
+                連続演習
+              </span>
+            </div>
+            <p className="line-clamp-1 text-[11px] font-bold leading-snug text-foreground sm:text-[13px]">
+              ランダムに解く
+            </p>
+            <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+              問題を選ばず続けて練習
+            </p>
+          </div>
+        </div>
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="category-random-title"
+        >
+          <div className="w-full max-w-md rounded-md border bg-background p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                  ランダムクイズ
+                </p>
+                <h2 id="category-random-title" className="mt-1 text-xl font-extrabold">
+                  {categoryName}を始める
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="閉じる"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              <div>
+                <div className="mb-2 text-sm font-bold">問題数</div>
+                <div className="grid grid-cols-4 gap-2">
+                  {QUIZ_COUNTS.map((count) => {
+                    const style = QUIZ_COUNT_STYLES[count];
+                    return (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => setQuizCount(count)}
+                        className={cn(
+                          'rounded-md border-2 p-3 text-center transition-all',
+                          style.bg,
+                          quizCount === count
+                            ? `${style.border} shadow-sm`
+                            : 'border-transparent opacity-70 hover:opacity-100',
+                        )}
+                      >
+                        <div className={cn('text-xl font-extrabold tabular-nums', style.text)}>
+                          {count}
+                        </div>
+                        <div className={cn('text-xs font-medium', style.label)}>問</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button onClick={handleStart} disabled={isLoading} size="lg" className="w-full">
+                {isLoading ? (
+                  <Loader2 className="size-5 mr-2 animate-spin" />
+                ) : (
+                  <Play className="size-5 mr-2" />
+                )}
+                {quizCount}問 スタート
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

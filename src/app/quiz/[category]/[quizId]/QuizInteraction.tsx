@@ -1,12 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Tags, Trophy, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Sheet,
@@ -16,15 +12,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
 import api from '@/lib/api';
 import {
+  clearRandomSession,
   getRandomSession,
   saveRandomSession,
-  clearRandomSession,
   type RandomQuizSession,
 } from '@/lib/randomQuizSession';
+import { cn } from '@/lib/utils';
+import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Tags, Trophy, X } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import ExplanationView from './ExplanationView';
 
 interface Choice {
@@ -214,6 +214,37 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
     ? ((randomSession.currentIndex + (isAnswered ? 1 : 0)) / randomSession.quizzes.length) * 100
     : 0;
 
+  const renderAnsweredNavigation = (position: 'top' | 'bottom') =>
+    randomSession ? (
+      <Button
+        onClick={handleNextRandomQuiz}
+        className={cn('w-full', position === 'top' && 'shadow-md')}
+        size="lg"
+      >
+        {isLastRandomQuiz ? (
+          <>
+            結果を見る
+            <Trophy className="size-4 ml-2" />
+          </>
+        ) : (
+          <>
+            次の問題へ
+            <ArrowRight className="size-4 ml-2" />
+          </>
+        )}
+      </Button>
+    ) : (
+      <Button asChild className="w-full" variant="secondary" size="lg">
+        <Link
+          href={`/quiz/${categorySlug}`}
+          className="inline-flex items-center justify-center gap-2"
+        >
+          <ArrowLeft className="size-4 shrink-0" />
+          問題一覧に戻る
+        </Link>
+      </Button>
+    );
+
   return (
     <div className="space-y-6">
       {isAdmin && (
@@ -367,6 +398,8 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
             )}
           </Alert>
 
+          {renderAnsweredNavigation('top')}
+
           {quiz.explanation && (
             <div className="rounded-md border border-black/5 bg-white dark:bg-gray-900 shadow-sm p-3 sm:p-5">
               <div className="font-bold text-center mb-3 text-foreground">解説</div>
@@ -375,31 +408,7 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
           )}
 
           {/* ナビゲーション: ランダムモード or 通常モード */}
-          {randomSession ? (
-            <Button onClick={handleNextRandomQuiz} className="w-full" size="lg">
-              {isLastRandomQuiz ? (
-                <>
-                  結果を見る
-                  <Trophy className="size-4 ml-2" />
-                </>
-              ) : (
-                <>
-                  次の問題へ
-                  <ArrowRight className="size-4 ml-2" />
-                </>
-              )}
-            </Button>
-          ) : (
-            <Button asChild className="w-full" variant="secondary" size="lg">
-              <Link
-                href={`/quiz/${categorySlug}`}
-                className="inline-flex items-center justify-center gap-2"
-              >
-                <ArrowLeft className="size-4 shrink-0" />
-                問題一覧に戻る
-              </Link>
-            </Button>
-          )}
+          {renderAnsweredNavigation('bottom')}
         </div>
       )}
 
@@ -450,7 +459,7 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
               {tagLoading ? (
                 <div className="text-sm text-muted-foreground">読み込み中...</div>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1">
                   {allTags.map((tag) => {
                     const selected = selectedTagSlugs.includes(tag.slug);
                     return (
@@ -459,7 +468,7 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
                         type="button"
                         onClick={() => toggleTag(tag.slug)}
                         className={cn(
-                          'rounded-full border px-3 py-1.5 text-sm transition-colors',
+                          'rounded-md border px-2 py-0.5 text-xs transition-colors',
                           selected
                             ? 'border-primary bg-primary text-primary-foreground'
                             : 'border-border bg-background hover:bg-muted',
