@@ -1,0 +1,103 @@
+---
+title: "HTTP/HTTPSとWeb APIへの接続 — ネットワーク上の位置づけ"
+description: "HTTP/HTTPSをネットワーク全体の中で位置づけ、TLS、HTTPバージョン、Web API学習への橋渡しを整理します。"
+order: 4.4
+---
+
+HTTPは、WebブラウザとWebサーバーがリクエストとレスポンスをやりとりするためのプロトコルです。
+
+ただし、この本ではHTTPの詳細を深掘りしすぎません。メソッド、ステータスコード、ヘッダー、Cookie、REST API設計は [HTTPとWeb API](/books/http-and-web-api) の本で扱っています。この章では、HTTP/HTTPSを **ネットワーク全体の中でどこに位置づくか** に絞って整理します。
+
+## HTTPはアプリケーション層のプロトコル
+
+HTTPは、TCPやQUICの上で動くアプリケーション層のプロトコルです。
+
+```text
+HTTPリクエスト
+  ↓
+TLSで暗号化
+  ↓
+TCP または QUIC
+  ↓
+IP
+  ↓
+Ethernet / Wi-Fi
+```
+
+HTTP自体は「どのURLに対して、どんな操作をしたいか」「結果は成功か失敗か」「レスポンスの中身は何か」を表現します。
+
+```http
+GET /users/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"id":1,"name":"Alice"}
+```
+
+## HTTPSはHTTPをTLSで守る
+
+HTTPSは、HTTPを **TLS** で暗号化したものです。
+
+| | HTTP | HTTPS |
+|---|---|---|
+| 暗号化 | なし | あり |
+| 既定ポート | 80 | 443 |
+| 改ざん検知 | 弱い | あり |
+| 本番利用 | 非推奨 | 必須 |
+
+HTTPSでは、サーバー証明書によって「接続先が本当にそのドメインのサーバーか」を確認し、通信内容を暗号化します。Cookie、認証トークン、フォーム入力、APIレスポンスを守るため、本番環境ではHTTPSが必須です。
+
+<Callout type="warning">
+### HTTPのままログインを扱わない
+
+HTTPは平文です。通信経路上でCookieやパスワードが盗聴・改ざんされる可能性があります。ログイン、決済、管理画面、API通信をHTTPのまま公開してはいけません。
+</Callout>
+
+## HTTP/1.1、HTTP/2、HTTP/3
+
+HTTPには複数のバージョンがあります。
+
+| バージョン | 下の層 | 特徴 |
+|---|---|---|
+| HTTP/1.1 | TCP | 広く使われる基本形。1接続での並列性に制限がある |
+| HTTP/2 | TCP | 多重化、ヘッダー圧縮などで効率化 |
+| HTTP/3 | QUIC(UDP) | 接続確立やパケットロス時の影響を改善 |
+
+Web開発者として最初に重要なのは、バージョンごとの細かい仕様よりも、**HTTP/3だけはTCPではなくQUICの上で動く** という点です。
+
+## Web APIの詳細は別の本で扱う
+
+HTTPを使ってJSONをやりとりするAPIが、一般にWeb APIと呼ばれます。
+
+この先を学ぶなら、次のページが対応します。
+
+| 知りたいこと | 参照先 |
+|---|---|
+| URLを入力してから表示まで | [Webの仕組み](/books/http-and-web-api/01-how-web-works) |
+| GET/POST/PUT/DELETE | [HTTPメソッド](/books/http-and-web-api/02-http-methods) |
+| 200/404/500など | [ステータスコード](/books/http-and-web-api/03-status-codes) |
+| ヘッダー、Cookie、キャッシュ | [ヘッダーとCookie](/books/http-and-web-api/04-headers-and-cookies) |
+| REST API設計 | [REST API設計](/books/http-and-web-api/05-rest-api-design) |
+| JSON | [JSONとデータ形式](/books/http-and-web-api/06-json-and-data-format) |
+| プロキシ | [プロキシ](/books/http-and-web-api/07-proxy) |
+
+<Callout type="info">
+### CS基礎側では「層」を意識する
+
+HTTPの文法やAPI設計はHTTP本へ任せます。CS基礎側では、HTTPがDNS、IP、TCP/UDP、TLSの上に乗っていることを理解し、障害時にどの層を疑うかを判断できる状態を目指します。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- HTTPはアプリケーション層のプロトコル
+- HTTPSはHTTPをTLSで暗号化したもの
+- 本番環境ではHTTPSが必須
+- HTTP/1.1とHTTP/2はTCP、HTTP/3はQUICの上で動く
+- HTTPメソッド、ステータスコード、ヘッダー、Cookie、API設計は [HTTPとWeb API](/books/http-and-web-api) で詳しく扱う
+
+次の章では、DNS、TCP、TLS、HTTPのどこで失敗しているかを調べる **ネットワークの切り分け** を扱います。

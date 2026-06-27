@@ -1,0 +1,151 @@
+---
+title: "DNS・ドメイン・ネームサーバー — 名前解決の仕組み"
+description: "ドメイン、DNS、ネームサーバー、権威DNS、再帰DNS、主要なDNSレコード、TTLとキャッシュを整理します。"
+order: 4.2
+---
+
+DNSは、`example.com` のような人間向けの名前を、通信に必要なIPアドレスへ変換する仕組みです。
+
+ドメイン設定でつまずく原因の多くは、**ドメイン、DNSレコード、ネームサーバー、レジストラ、DNSホスティング** を同じものとして扱ってしまうことです。この章では、それぞれの役割を分けて整理します。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+ドメインを買ったサービスと、DNSレコードを設定する画面が違うことがあります。ネームサーバーって何をしているんですか？
+</SpeechBubble>
+
+## ドメインとDNSは別物
+
+**ドメイン** は `example.com` のような名前です。  
+**DNS** は、その名前をIPアドレスなどの情報へ変換する仕組みです。
+
+| 用語 | 役割 |
+|---|---|
+| ドメイン | 人間が扱いやすい名前 |
+| レジストラ | ドメインを取得・更新する事業者 |
+| DNSホスティング | DNSレコードを管理するサービス |
+| ネームサーバー | そのドメインのDNS情報を答えるサーバー |
+| DNSレコード | A, CNAME, MX などの具体的な設定 |
+
+ドメインを取得しただけでは、どのサーバーへ向けるかは決まりません。ドメインに対してDNSレコードを設定して、初めてWebサーバーやメールサーバーへ向きます。
+
+## 名前解決の流れ
+
+`www.example.com` のIPアドレスを調べるとき、DNSは階層構造をたどります。
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant C as クライアント
+    participant R as 再帰DNSリゾルバ
+    participant ROOT as ルートDNS
+    participant TLD as .com DNS
+    participant AUTH as example.com の権威DNS
+    C->>R: www.example.com のIPは?
+    R->>ROOT: .com はどこ?
+    ROOT-->>R: .com のDNSを教える
+    R->>TLD: example.com はどこ?
+    TLD-->>R: example.com のネームサーバーを教える
+    R->>AUTH: www.example.com のAレコードは?
+    AUTH-->>R: 93.184.216.34
+    R-->>C: 93.184.216.34
+`} />
+
+ここで重要なのが **再帰DNSリゾルバ** と **権威DNS** の違いです。
+
+| 種類 | 役割 | 例 |
+|---|---|---|
+| 再帰DNSリゾルバ | クライアントの代わりにDNS階層をたどって答えを探す | ISPのDNS、Google Public DNS、Cloudflare DNS |
+| 権威DNS | そのドメインの正式なDNSレコードを持つ | Route 53、Cloudflare DNS、レジストラ付属DNS |
+
+## ネームサーバーとは
+
+ネームサーバーは、**このドメインのDNSレコードはどのDNSサーバーに聞けばよいか** を示します。
+
+例えば、レジストラの管理画面で次のように設定します。
+
+```text
+example.com のネームサーバー:
+ns1.example-dns.com
+ns2.example-dns.com
+```
+
+これは「`example.com` のAレコードやMXレコードを知りたければ、このネームサーバーに聞いてください」という委任です。
+
+<Callout type="warning">
+### DNSレコードを直したのに反映されないとき
+
+別のサービスでDNSレコードを編集していても、ドメインのネームサーバーがそこを向いていなければ反映されません。まず「今このドメインの権威DNSはどこか」を確認します。
+</Callout>
+
+## よく使うDNSレコード
+
+| レコード | 役割 | 例 |
+|---|---|---|
+| A | ホスト名をIPv4アドレスへ向ける | `example.com → 203.0.113.10` |
+| AAAA | ホスト名をIPv6アドレスへ向ける | `example.com → 2001:db8::1` |
+| CNAME | 別のホスト名の別名にする | `www → example.com` |
+| NS | 権威ネームサーバーを示す | `ns1.example-dns.com` |
+| MX | メール配送先を示す | `mail.example.com` |
+| TXT | 任意のテキスト情報を置く | SPF, DKIM, 所有確認 |
+
+Webサイト公開で最もよく使うのは A、AAAA、CNAME です。メールやドメイン所有確認では MX、TXT がよく出てきます。
+
+## AレコードとCNAMEの使い分け
+
+**Aレコード** は名前をIPアドレスに直接向けます。
+
+```text
+example.com A 203.0.113.10
+```
+
+**CNAME** は名前を別の名前に向けます。
+
+```text
+www.example.com CNAME example.com
+```
+
+クラウドサービスやCDNでは「このCNAMEを設定してください」と案内されることがよくあります。サービス側でIPアドレスが変わっても、利用者側のCNAMEは変えずに済むためです。
+
+## TTLとDNSキャッシュ
+
+DNSレコードには **TTL (Time to Live)** というキャッシュの有効期限があります。
+
+```text
+example.com A 203.0.113.10 TTL 3600
+```
+
+これは「この結果を3600秒キャッシュしてよい」という意味です。TTLが長いとDNS問い合わせが減って効率的ですが、サーバー移行時には古いIPが残りやすくなります。
+
+<Callout type="info">
+### サーバー移行時の定石
+
+IPアドレスを切り替える予定があるなら、数日前からTTLを短くしておきます。切り替え後に問題がなければ、TTLを元に戻します。これにより、古いIPを見続けるユーザーを減らせます。
+</Callout>
+
+## digとnslookupで確認する
+
+DNSの確認には `dig` や `nslookup` を使います。
+
+```bash
+# Aレコードを見る
+dig example.com A
+
+# ネームサーバーを見る
+dig example.com NS
+
+# 特定のDNSサーバーへ問い合わせる
+dig @8.8.8.8 example.com A
+
+# nslookupでも確認できる
+nslookup example.com
+```
+
+「自分のPCでは古いIP、別のDNSでは新しいIP」という場合は、DNSキャッシュやTTLが関係している可能性があります。
+
+## ちゃんと使うためのポイント
+
+- ドメインは名前、DNSは名前を情報へ変換する仕組み
+- ネームサーバーは「そのドメインの正式なDNS設定を持つサーバー」
+- 再帰DNSは利用者側、権威DNSはドメイン管理側の役割
+- A/AAAAはIPへ、CNAMEは別名へ、MXはメールへ、TXTは検証情報などへ使う
+- DNS変更がすぐ反映されない主因はTTLとキャッシュ
+
+次の章では、IPの上で通信の届け方を決める **TCP/UDPとポート** を扱います。

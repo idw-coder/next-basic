@@ -223,17 +223,6 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
   ],
   'react-basic': [
     {
-      slug: 'react-hooks',
-      label: 'React Hooks全般',
-      bookLinks: [
-        {
-          bookSlug: 'react-learning',
-          chapterSlug: '10-hooks-comparison',
-          title: 'Hooksの使い分け — 判断フローと横断比較',
-        },
-      ],
-    },
-    {
       slug: 'react-use-state',
       label: 'useState',
       bookLinks: [
@@ -241,6 +230,11 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
           bookSlug: 'react-learning',
           chapterSlug: '04-use-state',
           title: 'useState — stateの仕組みと参照の罠',
+        },
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '10-hooks-comparison',
+          title: 'Hooksの使い分け — 判断フローと横断比較',
         },
       ],
     },
@@ -258,6 +252,11 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
           chapterSlug: '07-dependency-array',
           title: '依存配列を正しく書く — exhaustive-depsの読み方',
         },
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '10-hooks-comparison',
+          title: 'Hooksの使い分け — 判断フローと横断比較',
+        },
       ],
     },
     {
@@ -268,6 +267,11 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
           bookSlug: 'react-learning',
           chapterSlug: '05-use-ref',
           title: 'useRef — 再レンダーの外で値を持つ',
+        },
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '10-hooks-comparison',
+          title: 'Hooksの使い分け — 判断フローと横断比較',
         },
       ],
     },
@@ -280,6 +284,11 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
           chapterSlug: '08-use-memo',
           title: 'useMemo — 計算結果のメモ化',
         },
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '10-hooks-comparison',
+          title: 'Hooksの使い分け — 判断フローと横断比較',
+        },
       ],
     },
     {
@@ -290,6 +299,11 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
           bookSlug: 'react-learning',
           chapterSlug: '09-use-callback',
           title: 'useCallback — 関数のメモ化と子コンポーネント最適化',
+        },
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '10-hooks-comparison',
+          title: 'Hooksの使い分け — 判断フローと横断比較',
         },
       ],
     },
@@ -1031,7 +1045,30 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     {
       slug: 'cs-network',
       label: 'ネットワーク',
-      bookLinks: [{ bookSlug: 'cs-basics', chapterSlug: '04-network', title: 'ネットワーク' }],
+      bookLinks: [
+        { bookSlug: 'cs-basics', chapterSlug: '04-network', title: 'ネットワークの全体像' },
+        {
+          bookSlug: 'cs-basics',
+          chapterSlug: 'network-ip-routing',
+          title: 'IPアドレスとルーティング',
+        },
+        {
+          bookSlug: 'cs-basics',
+          chapterSlug: 'network-dns-domain',
+          title: 'DNS・ドメイン・ネームサーバー',
+        },
+        { bookSlug: 'cs-basics', chapterSlug: 'network-tcp-udp-port', title: 'TCP/UDPとポート' },
+        {
+          bookSlug: 'cs-basics',
+          chapterSlug: 'network-http-https',
+          title: 'HTTP/HTTPSとWeb APIへの接続',
+        },
+        {
+          bookSlug: 'cs-basics',
+          chapterSlug: 'network-troubleshooting',
+          title: 'ネットワークの切り分け',
+        },
+      ],
     },
     { slug: 'cs-os', label: 'OS' },
     { slug: 'cs-memory', label: 'メモリ' },

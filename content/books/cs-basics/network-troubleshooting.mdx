@@ -1,0 +1,142 @@
+---
+title: "ネットワークの切り分け — DNS・TCP・TLS・HTTPを順に見る"
+description: "ping、dig、curl、tracerouteなどを使い、ネットワーク障害をDNS、経路、ポート、TLS、HTTPに分けて調べる方法を整理します。"
+order: 4.5
+---
+
+「サーバーに繋がらない」という言葉だけでは、原因は分かりません。DNSが引けないのか、IPへ届かないのか、ポートが閉じているのか、TLS証明書が壊れているのか、HTTPアプリケーションがエラーを返しているのかを分けて見る必要があります。
+
+この章では、ネットワーク障害を下の層から順に切り分ける型を整理します。
+
+## 切り分けの全体像
+
+<MermaidDiagram chart={`
+flowchart TD
+    A["繋がらない"] --> B{"DNSで名前解決できる?"}
+    B -->|No| DNS["DNS / ドメイン / ネームサーバーを確認"]
+    B -->|Yes| C{"IPへ到達できる?"}
+    C -->|No| IP["経路 / VPN / ルーティングを確認"]
+    C -->|Yes| D{"ポートへ接続できる?"}
+    D -->|No| TCP["プロセス / ポート / FW / SGを確認"]
+    D -->|Yes| E{"TLSは成功する?"}
+    E -->|No| TLS["証明書 / SNI / TLS設定を確認"]
+    E -->|Yes| F{"HTTPレスポンスは正常?"}
+    F -->|No| HTTP["ステータスコード / アプリログを確認"]
+    F -->|Yes| OK["通信は成立している"]
+`} />
+
+順番は、**DNS → IP到達性 → TCPポート → TLS → HTTP** です。
+
+## DNSを確認する
+
+まず、名前解決できるかを確認します。
+
+```bash
+dig example.com A
+dig example.com NS
+dig @8.8.8.8 example.com A
+nslookup example.com
+```
+
+見るポイントは次の通りです。
+
+- A/AAAAレコードが返るか
+- 期待したIPアドレスか
+- ネームサーバーが想定通りか
+- 自分のDNSと別のDNSで結果が違わないか
+- TTLが長く、古い結果がキャッシュされていないか
+
+DNSの考え方は [DNS・ドメイン・ネームサーバー](/books/cs-basics/network-dns-domain) で扱っています。
+
+## IPへ届くか確認する
+
+IPアドレスへ届くかを見る代表的なコマンドが `ping` です。
+
+```bash
+ping example.com
+ping 93.184.216.34
+```
+
+ただし、`ping` が失敗してもWebが必ず失敗するとは限りません。サーバーやネットワークがICMPを拒否している場合があるからです。
+
+経路を見たい場合は `traceroute` を使います。
+
+```bash
+traceroute example.com
+```
+
+ネットワークの途中で止まる場合、VPN、社内ネットワーク、クラウドのルーティング、セキュリティ設定などが関係している可能性があります。
+
+## ポートへ接続できるか確認する
+
+Webサーバーなら80番や443番、DBなら3306番や5432番に接続できるかを見ます。
+
+```bash
+curl -v http://example.com
+curl -v https://example.com
+nc -vz example.com 443
+```
+
+`Connection refused` は、相手まで届いたが、そのポートで受け付けていない状態です。典型的にはサーバープロセスが起動していない、ポート番号が違う、待ち受けアドレスが違う、などです。
+
+`Operation timed out` は、途中で応答が返ってこない状態です。ファイアウォール、セキュリティグループ、ネットワーク経路の問題を疑います。
+
+## TLSを確認する
+
+HTTPSだけ失敗する場合は、TLSや証明書を確認します。
+
+```bash
+curl -v https://example.com
+openssl s_client -connect example.com:443 -servername example.com
+```
+
+見るポイントは次の通りです。
+
+- 証明書の期限が切れていないか
+- 証明書のドメイン名が一致しているか
+- 中間証明書が正しく設定されているか
+- SNIが必要な環境で `-servername` を指定しているか
+
+TLSが失敗している場合、アプリケーションにはリクエストが届いていないことがあります。アプリログに何も出ないからといって、原因がアプリの外にないとは限りません。
+
+## HTTPレスポンスを見る
+
+TCP接続とTLSが成功しているなら、次はHTTPレスポンスを見ます。
+
+```bash
+curl -i https://example.com
+curl -v https://example.com/api/users
+```
+
+| ステータス | 見るポイント |
+|---|---|
+| 2xx | 通信と処理は成功 |
+| 3xx | リダイレクト先、無限リダイレクト |
+| 4xx | URL、認証、権限、リクエスト形式 |
+| 5xx | アプリケーション、上流サーバー、DB、プロキシ |
+
+HTTPステータスコードの詳しい使い分けは [ステータスコード](/books/http-and-web-api/03-status-codes) で扱っています。
+
+## DevToolsで見る
+
+ブラウザのNetworkタブでは、DNS、接続、TLS、TTFB、ダウンロード時間を確認できます。
+
+| Timing項目 | 対応するもの |
+|---|---|
+| DNS Lookup | 名前解決 |
+| Initial Connection | TCP接続 |
+| SSL | TLS |
+| Waiting (TTFB) | サーバー処理待ち |
+| Content Download | レスポンス受信 |
+
+DNSやTCPは速いのにTTFBだけ遅い場合、ネットワークよりアプリケーションやDB処理が原因の可能性が高いです。
+
+## ちゃんと使うためのポイント
+
+- 「繋がらない」はDNS、経路、ポート、TLS、HTTPに分けて見る
+- `dig` でDNS、`ping`/`traceroute` で到達性、`curl -v` でTCP/TLS/HTTPを確認する
+- `Connection refused` は相手が明示的に拒否、timeoutは途中で応答がない状態
+- HTTPSだけ失敗するなら証明書、SNI、TLS設定を疑う
+- HTTPまで到達したら、ステータスコードとアプリログを見る
+
+次の章では、実務で遭遇する **エラーとデバッグ** を扱います。ネットワークで学んだ切り分けは、`Connection refused` やタイムアウトの理解に直接つながります。
