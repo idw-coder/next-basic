@@ -224,18 +224,79 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
   'react-basic': [
     {
       slug: 'react-hooks',
-      label: 'React Hooks',
+      label: 'React Hooks全般',
+      bookLinks: [
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '10-hooks-comparison',
+          title: 'Hooksの使い分け — 判断フローと横断比較',
+        },
+      ],
+    },
+    {
+      slug: 'react-use-state',
+      label: 'useState',
       bookLinks: [
         {
           bookSlug: 'react-learning',
           chapterSlug: '04-use-state',
           title: 'useState — stateの仕組みと参照の罠',
         },
+      ],
+    },
+    {
+      slug: 'react-use-effect',
+      label: 'useEffect',
+      bookLinks: [
         {
           bookSlug: 'react-learning',
           chapterSlug: '06-use-effect',
           title: 'useEffect — 副作用と外部同期',
         },
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '07-dependency-array',
+          title: '依存配列を正しく書く — exhaustive-depsの読み方',
+        },
+      ],
+    },
+    {
+      slug: 'react-use-ref',
+      label: 'useRef',
+      bookLinks: [
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '05-use-ref',
+          title: 'useRef — 再レンダーの外で値を持つ',
+        },
+      ],
+    },
+    {
+      slug: 'react-use-memo',
+      label: 'useMemo',
+      bookLinks: [
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '08-use-memo',
+          title: 'useMemo — 計算結果のメモ化',
+        },
+      ],
+    },
+    {
+      slug: 'react-use-callback',
+      label: 'useCallback',
+      bookLinks: [
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '09-use-callback',
+          title: 'useCallback — 関数のメモ化と子コンポーネント最適化',
+        },
+      ],
+    },
+    {
+      slug: 'react-hooks-comparison',
+      label: 'Hooksの使い分け',
+      bookLinks: [
         {
           bookSlug: 'react-learning',
           chapterSlug: '10-hooks-comparison',
@@ -294,6 +355,17 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
           bookSlug: 'react-learning',
           chapterSlug: '02-jsx-and-components',
           title: 'JSXとコンポーネント — 描画の仕組みからpropsまで',
+        },
+      ],
+    },
+    {
+      slug: 'react-router',
+      label: 'React Router',
+      bookLinks: [
+        {
+          bookSlug: 'react-learning',
+          chapterSlug: '11-react-router',
+          title: 'React Router — ルーティングとナビゲーション',
         },
       ],
     },
