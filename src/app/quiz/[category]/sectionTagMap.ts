@@ -430,9 +430,9 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
         },
       ],
     },
-    { slug: 'centering', label: '中央寄せ' },
+    { slug: 'css-centering', label: '中央寄せ' },
     {
-      slug: 'layout',
+      slug: 'css-layout',
       label: 'レイアウト',
       bookLinks: [
         {
@@ -454,7 +454,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'animation',
+      slug: 'css-animation',
       label: 'アニメーション',
       bookLinks: [
         {
