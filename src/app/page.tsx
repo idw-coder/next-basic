@@ -14,6 +14,10 @@ import {
   Target,
   TrendingUp,
   UserCircle,
+  FileCode2, Paintbrush, Braces, Atom, Code2,
+  Globe, GitBranch, Cloud, Server,
+  FileType, Shield, Database, Cpu, Container, Terminal,
+  type LucideIcon,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -68,6 +72,25 @@ const CATEGORY_SLUGS = [
   'docker',
   'linux',
 ] as const;
+
+const categoryIconMap: Record<string, LucideIcon> = {
+  'html-basic': FileCode2,
+  'css-basic': Paintbrush,
+  'javascript-basic': Braces,
+  'react-basic': Atom,
+  'vue-basic': Code2,
+  'nodejs-basic': Globe,
+  nextjs: Globe,
+  'git-basic': GitBranch,
+  'aws-basic': Cloud,
+  'nginx-basic': Server,
+  'ts-general': FileType,
+  'security-general': Shield,
+  'sql-basic': Database,
+  'cs-basic': Cpu,
+  docker: Container,
+  linux: Terminal,
+};
 
 interface CategoryDef {
   slug: string;
@@ -460,7 +483,7 @@ export default async function Home() {
         </section>
 
       {/* 学習カテゴリ */}
-        <section id="categories" className="relative mb-12 overflow-hidden rounded-[2rem] bg-white px-3 py-6 md:mb-16 md:px-10 md:py-12">
+        <section id="categories" className="relative mb-12 overflow-hidden rounded-[2rem] bg-white px-4 py-8 md:mb-16 md:px-10 md:py-12">
           <div className="mb-4 flex justify-center">
             <div className="relative inline-block rounded-full bg-[#2f86c9] px-5 py-1.5 text-xs font-bold text-white sm:text-sm">
               どのカテゴリから始める？
@@ -468,54 +491,49 @@ export default async function Home() {
             </div>
           </div>
           <SectionHeading
-            className="mb-6 md:mb-8"
-            subtitle={`16カテゴリ・全${totalCount > 0 ? totalCount : 500}問以上から挑戦しよう`}
+            className="mb-8 md:mb-10"
+            subtitle={`${CATEGORIES.length}カテゴリ・全${totalCount > 0 ? totalCount : 500}問以上から挑戦しよう`}
           >
             クイズカテゴリ
           </SectionHeading>
 
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
-          {CATEGORIES.map((cat) => {
+          <div className="grid gap-2 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-2">
+          {CATEGORIES.map((cat, i) => {
             const count = counts[cat.slug] ?? 0;
+            const num = String(i + 1).padStart(2, '0');
+            const CatIcon = categoryIconMap[cat.slug] ?? FileCode2;
             return (
               <Link
                 key={cat.slug}
                 href={`/quiz/${cat.slug}`}
-                className={`group relative flex min-h-32 flex-col overflow-hidden rounded-[1.35rem] border-2 border-[#2f302f]/60 ${cat.bgColor} p-3 transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_rgba(47,48,47,0.08)] sm:p-5`}
+                className={`group relative flex items-start gap-3 overflow-hidden rounded-xl ${cat.bgColor} px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-md sm:gap-4 sm:px-4 sm:py-3.5`}
               >
-                <div
-                  className={`absolute -bottom-8 sm:-bottom-10 -right-8 sm:-right-10 size-24 sm:size-36 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.10] pointer-events-none`}
+                {/* 背景アイコン */}
+                <CatIcon
+                  className={`pointer-events-none absolute right-[15%] top-1/2 size-14 -translate-y-1/2 rotate-[15deg] ${cat.color} opacity-[0.07] blur-[1px] sm:size-16`}
+                  strokeWidth={1.5}
                   aria-hidden="true"
                 />
-                <div
-                  className={`absolute -bottom-3 sm:-bottom-4 -right-3 sm:-right-4 size-16 sm:size-24 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.07] pointer-events-none`}
-                  aria-hidden="true"
-                />
-                <div
-                  className={`absolute -bottom-1 -right-1 size-10 sm:size-14 rounded-full ${cat.hoverColor.split(' ')[0]} opacity-[0.05] pointer-events-none`}
-                  aria-hidden="true"
-                />
-                <div className="relative mb-1 flex items-baseline justify-between sm:mb-1.5">
-                  <p className={`text-xs sm:text-sm font-bold ${cat.color}`}>{cat.name}</p>
-                  {count > 0 && (
-                    <span className={`text-[10px] sm:text-[11px] tabular-nums ${cat.badgeText}`}>
-                      {count}問
-                    </span>
-                  )}
+
+                <span className={`shrink-0 text-2xl font-black leading-none sm:text-3xl ${cat.color} opacity-20`}>
+                  {num}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="mb-0.5 flex items-baseline gap-2">
+                    <h3 className={`text-sm font-bold sm:text-base ${cat.color}`}>{cat.name}</h3>
+                    {count > 0 && (
+                      <span className={`text-[10px] tabular-nums sm:text-[11px] ${cat.badgeText} opacity-60`}>
+                        {count}問
+                      </span>
+                    )}
+                  </div>
+                  <p className="line-clamp-1 text-[10px] leading-relaxed text-[#6d6760] sm:text-xs">
+                    {cat.description}
+                  </p>
                 </div>
-                <p className="relative mb-2 line-clamp-2 text-[10px] leading-relaxed text-[#6d6760] sm:mb-2.5 sm:text-xs">
-                  {cat.description}
-                </p>
-                <div className="relative mt-auto flex flex-wrap gap-0.5 sm:gap-1">
-                  {cat.topics.map((t) => (
-                    <span
-                      key={t}
-                      className={`rounded-full border border-current/15 bg-white/75 px-1 py-0.5 text-[9px] font-medium sm:px-1.5 sm:text-[10px] ${cat.badgeText}`}
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
+
+                <ArrowRight className={`mt-1.5 size-4 shrink-0 ${cat.color} opacity-30 transition-transform group-hover:translate-x-0.5 group-hover:opacity-60`} />
               </Link>
             );
           })}

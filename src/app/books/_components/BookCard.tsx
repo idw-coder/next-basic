@@ -139,13 +139,14 @@ export default function BookCard({
         </p>
       </Link>
 
-      {/* ホバー時の目次ポップアップ */}
+      {/* ホバー時の目次ポップアップ（デスクトップのみ） */}
       {showChapters && chapters.length > 0 && (
         <div
           className={cn(
             'absolute z-50 w-72',
             'left-1/2 -translate-x-1/2 top-full mt-1',
             'rounded-xl border border-gray-200 bg-white shadow-2xl',
+            'hidden sm:block',
           )}
           onMouseEnter={handleEnter}
           onMouseLeave={handleLeave}
