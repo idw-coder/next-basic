@@ -34,7 +34,7 @@ interface Quiz {
 export default function QuizListPage() {
   const [categories, setCategories] = useState<QuizCategory[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [categoryTags, setCategoryTags] = useState<QuizTag[]>([]);
+  const [allTags, setAllTags] = useState<QuizTag[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
     null
@@ -85,74 +85,60 @@ export default function QuizListPage() {
     }
   }, [categories]);
 
-  const fetchQuizzesByCategory = useCallback(async (
-    categoryId: number,
-    params?: { tagSlug?: string; q?: string }
-  ) => {
-    setLoading(true);
-    try {
-      const res = await api.get(
-        `/api/quiz/category/${categoryId}/quizzes`,
-        { params }
-      );
-      setQuizzes(res.data);
-    } finally {
-      setLoading(false);
-    }
+  const fetchAllTags = useCallback(async () => {
+    const res = await api.get("/api/quiz/tags");
+    setAllTags(
+      (res.data as QuizTag[]).sort((a, b) => a.slug.localeCompare(b.slug, "ja"))
+    );
   }, []);
 
   useEffect(() => {
     (async () => {
-      const res = await api.get("/api/quiz/categories");
-      const cats = res.data as QuizCategory[];
+      const [categoryRes, tagRes] = await Promise.all([
+        api.get("/api/quiz/categories"),
+        api.get("/api/quiz/tags"),
+      ]);
+      const cats = categoryRes.data as QuizCategory[];
       setCategories(cats);
+      setAllTags(
+        (tagRes.data as QuizTag[]).sort((a, b) =>
+          a.slug.localeCompare(b.slug, "ja")
+        )
+      );
       await fetchAllQuizzes(cats);
     })();
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onCategoryChange = async (val: string) => {
+  const onCategoryChange = (val: string) => {
     const id = val ? Number(val) : null;
     setSelectedCategoryId(id);
-    setSelectedTagSlug(null);
-    setSearchQuery("");
-    if (id) {
-      const res = await api.get(`/api/quiz/category/${id}/tags`);
-      setCategoryTags(res.data);
-      await fetchQuizzesByCategory(id);
-    } else {
-      setCategoryTags([]);
-      await fetchAllQuizzes();
-    }
   };
 
-  const onTagChange = async (val: string) => {
+  const onTagChange = (val: string) => {
     const slug = val || null;
     setSelectedTagSlug(slug);
-    if (selectedCategoryId) {
-      const params: Record<string, string> = {};
-      if (slug) params.tagSlug = slug;
-      if (searchQuery) params.q = searchQuery;
-      await fetchQuizzesByCategory(selectedCategoryId, params);
-    }
-  };
-
-  const onSearch = async () => {
-    if (selectedCategoryId) {
-      const params: Record<string, string> = {};
-      if (selectedTagSlug) params.tagSlug = selectedTagSlug;
-      if (searchQuery) params.q = searchQuery;
-      await fetchQuizzesByCategory(selectedCategoryId, params);
-    }
   };
 
   const filteredQuizzes = useMemo(() => {
     let q = quizzes;
-    if (searchQuery && !selectedCategoryId) {
+    if (selectedCategoryId) {
+      q = q.filter((quiz) => quiz.category_id === selectedCategoryId);
+    }
+    if (selectedTagSlug) {
+      q = q.filter((quiz) =>
+        quiz.tags?.some((tag) => tag.slug === selectedTagSlug)
+      );
+    }
+    if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      q = q.filter((quiz) => quiz.question.toLowerCase().includes(query));
+      q = q.filter((quiz) =>
+        [quiz.question, quiz.slug, quiz.category_name ?? ""].some((value) =>
+          value.toLowerCase().includes(query)
+        )
+      );
     }
     return q;
-  }, [quizzes, searchQuery, selectedCategoryId]);
+  }, [quizzes, searchQuery, selectedCategoryId, selectedTagSlug]);
 
   const groupedQuizzes = useMemo(() => {
     const groups: Record<string, Quiz[]> = {};
@@ -197,7 +183,7 @@ export default function QuizListPage() {
       const csvText = await rawFileRef.current.text();
       const res = await api.post("/api/quiz/csv/import", { csv: csvText });
       setImportResult(res.data);
-      await fetchAllQuizzes();
+      await Promise.all([fetchAllQuizzes(), fetchAllTags()]);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response
         ?.data?.error;
@@ -269,11 +255,10 @@ export default function QuizListPage() {
         <select
           className="border rounded px-3 py-1.5 text-sm disabled:opacity-50"
           value={selectedTagSlug ?? ""}
-          disabled={!selectedCategoryId}
           onChange={(e) => onTagChange(e.target.value)}
         >
           <option value="">すべてのタグ</option>
-          {categoryTags.map((t) => (
+          {allTags.map((t) => (
             <option key={t.slug} value={t.slug}>
               {t.name}
             </option>
@@ -286,7 +271,6 @@ export default function QuizListPage() {
             placeholder="キーワード検索"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && onSearch()}
           />
         </div>
       </div>

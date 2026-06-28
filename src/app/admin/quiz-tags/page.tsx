@@ -290,17 +290,11 @@ export default function QuizTagManagePage() {
                       className="w-40 h-8"
                       value={editSlug}
                       onChange={(e) => setEditSlug(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && handleUpdate(tag.id)
-                      }
                     />
                     <Input
                       className="flex-1 h-8"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && handleUpdate(tag.id)
-                      }
                     />
                     <Button
                       variant="ghost"
