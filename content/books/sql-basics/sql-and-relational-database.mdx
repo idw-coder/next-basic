@@ -1,0 +1,177 @@
+---
+title: 'SQLとリレーショナルデータベースの全体像'
+description: 'SQL、リレーショナルデータベース、テーブル、行、列、主キー、外部キー、DBMSの違いを整理し、以降の章で使う考え方の土台を作ります。'
+order: 1
+---
+
+SQLを学び始めると、`SELECT` や `JOIN` の構文に目が行きがちです。
+しかし実務でSQLを書くときは、構文だけでなく「データがどのように整理されているか」を理解している必要があります。
+
+この章では、SQLとリレーショナルデータベースの全体像を整理します。
+細かい構文に入る前に、テーブル・行・列・キー・リレーションという土台を押さえましょう。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+SQLって、データを取ってくるためのコマンド集って理解でいいの？データベース設計とは別物？
+</SpeechBubble>
+
+## SQLとは何か
+
+SQLは、リレーショナルデータベースを操作するための言語です。
+データの取得、追加、更新、削除、テーブル作成、権限管理などを行えます。
+
+よく使う操作は次の4つです。
+
+| 操作 | SQL | 何をするか |
+| --- | --- | --- |
+| 取得 | `SELECT` | データを検索して取り出す |
+| 追加 | `INSERT` | 新しい行を追加する |
+| 更新 | `UPDATE` | 既存の行を書き換える |
+| 削除 | `DELETE` | 既存の行を削除する |
+
+<Marker>SQLは「データベースに対して何をしたいか」を宣言する言語です。</Marker>
+多くの場合、「どうやって探すか」の細かい手順はデータベース側が実行計画として決めます。
+
+```sql
+SELECT name, email
+FROM users
+WHERE is_active = true
+ORDER BY created_at DESC;
+```
+
+このSQLは「有効なユーザーの名前とメールアドレスを、新しい順に取り出したい」と宣言しています。
+実際にどのインデックスを使うか、どの順番で読み込むかはDBMSが判断します。
+
+## リレーショナルデータベースとは
+
+リレーショナルデータベースは、データを**テーブル**として管理します。
+テーブルは行と列で構成され、Excelの表に近い見た目をしています。
+
+| id | name | email |
+| --- | --- | --- |
+| 1 | Alice | alice@example.com |
+| 2 | Bob | bob@example.com |
+
+ただし、Excelと違ってリレーショナルデータベースには次のような制約や仕組みがあります。
+
+- 列ごとにデータ型を決められる
+- 主キーで行を一意に識別できる
+- 外部キーで他のテーブルとの関係を表現できる
+- トランザクションでデータの整合性を守れる
+- インデックスで検索を高速化できる
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["users"] -->|1人のユーザー| B["orders"]
+    B -->|複数の商品明細| C["order_items"]
+    C -->|商品を参照| D["products"]
+`}
+/>
+
+リレーショナルデータベースの強みは、複数のテーブルを関係づけて扱えることです。
+ユーザー、注文、商品を1つの巨大な表に詰め込むのではなく、意味ごとに分けて保存し、必要なときに `JOIN` でつなぎます。
+
+## テーブル・行・列
+
+SQLを読むときは、まず次の3つを区別します。
+
+| 用語 | 意味 | 例 |
+| --- | --- | --- |
+| テーブル | 同じ種類のデータを集めたもの | `users`, `orders` |
+| 行 | 1件分のデータ | 1人のユーザー、1件の注文 |
+| 列 | データの項目 | `name`, `email`, `created_at` |
+
+```sql
+SELECT name, email
+FROM users;
+```
+
+このSQLでは、`users` がテーブル、`name` と `email` が列です。
+実行結果として返ってくる1件1件が行です。
+
+<Callout type="note" title="テーブル名は複数形が多い">
+実務では `user` ではなく `users`、`order` ではなく `orders` のように、テーブル名を複数形にする設計がよく使われます。
+「ユーザーの集合」「注文の集合」を表すためです。
+</Callout>
+
+## 主キーと外部キー
+
+テーブル設計で最初に理解したいのが、主キーと外部キーです。
+
+**主キー（Primary Key）** は、テーブル内の1行を一意に識別するための列です。
+多くのテーブルでは `id` が主キーになります。
+
+```sql
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL
+);
+```
+
+**外部キー（Foreign Key）** は、別のテーブルの主キーを参照する列です。
+たとえば注文テーブルの `user_id` は、どのユーザーの注文かを示します。
+
+```sql
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  ordered_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+<Marker>主キーは「この行は何者か」を表し、外部キーは「どの行と関係しているか」を表します。</Marker>
+
+## DBMSの違い
+
+SQLは標準化されていますが、実際にはDBMSごとに細かな違いがあります。
+MySQL、PostgreSQL、SQLite、SQL Server、Oracle Databaseなどが代表例です。
+
+| DBMS | よく使われる場面 |
+| --- | --- |
+| MySQL | Webサービス、WordPress、一般的な業務アプリ |
+| PostgreSQL | 複雑なクエリ、分析、型や制約を重視するシステム |
+| SQLite | ローカル開発、モバイルアプリ、軽量な組み込み用途 |
+| SQL Server | Microsoft系の業務システム |
+
+基本の `SELECT`、`WHERE`、`JOIN`、`GROUP BY` は多くのDBMSで共通です。
+一方で、日付関数、JSON操作、文字列連結、LIMITの書き方、一部の型名などは差があります。
+
+<Callout type="warning" title="方言を前提にしすぎない">
+学習初期は標準的なSQLの考え方を優先しましょう。
+MySQLだけで通る書き方、PostgreSQLだけで通る書き方を早い段階で覚えすぎると、別DBMSに移ったときに混乱します。
+</Callout>
+
+## SQLを書くときの読み方
+
+SQLは英語の文章に近い順番で読めます。
+
+```sql
+SELECT name, email
+FROM users
+WHERE is_active = true
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+読む順番は次のようになります。
+
+1. `FROM users` — どのテーブルから
+2. `WHERE is_active = true` — どの行を対象にして
+3. `SELECT name, email` — どの列を取り出して
+4. `ORDER BY created_at DESC` — どの順で並べて
+5. `LIMIT 10` — 何件まで返すか
+
+見た目の書く順番と、データベースが論理的に処理する順番は少し違います。
+この違いは、`WHERE` と `SELECT`、`GROUP BY` と `HAVING` を理解するときに重要になります。
+
+## ちゃんと使うためのポイント
+
+- SQLはリレーショナルデータベースを操作するための言語
+- テーブルは行と列で構成される
+- 主キーは行を一意に識別する
+- 外部キーはテーブル同士の関係を表す
+- MySQLやPostgreSQLなどDBMSごとに方言はあるが、基本概念は共通
+
+次の章では、最も基本となる `SELECT` を使って、テーブルからデータを取り出す方法を学びます。

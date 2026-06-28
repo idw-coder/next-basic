@@ -367,7 +367,7 @@ CSSでいう `:hover` や `:focus` などの**擬似クラス**を、`hover:` `f
 
 ## ちゃんと使うためのポイント
 
-- 状態修飾子は `修飾子:ユーティリティ` の形。裏側で擬似クラス付きのCSSが生成される
+- <Marker>状態修飾子は `修飾子:ユーティリティ` の形。裏側で擬似クラス付きのCSSが生成される</Marker>
 - `hover:` と `transition-*` はセットで使うと滑らかなインタラクションになる
 - フォームには必ず `focus:ring-*` / `focus-visible:ring-*` を実装してアクセシビリティを確保する
 - カードのホバーは `group` + `group-hover:`、トグルUIは `peer` + `peer-checked:` が定番

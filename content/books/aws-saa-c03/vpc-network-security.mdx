@@ -81,7 +81,7 @@ AWSサービスへ閉域でアクセスしたい場合は **VPC Endpoint** を�
 
 VPCセキュリティは、公開範囲を小さくする設計です。
 
-- Public SubnetにはALBやNAT Gatewayなど最小限だけ置く
+- <Marker>Public SubnetにはALBやNAT Gatewayなど最小限だけ置く</Marker>
 - アプリケーションとDBはPrivate Subnetに置く
 - 通常のアクセス制御はSecurity Groupで行う
 - NACLはサブネット単位の追加制御に使う

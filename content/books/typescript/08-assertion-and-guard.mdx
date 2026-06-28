@@ -184,7 +184,7 @@ function isUser(value: unknown): value is User {
 `as any` がダメなら `as unknown as` にすれば安全ですよね？ AIに「anyを使わないで」って指示したら、こっちに書き換えてくれたんですけど……
 </SpeechBubble>
 
-結論から言うと、**`as unknown as T` を書いている時点で型安全性は放棄しています**。`as any as T` と本質的な危険度は大差ありません。
+<Marker>結論から言うと、**`as unknown as T` を書いている時点で型安全性は放棄しています**。</Marker>`as any as T` と本質的な危険度は大差ありません。
 
 ```tsx
 // どちらも「型チェックを黙らせる」行為

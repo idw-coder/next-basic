@@ -1,0 +1,285 @@
+---
+title: '集計とGROUP BY — COUNT・SUM・HAVINGを理解する'
+description: 'COUNT、SUM、AVG、MIN、MAX、GROUP BY、HAVING、COUNT(*)とCOUNT(column)の違いを、実務で使う集計パターンとあわせて整理します。'
+order: 5
+---
+
+SQLは、1行ずつデータを取得するだけではありません。
+注文数、売上合計、平均金額、ユーザーごとの投稿数など、複数行をまとめて集計できます。
+
+この章では、集計関数と `GROUP BY`、そして集計後の条件指定に使う `HAVING` を整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`GROUP BY` を書くと急にエラーになる…。SELECTに書いていい列とダメな列の違いが分からない。
+</SpeechBubble>
+
+## 集計関数
+
+代表的な集計関数は次の通りです。
+
+| 関数 | 意味 | 例 |
+| --- | --- | --- |
+| `COUNT` | 件数を数える | 注文数 |
+| `SUM` | 合計する | 売上合計 |
+| `AVG` | 平均を出す | 平均購入金額 |
+| `MIN` | 最小値を出す | 最初の注文日 |
+| `MAX` | 最大値を出す | 最新の注文日 |
+
+```sql
+SELECT COUNT(*) AS user_count
+FROM users;
+```
+
+```sql
+SELECT SUM(total_amount) AS total_sales
+FROM orders;
+```
+
+`COUNT(*)` は行数を数えます。
+`SUM(total_amount)` は `total_amount` の合計を返します。
+
+<Marker>集計関数は、複数行を1つの値にまとめるための関数です。</Marker>
+
+## COUNT(*) と COUNT(column)
+
+`COUNT(*)` と `COUNT(column)` は似ていますが、`NULL` の扱いが違います。
+
+```sql
+SELECT
+  COUNT(*) AS row_count,
+  COUNT(deleted_at) AS deleted_at_count
+FROM users;
+```
+
+| 書き方 | 数えるもの |
+| --- | --- |
+| `COUNT(*)` | 行数。NULLかどうかは関係ない |
+| `COUNT(column)` | その列がNULLではない行数 |
+
+たとえば `deleted_at` が退会日時を表す場合、`COUNT(deleted_at)` は退会済みユーザー数になります。
+未退会ユーザーの `deleted_at` は `NULL` なので数えられません。
+
+<Callout type="note" title="件数を数えるならまずCOUNT(*)">
+単純な件数を数えたいなら `COUNT(*)` を使います。
+特定の列が入っている行だけ数えたいときに `COUNT(column)` を使います。
+</Callout>
+
+## GROUP BYでグループごとに集計する
+
+`GROUP BY` は、同じ値を持つ行をグループにまとめ、グループごとに集計する構文です。
+
+```sql
+SELECT
+  status,
+  COUNT(*) AS order_count
+FROM orders
+GROUP BY status;
+```
+
+このSQLは、注文ステータスごとの件数を返します。
+
+| status | order_count |
+| --- | --- |
+| paid | 120 |
+| cancelled | 8 |
+| pending | 15 |
+
+ユーザーごとの注文数も集計できます。
+
+```sql
+SELECT
+  user_id,
+  COUNT(*) AS order_count
+FROM orders
+GROUP BY user_id;
+```
+
+## GROUP BYでSELECTに書ける列
+
+`GROUP BY` を使うとき、`SELECT` に書けるものは基本的に次のどちらかです。
+
+- `GROUP BY` に指定した列
+- 集計関数の結果
+
+```sql
+-- OK
+SELECT
+  user_id,
+  COUNT(*) AS order_count
+FROM orders
+GROUP BY user_id;
+```
+
+次のようなSQLは、DBMSによってエラーになったり、意図しない値が返ったりします。
+
+```sql
+-- 避ける
+SELECT
+  user_id,
+  ordered_at,
+  COUNT(*) AS order_count
+FROM orders
+GROUP BY user_id;
+```
+
+`user_id` ごとにグループ化しているのに、グループ内に複数ある `ordered_at` のどれを表示すべきか決められないためです。
+
+<Marker>`GROUP BY` したSQLの `SELECT` には、グループ化した列か集計関数を書くのが基本です。</Marker>
+
+## HAVINGで集計後に絞り込む
+
+`WHERE` は集計前の行を絞り込みます。
+`HAVING` は集計後のグループを絞り込みます。
+
+```sql
+SELECT
+  user_id,
+  COUNT(*) AS order_count
+FROM orders
+GROUP BY user_id
+HAVING COUNT(*) >= 3;
+```
+
+このSQLは、注文数が3件以上のユーザーだけを返します。
+
+`WHERE` と `HAVING` の違いを整理すると、次のようになります。
+
+| 句 | いつ効くか | 例 |
+| --- | --- | --- |
+| `WHERE` | 集計前 | キャンセル以外の注文だけ対象にする |
+| `HAVING` | 集計後 | 注文数が3件以上のユーザーだけ返す |
+
+```sql
+SELECT
+  user_id,
+  COUNT(*) AS paid_order_count
+FROM orders
+WHERE status = 'paid'
+GROUP BY user_id
+HAVING COUNT(*) >= 3;
+```
+
+このSQLでは、まず `WHERE` で支払い済み注文だけに絞り、その後ユーザーごとに集計し、最後に3件以上のグループだけを残します。
+
+## JOINと集計を組み合わせる
+
+ユーザー名と注文数を一緒に出したい場合は、`JOIN` と `GROUP BY` を組み合わせます。
+
+```sql
+SELECT
+  users.id,
+  users.name,
+  COUNT(orders.id) AS order_count
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+GROUP BY users.id, users.name;
+```
+
+ここで `LEFT JOIN` を使うと、注文がないユーザーも結果に出せます。
+注文がないユーザーの `COUNT(orders.id)` は0になります。
+
+```sql
+SELECT
+  products.id,
+  products.name,
+  COALESCE(SUM(order_items.quantity), 0) AS sold_quantity
+FROM products
+LEFT JOIN order_items
+  ON products.id = order_items.product_id
+GROUP BY products.id, products.name;
+```
+
+`SUM` は対象行がないと `NULL` になることがあります。
+表示上0にしたい場合は `COALESCE` を使います。
+
+## 日別・月別に集計する
+
+日付関数はDBMSによって違いますが、実務では日別・月別集計がよく出ます。
+
+PostgreSQLでは `date_trunc` が使えます。
+
+```sql
+SELECT
+  date_trunc('day', ordered_at) AS ordered_date,
+  COUNT(*) AS order_count,
+  SUM(total_amount) AS total_sales
+FROM orders
+GROUP BY date_trunc('day', ordered_at)
+ORDER BY ordered_date;
+```
+
+MySQLでは `DATE()` や `DATE_FORMAT()` がよく使われます。
+
+```sql
+SELECT
+  DATE(ordered_at) AS ordered_date,
+  COUNT(*) AS order_count,
+  SUM(total_amount) AS total_sales
+FROM orders
+GROUP BY DATE(ordered_at)
+ORDER BY ordered_date;
+```
+
+<Callout type="warning" title="日付関数はDBMSごとに違う">
+集計の考え方は同じですが、日付を丸める関数名や書式はMySQL、PostgreSQL、SQLiteなどで異なります。
+実務では使っているDBMSの関数を確認しましょう。
+</Callout>
+
+## よくあるハマりどころ
+
+### WHEREに集計関数を書いてしまう
+
+```sql
+-- エラーになりやすい
+SELECT user_id, COUNT(*) AS order_count
+FROM orders
+WHERE COUNT(*) >= 3
+GROUP BY user_id;
+```
+
+`WHERE` の時点では、まだ集計が終わっていません。
+集計結果で絞る場合は `HAVING` を使います。
+
+```sql
+SELECT user_id, COUNT(*) AS order_count
+FROM orders
+GROUP BY user_id
+HAVING COUNT(*) >= 3;
+```
+
+### LEFT JOIN後のCOUNTで行数を間違える
+
+```sql
+SELECT
+  users.id,
+  COUNT(*) AS order_count
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+GROUP BY users.id;
+```
+
+このSQLでは、注文がないユーザーも `COUNT(*) = 1` になることがあります。
+注文数を数えたいなら、右側テーブルの主キーを数えます。
+
+```sql
+SELECT
+  users.id,
+  COUNT(orders.id) AS order_count
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+GROUP BY users.id;
+```
+
+## ちゃんと使うためのポイント
+
+- `COUNT(*)` は行数を数える
+- `COUNT(column)` はNULLではない値だけ数える
+- `GROUP BY` はグループごとの集計に使う
+- `SELECT` にはグループ化した列か集計関数を書く
+- 集計前の絞り込みは `WHERE`、集計後の絞り込みは `HAVING`
+- `LEFT JOIN` と集計を組み合わせるときは `COUNT(右側テーブル.id)` を意識する
+
+次の章では、サブクエリと `EXISTS` を使って、クエリの中に別のクエリを組み込む方法を学びます。

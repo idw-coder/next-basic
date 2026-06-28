@@ -1,0 +1,307 @@
+---
+title: 'テーブル設計・正規化・制約の基本'
+description: 'ER図、主キー、外部キー、UNIQUE、NOT NULL、CHECK、1対多、多対多、第1〜第3正規形、非正規化の判断を整理します。'
+order: 7
+---
+
+SQLを書けるようになっても、テーブル設計が崩れているとクエリは複雑になります。
+同じデータが複数箇所に保存されていたり、1つの列に複数の意味が詰め込まれていたりすると、更新漏れや集計ミスが起きやすくなります。
+
+この章では、テーブル設計、正規化、制約の基本を整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+正規化って試験用語っぽく聞こえるけど、実務でも本当に必要なの？
+</SpeechBubble>
+
+## テーブル設計で最初に考えること
+
+テーブル設計では、まず「何をエンティティとして扱うか」を考えます。
+エンティティとは、システムで管理したい対象です。
+
+たとえばECサイトなら、次のようなエンティティがあります。
+
+- ユーザー
+- 商品
+- 注文
+- 注文明細
+- 支払い
+- 配送先
+
+それぞれをテーブルとして表すと、データの責務が分かれます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["users"] --> B["orders"]
+    B --> C["order_items"]
+    C --> D["products"]
+`}
+/>
+
+<Marker>テーブル設計では、まず「何を別の概念として管理するか」を決めます。</Marker>
+
+## 主キーを決める
+
+主キーは、テーブル内の1行を一意に識別する列です。
+
+```sql
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL
+);
+```
+
+主キーには次の性質が必要です。
+
+- 一意である
+- NULLにならない
+- 後から変わりにくい
+
+メールアドレスや電話番号を主キーにしたくなることがありますが、実務では変更される可能性があります。
+そのため、多くのシステムでは `id` のようなサロゲートキーを使います。
+
+## 外部キーで関係を表す
+
+外部キーは、別テーブルの主キーを参照する列です。
+
+```sql
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  ordered_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+この例では、`orders.user_id` が `users.id` を参照しています。
+つまり「この注文はどのユーザーのものか」を表しています。
+
+外部キー制約を設定すると、存在しないユーザーIDを持つ注文を防げます。
+
+```sql
+-- users.id = 999 が存在しないならエラーになる
+INSERT INTO orders (id, user_id, ordered_at)
+VALUES (1, 999, CURRENT_TIMESTAMP);
+```
+
+<Callout type="note" title="外部キー制約は設計意図をDBに伝える">
+アプリケーション側でチェックしていても、DB側に制約がないとデータ移行や管理画面操作で不整合が入ることがあります。
+重要な関係はDB制約として表す方が堅牢です。
+</Callout>
+
+## 制約でデータを守る
+
+制約は、テーブルに入るデータのルールです。
+
+| 制約 | 役割 |
+| --- | --- |
+| `PRIMARY KEY` | 行を一意に識別する |
+| `FOREIGN KEY` | 別テーブルとの参照関係を守る |
+| `UNIQUE` | 重複を禁止する |
+| `NOT NULL` | NULLを禁止する |
+| `CHECK` | 値の条件を制限する |
+
+たとえば、メールアドレスの重複を禁止するなら `UNIQUE` を使います。
+
+```sql
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  name VARCHAR(100) NOT NULL
+);
+```
+
+ステータスの値を制限したい場合は `CHECK` が使えます。
+
+```sql
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY,
+  status VARCHAR(20) NOT NULL,
+  CHECK (status IN ('pending', 'paid', 'cancelled'))
+);
+```
+
+DBMSによって `CHECK` の対応や実運用での使い方は異なりますが、「不正な値をDBに入れない」という考え方は重要です。
+
+<Marker>制約は、アプリケーションのバグや運用ミスからデータを守る最後の防衛線です。</Marker>
+
+## 1対多と多対多
+
+テーブルの関係には、よく出るパターンがあります。
+
+### 1対多
+
+1人のユーザーが複数の注文を持つ場合、`orders` に `user_id` を置きます。
+
+```sql
+users
+  id
+
+orders
+  id
+  user_id
+```
+
+「多」側に外部キーを置くのが基本です。
+
+### 多対多
+
+商品とタグのように、双方が複数を持てる場合は中間テーブルを作ります。
+
+```sql
+products
+  id
+
+tags
+  id
+
+product_tags
+  product_id
+  tag_id
+```
+
+中間テーブルには、両方の外部キーを置きます。
+
+```sql
+CREATE TABLE product_tags (
+  product_id BIGINT NOT NULL,
+  tag_id BIGINT NOT NULL,
+  PRIMARY KEY (product_id, tag_id),
+  FOREIGN KEY (product_id) REFERENCES products(id),
+  FOREIGN KEY (tag_id) REFERENCES tags(id)
+);
+```
+
+## 正規化とは
+
+正規化は、データの重複や更新不整合を減らすために、テーブルを適切に分ける考え方です。
+
+たとえば、注文テーブルに商品名や商品価格をそのまま何度も持つと、商品名変更時に過去の注文データまでどう扱うかが難しくなります。
+商品情報は `products`、注文時点の明細は `order_items` のように役割を分けます。
+
+<Marker>正規化は「同じ事実を複数箇所に持たない」ための設計手法です。</Marker>
+
+## 第1正規形
+
+第1正規形は、1つの列に複数の値を詰め込まない状態です。
+
+```sql
+-- 避けたい: tags に複数値を詰め込んでいる
+products
+  id
+  name
+  tags  -- "sale,new,recommend"
+```
+
+この設計だと、タグで検索したり、タグごとに集計したりするのが難しくなります。
+別テーブルに分けます。
+
+```sql
+products
+  id
+  name
+
+tags
+  id
+  name
+
+product_tags
+  product_id
+  tag_id
+```
+
+## 第2正規形・第3正規形
+
+第2正規形や第3正規形は、ざっくり言うと「主キーに対して正しく依存していない列を分ける」考え方です。
+
+たとえば注文明細に `product_name` と `product_category_name` を毎回持つと、商品カテゴリ名が変わったときに多くの行を更新する必要があります。
+
+```sql
+-- 避けたい例
+order_items
+  order_id
+  product_id
+  product_name
+  product_category_name
+  quantity
+```
+
+商品名やカテゴリ名は商品側の情報として分けます。
+
+```sql
+products
+  id
+  name
+  category_id
+
+categories
+  id
+  name
+
+order_items
+  order_id
+  product_id
+  quantity
+```
+
+ただし、注文時点の商品名や価格を履歴として残したい場合は、あえて `order_items` に持つ設計もあります。
+これは非正規化というより、履歴として別の事実を保存していると考えます。
+
+## 非正規化する判断
+
+正規化は基本ですが、常に細かく分ければよいわけではありません。
+読み取り性能や履歴保持のために、あえて重複を許すことがあります。
+
+非正規化を検討する例です。
+
+- 集計結果を毎回計算すると重すぎる
+- 注文時点の商品名や価格を履歴として残したい
+- 検索画面で頻繁に使う表示用データをまとめたい
+- 大量データでJOINがボトルネックになっている
+
+<Callout type="warning" title="非正規化は理由を残す">
+非正規化は悪ではありません。
+ただし、なぜ重複を許したのか、どちらを正とするのか、更新タイミングはいつかを設計書やコメントに残す必要があります。
+</Callout>
+
+## よくあるハマりどころ
+
+### CSV文字列を1列に入れる
+
+```sql
+-- 避けたい
+users
+  id
+  favorite_category_ids -- "1,3,8"
+```
+
+この設計は検索、JOIN、制約、集計が難しくなります。
+中間テーブルに分けましょう。
+
+```sql
+user_favorite_categories
+  user_id
+  category_id
+```
+
+### NULLを許しすぎる
+
+何でも `NULL` を許すと、「未入力」「不要」「不明」「削除済み」などの意味が混ざります。
+必須項目には `NOT NULL` を付け、状態を表したい場合はステータス列を検討します。
+
+### 外部キーを貼らない
+
+外部キー制約がないと、存在しない親を参照する子データが入る可能性があります。
+パフォーマンスや運用上の理由で貼らない場合でも、アプリケーション側でどう整合性を守るかを明確にします。
+
+## ちゃんと使うためのポイント
+
+- テーブルは管理したい概念ごとに分ける
+- 主キーは行を一意に識別する
+- 外部キーはテーブル間の関係を守る
+- `UNIQUE`、`NOT NULL`、`CHECK` で不正な値を防ぐ
+- 正規化は重複と更新不整合を減らすための考え方
+- 非正規化する場合は、理由と更新ルールを残す
+
+次の章では、インデックス、トランザクション、SQLインジェクション対策など、実務で必要になる運用寄りの知識を扱います。

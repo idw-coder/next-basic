@@ -1020,16 +1020,104 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     { slug: 'linux-package-manager', label: 'パッケージ管理', aliases: ['wsl'] },
   ],
   'sql-basic': [
-    { slug: 'sql-select', label: 'SELECT' },
-    { slug: 'sql-where-order-limit', label: 'WHERE・ORDER BY・LIMIT' },
-    { slug: 'sql-join', label: 'JOIN' },
-    { slug: 'sql-aggregate', label: '集計' },
-    { slug: 'sql-group-by', label: 'GROUP BY' },
-    { slug: 'sql-subquery', label: 'サブクエリ' },
-    { slug: 'sql-index', label: 'インデックス' },
-    { slug: 'sql-transaction', label: 'トランザクション' },
-    { slug: 'sql-normalization', label: '正規化' },
-    { slug: 'sql-table-design', label: 'テーブル設計' },
+    {
+      slug: 'sql-select',
+      label: 'SELECT',
+      bookLinks: [{ bookSlug: 'sql-basics', chapterSlug: 'select-basics', title: 'SELECTの基本' }],
+    },
+    {
+      slug: 'sql-where-order-limit',
+      label: 'WHERE・ORDER BY・LIMIT',
+      bookLinks: [
+        {
+          bookSlug: 'sql-basics',
+          chapterSlug: 'filtering-sorting-and-null',
+          title: 'WHERE・ORDER BY・LIMITとNULLの扱い',
+        },
+      ],
+    },
+    {
+      slug: 'sql-join',
+      label: 'JOIN',
+      bookLinks: [{ bookSlug: 'sql-basics', chapterSlug: 'join-basics', title: 'JOINの基本' }],
+    },
+    {
+      slug: 'sql-aggregate',
+      label: '集計',
+      bookLinks: [
+        {
+          bookSlug: 'sql-basics',
+          chapterSlug: 'aggregation-and-group-by',
+          title: '集計とGROUP BY',
+        },
+      ],
+    },
+    {
+      slug: 'sql-group-by',
+      label: 'GROUP BY',
+      bookLinks: [
+        {
+          bookSlug: 'sql-basics',
+          chapterSlug: 'aggregation-and-group-by',
+          title: '集計とGROUP BY',
+        },
+      ],
+    },
+    {
+      slug: 'sql-subquery',
+      label: 'サブクエリ',
+      bookLinks: [
+        {
+          bookSlug: 'sql-basics',
+          chapterSlug: 'subqueries-and-exists',
+          title: 'サブクエリとEXISTS',
+        },
+      ],
+    },
+    {
+      slug: 'sql-index',
+      label: 'インデックス',
+      bookLinks: [
+        {
+          bookSlug: 'sql-basics',
+          chapterSlug: 'indexes-transactions-and-security',
+          title: 'インデックス・トランザクション・SQLインジェクション対策',
+        },
+      ],
+    },
+    {
+      slug: 'sql-transaction',
+      label: 'トランザクション',
+      bookLinks: [
+        {
+          bookSlug: 'sql-basics',
+          chapterSlug: 'indexes-transactions-and-security',
+          title: 'インデックス・トランザクション・SQLインジェクション対策',
+        },
+      ],
+    },
+    {
+      slug: 'sql-normalization',
+      label: '正規化',
+      bookLinks: [
+        {
+          bookSlug: 'sql-basics',
+          chapterSlug: 'table-design-normalization-and-constraints',
+          title: 'テーブル設計・正規化・制約の基本',
+        },
+      ],
+    },
+    {
+      slug: 'sql-table-design',
+      label: 'テーブル設計',
+      bookLinks: [
+        {
+          bookSlug: 'sql-basics',
+          chapterSlug: 'table-design-normalization-and-constraints',
+          title: 'テーブル設計・正規化・制約の基本',
+        },
+      ],
+    },
   ],
   'cs-basic': [
     {

@@ -30,6 +30,21 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
 
   'http-and-web-api': ['CORS'],
 
+  'sql-basics': [
+    'SELECT',
+    'WHERE',
+    'JOIN',
+    'GROUP BY',
+    'HAVING',
+    'NULL',
+    'EXISTS',
+    '正規化',
+    '制約',
+    'インデックス',
+    'トランザクション',
+    'SQLインジェクション',
+  ],
+
   'integration-and-e2e-testing': ['E2E', '統合テスト', 'モック', 'CI'],
 
   'system-design': ['要件定義', 'DB設計', 'API設計', '認証', 'エラー設計'],

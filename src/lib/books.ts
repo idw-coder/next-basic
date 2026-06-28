@@ -20,12 +20,14 @@ const categoryToBookMap: Record<string, string> = {
   'css-basic': 'css-basics',
   'tailwind-css': 'tailwind-css',
   'aws-basic': 'aws-saa-c03',
+  'sql-basic': 'sql-basics',
 };
 
 /** 書籍一覧の表示順（先頭が先に表示される） */
 export const BOOK_ORDER = [
   'aws-saa-c03',
   'http-and-web-api',
+  'sql-basics',
   'integration-and-e2e-testing',
   'system-design',
   'javascript',
@@ -41,6 +43,7 @@ export const BOOK_ORDER = [
 
 /** NEW バッジを付ける書籍 */
 export const NEW_BOOK_SLUGS = new Set<string>([
+  'sql-basics',
   'aws-saa-c03',
   'system-design',
   'http-and-web-api',

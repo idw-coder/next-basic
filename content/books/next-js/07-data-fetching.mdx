@@ -143,7 +143,7 @@ const [user2, posts2] = await Promise.all([
 
 ## まとめ
 
-- Server Componentでは `useEffect` を使わず、コンポーネント内で**直接 `await fetch`**
+- <Marker>Server Componentでは `useEffect` を使わず、コンポーネント内で**直接 `await fetch`**</Marker>
 - `fetch` の結果はデフォルトでキャッシュされる。`cache: 'no-store'` で毎回取得、`next: { revalidate: 秒 }` で定期再取得
 - 「鮮度」と「速度」はトレードオフ。データの性質に合わせて選ぶ
 - `no-store` / `cookies` / `searchParams` などを使うとページは動的レンダリングになる

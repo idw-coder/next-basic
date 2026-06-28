@@ -265,7 +265,7 @@ JSON.stringify(a); // TypeError: Converting circular structure to JSON
 
 ## ちゃんと使うためのポイント
 
-- JSONは**文字列**。JavaScriptオブジェクトとは別物で、キーは必ずダブルクオート
+- <Marker>JSONは**文字列**。JavaScriptオブジェクトとは別物で、キーは必ずダブルクオート</Marker>
 - `JSON.stringify(value, replacer?, space?)` — 整形したいだけなら `JSON.stringify(obj, null, 2)`
 - `JSON.parse(text)` は壊れた入力で例外を投げる。**`try/catch` をセットで**
 - ディープコピーは `structuredClone` が第一候補。`JSON` 経由はJSONの制約を受ける

@@ -133,7 +133,7 @@ DNSやTCPは速いのにTTFBだけ遅い場合、ネットワークよりアプ�
 
 ## ちゃんと使うためのポイント
 
-- 「繋がらない」はDNS、経路、ポート、TLS、HTTPに分けて見る
+- <Marker>「繋がらない」はDNS、経路、ポート、TLS、HTTPに分けて見る</Marker>
 - `dig` でDNS、`ping`/`traceroute` で到達性、`curl -v` でTCP/TLS/HTTPを確認する
 - `Connection refused` は相手が明示的に拒否、timeoutは途中で応答がない状態
 - HTTPSだけ失敗するなら証明書、SNI、TLS設定を疑う

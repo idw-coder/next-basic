@@ -1,0 +1,256 @@
+---
+title: 'WHERE・ORDER BY・LIMITとNULLの扱い'
+description: 'WHEREで行を絞り込み、ORDER BYで並べ替え、LIMITで件数を制限する方法と、SQLでつまずきやすいNULLの扱いを整理します。'
+order: 3
+---
+
+`SELECT` で列を選べるようになったら、次は「どの行を取得するか」を指定します。
+実務のSQLでは、ほとんどの場合 `WHERE`、`ORDER BY`、`LIMIT` を組み合わせます。
+
+この章では、行の絞り込み、並び替え、件数制限、そしてSQL初学者がつまずきやすい `NULL` の扱いを整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`WHERE deleted_at = NULL` って書いたら結果が返ってこなかった…。NULLって普通の値じゃないの？
+</SpeechBubble>
+
+## WHEREで行を絞り込む
+
+`WHERE` は、条件に合う行だけを取得するために使います。
+
+```sql
+SELECT id, name, email
+FROM users
+WHERE is_active = true;
+```
+
+比較演算子を使うと、数値や日付で絞り込めます。
+
+```sql
+SELECT id, total_amount
+FROM orders
+WHERE total_amount >= 5000;
+```
+
+代表的な比較演算子は次の通りです。
+
+| 演算子 | 意味 | 例 |
+| --- | --- | --- |
+| `=` | 等しい | `status = 'paid'` |
+| `<>` / `!=` | 等しくない | `status <> 'cancelled'` |
+| `>` | より大きい | `price > 1000` |
+| `>=` | 以上 | `price >= 1000` |
+| `<` | より小さい | `created_at < '2026-01-01'` |
+| `<=` | 以下 | `stock <= 0` |
+
+<Marker>`WHERE` は「取得対象にする行」を決める条件です。</Marker>
+
+## ANDとOR
+
+複数の条件を組み合わせるには、`AND` と `OR` を使います。
+
+```sql
+SELECT id, name
+FROM users
+WHERE is_active = true
+  AND role = 'admin';
+```
+
+`AND` はすべての条件を満たす行、`OR` はどれか1つでも満たす行を返します。
+
+```sql
+SELECT id, name
+FROM users
+WHERE role = 'admin'
+   OR role = 'editor';
+```
+
+`AND` と `OR` を混ぜる場合は、必ず括弧で意図を明確にしましょう。
+
+```sql
+SELECT id, name
+FROM users
+WHERE is_active = true
+  AND (role = 'admin' OR role = 'editor');
+```
+
+括弧を省略すると、読み手が条件のまとまりを誤解しやすくなります。
+
+## IN・BETWEEN・LIKE
+
+複数の候補のどれかに一致するかを見たいときは `IN` を使います。
+
+```sql
+SELECT id, name
+FROM users
+WHERE role IN ('admin', 'editor', 'author');
+```
+
+範囲を指定するには `BETWEEN` を使えます。
+
+```sql
+SELECT id, ordered_at
+FROM orders
+WHERE ordered_at BETWEEN '2026-01-01' AND '2026-01-31';
+```
+
+文字列の部分一致には `LIKE` を使います。
+
+```sql
+SELECT id, name
+FROM users
+WHERE name LIKE '田中%';
+```
+
+| パターン | 意味 |
+| --- | --- |
+| `'田中%'` | 田中で始まる |
+| `'%太郎'` | 太郎で終わる |
+| `'%shop%'` | shopを含む |
+
+<Callout type="warning" title="先頭ワイルドカードは重くなりやすい">
+`LIKE '%keyword%'` は便利ですが、通常のインデックスが効きにくい検索です。
+大量データで部分一致検索を多用する場合は、全文検索や検索エンジンの利用も検討します。
+</Callout>
+
+## NULLは「値がない」状態
+
+`NULL` は、空文字 `''` や数値の `0` とは違います。
+`NULL` は「値が存在しない」「不明」「未設定」を表す特別な状態です。
+
+```sql
+-- 間違い
+SELECT id, name
+FROM users
+WHERE deleted_at = NULL;
+```
+
+`NULL` かどうかを判定するには `IS NULL` を使います。
+
+```sql
+SELECT id, name
+FROM users
+WHERE deleted_at IS NULL;
+```
+
+`NULL` ではない行を取りたい場合は `IS NOT NULL` です。
+
+```sql
+SELECT id, name
+FROM users
+WHERE deleted_at IS NOT NULL;
+```
+
+<Marker>`NULL` は `=` では比較せず、`IS NULL` / `IS NOT NULL` で判定します。</Marker>
+
+## COALESCEでNULLを置き換える
+
+`COALESCE` は、最初に `NULL` ではない値を返す関数です。
+表示用の値を補完したいときに使います。
+
+```sql
+SELECT
+  name,
+  COALESCE(nickname, name) AS display_name
+FROM users;
+```
+
+この例では、`nickname` がある場合はニックネームを使い、`NULL` の場合は `name` を使います。
+
+```sql
+SELECT
+  id,
+  COALESCE(points, 0) AS points
+FROM users;
+```
+
+集計や表示で `NULL` をそのまま扱うと分かりにくい場合は、`COALESCE` で明示的に置き換えると読みやすくなります。
+
+## ORDER BYで並び替える
+
+`ORDER BY` は、結果の並び順を指定します。
+
+```sql
+SELECT id, name, created_at
+FROM users
+ORDER BY created_at DESC;
+```
+
+| 指定 | 意味 |
+| --- | --- |
+| `ASC` | 昇順。小さい順、古い順、AからZ |
+| `DESC` | 降順。大きい順、新しい順、ZからA |
+
+複数条件で並べ替えることもできます。
+
+```sql
+SELECT id, name, role, created_at
+FROM users
+ORDER BY role ASC, created_at DESC;
+```
+
+この場合、まず `role` の昇順で並べ、同じ `role` の中では `created_at` の新しい順に並べます。
+
+## LIMITで件数を制限する
+
+`LIMIT` は、返す件数を制限します。
+
+```sql
+SELECT id, name
+FROM users
+ORDER BY created_at DESC
+LIMIT 10;
+```
+
+`ORDER BY` なしで `LIMIT` だけ使うと、どの10件が返るかが安定しないことがあります。
+
+<Callout type="warning" title="LIMITにはORDER BYを組み合わせる">
+「最新10件」「金額が高い順に10件」のように意味のある件数制限にするには、必ず `ORDER BY` で並び順を指定します。
+</Callout>
+
+ページネーションでは `OFFSET` と組み合わせることもあります。
+
+```sql
+SELECT id, name
+FROM users
+ORDER BY id ASC
+LIMIT 20 OFFSET 40;
+```
+
+これは「41件目から20件」を取得するSQLです。
+ただし、大量データでは `OFFSET` が重くなることがあるため、実務ではIDや日時を使ったカーソル型ページネーションも検討します。
+
+## よくあるハマりどころ
+
+### OR条件で範囲が広がりすぎる
+
+```sql
+-- 意図と違う結果になりやすい
+WHERE is_active = true
+  AND role = 'admin'
+  OR role = 'editor'
+```
+
+この書き方だと、`role = 'editor'` の行は `is_active` が `false` でも対象になる可能性があります。
+次のように括弧で条件のまとまりを明示します。
+
+```sql
+WHERE is_active = true
+  AND (role = 'admin' OR role = 'editor')
+```
+
+### NULLを0や空文字と同じ扱いにする
+
+`NULL`、`0`、`''` は別物です。
+未入力、数値としてゼロ、空文字は意味が違います。
+設計時点で、どの状態を許すのかを決めておきましょう。
+
+## ちゃんと使うためのポイント
+
+- `WHERE` で行を絞り込む
+- `AND` と `OR` を混ぜるときは括弧を使う
+- `NULL` は `IS NULL` / `IS NOT NULL` で判定する
+- `COALESCE` で表示用の代替値を作れる
+- `ORDER BY` で並び順を決める
+- `LIMIT` は `ORDER BY` と組み合わせる
+
+次の章では、複数のテーブルをつなぐ `JOIN` を学びます。

@@ -568,7 +568,7 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 
 ## ちゃんと使うためのポイント
 
-- 配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している
+- <Marker>配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している</Marker>
 - `map` は変換、`filter` は絞り込み、`reduce` は集約——目的に応じて使い分ける
 - `find` は最初の1つ、`some` は1つでもあるか、`every` は全部かを判定する
 - `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快

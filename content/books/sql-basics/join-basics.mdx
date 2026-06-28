@@ -1,0 +1,282 @@
+---
+title: 'JOINの基本 — INNER JOIN・LEFT JOIN・多対多を理解する'
+description: '複数テーブルをつなぐJOINの基本を、INNER JOIN、LEFT JOIN、1対多、多対多、中間テーブル、自己結合まで整理します。'
+order: 4
+---
+
+リレーショナルデータベースでは、データを意味ごとにテーブルへ分けて保存します。
+ユーザーは `users`、注文は `orders`、商品は `products` のように分けます。
+
+分けたデータを必要な形で取り出すために使うのが `JOIN` です。
+SQL学習で最初につまずきやすいところですが、考え方は「外部キーでテーブルをつなぐ」です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+JOINを書くと、同じ行が何回も出てきたり、逆に消えたりするんだけど、何が起きてるの？
+</SpeechBubble>
+
+## JOINとは何か
+
+`JOIN` は、複数のテーブルを関連する列で結合する構文です。
+たとえば、注文にユーザー名を付けて表示したいとします。
+
+```sql
+SELECT
+  orders.id,
+  orders.ordered_at,
+  users.name AS user_name
+FROM orders
+INNER JOIN users
+  ON orders.user_id = users.id;
+```
+
+このSQLでは、`orders.user_id` と `users.id` を対応させています。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["orders.user_id"] -->|参照| B["users.id"]
+`}
+/>
+
+<Marker>JOINは、主キーと外部キーなど、対応する列同士を条件にしてテーブルをつなぐ操作です。</Marker>
+
+## INNER JOIN
+
+`INNER JOIN` は、両方のテーブルに対応する行がある場合だけ結果に出します。
+
+```sql
+SELECT
+  orders.id AS order_id,
+  users.name AS user_name
+FROM orders
+INNER JOIN users
+  ON orders.user_id = users.id;
+```
+
+たとえば、`orders.user_id = 1` の注文があり、`users.id = 1` のユーザーが存在すれば、その注文は結果に出ます。
+対応するユーザーが存在しない注文は結果に出ません。
+
+| orders.id | orders.user_id | users.id | 結果 |
+| --- | --- | --- | --- |
+| 101 | 1 | 1 | 出る |
+| 102 | 2 | 2 | 出る |
+| 103 | 99 | なし | 出ない |
+
+外部キー制約が正しく設定されていれば、対応先がない行は基本的に作られません。
+ただし、古いデータや制約のないテーブルでは起こり得ます。
+
+## LEFT JOIN
+
+`LEFT JOIN` は、左側のテーブルの行を必ず残します。
+右側に対応する行がない場合、右側の列は `NULL` になります。
+
+```sql
+SELECT
+  users.id,
+  users.name,
+  orders.id AS order_id
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id;
+```
+
+このSQLは、注文があるユーザーも、注文がないユーザーも返します。
+注文がないユーザーの `order_id` は `NULL` です。
+
+<Marker>`LEFT JOIN` は「対応する行がなくても、左側の行を残したい」ときに使います。</Marker>
+
+よくある用途は次の通りです。
+
+- ユーザー一覧に注文数を出したい
+- 商品一覧にレビューがあるかを表示したい
+- 親データに子データが存在しないものを探したい
+
+たとえば、注文がないユーザーを探すには次のように書けます。
+
+```sql
+SELECT users.id, users.name
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+WHERE orders.id IS NULL;
+```
+
+## 1対多のJOIN
+
+`users` と `orders` は、よくある1対多の関係です。
+1人のユーザーは複数の注文を持てます。
+
+```sql
+SELECT
+  users.name,
+  orders.id AS order_id,
+  orders.ordered_at
+FROM users
+INNER JOIN orders
+  ON users.id = orders.user_id
+ORDER BY users.id, orders.ordered_at;
+```
+
+この結果では、注文が複数あるユーザーは複数行に増えます。
+
+| user_name | order_id |
+| --- | --- |
+| Alice | 101 |
+| Alice | 102 |
+| Bob | 103 |
+
+これは重複ではなく、1対多の関係を行として表現した結果です。
+「ユーザー1行にまとめたい」場合は、集計を使います。
+
+```sql
+SELECT
+  users.id,
+  users.name,
+  COUNT(orders.id) AS order_count
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+GROUP BY users.id, users.name;
+```
+
+## 多対多と中間テーブル
+
+商品とタグのように、双方が複数を持てる関係を多対多と呼びます。
+
+- 1つの商品には複数のタグが付く
+- 1つのタグは複数の商品に付く
+
+多対多は、直接つなぐのではなく中間テーブルで表現します。
+
+```sql
+products
+product_tags
+tags
+```
+
+```sql
+SELECT
+  products.name AS product_name,
+  tags.name AS tag_name
+FROM products
+INNER JOIN product_tags
+  ON products.id = product_tags.product_id
+INNER JOIN tags
+  ON product_tags.tag_id = tags.id;
+```
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["products"] --> B["product_tags"]
+    B --> C["tags"]
+`}
+/>
+
+中間テーブルには、両方のIDを置きます。
+
+```sql
+CREATE TABLE product_tags (
+  product_id BIGINT NOT NULL,
+  tag_id BIGINT NOT NULL,
+  PRIMARY KEY (product_id, tag_id)
+);
+```
+
+`PRIMARY KEY (product_id, tag_id)` にすると、同じ商品に同じタグが重複して付くことを防げます。
+
+## テーブルに別名を付ける
+
+JOINが増えると、テーブル名が長くなります。
+別名を付けると読みやすくなります。
+
+```sql
+SELECT
+  u.name,
+  o.id AS order_id
+FROM users AS u
+INNER JOIN orders AS o
+  ON u.id = o.user_id;
+```
+
+短すぎる別名は読みづらいこともあります。
+`u` や `o` のような一般的な略称はよく使われますが、複雑なクエリでは意味が分かる名前にする方が安全です。
+
+```sql
+SELECT
+  customer.name,
+  order_summary.total_amount
+FROM users AS customer
+INNER JOIN orders AS order_summary
+  ON customer.id = order_summary.user_id;
+```
+
+## 自己結合
+
+同じテーブルを2回使ってJOINすることを自己結合と呼びます。
+たとえば、社員テーブルで「社員」と「上司」を同じ `employees` テーブルに持つ場合です。
+
+```sql
+SELECT
+  employee.name AS employee_name,
+  manager.name AS manager_name
+FROM employees AS employee
+LEFT JOIN employees AS manager
+  ON employee.manager_id = manager.id;
+```
+
+同じテーブルを2回使うため、別名は必須です。
+`employee` と `manager` のように役割で名前を付けると読みやすくなります。
+
+## よくあるハマりどころ
+
+### JOIN条件を書き忘れる
+
+`ON` 条件がない、または条件が間違っていると、想定外に行数が増えます。
+すべての組み合わせが作られるような状態になるためです。
+
+```sql
+-- 危険: 条件がない
+SELECT *
+FROM users
+INNER JOIN orders;
+```
+
+JOINしたらまず、結果件数が想定と合っているか確認しましょう。
+
+### LEFT JOIN後にWHEREで右側テーブルを絞る
+
+```sql
+SELECT users.id, orders.id AS order_id
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+WHERE orders.status = 'paid';
+```
+
+このSQLでは、`orders.status` が `NULL` の行が `WHERE` で除外されます。
+つまり、注文がないユーザーは消えます。
+
+左側を残したいなら、条件を `ON` に移すか、`NULL` を考慮します。
+
+```sql
+SELECT users.id, orders.id AS order_id
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+ AND orders.status = 'paid';
+```
+
+<Callout type="warning" title="LEFT JOINの後のWHEREに注意">
+`LEFT JOIN` で右側がない行を残したい場合、右側テーブルの条件を `WHERE` に書くと消えてしまうことがあります。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- `INNER JOIN` は両方に対応する行がある場合だけ返す
+- `LEFT JOIN` は左側の行を残す
+- 1対多のJOINでは、親の行が子の数だけ増える
+- 多対多は中間テーブルで表現する
+- JOIN条件の書き忘れや、LEFT JOIN後のWHEREに注意する
+
+次の章では、`COUNT`、`SUM`、`GROUP BY` を使って、複数行を集計する方法を学びます。

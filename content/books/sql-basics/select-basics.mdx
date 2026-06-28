@@ -1,0 +1,214 @@
+---
+title: 'SELECTの基本 — 列指定・別名・DISTINCTを理解する'
+description: 'SQLの基本であるSELECT文を、FROM、列指定、別名、DISTINCT、式、コメントの読み方まで整理します。'
+order: 2
+---
+
+SQLで最初に覚えるべき構文は `SELECT` です。
+`SELECT` は、テーブルから必要な列を取り出すために使います。
+
+この章では、列の指定、すべての列の取得、別名、重複除去、式の利用まで、`SELECT` の基本を整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`SELECT *` なら全部取れるから、それだけ覚えればよさそうに見えるけど、実務でもそれでいいの？
+</SpeechBubble>
+
+## SELECTの最小形
+
+基本形は次の通りです。
+
+```sql
+SELECT 列名
+FROM テーブル名;
+```
+
+たとえば、`users` テーブルからユーザー名を取得するならこう書きます。
+
+```sql
+SELECT name
+FROM users;
+```
+
+複数の列を取りたい場合は、カンマで区切ります。
+
+```sql
+SELECT name, email, created_at
+FROM users;
+```
+
+<Marker>`SELECT` には「取り出したい列」を書き、`FROM` には「対象のテーブル」を書きます。</Marker>
+
+## すべての列を取得する
+
+`*` を使うと、すべての列を取得できます。
+
+```sql
+SELECT *
+FROM users;
+```
+
+学習中や調査中には便利ですが、アプリケーションコードでは使いすぎに注意します。
+
+`SELECT *` には次の弱点があります。
+
+- 不要な列まで取得して通信量が増える
+- テーブルに列が追加されたとき、意図せず取得結果が変わる
+- どの列を使っているのかSQLだけでは分かりにくい
+- インデックスだけで完結する検索の機会を逃すことがある
+
+<Callout type="warning" title="本番コードでは列を明示する">
+管理画面やデバッグでは `SELECT *` が便利です。
+しかしAPIやバッチ処理では、必要な列だけを明示する方が安全です。
+</Callout>
+
+## 列に別名を付ける
+
+`AS` を使うと、取得結果の列名に別名を付けられます。
+
+```sql
+SELECT
+  name AS user_name,
+  email AS email_address
+FROM users;
+```
+
+集計結果や式の結果には、別名を付けると読みやすくなります。
+
+```sql
+SELECT
+  price * quantity AS subtotal
+FROM order_items;
+```
+
+`AS` は省略できるDBMSも多いですが、学習中は書いた方が意図が明確です。
+
+```sql
+-- ASあり
+SELECT name AS user_name FROM users;
+
+-- ASなし
+SELECT name user_name FROM users;
+```
+
+<Marker>別名は、SQLの結果をアプリケーション側で扱いやすい名前に整えるために使います。</Marker>
+
+## DISTINCTで重複を除く
+
+`DISTINCT` を使うと、重複した行を1つにまとめられます。
+
+```sql
+SELECT DISTINCT prefecture
+FROM users;
+```
+
+このSQLは、ユーザーが登録している都道府県の一覧を重複なしで返します。
+
+複数列に `DISTINCT` を使う場合は、列の組み合わせ全体で重複判定されます。
+
+```sql
+SELECT DISTINCT prefecture, city
+FROM users;
+```
+
+この場合、`prefecture` だけでなく `prefecture + city` の組み合わせが同じ行だけが重複として扱われます。
+
+<Callout type="note" title="DISTINCTは魔法の重複消しではない">
+JOINの結果が重複したときに、理由を調べず `DISTINCT` で消すのは危険です。
+本当に重複を除きたいのか、JOIN条件が間違っているのかを先に確認しましょう。
+</Callout>
+
+## 式をSELECTする
+
+`SELECT` には列名だけでなく、計算式や関数も書けます。
+
+```sql
+SELECT
+  price,
+  quantity,
+  price * quantity AS subtotal
+FROM order_items;
+```
+
+文字列を加工したり、日付から一部を取り出したりすることもあります。
+関数の名前や書き方はDBMSごとに違う場合があります。
+
+```sql
+-- PostgreSQLの例
+SELECT
+  email,
+  lower(email) AS normalized_email
+FROM users;
+```
+
+SQLで加工すると、アプリケーション側の処理を減らせます。
+一方で、複雑すぎる加工をSQLに詰め込むと読みづらくなるため、どちらに寄せるかはチームで判断します。
+
+## コメントを書く
+
+SQLにはコメントを書けます。
+調査用SQLや複雑なクエリでは、意図を残しておくと後から読みやすくなります。
+
+```sql
+-- 有効なユーザーだけを取得
+SELECT name, email
+FROM users
+WHERE is_active = true;
+```
+
+複数行コメントも使えます。
+
+```sql
+/*
+  月次レポート用の集計。
+  退会済みユーザーは除外する。
+*/
+SELECT id, name
+FROM users
+WHERE deleted_at IS NULL;
+```
+
+## よくあるハマりどころ
+
+### SELECTの順番で実行されると思ってしまう
+
+SQLは上から順に実行されるプログラムではありません。
+たとえば `WHERE` は、`SELECT` で付けた別名を参照できないことがあります。
+
+```sql
+-- DBMSによってはエラーになる
+SELECT price * quantity AS subtotal
+FROM order_items
+WHERE subtotal >= 1000;
+```
+
+このような場合は、式を `WHERE` にも書くか、サブクエリを使います。
+
+```sql
+SELECT price * quantity AS subtotal
+FROM order_items
+WHERE price * quantity >= 1000;
+```
+
+### `SELECT *` をAPIの戻り値に使う
+
+APIの実装で `SELECT *` を使うと、後でテーブルに内部用カラムを追加したときに、そのカラムまで返してしまう可能性があります。
+
+```sql
+-- 避けたい
+SELECT *
+FROM users;
+
+-- 必要な列だけ返す
+SELECT id, name, email
+FROM users;
+```
+
+## ちゃんと使うためのポイント
+
+- `SELECT` には取得したい列を書く
+- `FROM` には対象テーブルを書く
+- `SELECT *` は調査には便利だが、本番コードでは必要な列を明示する
+- `AS` で結果の列名を扱いやすくできる
+- `DISTINCT` は列の組み合わせ全体で重複を判定する
+
+次の章では、`WHERE`、`ORDER BY`、`LIMIT`、`NULL` を使って、取得する行を絞り込む方法を学びます。

@@ -135,7 +135,7 @@ SEO関連では他にも、`app/icon.png`（ファビコン）、`app/sitemap.ts
 ## まとめ
 
 - `page.tsx` / `layout.tsx` で `metadata` を `export` すると `<head>` に自動反映される（`<head>` は自分で書かない）
-- `title` と `description` はSEOの基本。**全ページで固有の文言**を設定する
+- <Marker>`title` と `description` はSEOの基本。**全ページで固有の文言**を設定する</Marker>
 - ページごとに変わるメタデータは `generateMetadata`（`params` を `await` して動的生成）
 - ルートレイアウトの `title.template`（`%s | サイト名`）でサイト名を自動付与できる
 - `openGraph.images` でSNSシェア時のカード画像を設定。`sitemap.ts` / `robots.ts` も活用する

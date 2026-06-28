@@ -577,7 +577,7 @@ StorageはJavaScriptから読めます。XSSが起きると保存した値を盗
 
 ## ちゃんと使うためのポイント
 
-- Web APIはブラウザが提供する機能。JavaScript標準機能とは分けて考える
+- <Marker>Web APIはブラウザが提供する機能。JavaScript標準機能とは分けて考える</Marker>
 - `fetch` は `Promise<Response>` を返す。HTTPエラーは `response.ok` で判定する
 - JSON送信では `Content-Type: application/json` と `JSON.stringify` をセットにする
 - `Response` の本文は基本的に1回だけ読む

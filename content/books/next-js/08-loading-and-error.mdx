@@ -133,7 +133,7 @@ export default function NotFound() {
 
 ## まとめ
 
-- `loading.tsx` を置くだけで、データ取得の待ち時間に自動でローディングUIが出る（裏側はSuspense）
+- <Marker>`loading.tsx` を置くだけで、データ取得の待ち時間に自動でローディングUIが出る（裏側はSuspense）</Marker>
 - `error.tsx` は `"use client"` 必須。`error` と `reset` を受け取り、その範囲だけをエラーUIに差し替える
 - 404は `notFound()`（コードから宣言）＋ `not-found.tsx`（表示UI）の組み合わせ
 - これらはフォルダ単位で置けるので、セクションごとに最適なUIを用意できる

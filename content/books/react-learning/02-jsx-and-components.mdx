@@ -301,7 +301,7 @@ return <p dangerouslySetInnerHTML={{ __html: html }} />;
 これが `innerHTML` 経由でDOMに入ると、ブラウザは `onerror` を実行し、Cookieが外部に送信されます。
 これが**クロスサイトスクリプティング（XSS）** です。
 
-**サニタイズ**とは、HTML文字列から危険な要素・属性を取り除き、安全なHTMLだけを残す処理のことです。
+<Marker>**サニタイズ**とは、HTML文字列から危険な要素・属性を取り除き、安全なHTMLだけを残す処理のことです。</Marker>
 具体的には `<script>` タグの除去、`onerror` などのイベント属性の除去、`javascript:` スキームのURL除去などを行います。
 
 <MermaidDiagram

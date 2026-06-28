@@ -147,6 +147,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-orange-700',
     iconName: 'Globe2',
   },
+  'sql-basics': {
+    cardBg: 'bg-fuchsia-50',
+    iconBg: 'bg-fuchsia-100',
+    iconText: 'text-fuchsia-600',
+    accent: 'text-fuchsia-600',
+    accentHover: 'group-hover:text-fuchsia-700',
+    accentBg: 'bg-fuchsia-500',
+    badgeBg: 'bg-fuchsia-50',
+    badgeText: 'text-fuchsia-700',
+    iconName: 'Database',
+  },
   'integration-and-e2e-testing': {
     cardBg: 'bg-teal-50',
     iconBg: 'bg-teal-100',

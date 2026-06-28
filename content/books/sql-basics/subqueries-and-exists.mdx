@@ -1,0 +1,258 @@
+---
+title: 'サブクエリとEXISTS — IN・相関サブクエリ・派生テーブル'
+description: 'クエリの中に別のクエリを書くサブクエリを、IN、EXISTS、相関サブクエリ、FROM句の派生テーブル、JOINとの使い分けまで整理します。'
+order: 6
+---
+
+サブクエリは、SQLの中に別の `SELECT` を書く方法です。
+条件の候補を別クエリで作ったり、集計結果を一度作ってからさらに絞り込んだりできます。
+
+この章では、`IN`、`EXISTS`、相関サブクエリ、派生テーブルを整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+JOINでも書けるし、サブクエリでも書ける場面があるよね。どう使い分ければいいの？
+</SpeechBubble>
+
+## サブクエリとは
+
+サブクエリは、クエリの中に入る別のクエリです。
+括弧 `()` で囲んで書きます。
+
+```sql
+SELECT id, name
+FROM users
+WHERE id IN (
+  SELECT user_id
+  FROM orders
+  WHERE status = 'paid'
+);
+```
+
+このSQLは、支払い済み注文を持つユーザーを取得します。
+内側のクエリで `orders` から `user_id` を取り出し、外側のクエリでそのIDに一致するユーザーを取得しています。
+
+<Marker>サブクエリは、SQLの一部として使うための中間結果を別の `SELECT` で作る書き方です。</Marker>
+
+## INを使うサブクエリ
+
+`IN` は、値が候補リストに含まれているかを判定します。
+
+```sql
+SELECT id, name
+FROM users
+WHERE id IN (1, 2, 3);
+```
+
+候補リストをサブクエリで作ることもできます。
+
+```sql
+SELECT id, name
+FROM users
+WHERE id IN (
+  SELECT user_id
+  FROM orders
+  WHERE total_amount >= 10000
+);
+```
+
+このSQLは、1万円以上の注文をしたユーザーを取得します。
+
+`IN` のサブクエリは、「Aの中にBの結果が含まれるか」を表したいときに読みやすいです。
+
+## EXISTSを使う
+
+`EXISTS` は、サブクエリの結果が1件でも存在するかを判定します。
+
+```sql
+SELECT id, name
+FROM users
+WHERE EXISTS (
+  SELECT 1
+  FROM orders
+  WHERE orders.user_id = users.id
+    AND orders.status = 'paid'
+);
+```
+
+このSQLも、支払い済み注文を持つユーザーを取得します。
+
+`EXISTS` のサブクエリでは、外側の `users.id` を内側で参照しています。
+このように、外側の行に依存して実行されるサブクエリを**相関サブクエリ**と呼びます。
+
+<Marker>`EXISTS` は「条件に合う関連行が存在するか」を表すときに自然です。</Marker>
+
+`SELECT 1` の `1` に特別な意味はありません。
+`EXISTS` はサブクエリが行を返すかどうかだけを見るため、列の中身は重要ではありません。
+
+## NOT EXISTSで存在しないものを探す
+
+`NOT EXISTS` を使うと、関連行が存在しないものを探せます。
+
+```sql
+SELECT id, name
+FROM users
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM orders
+  WHERE orders.user_id = users.id
+);
+```
+
+これは注文が一度もないユーザーを取得します。
+
+`LEFT JOIN ... WHERE orders.id IS NULL` でも同じようなことができます。
+
+```sql
+SELECT users.id, users.name
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+WHERE orders.id IS NULL;
+```
+
+どちらでも書けますが、「存在しない関連行を探す」という意図は `NOT EXISTS` の方が読みやすいことがあります。
+
+## FROM句のサブクエリ
+
+`FROM` の中にサブクエリを書くと、一時的なテーブルのように扱えます。
+これを派生テーブルと呼ぶことがあります。
+
+```sql
+SELECT
+  user_order_counts.user_id,
+  user_order_counts.order_count
+FROM (
+  SELECT
+    user_id,
+    COUNT(*) AS order_count
+  FROM orders
+  GROUP BY user_id
+) AS user_order_counts
+WHERE user_order_counts.order_count >= 3;
+```
+
+このSQLは、ユーザーごとの注文数を集計し、その結果から3件以上のユーザーだけを取り出します。
+
+この例は `HAVING` でも書けます。
+
+```sql
+SELECT
+  user_id,
+  COUNT(*) AS order_count
+FROM orders
+GROUP BY user_id
+HAVING COUNT(*) >= 3;
+```
+
+派生テーブルは、集計結果をさらにJOINしたい場合や、複雑な処理を段階に分けたい場合に便利です。
+
+## JOINとサブクエリの使い分け
+
+JOINとサブクエリは、同じ結果を出せる場面があります。
+
+```sql
+-- JOINで書く
+SELECT DISTINCT users.id, users.name
+FROM users
+INNER JOIN orders
+  ON users.id = orders.user_id
+WHERE orders.status = 'paid';
+```
+
+```sql
+-- EXISTSで書く
+SELECT users.id, users.name
+FROM users
+WHERE EXISTS (
+  SELECT 1
+  FROM orders
+  WHERE orders.user_id = users.id
+    AND orders.status = 'paid'
+);
+```
+
+結果は似ていますが、読み方が違います。
+
+| 書き方 | 向いている意図 |
+| --- | --- |
+| `JOIN` | 関連テーブルの列も一緒に取得したい |
+| `EXISTS` | 関連行が存在するかだけ知りたい |
+| `IN` | 候補リストに含まれるかを表したい |
+| 派生テーブル | 一度集計・加工した結果をさらに使いたい |
+
+<Callout type="note" title="まずは意図が読みやすい方で書く">
+パフォーマンスはDBMSやインデックス、データ量によって変わります。
+最初は「何をしたいSQLか」が読みやすい書き方を選び、必要になったら `EXPLAIN` で確認します。
+</Callout>
+
+## スカラーサブクエリ
+
+1つの値だけを返すサブクエリを、スカラーサブクエリと呼びます。
+
+```sql
+SELECT
+  id,
+  name,
+  (SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id) AS order_count
+FROM users;
+```
+
+ユーザーごとの注文数を列として出しています。
+読みやすい場面もありますが、行数が多いと重くなることがあります。
+JOINと集計で書いた方がよい場合もあります。
+
+```sql
+SELECT
+  users.id,
+  users.name,
+  COUNT(orders.id) AS order_count
+FROM users
+LEFT JOIN orders
+  ON users.id = orders.user_id
+GROUP BY users.id, users.name;
+```
+
+## よくあるハマりどころ
+
+### INのサブクエリにNULLが混ざる
+
+`NOT IN` は、サブクエリ結果に `NULL` が混ざると直感と違う結果になることがあります。
+
+```sql
+SELECT id, name
+FROM users
+WHERE id NOT IN (
+  SELECT user_id
+  FROM orders
+);
+```
+
+`orders.user_id` に `NULL` があると、結果が返らないことがあります。
+存在しない関連行を探す場合は、`NOT EXISTS` の方が安全なことが多いです。
+
+```sql
+SELECT id, name
+FROM users
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM orders
+  WHERE orders.user_id = users.id
+);
+```
+
+### サブクエリを深くネストしすぎる
+
+サブクエリを何重にも入れると、読みづらくなります。
+段階的に整理したい場合は、CTE（`WITH`）を使う方法もあります。
+この本では発展トピックとして扱いますが、考え方は「途中結果に名前を付ける」です。
+
+## ちゃんと使うためのポイント
+
+- サブクエリはSQLの中で使う中間結果を作る
+- `IN` は候補リストに含まれるかを見る
+- `EXISTS` は関連行の存在確認に向いている
+- 関連行がないものを探すなら `NOT EXISTS` が読みやすい
+- 関連テーブルの列も取りたいなら `JOIN` が自然
+- サブクエリが深くなりすぎたら、クエリを分解して考える
+
+次の章では、SQLを書く前提となるテーブル設計、正規化、制約について学びます。

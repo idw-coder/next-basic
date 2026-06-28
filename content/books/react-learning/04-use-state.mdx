@@ -294,7 +294,7 @@ dispatch({ type: 'DELETE_ITEM', payload: itemId });
 
 ## まとめ
 
-`useState` はUIに影響するローカル状態の置き場所です。stateが変わるとコンポーネントが再レンダーされ、UIが新しい値に基づいて再計算されます。
+<Marker>`useState` はUIに影響するローカル状態の置き場所です。</Marker>stateが変わるとコンポーネントが再レンダーされ、UIが新しい値に基づいて再計算されます。
 
 stateの値はコンポーネント関数自体ではなくReactのFiberツリーに保管されるため、関数が再実行されても値を引き継げます。
 

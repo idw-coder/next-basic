@@ -150,7 +150,7 @@ export default async function DocsPage({
 
 ## まとめ
 
-- フォルダ名を `[slug]` のように `[ ]` で囲むと**動的セグメント**になり、1ファイルで多数のURLに対応できる
+- <Marker>フォルダ名を `[slug]` のように `[ ]` で囲むと**動的セグメント**になり、1ファイルで多数のURLに対応できる</Marker>
 - 値は `params` から取り出す。**Next.js 15以降は `await params`**（Promise）
 - フォルダ名（`[id]` の `id`）がそのまま `params` のキー名になる
 - `generateStaticParams` で、ビルド時にどのページを静的生成するかを指定できる（SSG）

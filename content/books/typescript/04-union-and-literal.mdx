@@ -179,7 +179,7 @@ function handleResponse(status: RequestStatus, data: unknown): void {
 
 ## まとめ
 
-ユニオン型（`A | B`）は「AまたはB」を表現し、リテラル型はとりうる値を特定の値だけに制限します。両者を組み合わせると `'primary' | 'secondary' | 'ghost'` のような列挙的な型が作れます。
+<Marker>ユニオン型（`A | B`）は「AまたはB」を表現し、リテラル型はとりうる値を特定の値だけに制限します。</Marker>両者を組み合わせると `'primary' | 'secondary' | 'ghost'` のような列挙的な型が作れます。
 
 `strictNullChecks` 有効時、`null` と `undefined` は明示的にユニオンに含めない限り許容されません。
 

@@ -371,7 +371,7 @@ parseInt('12.3.4', 10); // 12（最初の整数部分だけ）
 
 ## ちゃんと使うためのポイント
 
-- JavaScriptの数値は基本 `number` 型の1種類。整数も小数も同じ型
+- <Marker>JavaScriptの数値は基本 `number` 型の1種類。整数も小数も同じ型</Marker>
 - 文字列→数値は `Number()`（厳密）/ `parseInt(str, 10)`（先頭だけ）を使い分ける。`parseInt` は基数 `10` を必ず渡す
 - `0.1 + 0.2` は誤差が出る。**表示は `toFixed`、比較は `Number.EPSILON`、金額は最小単位の整数**で対処
 - 桁区切り・通貨は `toLocaleString()` に任せる

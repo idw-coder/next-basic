@@ -71,7 +71,7 @@ APIで直接呼び出せばシンプルなのに、なぜわざわざSQSやSNS�
 
 疎結合設計では、同期呼び出しを減らし、キューやイベントで依存を弱めます。
 
-- SQSは処理待ち行列
+- <Marker>処理の順番待ちや非同期化にはSQSを使う</Marker>
 - SNSは通知のfan-out
 - EventBridgeはイベントルーティング
 - Step Functionsはワークフロー制御

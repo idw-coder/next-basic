@@ -126,7 +126,7 @@ Server Actionの中では、(1) 入力値のバリデーション（型・必須
 
 ## まとめ
 
-- Server Actionは `"use server"` を付けた**サーバーで実行される関数**。APIルートを別途作らずにデータ更新できる
+- <Marker>Server Actionは `"use server"` を付けた**サーバーで実行される関数**。APIルートを別途作らずにデータ更新できる</Marker>
 - `"use server"` の付いたファイルからエクスポートする関数は `async` にする。同期ユーティリティは通常のファイルに分ける
 - `<form action={アクション}>` に渡すと、入力が `FormData` として届く（`name` がキー）
 - 更新後は `revalidatePath` / `revalidateTag` でキャッシュを破棄して画面を最新化、`redirect` で遷移
