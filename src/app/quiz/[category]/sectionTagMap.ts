@@ -217,6 +217,11 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
         },
       ],
     },
+    {
+      slug: 'aws-kinesis-data-streams',
+      label: 'Kinesis（データストリーミング）',
+      aliases: ['aws-kinesis-data-firehose'],
+    },
     { slug: 'aws-terraform', label: 'Terraform（IaC）' },
     { slug: 'aws-ivs', label: 'IVS（ライブ配信）' },
     { slug: 'aws-service-quotas', label: 'Service Quotas（制限）' },
