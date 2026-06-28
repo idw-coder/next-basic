@@ -443,7 +443,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'responsive',
+      slug: 'css-responsive',
       label: 'レスポンシブ',
       bookLinks: [
         {
