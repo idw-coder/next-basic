@@ -464,6 +464,10 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
         },
       ],
     },
+    {
+      slug: 'css-text',
+      label: 'テキスト',
+    },
   ],
   'javascript-basic': [
     {

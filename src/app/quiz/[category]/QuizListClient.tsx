@@ -26,18 +26,22 @@ interface QuizSection {
   slug: string;
   label: string;
   quizzes: Quiz[];
+  tagSlugs: Set<string>;
   bookLinks?: SectionBookLink[];
 }
+
+const EMPTY_TAG_SLUGS = new Set<string>();
 
 function buildSections(quizzes: Quiz[], sectionTags: SectionTagConfig[]): QuizSection[] {
   const sections: QuizSection[] = sectionTags.map((st) => ({
     slug: st.slug,
     label: st.label,
     quizzes: [],
+    tagSlugs: new Set([st.slug, ...(st.aliases ?? [])]),
     bookLinks: st.bookLinks,
   }));
 
-  const sectionSlugGroups = sectionTags.map((st) => new Set([st.slug, ...(st.aliases ?? [])]));
+  const sectionSlugGroups = sections.map((section) => section.tagSlugs);
   const sectionSlugs = new Set(sectionSlugGroups.flatMap((slugs) => [...slugs]));
   const uncategorized: Quiz[] = [];
 
@@ -60,7 +64,12 @@ function buildSections(quizzes: Quiz[], sectionTags: SectionTagConfig[]): QuizSe
   const result = sections.filter((s) => s.quizzes.length > 0);
 
   if (uncategorized.length > 0) {
-    result.push({ slug: '_other', label: 'その他', quizzes: uncategorized });
+    result.push({
+      slug: '_other',
+      label: 'その他',
+      quizzes: uncategorized,
+      tagSlugs: new Set(),
+    });
   }
 
   return result;
@@ -71,13 +80,16 @@ function QuizCard({
   index,
   categorySlug,
   getLatestAnswer,
+  hiddenTagSlugs = EMPTY_TAG_SLUGS,
 }: {
   quiz: Quiz;
   index: number;
   categorySlug: string;
   getLatestAnswer: (quizId: number) => { isCorrect: boolean } | null;
+  hiddenTagSlugs?: Set<string>;
 }) {
   const latestAnswer = getLatestAnswer(quiz.id);
+  const visibleTags = quiz.tags.filter((tag) => !hiddenTagSlugs.has(tag.slug));
   const isNew =
     quiz.createdAt &&
     Date.now() - new Date(quiz.createdAt).getTime() < 14 * 24 * 60 * 60 * 1000;
@@ -94,9 +106,30 @@ function QuizCard({
       >
         {index + 1}
       </span>
-      <p className="flex-1 min-w-0 text-foreground text-sm leading-snug line-clamp-2 whitespace-pre-line">
-        {quiz.question}
-      </p>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-sm leading-snug line-clamp-2 whitespace-pre-line">
+          {quiz.question}
+        </p>
+        {visibleTags.length > 0 && (
+          <div className="mt-1 flex min-w-0 flex-wrap gap-1">
+            {visibleTags.slice(0, 4).map((tag) => (
+              <Badge
+                key={tag.slug}
+                variant="secondary"
+                className="max-w-28 truncate px-1.5 py-0 text-[10px] leading-4"
+                title={tag.name}
+              >
+                {tag.name}
+              </Badge>
+            ))}
+            {visibleTags.length > 4 && (
+              <Badge variant="outline" className="px-1.5 py-0 text-[10px] leading-4">
+                +{visibleTags.length - 4}
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
       <div className="flex items-center gap-1.5 shrink-0">
         {isNew && (
           <Badge className="bg-red-500 hover:bg-red-500 text-white text-[10px] px-1.5 py-0 leading-4">
@@ -141,6 +174,7 @@ function SectionGroup({
             index={i}
             categorySlug={categorySlug}
             getLatestAnswer={getLatestAnswer}
+            hiddenTagSlugs={section.tagSlugs}
           />
         ))}
       </div>
