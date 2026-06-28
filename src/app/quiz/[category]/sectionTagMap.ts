@@ -14,7 +14,7 @@ export interface SectionTagConfig {
 const sectionTagMap: Record<string, SectionTagConfig[]> = {
   'aws-basic': [
     {
-      slug: 'ec2',
+      slug: 'aws-ec2',
       label: 'EC2（仮想サーバー）',
       bookLinks: [
         {
@@ -30,7 +30,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 's3',
+      slug: 'aws-s3',
       label: 'S3（ストレージ）',
       bookLinks: [
         {
@@ -46,7 +46,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'amazon-vpc',
+      slug: 'aws-vpc',
       label: 'VPC（ネットワーク）',
       bookLinks: [
         {
@@ -57,7 +57,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'iam',
+      slug: 'aws-iam',
       label: 'IAM（認証・認可）',
       bookLinks: [
         {
@@ -68,7 +68,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'lambda',
+      slug: 'aws-lambda',
       label: 'Lambda（サーバーレス）',
       bookLinks: [
         {
@@ -84,7 +84,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'rds',
+      slug: 'aws-rds',
       label: 'RDS（リレーショナルDB）',
       bookLinks: [
         {
@@ -95,7 +95,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'dynamodb',
+      slug: 'aws-dynamodb',
       label: 'DynamoDB（NoSQL）',
       bookLinks: [
         {
@@ -106,7 +106,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'ecs',
+      slug: 'aws-ecs',
       label: 'ECS（コンテナ）',
       bookLinks: [
         {
@@ -117,7 +117,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'eks',
+      slug: 'aws-eks',
       label: 'EKS（Kubernetes）',
       bookLinks: [
         {
@@ -128,7 +128,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'ebs',
+      slug: 'aws-ebs',
       label: 'EBS（ブロックストレージ）',
       bookLinks: [
         {
@@ -139,7 +139,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'efs',
+      slug: 'aws-efs',
       label: 'EFS（ファイルストレージ）',
       bookLinks: [
         {
@@ -150,7 +150,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'cloudwatch',
+      slug: 'aws-cloudwatch',
       label: 'CloudWatch（監視）',
       bookLinks: [
         {
@@ -163,7 +163,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     { slug: 'aws-cloudformation', label: 'CloudFormation（IaC）' },
     { slug: 'aws-cloudtrail', label: 'CloudTrail（監査）' },
     {
-      slug: 'amazon-elb',
+      slug: 'aws-elb',
       label: 'ELB（ロードバランサー）',
       bookLinks: [
         {
@@ -174,7 +174,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'amazon-elasticache',
+      slug: 'aws-elasticache',
       label: 'ElastiCache（キャッシュ）',
       bookLinks: [
         {
@@ -185,7 +185,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'aurora',
+      slug: 'aws-aurora',
       label: 'Aurora（高性能DB）',
       bookLinks: [
         {
@@ -217,9 +217,9 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
         },
       ],
     },
-    { slug: 'terraform', label: 'Terraform（IaC）' },
-    { slug: 'amazon-ivs', label: 'IVS（ライブ配信）' },
-    { slug: 'service-quotas', label: 'Service Quotas（制限）' },
+    { slug: 'aws-terraform', label: 'Terraform（IaC）' },
+    { slug: 'aws-ivs', label: 'IVS（ライブ配信）' },
+    { slug: 'aws-service-quotas', label: 'Service Quotas（制限）' },
   ],
   'react-basic': [
     {
