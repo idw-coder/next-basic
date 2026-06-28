@@ -15,6 +15,10 @@ interface QuizTag {
   name: string;
 }
 
+interface QuizTagDetail extends QuizTag {
+  quizCount: number;
+}
+
 interface BulkImportResult {
   created: QuizTag[];
   skipped: string[];
@@ -58,6 +62,7 @@ export default function QuizTagManagePage() {
   const [editSlug, setEditSlug] = useState("");
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [bulkJson, setBulkJson] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
@@ -174,14 +179,38 @@ export default function QuizTagManagePage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("このタグを削除しますか？")) return;
+  const handleDelete = async (tag: QuizTag) => {
     setError(null);
+    setDeletingId(tag.id);
+
     try {
-      await api.delete(`/api/quiz/tags/${id}`);
-      setTags((prev) => prev.filter((t) => t.id !== id));
-    } catch {
-      setError("削除に失敗しました");
+      const res = await api.get<QuizTagDetail>(`/api/quiz/tags/${tag.id}`);
+      const quizCount = res.data.quizCount ?? 0;
+      const confirmed =
+        quizCount > 0
+          ? confirm(
+              `タグ「${tag.name}」は ${quizCount} 件のクイズに紐づいています。\n` +
+                "このタグをクイズから外したうえで削除しますか？"
+            )
+          : confirm(`タグ「${tag.name}」を削除しますか？`);
+
+      if (!confirmed) return;
+
+      await api.delete(`/api/quiz/tags/${tag.id}`);
+      setTags((prev) => prev.filter((t) => t.id !== tag.id));
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      const msg = (e as { response?: { data?: { error?: string } } })?.response
+        ?.data?.error;
+      if (status === 409) {
+        setError(
+          "このタグはクイズに紐づいているため削除できません。API側の削除処理を更新してください。"
+        );
+      } else {
+        setError(msg ?? "削除に失敗しました");
+      }
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -335,7 +364,8 @@ export default function QuizTagManagePage() {
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-red-500"
-                      onClick={() => handleDelete(tag.id)}
+                      disabled={deletingId === tag.id}
+                      onClick={() => handleDelete(tag)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
