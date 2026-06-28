@@ -24,6 +24,7 @@ const books = defineCollection({
     .object({
       title: s.string(),
       description: s.string(),
+      coverImage: s.string().optional(),
       slug: s.path(), // ファイルパスから "books/nextjs/index" のような文字列を生成
     })
     .transform((data) => ({

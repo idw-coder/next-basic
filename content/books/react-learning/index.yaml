@@ -1,2 +1,3 @@
 title: 'React入門 — コンポーネントとHooks'
 description: 'UIライブラリReactの考え方から、JSX・コンポーネント・Hooksまでを、Next.jsなどのフレームワークに進む前の土台として整理する入門書です。クイズカテゴリ「React基礎」とあわせて、用語と典型パターンを身につけられます。'
+coverImage: '/images/books/react-cover.png'

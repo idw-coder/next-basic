@@ -541,6 +541,7 @@ export default async function Home() {
                 bookSlug={book.bookSlug}
                 title={book.title}
                 description={book.description}
+                coverImage={book.coverImage}
                 chapterCount={chapters.length}
                 chapters={chapters.map((c) => ({
                   title: c.title,

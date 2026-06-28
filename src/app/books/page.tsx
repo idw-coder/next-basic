@@ -94,7 +94,7 @@ export default function BooksPage() {
           <SectionHeading className="mb-7" subtitle={`${books.length}冊の教科書から選べます`}>
             教科書一覧
           </SectionHeading>
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
             {books.map((book) => {
               const chapters = getChaptersByBook(book.bookSlug);
               return (
@@ -103,6 +103,7 @@ export default function BooksPage() {
                   bookSlug={book.bookSlug}
                   title={book.title}
                   description={book.description}
+                  coverImage={book.coverImage}
                   chapterCount={chapters.length}
                   chapters={chapters.map((c) => ({
                     title: c.title,

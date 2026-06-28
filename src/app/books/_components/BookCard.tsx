@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   BookOpen, Sparkles, ArrowRight,
   Blocks, Braces, FileCode2, Atom, Paintbrush, Wind,
@@ -8,7 +9,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { getBookTheme } from '@/lib/book-theme';
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 const iconMap: Record<string, LucideIcon> = {
@@ -26,6 +27,7 @@ interface BookCardProps {
   bookSlug: string;
   title: string;
   description: string;
+  coverImage?: string;
   chapterCount: number;
   chapters: ChapterLink[];
   isNew?: boolean;
@@ -35,21 +37,24 @@ export default function BookCard({
   bookSlug,
   title,
   description,
+  coverImage,
   chapterCount,
   chapters,
   isNew = false,
 }: BookCardProps) {
   const theme = getBookTheme(bookSlug);
+  const BgIcon = iconMap[theme.iconName] ?? BookOpen;
   const [showChapters, setShowChapters] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const handleEnter = () => {
+  const handleEnter = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setShowChapters(true);
-  };
-  const handleLeave = () => {
-    timeoutRef.current = setTimeout(() => setShowChapters(false), 150);
-  };
+  }, []);
+
+  const handleLeave = useCallback(() => {
+    timeoutRef.current = setTimeout(() => setShowChapters(false), 200);
+  }, []);
 
   return (
     <div
@@ -59,100 +64,108 @@ export default function BookCard({
     >
       <Link
         href={`/books/${bookSlug}`}
-        className={cn(
-          'relative flex h-full flex-col rounded-[1.35rem] bg-white p-3.5 sm:p-6',
-          'border-2 border-[#2f302f]/60 overflow-hidden',
-          'transition-all duration-200',
-          'hover:-translate-y-0.5 hover:shadow-[6px_6px_0_rgba(47,48,47,0.08)]',
-        )}
+        className="relative flex flex-col rounded-xl bg-white p-3 sm:p-4 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border border-gray-100"
       >
-        {/* 背景の装飾アイコン */}
-        {(() => {
-          const BgIcon = iconMap[theme.iconName] ?? BookOpen;
-          return (
-            <BgIcon
-              className={cn(
-                'pointer-events-none absolute -right-3 -bottom-3 size-20 sm:size-32 opacity-[0.06]',
-                theme.iconText,
-              )}
-              strokeWidth={1}
-            />
-          );
-        })()}
-
-        {/* ヘッダー: アイコン + NEW */}
-        <div className="flex items-start justify-between mb-2 sm:mb-3">
+        {/* 表紙 */}
+        <div className="relative mx-auto w-full max-w-[8rem] sm:max-w-[9.5rem]">
           <div
             className={cn(
-              'flex size-7 sm:size-9 items-center justify-center rounded-full',
+              'relative aspect-[7/10] overflow-hidden rounded-[0.35rem]',
+              'shadow-[4px_4px_12px_rgba(0,0,0,0.12)]',
               theme.iconBg,
-              theme.iconText,
             )}
           >
-            {(() => { const Icon = iconMap[theme.iconName] ?? BookOpen; return <Icon className="size-3.5 sm:size-4.5" strokeWidth={2} />; })()}
-          </div>
-          {isNew && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white">
-              <Sparkles className="size-2.5" />
-              NEW
+            {/* 背表紙エフェクト */}
+            <div className="absolute inset-y-0 left-0 z-20 w-[7%] bg-gradient-to-r from-black/20 via-white/15 to-transparent" />
+            <div className="absolute inset-y-0 left-[7%] z-20 w-px bg-white/40" />
+            <div className="absolute inset-y-0 right-0 z-20 w-[5%] bg-gradient-to-l from-black/8 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 z-20 h-[4%] bg-gradient-to-t from-black/12 to-transparent" />
+
+            <div className="absolute inset-0 bg-gradient-to-br from-white/60 via-white/30 to-transparent" />
+
+            {/* タイトル（表紙上部） */}
+            <div className="absolute inset-x-[10%] top-[10%] z-10 text-center">
+              <p className={cn(
+                'text-[9px] font-bold leading-tight line-clamp-2 sm:text-[10px]',
+                theme.iconText,
+              )}>
+                {title}
+              </p>
+            </div>
+
+            {coverImage ? (
+              <div className="absolute left-1/2 top-[52%] size-14 -translate-x-1/2 -translate-y-1/2 sm:size-18">
+                <Image
+                  src={coverImage}
+                  alt=""
+                  fill
+                  sizes="80px"
+                  className="object-contain"
+                />
+              </div>
+            ) : (
+              <BgIcon
+                className={cn(
+                  'absolute left-1/2 top-[52%] size-14 -translate-x-1/2 -translate-y-1/2 sm:size-18',
+                  theme.iconText,
+                )}
+                strokeWidth={1.5}
+              />
+            )}
+
+            <div className="absolute inset-x-[18%] bottom-[14%] h-1.5 rounded-full bg-current/20" />
+            <div className="absolute inset-x-[24%] bottom-[9%] h-1 rounded-full bg-current/14" />
+
+            {isNew && (
+              <span className="absolute right-0 top-0 z-30 inline-flex items-center gap-0.5 rounded-bl-md bg-red-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:text-[9px]">
+                <Sparkles className="size-2" />
+                NEW
+              </span>
+            )}
+
+            <span className={cn(
+              'absolute left-1.5 bottom-1.5 z-30 rounded-full px-1.5 py-0.5 text-[8px] font-bold sm:text-[9px]',
+              'bg-white/85 backdrop-blur-sm',
+              theme.badgeText,
+            )}>
+              {chapterCount}章
             </span>
-          )}
+          </div>
         </div>
 
-        {/* タイトル */}
-        <h3 className="text-[13px] sm:text-base font-bold leading-snug text-gray-900 line-clamp-2 mb-1.5 sm:mb-2">
-          {title}
-        </h3>
-
-        {/* 説明 */}
-        <p className="text-xs leading-relaxed text-gray-500 line-clamp-3 mb-4 hidden sm:block">
+        {/* 説明（カード下部） */}
+        <p className="mt-2 text-[10px] sm:text-[11px] leading-relaxed text-gray-500 line-clamp-2">
           {description}
         </p>
-
-        {/* フッター */}
-        <div className="mt-auto flex items-center justify-between pt-1.5 sm:pt-2">
-          <span className={cn(
-            'inline-flex items-center rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold',
-            theme.badgeBg,
-            theme.badgeText,
-          )}>
-            全{chapterCount}章
-          </span>
-          <span
-            className={cn(
-              'inline-flex items-center gap-0.5 text-xs font-semibold',
-              theme.accent,
-            )}
-          >
-            読む
-            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-          </span>
-        </div>
       </Link>
 
-      {/* ホバー時のチャプタープレビュー */}
+      {/* ホバー時の目次ポップアップ */}
       {showChapters && chapters.length > 0 && (
         <div
           className={cn(
-            'absolute left-0 right-0 top-full z-30 -mt-1',
-            'rounded-[1.25rem] border-2 border-[#2f302f]/50 bg-white shadow-xl',
-            'animate-in fade-in slide-in-from-top-1 duration-150',
+            'absolute z-50 w-72',
+            'left-1/2 -translate-x-1/2 top-full mt-1',
+            'rounded-xl border border-gray-200 bg-white shadow-2xl',
           )}
           onMouseEnter={handleEnter}
           onMouseLeave={handleLeave}
         >
-          <div className="max-h-64 overflow-y-auto p-2">
+          <div className="border-b border-gray-100 px-3.5 py-2.5">
+            <p className="text-[11px] font-bold text-gray-900 line-clamp-1">{title}</p>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto py-1.5">
             <ol className="flex flex-col">
               {chapters.map((ch) => (
                 <li key={ch.chapterSlug}>
                   <Link
                     href={`/books/${bookSlug}/${ch.chapterSlug}`}
-                    className="flex items-start gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors hover:bg-gray-50"
+                    className="flex items-start gap-2 px-3.5 py-1.5 text-[11px] transition-colors hover:bg-gray-50"
                   >
-                    <span className={cn('shrink-0 font-mono tabular-nums mt-px', theme.accent)}>
+                    <span className={cn('shrink-0 font-mono tabular-nums mt-px font-semibold', theme.accent)}>
                       {String(ch.order).padStart(2, '0')}
                     </span>
-                    <span className="text-gray-700 line-clamp-1 group-hover/item:text-gray-900">
+                    <span className="text-gray-600 line-clamp-1 hover:text-gray-900">
                       {ch.title}
                     </span>
                   </Link>
@@ -160,12 +173,18 @@ export default function BookCard({
               ))}
             </ol>
           </div>
-          <div className="border-t border-gray-100 px-3 py-2">
+
+          <div className="border-t border-gray-100 px-3.5 py-2">
             <Link
               href={`/books/${bookSlug}`}
-              className={cn('text-[11px] font-semibold', theme.accent, 'hover:underline')}
+              className={cn(
+                'inline-flex items-center gap-1 text-[11px] font-semibold',
+                theme.accent,
+                'hover:underline',
+              )}
             >
-              教科書トップへ →
+              教科書を読む
+              <ArrowRight className="size-3" />
             </Link>
           </div>
         </div>

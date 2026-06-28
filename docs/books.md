@@ -37,9 +37,11 @@ content/
 ```yaml
 title: 'Next.jsからはじめよう'
 description: 'Reactベースのフレームワーク...'
+coverImage: '/images/books/nextjs-cover.png' # 任意。設定すると一覧カード背景に表紙画像を表示
 ```
 
 `bookSlug` はディレクトリ名から自動導出される（例: `content/books/nextjs/` → `bookSlug: "nextjs"`）。
+`coverImage` を省略した場合は、テーマごとのデフォルトアイコン背景を表示する。
 
 ### 章の MDX（`*.mdx`）
 

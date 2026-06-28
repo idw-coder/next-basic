@@ -1,2 +1,3 @@
 title: 'AWS SAA-C03 合格と実務のためのAWS設計入門'
 description: 'AWS Certified Solutions Architect - Associate (SAA-C03) の出題範囲に沿って、IAM、VPC、EC2、S3、RDS、DynamoDB、CloudFront、SQS、SNS、KMSなど主要AWSサービスの設計判断を実務目線で学ぶ教科書です。'
+coverImage: '/images/books/logos_aws.png'

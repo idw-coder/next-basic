@@ -1,2 +1,3 @@
 title: '結合テストとE2Eテストの実践'
 description: '結合テストとE2Eテストの違い、単体テストとの境界、コンポーネント結合、API結合、PlaywrightによるブラウザE2E、テストシナリオ設計、CIでの運用と保守を体系的に整理します。'
+coverImage: '/images/books/integration-and-e2e-testing.png'
