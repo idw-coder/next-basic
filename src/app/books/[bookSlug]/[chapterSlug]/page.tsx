@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ChevronRight } from 'lucide-react';
 import {
   getBook,
   getChapter,
@@ -10,10 +12,6 @@ import {
 import { MDXContent } from '@/components/mdx-content';
 import { ChapterNav } from '../../_components/ChapterNav';
 
-/**
- * SSG
- * ビルド時にすべてのパスを事前に把握して静的生成
- */
 export function generateStaticParams() {
   return getAllBooks().flatMap((book) =>
     getChaptersByBook(book.bookSlug).map((chapter) => ({
@@ -40,20 +38,50 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
 
 export default async function ChapterPage({ params }: ChapterPageProps) {
   const { bookSlug, chapterSlug } = await params;
+  const book = getBook(bookSlug);
   const chapter = getChapter(bookSlug, chapterSlug);
-  if (!chapter) notFound();
+  if (!chapter || !book) notFound();
 
   const { prev, next } = getAdjacentChapters(bookSlug, chapterSlug);
 
   return (
     <article>
+      {/* パンくず */}
+      <nav aria-label="パンくずリスト" className="mb-6 text-xs sm:text-sm">
+        <ol className="flex items-center gap-1 text-muted-foreground flex-wrap">
+          <li>
+            <Link href="/books" className="hover:text-foreground transition-colors">
+              教科書
+            </Link>
+          </li>
+          <li><ChevronRight className="size-3" /></li>
+          <li>
+            <Link
+              href={`/books/${bookSlug}`}
+              className="hover:text-foreground transition-colors truncate max-w-[120px] sm:max-w-[200px] inline-block align-bottom"
+            >
+              {book.title}
+            </Link>
+          </li>
+          <li><ChevronRight className="size-3" /></li>
+          <li className="text-foreground font-medium truncate max-w-[140px] sm:max-w-none">
+            {chapter.title}
+          </li>
+        </ol>
+      </nav>
+
+      <div className="mb-2 flex items-center gap-2">
+        <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+          第{chapter.order}章
+        </span>
+      </div>
       <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">
         {chapter.title}
       </h1>
       <div className="prose prose-gray max-w-none">
         <MDXContent code={chapter.body} />
       </div>
-      <ChapterNav prev={prev} next={next} />
+      <ChapterNav prev={prev} next={next} bookSlug={bookSlug} />
     </article>
   );
 }

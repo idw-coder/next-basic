@@ -7,16 +7,45 @@ import BookCard from '@/app/books/_components/BookCard';
 import { SectionHeading } from '@/components/SectionHeading';
 import { Button } from '@/components/ui/button';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web-mondai.com';
+
 export const metadata: Metadata = {
-  title: 'Books | ウェブエンジニア問題集',
-  description: 'エンジニア初学者向けの技術書コンテンツ。体系的に基礎から学べます。',
+  title: '教科書一覧 | ウェブエンジニア問題集',
+  description:
+    'HTML・CSS・JavaScript・React・AWS など、ウェブ開発の基礎を章ごとに体系的に学べる無料の技術書コンテンツ。クイズと組み合わせて理解を深められます。',
+  alternates: { canonical: '/books' },
+  openGraph: {
+    title: '教科書一覧 | ウェブエンジニア問題集',
+    description: 'ウェブ開発の基礎を体系的に学べる無料の技術書コンテンツ',
+    type: 'website',
+    locale: 'ja_JP',
+    url: `${SITE_URL}/books`,
+  },
 };
 
 export default function BooksPage() {
   const books = getAllBooks();
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: '教科書一覧',
+    description: 'ウェブ開発の基礎を体系的に学べる無料の技術書コンテンツ',
+    url: `${SITE_URL}/books`,
+    numberOfItems: books.length,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'ウェブエンジニア問題集',
+      url: SITE_URL,
+    },
+  };
+
   return (
     <div className="bg-[#fbf2e9] text-[#2f302f]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* ヒーロー */}
       <section className="relative overflow-hidden px-4 pt-8 pb-10 md:pt-16 md:pb-16">
         <Image

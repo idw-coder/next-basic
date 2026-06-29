@@ -10,21 +10,18 @@ interface FigureProps {
 export default function Figure({ src, alt, maxWidth, caption }: FigureProps) {
   return (
     <figure style={{ maxWidth, margin: '1.5rem auto' }}>
-      <Image
-        src={src}
-        alt={alt ?? ''}
-        width={800}
-        height={600}
-        style={{ width: '100%', height: 'auto', maxHeight: '20vh', objectFit: 'contain' }}
-      />
+      <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm">
+        <Image
+          src={src}
+          alt={alt ?? ''}
+          width={800}
+          height={600}
+          style={{ width: '100%', height: 'auto', maxHeight: '24vh', objectFit: 'contain' }}
+          className="bg-gray-50/50"
+        />
+      </div>
       {caption && (
-        <figcaption
-          style={{
-            fontSize: '0.875rem',
-            color: 'var(--muted-foreground)',
-            marginTop: '0.5rem',
-          }}
-        >
+        <figcaption className="mt-2 text-center text-[13px] text-muted-foreground">
           {caption}
         </figcaption>
       )}
