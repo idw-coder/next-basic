@@ -1,14 +1,8 @@
 ---
 title: '実践パターン集 — よくある型の書き方'
-description: '実務で繰り返し出てくるTypeScriptの型パターンを、逆引きリファレンスとして整理します。随時追加していきます。'
+description: '実務で繰り返し出てくるTypeScriptの型パターンを、逆引きリファレンスとして整理します。'
 order: 14
 ---
-
-<Callout type="column">
-### この章は拡充予定です
-
-現在、章の構成と主要トピックを掲載しています。パターンは随時追加していきます。
-</Callout>
 
 この章は逆引きリファレンスです。「こういうことがしたいとき、型をどう書くか」を場面ごとにまとめます。
 
@@ -16,42 +10,129 @@ order: 14
 やりたいことは分かってるのに、型の書き方だけ思い出せない…ってよくあるんだよね。
 </SpeechBubble>
 
----
+## APIレスポンスの型定義
 
-## 掲載予定のパターン
-
-### APIレスポンスの型定義
+APIの成功・失敗を型で表現するパターン。
 
 ```tsx
+// 成功レスポンス
 type ApiResponse<T> = {
   data: T;
-  meta: { total: number; page: number };
+  meta: { total: number; page: number; perPage: number };
 };
 
+// エラーレスポンス
 type ErrorResponse = {
   error: { code: string; message: string };
 };
 
-type ApiResult<T> = ApiResponse<T> | ErrorResponse;
+// 成功 or 失敗のユニオン型
+type ApiResult<T> =
+  | { ok: true; data: T; meta: ApiResponse<T>['meta'] }
+  | { ok: false; error: ErrorResponse['error'] };
 ```
-
-### フォームの状態管理
-
-複数フィールドを持つフォームのstate型と、フィールドごとの更新関数の型。
-
-### 環境変数の型付け
-
-`process.env` の型を安全に扱う方法。`global.d.ts` での型拡張パターン。
-
-### 配列から型を抽出する
 
 ```tsx
-const statuses = ['loading', 'success', 'error'] as const;
-type Status = (typeof statuses)[number];
-// 'loading' | 'success' | 'error'
+// 使用例 — fetch のラッパー関数
+async function fetchApi<T>(url: string): Promise<ApiResult<T>> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json();
+    return { ok: false, error: err.error };
+  }
+  const json = await res.json();
+  return { ok: true, data: json.data, meta: json.meta };
+}
+
+// 呼び出し側 — 型が絞り込まれる
+const result = await fetchApi<User[]>('/api/users');
+if (result.ok) {
+  console.log(result.data);  // User[]
+  console.log(result.meta.total);
+} else {
+  console.error(result.error.message);  // string
+}
 ```
 
-### オブジェクトのキーから型を作る
+<Marker>APIの成功・失敗を discriminated union で表現すると、呼び出し側で `if (result.ok)` だけで型が絞り込まれる。</Marker>
+
+## フォームの状態管理
+
+```tsx
+type LoginForm = {
+  email: string;
+  password: string;
+};
+
+// フィールドごとに更新できるハンドラ
+function useForm<T extends Record<string, unknown>>(initialValues: T) {
+  const [values, setValues] = useState(initialValues);
+
+  const handleChange = (field: keyof T, value: T[keyof T]) => {
+    setValues((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const reset = () => setValues(initialValues);
+
+  return { values, handleChange, reset };
+}
+
+// 使用例
+const { values, handleChange } = useForm<LoginForm>({
+  email: '',
+  password: '',
+});
+
+// handleChange('email', 'test@example.com')  ✅
+// handleChange('typo', 'value')               ❌ コンパイルエラー
+```
+
+## 環境変数の型付け
+
+`process.env` の型を安全に扱うには、型定義ファイルで拡張します。
+
+```tsx
+// env.d.ts（プロジェクトルートに置く）
+declare namespace NodeJS {
+  interface ProcessEnv {
+    DATABASE_URL: string;
+    JWT_SECRET: string;
+    NEXT_PUBLIC_API_URL: string;
+    NODE_ENV: 'development' | 'production' | 'test';
+  }
+}
+```
+
+```tsx
+// これで process.env.DATABASE_URL が string 型として補完される
+const dbUrl = process.env.DATABASE_URL;  // string
+
+// 存在しない環境変数はエラーになる
+// const x = process.env.TYPO;  // ❌ プロパティが存在しない
+```
+
+<Callout type="warning" title="型定義は実行時の存在を保証しない">
+`env.d.ts` で型を定義しても、実際にその環境変数がセットされている保証はありません。アプリ起動時にバリデーションを入れると安全です。
+</Callout>
+
+## 配列から型を抽出する（as const）
+
+```tsx
+const statuses = ['idle', 'loading', 'success', 'error'] as const;
+type Status = (typeof statuses)[number];
+// 'idle' | 'loading' | 'success' | 'error'
+
+// 配列とユニオン型を同時に使える
+function isValidStatus(value: string): value is Status {
+  return (statuses as readonly string[]).includes(value);
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`as const` を付けないと `string[]` に推論されてしまい、ユニオン型が取れない。`as const` は「この配列はリテラル型の読み取り専用タプルだ」と宣言するもの。
+</SpeechBubble>
+
+## オブジェクトのキーから型を作る
 
 ```tsx
 const routes = {
@@ -62,36 +143,125 @@ const routes = {
 
 type RouteName = keyof typeof routes;
 // 'home' | 'about' | 'contact'
+
+type RoutePath = (typeof routes)[RouteName];
+// '/' | '/about' | '/contact'
+
+// 型安全なナビゲーション関数
+function navigate(name: RouteName) {
+  const path = routes[name];
+  window.location.href = path;
+}
+
+navigate('home');    // ✅
+// navigate('typo'); // ❌ コンパイルエラー
 ```
 
-### 条件付きの型（Conditional Types）
+## 型の網羅性チェック（exhaustive check）
+
+switch文で全ケースを処理したことをコンパイラに保証させるパターン。
 
 ```tsx
-type IsString<T> = T extends string ? true : false;
+type Shape =
+  | { kind: 'circle'; radius: number }
+  | { kind: 'square'; side: number }
+  | { kind: 'triangle'; base: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':
+      return Math.PI * shape.radius ** 2;
+    case 'square':
+      return shape.side ** 2;
+    case 'triangle':
+      return (shape.base * shape.height) / 2;
+    default: {
+      const _exhaustive: never = shape;
+      return _exhaustive;
+    }
+  }
+}
 ```
 
-高度なトピックだが、ライブラリの型定義を読むときに必要になる場面がある。
+<Marker>将来 Shape にバリアントを追加したら、`never` に代入できなくなりコンパイルエラーで教えてくれる。</Marker>
 
-### Mapped Types
+## Mapped Types — 既存の型を変換する
 
 ```tsx
-type Optional<T> = {
+// すべてのプロパティをオプショナルにする（Partial の内部実装）
+type MyPartial<T> = {
   [K in keyof T]?: T[K];
 };
+
+// すべてのプロパティを読み取り専用にする（Readonly の内部実装）
+type MyReadonly<T> = {
+  readonly [K in keyof T]: T[K];
+};
+
+// 特定のキーだけ必須にする
+type RequireKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+type User = { name?: string; email?: string; age?: number };
+type UserWithEmail = RequireKeys<User, 'email'>;
+// email は必須、name と age はオプショナルのまま
 ```
 
-ユーティリティ型の内部で使われている仕組み。Partialの自作例として解説予定。
+## Template Literal Types
 
-### Template Literal Types
+文字列パターンを型で表現できます。
 
 ```tsx
-type EventName = `on${Capitalize<string>}`;
+type EventName = `on${Capitalize<'click' | 'change' | 'submit'>}`;
+// 'onClick' | 'onChange' | 'onSubmit'
+
+type CSSProperty = `${string}-${string}`;
+// 'background-color', 'font-size' など
 ```
 
-### 型の網羅性チェックのパターン集
+```tsx
+// 実務的な例: APIのエンドポイント型
+type ApiVersion = 'v1' | 'v2';
+type Resource = 'users' | 'products' | 'orders';
+type Endpoint = `/api/${ApiVersion}/${Resource}`;
+// '/api/v1/users' | '/api/v1/products' | '/api/v1/orders'
+// | '/api/v2/users' | '/api/v2/products' | '/api/v2/orders'
+```
 
-判別可能なユニオンとswitch文の組み合わせバリエーション。
+## Conditional Types
 
----
+ライブラリの型定義を読むときに出てくるパターン。
 
-この章のパターンは随時追加していきます。「こういう場面の書き方を知りたい」というリクエストがあればお寄せください。
+```tsx
+// 基本形
+type IsString<T> = T extends string ? 'yes' : 'no';
+type A = IsString<string>;   // 'yes'
+type B = IsString<number>;   // 'no'
+
+// infer で型を抽出する
+type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+
+type Fn = (x: number) => string;
+type Result = ReturnType<Fn>;  // string
+```
+
+<Callout type="info" title="infer は型のパターンマッチ">
+`infer R` は「この位置にある型を R として取り出す」という宣言です。関数の戻り値、Promise の中身、配列の要素型など、様々な型から情報を抽出できます。
+</Callout>
+
+```tsx
+// Promise の中身を取り出す
+type Awaited<T> = T extends Promise<infer U> ? U : T;
+
+type P = Awaited<Promise<string>>;  // string
+type Q = Awaited<string>;           // string（Promiseでないならそのまま）
+```
+
+<Figure src="/images/deta_man_color.png" alt="型パターンの活用" caption="これらのパターンは丸暗記せず、必要なときにこのページを参照する使い方で十分" maxWidth="240px" />
+
+## ちゃんと使うためのポイント
+
+- APIレスポンスは discriminated union で成功・失敗を表現する
+- `as const` で配列やオブジェクトからリテラル型を抽出できる
+- 環境変数は `env.d.ts` で型を付けるが、実行時の存在は別途バリデーション
+- exhaustive check で switch 文の網羅性をコンパイラに保証させる
+- Mapped Types / Conditional Types はライブラリの型定義を読むときに知っていると強い

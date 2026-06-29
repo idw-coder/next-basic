@@ -137,6 +137,16 @@ flowchart LR
 
 衝突が多くなると検索のたびにリストを辿ることになり、**平均O(1)が最悪O(n)** まで劣化します。
 
+<Figure src="/images/deta_man_color.png" alt="データ構造を選ぶ" caption="「どの操作を速くしたいか」でデータ構造を選ぶのが基本" maxWidth="240px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+JavaScriptだと配列とMapくらいしか使ったことない…。スタックやキューって本当に実務で出てくる？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+意識していないだけで、すでに使っているよ。ブラウザの「戻る」ボタンはスタック、非同期タスクの実行順はキュー。仕組みを知っていると、バグの原因が見えるようになる。
+</SpeechBubble>
+
 ## よくあるハマりどころ
 
 **1. JavaScriptで `Array.shift` をループの中で大量に使って遅い**

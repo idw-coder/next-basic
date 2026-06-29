@@ -4,46 +4,175 @@ description: 'TypeScriptプロジェクトの設定ファイルtsconfig.jsonの�
 order: 11
 ---
 
-<Callout type="column">
-### この章は拡充予定です
-
-現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
-</Callout>
-
-`tsconfig.json` はTypeScriptプロジェクトの設定ファイルです。コンパイラの挙動を制御するオプションが多数あり、初見では圧倒されがちですが、実務で重要なものは限られています。
+`tsconfig.json` はTypeScriptプロジェクトの設定ファイルです。オプションが多く初見では圧倒されますが、実務で重要なものは限られています。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 `tsconfig.json` のオプションが多すぎて開く気が失せる…。全部理解しないとダメ？
 </SpeechBubble>
 
----
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+全部覚える必要はない。まず `strict` を有効にして、あとはプロジェクトで問題が出たときにピンポイントで調べれば十分だよ。
+</SpeechBubble>
 
-## 扱うトピック
+## strictモード — まずこれを有効にする
 
-### strictモード
+`strict: true` は、複数の厳格チェックをまとめて有効にするフラグです。
 
-`strict: true` が有効にするオプション群（`strictNullChecks`、`noImplicitAny`、`strictFunctionTypes` など）の個別解説予定です。
+```json
+{
+  "compilerOptions": {
+    "strict": true
+  }
+}
+```
 
-### target と module
+`strict: true` が有効にする主要オプション：
 
-コンパイル先のJavaScriptバージョンとモジュール形式の指定。ESNext、CommonJS、ES Modulesの関係を整理予定です。
+| オプション | 何をチェックするか |
+|---|---|
+| `strictNullChecks` | `null` / `undefined` を型レベルで区別する |
+| `noImplicitAny` | 型推論できないものに暗黙の `any` を禁止する |
+| `strictFunctionTypes` | 関数の引数型を厳密にチェックする |
+| `strictPropertyInitialization` | classプロパティの初期化漏れを検出する |
 
-### moduleResolution
+```typescript
+// strictNullChecks: true の場合
+function greet(name: string | null) {
+  // ❌ name.toUpperCase(); // Object is possibly 'null'
+  // ✅
+  if (name) {
+    name.toUpperCase();
+  }
+}
 
-`node`、`node16`、`bundler` の違いと、Next.jsやViteでの推奨設定を解説予定です。
+// noImplicitAny: true の場合
+// ❌ function process(data) {} // Parameter 'data' implicitly has an 'any' type
+// ✅
+function process(data: unknown) {}
+```
 
-### paths と baseUrl
+<Callout type="warning">
+### 既存プロジェクトで strict を有効にするとき
 
-パスエイリアスの設定方法。`@/` のようなエイリアスがどう解決されるかを解説予定です。
+一度に全ファイルでエラーが出ることがある。`strict: false` のまま個別オプションを1つずつ有効にしていくか、`// @ts-expect-error` で段階的に対応する。
+</Callout>
 
-### include と exclude
+## target と module — 出力するJSの形式
 
-コンパイル対象のファイルの指定方法を解説予定です。
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext"
+  }
+}
+```
 
-### Next.jsやViteのtsconfig
+| オプション | 決めること | よくある値 |
+|---|---|---|
+| `target` | コンパイル先のJSバージョン | `ES2020`, `ES2022`, `ESNext` |
+| `module` | 出力するモジュール形式 | `ESNext`, `CommonJS`, `Node16` |
 
-フレームワークが生成するデフォルトの `tsconfig.json` の読み方を解説予定です。
+`target` を低くすると、`async/await` がジェネレータに変換されるなど出力が複雑になります。モダンブラウザやNode.js 18+なら `ES2022` 以上で問題ありません。
 
----
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`target` と `module` の違いがよく分からない…。どちらもES何とかを指定するけど何が違うの？
+</SpeechBubble>
 
-この章の詳細な内容は順次追加していきます。
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`target` は「どのバージョンのJSに変換するか」で、`module` は「import/exportをどの形式で出力するか」。Next.jsやViteならフレームワークが適切なデフォルトを設定してくれるから、そのまま使えばOK。
+</SpeechBubble>
+
+## moduleResolution — importの解決方法
+
+```json
+{
+  "compilerOptions": {
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+| 値 | 使う場面 |
+|---|---|
+| `node` | 従来のNode.js（CommonJS中心） |
+| `node16` / `nodenext` | Node.js 16+のESM対応 |
+| `bundler` | Vite, Next.js, webpackなどバンドラー経由 |
+
+`bundler` はバンドラーが解決してくれる前提で、拡張子なしの `import` や `package.json` の `exports` フィールドを柔軟に扱います。フロントエンド開発では `bundler` が推奨されています。
+
+## paths と baseUrl — パスエイリアス
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+これで `import { Button } from '@/components/Button'` のようなエイリアスが使えます。
+
+<Callout type="info">
+### パスエイリアスの解決はTypeScriptだけでは完結しない
+
+`paths` はTypeScriptの型チェック時の解決のみ。実行時にも効かせるには、バンドラー側（Vite の `resolve.alias`、Next.js なら自動対応）の設定も必要です。
+</Callout>
+
+## include と exclude
+
+```json
+{
+  "include": ["src/**/*", "types/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+`include` に指定したパターンに一致するファイルだけがコンパイル対象になります。`exclude` は `include` の結果からさらに除外するファイルを指定します。
+
+## フレームワークのtsconfig
+
+Next.jsやViteは、プロジェクト作成時にtsconfigを自動生成します。
+
+```json
+// Next.js が生成する tsconfig.json（抜粋）
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "strict": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+<Figure src="/images/readingbook_woman_color.png" alt="tsconfigを読む" caption="フレームワークが生成したtsconfigは、まず触らず意味を理解してから変更する" maxWidth="240px" />
+
+フレームワークが生成したtsconfigは**理由があってその値になっている**ため、意味が分からないまま変更すると問題が起きやすいです。変更するときは、そのオプションが何を制御しているかを確認してから行います。
+
+## 実務でよく変更するオプション一覧
+
+| オプション | 用途 | よくある変更 |
+|---|---|---|
+| `strict` | 厳密な型チェック | 新規は `true`、レガシーは段階的に |
+| `target` | JS出力バージョン | 環境に合わせて `ES2022` 以上 |
+| `paths` | パスエイリアス | `@/*` を追加 |
+| `skipLibCheck` | `.d.ts` のチェック省略 | ビルド高速化のため `true` |
+| `noUncheckedIndexedAccess` | 配列・オブジェクトのアクセスに `undefined` を含める | 安全性を上げるなら `true` |
+| `verbatimModuleSyntax` | `import type` の明示を強制 | バンドルサイズ最適化 |
+
+## ちゃんと使うためのポイント
+
+- <Marker>まず `strict: true` を有効にする。新規プロジェクトでは必須</Marker>
+- フレームワーク生成のtsconfigは理解してから変更する
+- `moduleResolution: "bundler"` がフロントエンド開発の現在の推奨
+- `paths` の設定はTypeScriptだけでなくバンドラー側も合わせる
+- 困ったときは公式ドキュメントのTSConfig Referenceを確認する

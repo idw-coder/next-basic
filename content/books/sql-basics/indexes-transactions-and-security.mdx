@@ -103,6 +103,16 @@ DBMSによって表示形式は違いますが、主に次の点を見ます。
 
 <Marker>遅いSQLを直すときは、勘でインデックスを貼る前に `EXPLAIN` で実行計画を確認します。</Marker>
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+インデックスを貼ればとにかく速くなるの？全部の列に貼ったほうがいい？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+インデックスは検索を速くするけど、INSERT・UPDATE・DELETEが遅くなる。まずEXPLAINで遅いクエリを特定してから、必要な列にだけ貼るのが正解だよ。
+</SpeechBubble>
+
+<Figure src="/images/deskwork_check_woman_color.png" caption="インデックス・トランザクション・セキュリティの知識は、安全な運用に欠かせません" />
+
 ## トランザクションとは
 
 トランザクションは、複数のSQLをひとまとまりの処理として扱う仕組みです。
@@ -200,6 +210,14 @@ COMMIT;
 ロックを長く持つと、他の処理が待たされます。
 トランザクション内では、外部API呼び出しやユーザー入力待ちのような時間が読めない処理を避けます。
 </Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ORMを使っていればSQLインジェクションは気にしなくていい？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ORMでも生SQLを文字列連結で書いたら危険。ORMのクエリビルダやプレースホルダ機能をちゃんと使うことが大事だよ。
+</SpeechBubble>
 
 ## SQLインジェクションとは
 

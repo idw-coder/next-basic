@@ -42,6 +42,14 @@ Gitのブランチは、他のバージョン管理システムと比べて**極
 
 新しいブランチを作るのは、コミットに付箋を貼るだけの操作。ファイルのコピーは一切発生しません。だからGitでは「まずブランチを切る」が日常的なスタイルになります。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ポインタだけ…？じゃあブランチを100個作ってもリポジトリは重くならないの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+その通りです。ブランチはただのラベルなので、いくつ作っても容量にはほぼ影響しません。だから「とりあえずブランチを切る」が気軽にできるんです。
+</SpeechBubble>
+
 ## ブランチを確認する
 
 現在あるブランチの一覧を確認します。
@@ -100,6 +108,10 @@ Gitには歴史的な経緯があって、ブランチ操作は長らく `git ch
 
 **新しく覚えるなら `switch` と `restore` を使う**のが推奨です。ただし、ネットの記事や古いドキュメントでは `checkout` が使われていることが多いので、両方読めるようにしておきましょう。
 
+<Figure src="/images/fork_suit_man_color.png" alt="分岐するブランチのイメージ" width={180}>
+ブランチは「作業を分岐させる」仕組み。気軽に作って、終わったらマージして削除が基本です。
+</Figure>
+
 ## ブランチの命名規則
 
 ブランチ名は自由に付けられますが、**チームで一貫した命名規則**を持つのが一般的です。よく見るパターンは以下です。
@@ -157,6 +169,14 @@ git config --global alias.graph "log --oneline --graph --all --decorate"
 ## よくあるハマりどころ
 
 **1. 違うブランチで作業してしまった**
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+あっ、`main` で直接コード書いちゃった…！これどうすればいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+まだコミットしていなければ大丈夫。`git stash` で変更を退避して、正しいブランチに切り替えてから `git stash pop` で戻せます。9章で詳しく学びますよ。
+</SpeechBubble>
 
 `git switch` を忘れて `main` で作業を始めてしまった場合、まだコミットしていなければ `git stash` で退避してからブランチを切り替え、`git stash pop` で戻せます（stashの詳細は9章で扱います）。
 

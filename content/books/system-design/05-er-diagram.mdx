@@ -26,6 +26,8 @@ flowchart LR
     C -->|N:1| D["products"]
 `} />
 
+<Figure src="/images/planning_suit_man_color.png" alt="設計を考えるエンジニア" caption="ER図はコードを書く前に、データ構造をチームで合意するための設計図" maxWidth="280px" />
+
 ## リレーションの種類
 
 | リレーション | 説明 | 例 |
@@ -34,19 +36,176 @@ flowchart LR
 | 1:N | 一方のレコードに対して相手が複数 | users → orders |
 | N:N | 双方とも複数（中間テーブルが必要） | products ↔ tags |
 
-> 残りのセクションは現在執筆中です。
->
-> - 正規化（第1〜第3正規形）の考え方
-> - 非正規化する判断基準（パフォーマンスとのトレードオフ）
-> - 論理削除カラム（deleted_at）の設計
-> - インデックス設計の基本
-> - テーブル定義書のテンプレート
+### 中間テーブルが必要になるケース
+
+N:N のリレーションは、RDBでは直接表現できません。中間テーブルを置いて、2つの1:Nに分解します。
+
+```sql
+-- 商品とタグの N:N → 中間テーブル product_tags で解決
+CREATE TABLE product_tags (
+  product_id INT NOT NULL,
+  tag_id     INT NOT NULL,
+  PRIMARY KEY (product_id, tag_id),
+  FOREIGN KEY (product_id) REFERENCES products(id),
+  FOREIGN KEY (tag_id)     REFERENCES tags(id)
+);
+```
+
+<MermaidDiagram chart={`
+flowchart LR
+    P["products"] -->|1:N| PT["product_tags"]
+    PT -->|N:1| T["tags"]
+`} />
+
+## 正規化 — データの重複を排除する
+
+正規化は、データの冗長性を減らし、更新時の矛盾を防ぐための設計手法です。
+
+### 第1正規形（1NF）— 繰り返しを排除する
+
+1つのカラムに複数の値を入れない。
+
+```text
+❌ 非正規形
+| order_id | items            |
+|----------|-----------------|
+| 1        | りんご, みかん    |
+
+✅ 第1正規形
+| order_id | item    |
+|----------|---------|
+| 1        | りんご   |
+| 1        | みかん   |
+```
+
+### 第2正規形（2NF）— 部分関数従属を排除する
+
+複合主キーの一部にだけ依存するカラムを別テーブルに分ける。
+
+```text
+❌ 部分関数従属あり
+| order_id | product_id | product_name | quantity |
+|----------|-----------|--------------|----------|
+| 1        | 101       | りんご        | 3        |
+
+product_name は product_id だけで決まる（order_id は不要）
+
+✅ 第2正規形
+orders_items: order_id, product_id, quantity
+products:     product_id, product_name
+```
+
+### 第3正規形（3NF）— 推移的関数従属を排除する
+
+主キー以外のカラムに依存するカラムを別テーブルに分ける。
+
+```text
+❌ 推移的関数従属あり
+| user_id | department_id | department_name |
+
+department_name は department_id で決まる（user_id からは間接的）
+
+✅ 第3正規形
+users:       user_id, department_id
+departments: department_id, department_name
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+実務では第3正規形まで整理すれば十分なケースがほとんど。「同じデータが2箇所以上に書いてあるなら、正規化を疑う」と覚えておくと判断しやすいよ。
+</SpeechBubble>
+
+## 非正規化する判断基準
+
+正規化は原則だが、パフォーマンスのために意図的に崩す場合があります。
+
+| 場面 | 非正規化の例 | 理由 |
+|---|---|---|
+| 参照が圧倒的に多い | ユーザー名をordersテーブルにも持つ | JOINを減らして読み取り速度を上げる |
+| 集計をリアルタイムで見せたい | 注文合計金額をordersに持つ | 毎回SUM()するより速い |
+| 履歴として固定したい | 注文時点の商品価格をorder_itemsに持つ | 商品の値段が変わっても注文時の金額を保持 |
+
+<Callout type="warning" title="非正規化は意図的にやる">
+非正規化は「正規化のルールを知った上で、理由をもって崩す」行為です。最初から正規化せずにテーブルを作るのとは全く違います。非正規化した理由をテーブル定義書やコメントに残しておくことが重要です。
+</Callout>
+
+## 論理削除カラム（deleted_at）の設計
+
+レコードを物理的にDELETEせず、`deleted_at` カラムで「削除済み」を表現する手法。
+
+```sql
+ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL;
+
+-- 論理削除
+UPDATE users SET deleted_at = NOW() WHERE id = 1;
+
+-- 有効なユーザーだけ取得
+SELECT * FROM users WHERE deleted_at IS NULL;
+```
+
+| 方式 | メリット | デメリット |
+|---|---|---|
+| 論理削除 | 復元が容易、監査ログ代わりになる | 全クエリに `WHERE deleted_at IS NULL` が必要 |
+| 物理削除 | クエリがシンプル | 復元不可、参照整合性に注意 |
+
+<Marker>論理削除を採用するなら、全クエリに条件を付け忘れない仕組み（ORM のデフォルトスコープなど）を入れること。</Marker>
+
+## インデックス設計の基本
+
+インデックスはテーブルの検索を高速化するが、書き込み時にはオーバーヘッドが生じます。
+
+```sql
+-- WHERE句で頻繁に使うカラムにインデックスを張る
+CREATE INDEX idx_users_email ON users(email);
+
+-- 複合インデックス（左端のカラムから使われる）
+CREATE INDEX idx_orders_user_status ON orders(user_id, status);
+```
+
+| 張るべき場所 | 理由 |
+|---|---|
+| WHERE句の条件カラム | 検索を高速化 |
+| JOIN条件のカラム | 結合を高速化 |
+| 外部キーのカラム | 参照整合性チェックと結合を高速化 |
+| ORDER BY / GROUP BY のカラム | ソート・集計を高速化 |
+
+<Callout type="info" title="インデックスは銀の弾丸ではない">
+すべてのカラムにインデックスを張ると、INSERT/UPDATEが遅くなります。実際のクエリパターンを見て、効果の高いものに絞って張るのが基本です。
+</Callout>
+
+## テーブル定義書のテンプレート
+
+実務では、ER図とあわせてテーブル定義書を残します。
+
+```text
+テーブル名: orders
+説明: 注文情報を管理する
+
+| カラム名     | 型            | NULL | デフォルト | 説明               |
+|-------------|---------------|------|-----------|--------------------|
+| id          | BIGINT        | NO   | AUTO_INC  | 主キー              |
+| user_id     | BIGINT        | NO   |           | FK: users.id       |
+| total_price | DECIMAL(10,2) | NO   |           | 注文合計金額（税込） |
+| status      | VARCHAR(20)   | NO   | 'pending' | pending/paid/shipped/cancelled |
+| created_at  | TIMESTAMP     | NO   | NOW()     | 作成日時            |
+| updated_at  | TIMESTAMP     | NO   | NOW()     | 更新日時            |
+| deleted_at  | TIMESTAMP     | YES  | NULL      | 論理削除日時         |
+
+インデックス:
+- idx_orders_user_id (user_id)
+- idx_orders_status (status)
+
+非正規化の意図:
+- total_price: 注文時点の合計金額を保持。商品価格変更の影響を受けない
+```
 
 ## ちゃんと使うためのポイント
 
 - <Marker>テーブル設計はシステムの土台。後から変更するコストが最も高い</Marker>
 - まずER図で全体のリレーションを俯瞰し、その後カラムレベルに落とす
 - 正規化は原則だが、パフォーマンス要件によっては意図的に崩す判断もある
+- N:N は中間テーブルで 1:N × 2 に分解する
+- 論理削除を使うなら、全クエリに条件を忘れない仕組みを入れる
+- インデックスはクエリパターンに応じて効果の高いものに絞る
 - 「なぜこの構造にしたか」をテーブル定義書に残しておく
 
 次の章では、テーブルの上に乗る**API設計**の基本を見ていきます。

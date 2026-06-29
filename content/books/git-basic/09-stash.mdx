@@ -112,6 +112,14 @@ git stash pop
 
 `git stash` があれば、途中の作業を捨てずに別の仕事を挟めます。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+stash って要するに「引き出しにしまう」みたいなイメージ？何個もしまえるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+まさにそのイメージです。何個でもしまえますし、メッセージ付きで保存すれば後から探しやすくなります。ただし長期保存には向かないので、1日以上残りそうならブランチを切ってコミットしましょう。
+</SpeechBubble>
+
 ### ブランチを間違えた
 
 作業ブランチを切り忘れて `main` に直接編集してしまった、というときも `stash` が便利です。
@@ -138,6 +146,10 @@ git stash
 git pull
 git stash pop
 ```
+
+<Figure src="/images/boomerang_woman_color.png" alt="ブーメランのように戻ってくるstash" width={180}>
+stash は「一時退避して、後で戻す」ブーメランのような機能。緊急対応が入ったときの強い味方です。
+</Figure>
 
 ## 部分的に退避する
 
@@ -209,6 +221,14 @@ git stash -a
 新規ファイルは `-u` を付けないと退避されません。`git stash -u` を使ってください。
 
 **2. stash popでコンフリクト**
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+stash pop したらコンフリクトした…。退避した変更は消えちゃった？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+`pop` でコンフリクトしても、stash自体は消えずに残る場合があります。心配なら `apply` で復元してから確認し、問題なければ `drop` で削除する2段階方式が安全です。
+</SpeechBubble>
 
 別のブランチに切り替えてから `stash pop` した場合、そのブランチの状態と退避内容がコンフリクトすることがあります。普通のマージコンフリクトと同じ手順（編集 → `git add`）で解決できます。
 

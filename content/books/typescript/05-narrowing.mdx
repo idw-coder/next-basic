@@ -202,6 +202,16 @@ function renderState(state: RequestState): string {
 
 <a id="section-6"></a>
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Narrowingって、結局 `if` で型チェックしてるだけじゃない？わざわざ名前をつけるほどのこと？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+TypeScriptが「ifの条件から型を推論して、ブロック内で型を自動的に絞り込む」のがNarrowing。ただのif文じゃなくて、コンパイラが制御フローを解析してくれているんだよ。これを理解するとasを使わずに型安全なコードが書ける。
+</SpeechBubble>
+
+<Figure src="/images/inspiration_color.png" alt="型の絞り込み" caption="Narrowingを使いこなすと、as（型アサーション）に頼る場面が激減する" maxWidth="240px" />
+
 ## 真偽値チェックによる絞り込み
 
 `null` や `undefined` の可能性がある型は、真偽値チェックで絞り込めます。

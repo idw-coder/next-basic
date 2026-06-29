@@ -56,6 +56,14 @@ git add -p
 
 `git add -p` は上級者がよく使うテクニックで、ファイル内の変更箇所（hunk）ごとに「これは含める」「これは含めない」を選べます。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+なるほど…でも最初のうちは `git add .` で全部追加しちゃって大丈夫？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+最初は `git add .` でOKです。ただし `.env` や `node_modules/` など、コミットしてはいけないファイルを `.gitignore` に書いてからにしましょう。慣れてきたらファイル単位で `add` する癖をつけると安全です。
+</SpeechBubble>
+
 ## リポジトリを作る
 
 まずは新しいリポジトリを作りましょう。適当なディレクトリで以下を実行します。
@@ -152,6 +160,10 @@ git commit -m "Add README"
 
 先頭に `feat:` `fix:` `docs:` などのプレフィックスを付ける [Conventional Commits](https://www.conventionalcommits.org/ja/) という慣習もあり、チーム開発ではよく採用されています。
 
+<Figure src="/images/stepup_suit_man_color.png" alt="ステップアップする人" width={180}>
+add → commit → push の3ステップが基本フロー。この流れを体で覚えれば、あとは応用です。
+</Figure>
+
 ## git push でGitHubに送る
 
 ローカルでコミットしただけでは、まだGitHubには反映されていません。GitHubに送るには、まずリモートリポジトリの情報を登録します。
@@ -207,6 +219,14 @@ git push -u origin main
 **2. `git add` したあとにファイルを編集したら、編集分が反映されない**
 
 `git add` はその時点のスナップショットをステージングに取ります。`add` 後に編集した内容をコミットに含めたい場合は、もう一度 `git add` が必要です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`add` したのに `commit` したら変更が入ってない…！なんで？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`add` の後にファイルを編集しませんでしたか？ `add` は「その瞬間の状態」を記録するので、追加編集したら再度 `add` が必要です。`git status` で確認する癖をつけましょう。
+</SpeechBubble>
 
 **3. `.gitignore` で除外し忘れたファイルをコミットしてしまった**
 

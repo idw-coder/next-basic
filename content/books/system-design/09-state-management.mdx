@@ -8,6 +8,12 @@ order: 9
 状態って全部フロントで持てばよくない？わざわざサーバーと切り分ける意味があるの？
 </SpeechBubble>
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+それだと「ブラウザをリロードしたらデータが消える」「複数タブで状態が同期しない」「オフラインで動かない」といった問題がすぐ出てくる。どこに何を持つかは設計の重要な判断だよ。
+</SpeechBubble>
+
+<Figure src="/images/planning_suit_man_color.png" alt="状態管理の設計" caption="状態の置き場所を設計段階で決めることが、保守性とパフォーマンスの両方に影響する" maxWidth="260px" />
+
 ## なぜ「どこに持つか」を考える必要があるのか
 
 アプリケーションには様々な「状態」が存在する。ユーザーの入力中のフォームデータ、APIから取得した一覧データ、ログイン中のユーザー情報、UIの開閉状態など。
@@ -88,6 +94,14 @@ BFFを置くことで、フロントの状態管理層は「整形済みのデ�
 キャッシュの無効化を適切に設計しないと「操作したのに画面に反映されない」という問題が起きる。これはバグではなくキャッシュ設計の不備であることが多い。
 
 ---
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+BFFって要するに「フロント専用のAPI」を1枚かませるってことですよね？それって作業が増えるだけじゃない…？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+バックエンドのAPIが安定していて、フロントが1つだけならBFFは不要。でもバックエンドが複数マイクロサービスに分かれていたり、Web版とモバイル版で表示するデータが違う場合は、BFFで整形した方がフロントがシンプルになるよ。
+</SpeechBubble>
 
 ## 設計時に決めておくべきこと
 

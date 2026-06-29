@@ -99,6 +99,12 @@ HTTP/3はTCPではなく、UDPベースの **QUIC** の上で動きます。
 
 HTTPの詳細は [HTTPとWeb API](/books/http-and-web-api) で扱っています。この章では、HTTPがTCPやUDPの上で動くアプリケーション層のプロトコルだと押さえれば十分です。
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+QUICがUDP上にTCPのような信頼性を再実装している、というのが面白いところ。「UDP = 信頼性がない」と丸暗記すると、HTTP/3の仕組みが理解できなくなるよ。
+</SpeechBubble>
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="ポートが繋がらない" caption="接続できないときは、プロセス → ポート → ファイアウォールの順に確認する" maxWidth="240px" />
+
 ## ファイアウォールでポートが閉じている
 
 サーバー側でアプリケーションが起動していても、ファイアウォールやクラウドのセキュリティグループでポートが閉じていると接続できません。

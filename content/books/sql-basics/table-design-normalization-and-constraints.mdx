@@ -90,6 +90,10 @@ VALUES (1, 999, CURRENT_TIMESTAMP);
 重要な関係はDB制約として表す方が堅牢です。
 </Callout>
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+正規化は試験用語じゃなくて実務で毎日使う考え方。「同じ情報を2箇所に持たない」を意識するだけで、更新漏れやバグがぐっと減るよ。
+</SpeechBubble>
+
 ## 制約でデータを守る
 
 制約は、テーブルに入るデータのルールです。
@@ -172,6 +176,16 @@ CREATE TABLE product_tags (
   FOREIGN KEY (tag_id) REFERENCES tags(id)
 );
 ```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+制約をたくさん付けると、開発中にINSERTが面倒になりません？外しておいた方が楽では？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+面倒に感じるのは正しいデータを入れようとしている証拠。制約を外すと本番で不正データが入ったときに気づけなくなるから、開発中もなるべく付けておこう。
+</SpeechBubble>
+
+<Figure src="/images/planning_suit_man_color.png" caption="テーブル設計と制約を丁寧に決めることが、長期的に保守しやすいシステムの土台になります" />
 
 ## 正規化とは
 

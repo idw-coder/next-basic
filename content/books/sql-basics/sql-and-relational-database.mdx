@@ -41,6 +41,10 @@ ORDER BY created_at DESC;
 このSQLは「有効なユーザーの名前とメールアドレスを、新しい順に取り出したい」と宣言しています。
 実際にどのインデックスを使うか、どの順番で読み込むかはDBMSが判断します。
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+SQLは「何をしたいか」を書く言語で、「どうやるか」はDBMS任せ。構文だけでなく、データの構造を理解することが実務の近道だよ。
+</SpeechBubble>
+
 ## リレーショナルデータベースとは
 
 リレーショナルデータベースは、データを**テーブル**として管理します。
@@ -122,6 +126,16 @@ CREATE TABLE orders (
 ```
 
 <Marker>主キーはその行自身の識別子です。外部キーは参照先の主キー値を格納する列であり、その行自身を識別するためのものではありません。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+主キーと外部キーの違いがごっちゃになりがち…。外部キーって必ず必要なの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+外部キー制約はなくても動くけど、付けないとゴミデータが入りやすい。「存在しないユーザーの注文」が入ったらバグの原因になるから、基本は付けよう。
+</SpeechBubble>
+
+<Figure src="/images/readingbook_woman_color.png" caption="データ構造を理解してからSQLを書くことで、無駄のない設計・クエリにつながります" />
 
 ## DBMSの違い
 

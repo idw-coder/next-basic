@@ -47,6 +47,10 @@ IPv4は約43億個しかなく、現在のインターネット全体には足�
 Dockerコンテナ内で `localhost` と書くと、そのコンテナ自身を指します。ホストPCや別コンテナを指すわけではありません。Docker Composeではサービス名、ホストPCへは環境に応じて `host.docker.internal` などを使います。
 </Callout>
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ここは実務で混乱しやすいポイント。Docker、AWS、ローカル開発で「どのIPを指定すればいいか」に迷ったら、この表に戻って確認しよう。
+</SpeechBubble>
+
 ## MACアドレスとの違い
 
 IPアドレスはネットワーク上の論理的な住所ですが、MACアドレスはネットワーク機器に紐づく物理的な識別子です。
@@ -102,6 +106,8 @@ Router: 203.0.113.10:62001
 ```
 
 外から家庭内や社内のサーバーへアクセスさせたい場合は、ルーターに **ポートフォワーディング** を設定して「外部のこのポートへ来た通信を内部のこの端末へ転送する」と指定します。
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="ネットワーク設定の確認" caption="インフラやDocker設定で迷ったら、IPアドレスの種類とNATの仕組みを思い出す" maxWidth="240px" />
 
 ## ちゃんと使うためのポイント
 

@@ -44,6 +44,14 @@ PRを作ると、GitHub上に以下のような画面が生まれます。
 
 レビュアーはこの画面で変更内容を確認し、コメントや修正依頼を返します。承認されたらマージボタンでmainに取り込む、という流れです。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+PRって、レビュー受けるの正直ちょっと怖い…。ダメ出しされそうで…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+レビューは「あなた」ではなく「コード」に対するフィードバックです。指摘が多いほど丁寧に見てくれている証拠。むしろレビューのない環境のほうが危険ですよ。最初は誰でも緊張しますが、やりとりを重ねるうちに慣れます。
+</SpeechBubble>
+
 ## PRを作る手順
 
 ### 1. ブランチを切って作業する
@@ -185,6 +193,14 @@ gitGraph
 
 迷ったらSquash、で問題ありません。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+うちのチームではどのマージ戦略を使えばいいのか分からない…。途中で変えても大丈夫？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+途中で変更しても過去の履歴には影響しません。まだ方針が決まっていないなら Squash merge から始めるのがおすすめです。mainの履歴が1PR=1コミットで綺麗に保てます。チームで話し合って決めましょう。
+</SpeechBubble>
+
 ## CIとの連携
 
 最近のGitHubリポジトリは、PRを作ると自動でテストやLintが走るのが普通です。これを CI（Continuous Integration）と呼びます。
@@ -208,6 +224,10 @@ GitHubのリポジトリ設定で、**mainブランチへの直接pushを禁止*
 - CIが通らないとマージ不可
 
 この設定が入っていれば、事故でmainを壊すことは起こりにくくなります。チームで開発するリポジトリでは**ほぼ必須の設定**です。
+
+<Figure src="/images/highfive_hi_color.png" alt="ハイタッチする人たち" width={180}>
+チーム開発はPRを中心に回ります。レビューの文化を大切にして、良いコードを一緒に作りましょう。
+</Figure>
 
 ## マージ後の後片付け
 

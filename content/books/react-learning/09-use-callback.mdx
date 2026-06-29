@@ -173,6 +173,8 @@ function Parent() {
 
 ## useEffectの依存配列に関数を含める場合
 
+<Figure src="/images/gats_suit_man_color.png" alt="コールバックの参照安定化を理解するイメージ" maxWidth="120px" />
+
 07章で触れたケースの続きです。`useEffect` の依存配列に関数を入れるとき、その関数が毎回新しく生成されるとエフェクトが毎回再実行されます。
 
 ```tsx
@@ -208,6 +210,14 @@ function SearchResults({ query }: { query: string }) {
 ---
 
 ## 依存配列にstateを含めるuseCallback
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`useCallback` の依存配列にstateを入れたら、stateが変わるたびに関数が再生成されちゃう…。それってメモ化の意味なくない？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そこがポイント。updater function（`setTodos(prev => ...)` の形）を使えば、stateをクロージャで参照しなくて済むから依存配列から外せるよ。
+</SpeechBubble>
 
 `useCallback` の依存配列にstateを含める場合、そのstateが頻繁に変わると関数もそのたびに再生成されます。
 

@@ -114,6 +114,14 @@ const title = "Hello";
 const title = "Hello";
 ```
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+HEAD側と取り込み側、両方の変更を残したい場合もあるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+もちろんあります。両方残す場合は、マーカーだけ消して両方のコードを残せばOKです。VS Codeなら「Accept Both Changes」ボタン一発でできますよ。
+</SpeechBubble>
+
 「両方採用したい」ケースもあります。その場合は両方残してマーカーだけ消します。
 
 ```js
@@ -185,6 +193,18 @@ git rebase --abort
 3. **判断できなければ、変更した本人に聞く**
 
 「コンフリクトしたから片方消しちゃえ」は一番危険です。相手の変更を意図せず消してしまうと、バグを埋め込む原因になります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+実務でコンフリクトしたとき、自分の判断だけで解決しちゃっていいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+自分の変更範囲なら問題ありませんが、相手の変更を消す判断は慎重に。迷ったらSlackで「ここコンフリクトしたんだけど、どっちを残す？」と聞くのが一番安全です。勝手に消すのが一番トラブルになります。
+</SpeechBubble>
+
+<Figure src="/images/harry_man_color.png" alt="コンフリクトに立ち向かう人" width={180}>
+コンフリクトは怖くない。仕組みを理解して、落ち着いて対処すれば必ず解決できます。
+</Figure>
 
 ## コンフリクトを減らすコツ
 

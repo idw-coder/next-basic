@@ -49,6 +49,14 @@ git restore .
 
 この操作は**変更を完全に破棄する**ので注意してください。`restore` を実行した瞬間、編集内容はGitからは復元できなくなります。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`restore` で消した変更は本当に戻せないの？ `reflog` でも無理？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+コミットしていない変更は `reflog` にも残りません。`restore` は「まだGitに記録されていない編集を捨てる」ので、本当に消えます。大事な変更は先にコミットしてから整理する癖をつけましょう。
+</SpeechBubble>
+
 ### ステージングを取り消す
 
 `git add` しちゃったけど戻したい、というときは `--staged` オプションを使います。
@@ -191,6 +199,10 @@ git revert -m 1 <マージコミットのハッシュ>
 | 履歴を綺麗に保ちたい | ◯ | ◯ | × |
 | 取り消した経緯を残したい | × | × | **◯** |
 
+<Figure src="/images/toppa_suit_woman_color.png" alt="困難を突破する人" width={180}>
+取り消し操作は怖く感じますが、仕組みを理解すれば安全に使えます。reflog という最終防衛ラインもあるので安心してください。
+</Figure>
+
 ## reflogという最終防衛ライン
 
 「`reset --hard` してしまった、どうしよう」というときの救済策が `git reflog` です。
@@ -224,6 +236,14 @@ git reset --hard HEAD@{1}
 ```
 
 **2. コミットメッセージだけ直したい**
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+コミットメッセージにタイポがあった…！コミットし直すしかないの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+`git commit --amend` で直前のコミットメッセージを書き換えられます。ただし push 済みの場合は履歴書き換えになるので、ローカルだけのコミットに使うのが安全です。
+</SpeechBubble>
 
 直前のコミットなら `--amend` が使えます。
 

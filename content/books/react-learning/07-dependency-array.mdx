@@ -194,6 +194,8 @@ function SearchResults({ query }: { query: string }) {
 
 ## オブジェクトや関数が依存配列に入るとエフェクトが毎回走る
 
+<Figure src="/images/calling_suit_man_color.png" alt="依存配列の落とし穴に気づくイメージ" maxWidth="120px" />
+
 04章で学んだ「参照比較」の問題が、依存配列でも出てきます。
 
 ```tsx
@@ -229,6 +231,14 @@ useEffect(() => {
 ---
 
 ## eslint-disable は最終手段
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+対処法を全部試しても依存配列の警告が消えないんだけど、`eslint-disable` で黙らせていい？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+最終手段としてはアリだけど、使うなら「なぜ安全なのか」をコメントに残すこと。初学者が「警告がうるさいから」で消すのは、stale closureバグの温床になるから避けよう。
+</SpeechBubble>
 
 ```tsx
 // eslint-disable-next-line react-hooks/exhaustive-deps

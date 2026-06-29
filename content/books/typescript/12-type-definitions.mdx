@@ -4,46 +4,147 @@ description: 'JavaScriptライブラリの型定義ファイルの仕組み、De
 order: 12
 ---
 
-<Callout type="column">
-### この章は拡充予定です
-
-現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
-</Callout>
-
 JavaScriptで書かれたライブラリをTypeScriptから使うとき、型情報が必要です。型定義ファイル（`.d.ts`）がその橋渡しをします。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 ライブラリを入れたら「型定義が見つかりません」って怒られた…。`@types/...` って何者なの？
 </SpeechBubble>
 
----
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+JSで書かれたライブラリには型情報がない。`@types` パッケージはコミュニティが作った「後付けの型定義」だよ。ライブラリ本体が最初からTSで書かれていれば不要なんだけどね。
+</SpeechBubble>
 
-## 扱うトピック
+## .d.tsファイルとは
 
-### .d.tsファイルとは
+`.d.ts` ファイルは**型情報だけを記述したファイル**です。実行時のJavaScriptコードは含まず、TypeScriptコンパイラが型チェックに使います。
 
-型情報だけを記述したファイル。実装コードは含まない。TypeScriptコンパイラはこのファイルを見て型チェックを行う。
-
-### @types パッケージ
-
-```bash
-npm install --save-dev @types/react @types/node
+```typescript
+// example.d.ts
+export declare function formatDate(date: Date, format: string): string;
+export declare const VERSION: string;
 ```
 
-DefinitelyTypedリポジトリでコミュニティが管理する型定義パッケージの仕組みを解説予定です。
+`declare` キーワードは「この関数/変数は別の場所で実装されている」ことを表します。`.d.ts` は実装ではなく**契約書**のようなものです。
+
+## @typesパッケージ — DefinitelyTyped
+
+JavaScriptで書かれたライブラリに型定義がない場合、コミュニティがDefinitelyTypedリポジトリで型定義を管理しています。
+
+```bash
+npm install --save-dev @types/react @types/node @types/express
+```
+
+TypeScriptは `node_modules/@types/` 配下を自動的に参照するため、インストールするだけで型が効きます。
 
 ### 型定義が同梱されているライブラリ
 
-`axios`、`zod`、`date-fns` など、ライブラリ本体に `.d.ts` が含まれているケース。`@types` が不要な場合の見分け方を解説予定です。
+すべてのライブラリに `@types` が必要なわけではありません。ライブラリ本体に `.d.ts` が含まれている場合は不要です。
 
-### 型定義がないライブラリへの対処
+```bash
+# @types 不要 — ライブラリ本体に型定義が含まれている
+npm install zod        # TypeScriptで書かれている
+npm install axios      # .d.ts が同梱されている
+npm install date-fns   # TypeScriptで書かれている
+```
 
-`declare module` で最低限の型定義を書く方法を解説予定です。
+見分け方は、ライブラリの `package.json` に `"types"` または `"typings"` フィールドがあるかどうかです。
 
-### グローバル型定義
+```json
+// axiosの package.json（抜粋）
+{
+  "types": "./index.d.ts"
+}
+```
 
-`global.d.ts` でプロジェクト全体の型を拡張する方法を解説予定です。
+<Callout type="info">
+### @types が必要かどうかの判断
 
----
+`npm install some-lib` の後にエディタで `import` してみて、型エラーが出なければ不要。「Could not find a declaration file for module」と出たら `@types/some-lib` をインストールする。
+</Callout>
 
-この章の詳細な内容は順次追加していきます。
+## 型定義がないライブラリへの対処
+
+`@types` パッケージも存在しないライブラリの場合、`declare module` で最低限の型定義を書きます。
+
+```typescript
+// src/types/some-legacy-lib.d.ts
+declare module 'some-legacy-lib' {
+  export function doSomething(input: string): void;
+  export default class Client {
+    constructor(apiKey: string);
+    fetch(url: string): Promise<unknown>;
+  }
+}
+```
+
+すべてのAPIを詳細に型付けする必要はありません。自分が使う部分だけ定義すれば十分です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+型定義を書くのが面倒なときは `any` で逃げてもいい？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+最初は `any` で通して動くようにして、あとから少しずつ型を付けていくのが現実的。ただし `any` を使った箇所はコメントや TODO で記録しておくと、後で見つけやすいよ。
+</SpeechBubble>
+
+最小限の型定義で `any` を使う場合：
+
+```typescript
+// src/types/some-legacy-lib.d.ts
+declare module 'some-legacy-lib' {
+  const content: any;
+  export default content;
+}
+```
+
+## グローバル型定義
+
+プロジェクト全体で使う型を `global.d.ts` に定義できます。
+
+```typescript
+// src/types/global.d.ts
+
+// 環境変数の型定義
+declare namespace NodeJS {
+  interface ProcessEnv {
+    DATABASE_URL: string;
+    NEXT_PUBLIC_API_URL: string;
+    NODE_ENV: 'development' | 'production' | 'test';
+  }
+}
+
+// Window オブジェクトの拡張
+interface Window {
+  gtag: (...args: unknown[]) => void;
+}
+```
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="型定義の管理" caption="型定義ファイルはsrc/types/に集めておくとプロジェクトの見通しがよくなる" maxWidth="240px" />
+
+環境変数の型を定義しておくと、`process.env.DATABASE_URL` が `string` として推論され、`undefined` チェックが不要になります。
+
+## 型定義ファイルの配置
+
+型定義ファイルは `tsconfig.json` の `include` に含まれるパスに置きます。
+
+```text
+src/
+  types/
+    global.d.ts        ← グローバル型定義
+    some-legacy-lib.d.ts ← ライブラリの型定義
+    api-response.ts    ← アプリの型定義（通常の .ts）
+```
+
+<Callout type="warning">
+### .d.ts と .ts の使い分け
+
+`.d.ts` は「型だけ」を記述するファイル。自分のアプリケーションの型定義（APIレスポンスの型など）は通常の `.ts` ファイルに書く。`.d.ts` はJSライブラリへの型付けやグローバル型の拡張に使う。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- <Marker>`.d.ts` は型情報だけのファイル。実装は含まない</Marker>
+- `@types/xxx` はコミュニティ管理の型定義。ライブラリ本体に型があれば不要
+- 型定義がないライブラリは `declare module` で最低限の型を書く
+- 環境変数や `Window` の拡張はグローバル型定義で対応する
+- 自アプリの型定義は `.ts`、外部ライブラリの型付けは `.d.ts` で書く

@@ -136,6 +136,14 @@ function App() {
 
 ### useEffectの依存配列との対応
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+条件分岐で表示したコンポーネントも毎回マウントされるなら、`useEffect(..., [])` は何回も実行されるってこと？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そのとおり。`[]` は「マウント時に1回だけ」だけど、コンポーネントが消えて再び表示されればまた新しいマウントだから、そのたびに実行されるよ。
+</SpeechBubble>
+
 どのパターンでも**マウント時は必ず実行される**のが共通ルールです。
 
 | 依存配列 | マウント時 | 再レンダー時 |
@@ -149,6 +157,8 @@ function App() {
 ---
 
 ## 再レンダーとアンマウント
+
+<Figure src="/images/inspiration_color.png" alt="ライフサイクルの全体像をひらめくイメージ" maxWidth="120px" />
 
 **再レンダー** — stateやpropsの変化をきっかけに、マウント後に繰り返されるレンダーです。DOMへの挿入は最初の1回だけで、再レンダーではReactが差分だけを更新します。
 

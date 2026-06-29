@@ -137,6 +137,16 @@ flowchart TB
 
 実務では**言語の標準ソートを使えばよい** です。自前で実装する代わりに、「それが何をしているか理解する」のがこの章のゴールです。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+二重ループをハッシュで1重にするって、面接でもよく聞かれるやつですよね？実務でも本当に使うの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+めちゃくちゃ使う。「ユーザー一覧とアクティブユーザーの突き合わせ」「重複チェック」「IDで引くデータの集計」、全部このパターン。O(n²)→O(n)の改善は実務の最頻出スキルだよ。
+</SpeechBubble>
+
+<Figure src="/images/stepup_suit_man_color.png" alt="アルゴリズムの改善" caption="二重ループ → ハッシュで1重は、実務で最も使う計算量改善パターン" maxWidth="240px" />
+
 ## よくあるハマりどころ
 
 **1. 配列の中から重複を探すのに二重ループを書いて遅い**

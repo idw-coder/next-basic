@@ -126,6 +126,14 @@ GROUP BY user_id;
 
 <Marker>`GROUP BY` したSQLの `SELECT` には、グループ化した列か集計関数を書くのが基本です。</Marker>
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+GROUP BYしたSELECTで、集計関数に入れてない列を書いたらエラーになった。なんでダメなの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+グループ内に複数の値がある列は、どれを表示すべきかDBMSが判断できない。SELECTにはGROUP BYした列か、COUNT・SUMなどの集計関数だけを書こう。
+</SpeechBubble>
+
 ## HAVINGで集計後に絞り込む
 
 `WHERE` は集計前の行を絞り込みます。
@@ -193,6 +201,8 @@ GROUP BY products.id, products.name;
 `SUM` は対象行がないと `NULL` になることがあります。
 表示上0にしたい場合は `COALESCE` を使います。
 `COUNT` は0を返せる一方で、`SUM` や `AVG` は集計対象がないと `NULL` になり得るため、一覧画面やレポートでは `COALESCE(SUM(...), 0)` の形がよく使われます。
+
+<Figure src="/images/plan_selection_man_color.png" caption="集計とGROUP BYを使いこなすことで、データから意味のある数字を引き出せます" />
 
 ## 日別・月別に集計する
 

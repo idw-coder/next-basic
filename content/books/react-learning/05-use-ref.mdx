@@ -108,6 +108,8 @@ function Counter() {
 
 ## 典型的な使い方
 
+<Figure src="/images/walking_woman_color.png" alt="useRefの多彩な使い道を探るイメージ" maxWidth="120px" />
+
 ### DOM要素への参照
 
 最もよく使うパターンです。JSXの `ref` 属性に渡すと、Reactがマウント時にそのDOM要素を `.current` に入れてくれます。
@@ -225,6 +227,14 @@ function BrokenCounter() {
 画面に表示したい値には必ず `useState` を使ってください。
 
 ### レンダー中に.currentを読み書きしない（DOM参照以外）
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`useRef` の `.current` をレンダー中に読んでいるコードを見かけたけど、それってやっていいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+DOM参照を `ref` 属性で渡すのはOKだけど、それ以外の値をレンダー中に読み書きするのは避けた方がいい。Reactの並行レンダリングと干渉して予期しない動作になることがあるよ。
+</SpeechBubble>
 
 レンダー中（つまりコンポーネント関数の本体）で `.current` を読み書きすると、Reactの並行レンダリング機能と干渉する可能性があります。読み書きはイベントハンドラや `useEffect` の中で行うのが安全です。
 

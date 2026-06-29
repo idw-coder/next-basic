@@ -4,50 +4,192 @@ description: 'TypeScriptのモジュールシステム、型のインポート�
 order: 10
 ---
 
-<Callout type="column">
-### この章は拡充予定です
-
-現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
-</Callout>
-
 TypeScript/JavaScriptのモジュールシステムの基本と、TypeScript固有の型のインポート・エクスポートを扱います。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 `import type` って普通の `import` と何が違うの？わざわざ使い分ける意味あるの？
 </SpeechBubble>
 
----
+## ESModulesの基本
 
-## 扱うトピック
-
-### ESModulesの基本
-
-`import` / `export` の書き方、名前付きエクスポートとデフォルトエクスポートの違い。
-
-### import type — 型だけをインポートする
+### 名前付きエクスポートとデフォルトエクスポート
 
 ```tsx
-import type { User } from './types';
+// 名前付きエクスポート（1ファイルに複数OK）
+export function formatDate(date: Date): string {
+  return date.toLocaleDateString('ja-JP');
+}
+
+export const MAX_RETRY = 3;
+
+export type User = {
+  id: string;
+  name: string;
+};
 ```
 
-`import type` を使うと、コンパイル後のJavaScriptからインポート文が完全に除去されます。バンドルサイズの最適化と意図の明示に寄与します。
+```tsx
+// デフォルトエクスポート（1ファイルに1つ）
+export default function Button({ label }: { label: string }) {
+  return <button>{label}</button>;
+}
+```
 
-### 型と値の名前空間
-
-TypeScriptでは型と値が別の名前空間に存在する。同じ名前で型と値を定義できる仕組みを解説予定です。
-
-### バレルファイル（index.ts）
+### インポート
 
 ```tsx
-// types/index.ts
-export type { User } from './user';
+// 名前付きインポート
+import { formatDate, MAX_RETRY } from './utils';
+import { User } from './types';
+
+// デフォルトインポート（好きな名前で受けられる）
+import Button from './Button';
+
+// 名前付き + デフォルトを同時に
+import Button, { type ButtonProps } from './Button';
+
+// 別名をつける
+import { formatDate as formatJaDate } from './utils';
+```
+
+| エクスポート方式 | メリット | デメリット |
+|---|---|---|
+| 名前付き | 自動補完が効く、rename可、tree-shaking対象 | なし |
+| デフォルト | import時に好きな名前をつけられる | 自動補完が効きにくい、名前がバラつく |
+
+<Marker>実務では名前付きエクスポートが主流。デフォルトエクスポートはReactコンポーネントのファイル（1ファイル1コンポーネント）でよく使われる。</Marker>
+
+## import type — 型だけをインポートする
+
+`import type` を使うと、コンパイル後のJavaScriptからインポート文が完全に除去されます。
+
+```tsx
+// 値と型のインポートを分ける
+import { fetchUser } from './api';
+import type { User } from './types';
+
+// inline type import（1行にまとめる書き方）
+import { fetchUser, type User } from './api';
+```
+
+### なぜ import type を使うのか
+
+```tsx
+// ❌ import type を使わない場合
+import { User } from './types';
+// コンパイル後: import { User } from './types';
+// → 実行時に ./types を読み込もうとする（中身は空なのに）
+
+// ✅ import type を使う場合
+import type { User } from './types';
+// コンパイル後: （この行は消える）
+// → バンドルサイズが小さくなる
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ESLintの `@typescript-eslint/consistent-type-imports` ルールを有効にすると、型のみのインポートを `import type` に自動修正してくれるよ。チームで統一するならこのルールがおすすめ。
+</SpeechBubble>
+
+## 型と値の名前空間
+
+TypeScriptでは、型と値が別の名前空間に存在します。そのため、同じ名前で型と値を定義できます。
+
+```tsx
+// class は型としても値としても使える
+class User {
+  constructor(public name: string) {}
+}
+
+const user: User = new User('Alice');  // User は型でもあり、コンストラクタ（値）でもある
+```
+
+```tsx
+// enum も型と値の両方の名前空間を持つ
+enum Status {
+  Active = 'active',
+  Inactive = 'inactive',
+}
+
+const s: Status = Status.Active;  // 型としても値としても使える
+```
+
+```tsx
+// type は型の名前空間のみ
+type Color = 'red' | 'blue';
+// const c = Color;  // ❌ エラー: Color は型であり、値として使えない
+```
+
+| キーワード | 型として | 値として |
+|---|---|---|
+| `type` | ✅ | ❌ |
+| `interface` | ✅ | ❌ |
+| `class` | ✅ | ✅ |
+| `enum` | ✅ | ✅ |
+| `const` / `let` | ❌ | ✅ |
+| `function` | ❌ | ✅ |
+
+## バレルファイル（index.ts）
+
+関連する型やモジュールを1箇所から再エクスポートするパターンです。
+
+```tsx
+// types/user.ts
+export type User = { id: string; name: string; email: string };
+export type CreateUserInput = { name: string; email: string };
+
+// types/product.ts
+export type Product = { id: string; title: string; price: number };
+
+// types/index.ts（バレルファイル）
+export type { User, CreateUserInput } from './user';
 export type { Product } from './product';
 ```
 
-### パスエイリアス
+```tsx
+// 使う側 — 1箇所からまとめてインポートできる
+import type { User, Product } from '@/types';
+```
 
-`tsconfig.json` の `paths` 設定で `@/components/Button` のようなエイリアスを使う方法を解説予定です。
+<Callout type="warning" title="バレルファイルの落とし穴">
+バレルファイルはインポートが楽になりますが、tree-shakingが効きにくくなる場合があります。特に大規模プロジェクトでは、不要なモジュールまで読み込まれてバンドルサイズが増えることがあります。型だけの再エクスポートなら問題ありませんが、値（関数・クラス）の再エクスポートは注意が必要です。
+</Callout>
 
----
+## パスエイリアス
 
-この章の詳細な内容は順次追加していきます。
+`tsconfig.json` の `paths` 設定で、深いディレクトリ構造のインポートを短くできます。
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+```tsx
+// ❌ 相対パスが深い
+import { Button } from '../../../components/ui/Button';
+import type { User } from '../../../types/user';
+
+// ✅ パスエイリアスですっきり
+import { Button } from '@/components/ui/Button';
+import type { User } from '@/types/user';
+```
+
+<Callout type="info" title="Next.jsではデフォルトで使える">
+Next.jsのプロジェクトでは、`create-next-app` 時に `@/*` エイリアスが自動設定されます。追加の設定なしで `@/components/...` のようなインポートが使えます。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- <Marker>`import type` を使うと、コンパイル後のJSからインポート文が消え、バンドルサイズが最適化される</Marker>
+- 名前付きエクスポートが主流。自動補完とtree-shakingに有利
+- 型と値は別の名前空間。`class` と `enum` は両方に存在する
+- バレルファイルはインポートを楽にするが、tree-shaking への影響に注意
+- パスエイリアスで深い相対パスを避ける
+
+次の章では、TypeScriptで既存のJavaScriptライブラリを型安全に使うための**型定義ファイル（.d.ts）**を扱います。

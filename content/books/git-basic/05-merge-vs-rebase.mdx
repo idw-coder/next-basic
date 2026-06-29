@@ -148,6 +148,10 @@ git rebase origin/main
 - **Pull Requestをマージするとき**（GitHubの「Merge pull request」ボタン）
 - **履歴に「このブランチで作業していた」記録を残したいとき**
 
+<Figure src="/images/plan_selection_man_color.png" alt="選択を考える人" width={180}>
+merge と rebase、どちらを選ぶかはチームの方針とブランチの状況次第。正解は1つではありません。
+</Figure>
+
 ## やってはいけないrebase
 
 **既にリモートにpushして他人と共有しているブランチをrebaseしない**、これが鉄則です。
@@ -163,6 +167,14 @@ NG:
 ```
 
 「自分だけが触っているブランチならrebase OK、他人と共有するブランチならmerge」と覚えておけば間違いありません。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+共有ブランチを rebase して force push したらチームメンバーに怒られた…って話を聞いたことがある。そんなに大事故になるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+なります。相手のローカルにあるコミットと整合性が取れなくなって、pull したときに大量のコンフリクトが発生します。最悪、相手の作業が消えます。共有ブランチでは絶対に rebase しないでください。
+</SpeechBubble>
 
 ## 対話的rebase — コミットを整理する
 
@@ -192,6 +204,14 @@ pick ghi9012 feat: メール送信処理を追加
 | `drop` | そのコミットを削除 |
 
 たとえば「タイポ修正」のコミットを直前のコミットに統合したいなら、`fixup` に書き換えるだけです。Pull Requestを出す前に履歴を綺麗にする用途で使われます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+PR出す前に `rebase -i` で整理するのって、実際どのくらいの頻度でやるものなの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+チームによりますが、「WIP」や「タイポ修正」のようなコミットが残っているなら整理してから出すのがマナーです。ただし Squash merge を採用しているチームなら、マージ時に自動で1コミットにまとまるので気にしなくてOKです。
+</SpeechBubble>
 
 ## よくあるハマりどころ
 

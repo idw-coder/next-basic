@@ -61,6 +61,10 @@ FROM users;
 しかしAPIやバッチ処理では、必要な列だけを明示する方が安全です。
 </Callout>
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`SELECT *` は中身を確認するときは便利だけど、本番コードでは必要な列だけ書こう。通信量も減るし、何を使ってるかが一目で分かる。
+</SpeechBubble>
+
 ## 列に別名を付ける
 
 `AS` を使うと、取得結果の列名に別名を付けられます。
@@ -116,6 +120,16 @@ FROM users;
 JOINの結果が重複したときに、理由を調べず `DISTINCT` で消すのは危険です。
 本当に重複を除きたいのか、JOIN条件が間違っているのかを先に確認しましょう。
 </Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+DISTINCTってJOINの後に重複が出たときにとりあえず付ければいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+それは危険。DISTINCTで消す前に、なぜ重複しているのかを先に調べよう。JOIN条件のミスが原因なら、DISTINCTで隠すとデータ数がおかしくなるよ。
+</SpeechBubble>
+
+<Figure src="/images/search_woman_color.png" caption="SELECTで必要なデータだけを正確に取り出すことが、効率的なクエリの第一歩です" />
 
 ## 式をSELECTする
 

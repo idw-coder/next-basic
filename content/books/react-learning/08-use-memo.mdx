@@ -160,6 +160,8 @@ const sorted = useMemo(() => sortUsers(users), [users]);
 
 ## useMemoで参照を安定させる
 
+<Figure src="/images/deta_man_color.png" alt="メモ化で無駄な計算を省くイメージ" maxWidth="120px" />
+
 07章で触れた「オブジェクトが依存配列に入るとエフェクトが毎回走る」問題を、`useMemo` で解決できます。
 
 ```tsx
@@ -217,6 +219,14 @@ const labels = items.map((item) => item.label);
 ---
 
 ## 「とりあえずuseMemo」が逆効果になるケース
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+「とりあえず全部 `useMemo` で包む」はダメってこと？メモ化にデメリットってあるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`useMemo` にも依存配列の比較や値の保管というコストがある。計算が軽い処理にまでメモ化をかけると、メモ化のオーバーヘッドの方が大きくなることもあるんだ。
+</SpeechBubble>
 
 `useMemo` 自体にもコストがあります。依存配列の比較処理、前回の値の保管、そしてコードの可読性の低下です。
 

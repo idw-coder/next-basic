@@ -46,6 +46,14 @@ git config --global --list
 
 ここで設定したメールアドレスが**公開リポジトリのコミット履歴に残る**点に注意してください。個人用のメールアドレスを公開したくない場合は、GitHubが提供する `noreply` メールアドレスを使う方法があります。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+え、メールアドレスが公開されちゃうの？仕事用と個人用で使い分けたい場合はどうすればいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+GitHubの `noreply` メールアドレスを使えば安心です。`Settings → Emails` で確認できますよ。プロジェクトごとに `--global` を外して個別設定もできます。
+</SpeechBubble>
+
 ```bash
 git config --global user.email "12345678+username@users.noreply.github.com"
 ```
@@ -77,6 +85,10 @@ git config --global core.editor "nano"
 `code --wait` は「VS Codeが閉じるまで待つ」という意味で、これを付けないとGitがエディタ終了を認識できません。
 
 ## SSH鍵を生成する
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="初期設定を確認する人" width={180}>
+ここまでの設定が終われば、Gitの基本設定は完了です。あとはSSH鍵の設定だけ。
+</Figure>
 
 GitHubとの通信方式には HTTPS と SSH の2種類がありますが、**実務では SSH を使うのが一般的**です。毎回パスワードを入力する必要がなく、2要素認証にも強いためです。
 
@@ -129,6 +141,14 @@ ssh -T git@github.com
 ```
 
 この `Hi username!` のメッセージが出れば成功です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`Permission denied` って出ちゃった…。何が間違ってるんだろう？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+よくあるパターンです。公開鍵をGitHubに登録し忘れているか、違う鍵を登録している場合がほとんど。`cat ~/.ssh/id_ed25519.pub` の内容とGitHub側が一致しているか確認してみてください。
+</SpeechBubble>
 
 ## 全体の流れ
 

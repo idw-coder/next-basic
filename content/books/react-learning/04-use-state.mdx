@@ -230,6 +230,14 @@ setItems([...items, 'Remix']);
 
 ### ネストしたオブジェクトの更新
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+スプレッド構文で新しいオブジェクトを作るのはわかったけど、ネストが深いときもスプレッドだけで対応するの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+基本はスプレッド構文で対応するけど、3階層以上になると読みにくくなるから、stateの構造をフラットに設計し直すか、Immerのようなライブラリも選択肢に入るよ。
+</SpeechBubble>
+
 ネストが深いと、スプレッド構文が冗長になります。
 
 ```tsx
@@ -256,6 +264,8 @@ setForm({
 ---
 
 ## 複数のstateを分けるか、1つにまとめるか
+
+<Figure src="/images/creative_color.png" alt="stateの設計を考えるイメージ" maxWidth="120px" />
 
 コンポーネントが複数の値を管理する場合、分け方には2つのアプローチがあります。
 

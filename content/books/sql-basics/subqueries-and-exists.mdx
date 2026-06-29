@@ -84,6 +84,10 @@ WHERE EXISTS (
 `SELECT 1` の `1` に特別な意味はありません。
 `EXISTS` はサブクエリが行を返すかどうかだけを見るため、列の中身は重要ではありません。
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+JOINとサブクエリで迷ったら、「関連テーブルの列も取りたいか」で考えよう。列も使うならJOIN、存在確認だけならEXISTSが読みやすいよ。
+</SpeechBubble>
+
 ## NOT EXISTSで存在しないものを探す
 
 `NOT EXISTS` を使うと、関連行が存在しないものを探せます。
@@ -184,6 +188,16 @@ WHERE EXISTS (
 パフォーマンスはDBMSやインデックス、データ量によって変わります。
 最初は「何をしたいSQLか」が読みやすい書き方を選び、必要になったら `EXPLAIN` で確認します。
 </Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+NOT INとNOT EXISTSって結果は同じに見えるけど、どっちを使えばいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+NOT INはサブクエリにNULLが混ざると結果が返らなくなることがある。安全なのはNOT EXISTS。迷ったらNOT EXISTSを選ぼう。
+</SpeechBubble>
+
+<Figure src="/images/creative_color.png" caption="サブクエリを活用すると、複雑な条件や段階的なデータ加工もSQLだけで実現できます" />
 
 ## スカラーサブクエリ
 

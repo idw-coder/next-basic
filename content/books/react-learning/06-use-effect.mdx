@@ -139,6 +139,8 @@ flowchart TD
 
 ## クリーンアップ関数の実行タイミング
 
+<Figure src="/images/pc-work-woman01_color.png" alt="副作用の後始末を整理するイメージ" maxWidth="120px" />
+
 `useEffect` から返す関数（クリーンアップ）は、2つのタイミングで実行されます。
 
 ```tsx
@@ -227,6 +229,14 @@ flowchart TD
 />
 
 ### 不要なuseEffectの典型例
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+propsから計算できる値も `useEffect` で別のstateに入れてたんだけど、それもダメなの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+propsやstateから導出できる値は、レンダー中にそのまま計算すればいい。`useEffect` で別のstateに入れると不要な再レンダーが1回余分に走るし、一瞬古い値が表示される原因にもなるよ。
+</SpeechBubble>
 
 ```tsx
 // NG — propsやstateから計算できる値をuseEffectで同期している

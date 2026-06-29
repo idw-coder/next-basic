@@ -41,19 +41,178 @@ flowchart LR
 | JWT | クライアント側（トークン） | SPA、モバイルアプリ、マイクロサービス |
 | OAuth 2.0 | 外部サービスに委譲 | ソーシャルログイン、外部API連携 |
 
-> 残りのセクションは現在執筆中です。
->
-> - セッション方式の仕組みとセキュリティ（CSRF対策）
-> - JWTの構造（Header.Payload.Signature）と注意点
-> - リフレッシュトークンの設計
-> - OAuth 2.0のフロー（認可コードフロー）
-> - ロールベースアクセス制御（RBAC）の設計
+## セッション方式の仕組み
+
+セッション方式は、ログイン状態をサーバー側で管理する伝統的な手法です。
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant C as ブラウザ
+    participant S as サーバー
+    participant DB as セッションストア
+    C->>S: POST /login (email, password)
+    S->>DB: セッションID生成・保存
+    S-->>C: Set-Cookie: session_id=abc123
+    C->>S: GET /profile (Cookie: session_id=abc123)
+    S->>DB: abc123 のユーザーを検索
+    DB-->>S: user_id=42
+    S-->>C: 200 OK (プロフィール情報)
+`} />
+
+```typescript
+// Express + express-session の例
+app.post('/login', async (req, res) => {
+  const user = await db.findByEmail(req.body.email);
+  if (!user || !await bcrypt.compare(req.body.password, user.passwordHash)) {
+    return res.status(401).json({ error: '認証失敗' });
+  }
+  req.session.userId = user.id;
+  res.json({ message: 'ログイン成功' });
+});
+
+app.get('/profile', (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: '未認証' });
+  }
+  // req.session.userId でユーザー情報を取得
+});
+```
+
+<Callout type="warning" title="CSRF対策が必須">
+セッション方式ではCookieが自動送信されるため、CSRF（クロスサイトリクエストフォージェリ）対策が必須です。CSRFトークンの埋め込みや、`SameSite=Lax` / `SameSite=Strict` の設定で防御します。
+</Callout>
+
+## JWTの仕組み
+
+JWT（JSON Web Token）はトークンにユーザー情報を含め、サーバー側でセッションを持たない方式です。
+
+### JWTの構造
+
+JWTは3つのパートをドット（`.`）で繋いだ文字列です。
+
+```text
+eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjQyLCJleHAiOjE3MTk5MH0.署名
+ ↑ Header              ↑ Payload                               ↑ Signature
+```
+
+| パート | 内容 | Base64デコードすると |
+|---|---|---|
+| Header | アルゴリズム情報 | `{"alg":"HS256"}` |
+| Payload | ユーザー情報・有効期限 | `{"userId":42,"exp":1719900000}` |
+| Signature | 改ざん検知用の署名 | サーバーの秘密鍵で生成 |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+Payloadは暗号化されていないので、Base64デコードすれば誰でも中身を読める。パスワードやクレジットカード番号を入れてはいけないよ。
+</SpeechBubble>
+
+```typescript
+// jsonwebtoken の例
+import jwt from 'jsonwebtoken';
+
+// トークン生成（ログイン時）
+const token = jwt.sign(
+  { userId: user.id },
+  process.env.JWT_SECRET!,
+  { expiresIn: '1h' }
+);
+
+// トークン検証（リクエストごと）
+const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+// decoded.userId でユーザーを特定
+```
+
+### リフレッシュトークンの設計
+
+アクセストークンの有効期限は短くし（15分〜1時間）、長期間のログイン維持にはリフレッシュトークンを使います。
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant C as クライアント
+    participant S as サーバー
+    C->>S: POST /login
+    S-->>C: accessToken(15分) + refreshToken(7日)
+    Note over C: アクセストークンで通常のAPI呼び出し
+    C->>S: GET /api/data (Authorization: Bearer accessToken)
+    Note over C: アクセストークンが期限切れ
+    C->>S: POST /refresh (refreshToken)
+    S-->>C: 新しい accessToken
+`} />
+
+<Marker>リフレッシュトークンはサーバー側のDBに保存し、無効化できるようにしておく。ユーザーがログアウトしたら、そのリフレッシュトークンを削除する。</Marker>
+
+## OAuth 2.0 — 認可コードフロー
+
+OAuth 2.0は、ユーザーのパスワードを預からずに外部サービスの認証を利用する仕組みです。「Googleでログイン」「GitHubでログイン」がこれにあたります。
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant U as ユーザー
+    participant A as あなたのアプリ
+    participant G as Google
+    U->>A: 「Googleでログイン」をクリック
+    A->>G: 認可画面にリダイレクト
+    U->>G: アクセスを許可
+    G->>A: 認可コードを返す
+    A->>G: 認可コード + クライアントシークレットでトークン取得
+    G-->>A: アクセストークン
+    A->>G: アクセストークンでユーザー情報取得
+    G-->>A: ユーザー情報(email, name等)
+    A-->>U: ログイン完了
+`} />
+
+<Figure src="/images/search_woman_color.png" alt="OAuth認証の仕組みを学ぶ" caption="OAuth 2.0 では、ユーザーのパスワードを自分のサーバーに保存しなくて済む" maxWidth="260px" />
+
+## ロールベースアクセス制御（RBAC）
+
+認可の実装でよく使われるのが RBAC です。ユーザーにロール（役割）を割り当て、ロールごとに操作権限を定義します。
+
+```typescript
+// シンプルなRBACの例
+type Role = 'admin' | 'editor' | 'viewer';
+
+const permissions: Record<Role, string[]> = {
+  admin:  ['read', 'write', 'delete', 'manage_users'],
+  editor: ['read', 'write'],
+  viewer: ['read'],
+};
+
+function authorize(userRole: Role, action: string): boolean {
+  return permissions[userRole].includes(action);
+}
+
+// ミドルウェアとして使う
+function requirePermission(action: string) {
+  return (req, res, next) => {
+    if (!authorize(req.user.role, action)) {
+      return res.status(403).json({ error: '権限がありません' });
+    }
+    next();
+  };
+}
+
+app.delete('/posts/:id', requirePermission('delete'), deletePost);
+```
+
+## 方式選定のフローチャート
+
+<MermaidDiagram chart={`
+flowchart TB
+    A["ログイン機能が必要"] --> B{"ソーシャルログインが必要?"}
+    B -->|はい| C["OAuth 2.0"]
+    B -->|いいえ| D{"SPAまたはモバイル?"}
+    D -->|はい| E["JWT + リフレッシュトークン"]
+    D -->|いいえ| F{"SSR中心のWebアプリ?"}
+    F -->|はい| G["セッション方式"]
+    F -->|いいえ| H["JWT（マイクロサービス間通信など）"]
+`} />
 
 ## ちゃんと使うためのポイント
 
 - <Marker>認証（誰か）と認可（何ができるか）は別の仕組みとして設計する</Marker>
-- JWTはステートレスだがトークン無効化が難しい。要件に応じて選定する
+- JWTはステートレスだがトークン無効化が難しい。リフレッシュトークンをDB管理して対応する
 - セッション方式はCSRF対策が必須
+- JWTのPayloadは暗号化されていない。秘密情報を含めない
+- OAuth 2.0はパスワードを預からずに済む。ソーシャルログインに適する
 - 「どの方式が正解か」ではなく、要件（SPA？SSR？モバイル？）で選ぶ
 
 次の章では、認証後のアプリケーション内部の**状態管理の設計**を見ていきます。

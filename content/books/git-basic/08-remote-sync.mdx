@@ -57,6 +57,14 @@ git log main..origin/main  # リモートにだけあるコミットを表示
 
 fetchしてから内容を確認し、必要なら手動でmergeやrebaseする、というのが**安全で玄人っぽい使い方**です。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+じゃあ毎回 `fetch` してから `merge` するの？`pull` 一発のほうが楽じゃない？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+普段は `pull` で問題ありません。ただし「リモートの変更を確認してから取り込みたい」ときは `fetch` → 確認 → `merge` の流れが安全です。大きなリリース前や、他の人の変更が気になるときに使い分けましょう。
+</SpeechBubble>
+
 ## git pull — fetch + merge の合わせ技
 
 `git pull` は、**fetch した内容を自動で現在のブランチに取り込む**コマンドです。内部的には以下と同じ動作をしています。
@@ -191,6 +199,10 @@ git push --force-with-lease origin feature/login
 | 新しいブランチを初めてpushする | `git push -u origin <branch>` |
 | rebase後などに強制push | `git push --force-with-lease` |
 
+<Figure src="/images/running_man_color.png" alt="走る人" width={180}>
+fetch・pull・push の使い分けをマスターすれば、リモートとの同期で迷うことはなくなります。
+</Figure>
+
 ## 安全な同期フロー
 
 実務でよく使う、安全なフローを紹介します。
@@ -229,6 +241,14 @@ git push -u origin feature/new-feature
 **3. pullしたら自分のコミットが消えた（ように見える）**
 
 実際にはreflogに残っているので消えていません。`git reflog` で直前のHEAD位置を確認して、必要なら `git reset --hard` で復元できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`origin/main` と `main` ってどう違うの？同じものじゃないの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`main` はあなたのローカルの作業ブランチ、`origin/main` はGitHub側の状態をローカルに保存したコピーです。`fetch` は `origin/main` だけを更新して、あなたの `main` には触りません。この2つが別物だと分かれば、同期の仕組みがすっきり理解できますよ。
+</SpeechBubble>
 
 **4. `origin/main` と `main` がどう違うのか混乱する**
 

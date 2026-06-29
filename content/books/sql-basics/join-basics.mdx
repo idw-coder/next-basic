@@ -65,6 +65,10 @@ INNER JOIN users
 外部キー制約が正しく設定されていれば、対応先がない行は基本的に作られません。
 ただし、古いデータや制約のないテーブルでは起こり得ます。
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+JOINで行が増えたり消えたりするのは、ON条件と結合の種類が原因。INNER JOINは「両方にある行だけ」、LEFT JOINは「左側を全部残す」と覚えよう。
+</SpeechBubble>
+
 ## LEFT JOIN
 
 `LEFT JOIN` は、左側のテーブルの行を必ず残します。
@@ -138,6 +142,16 @@ LEFT JOIN orders
   ON users.id = orders.user_id
 GROUP BY users.id, users.name;
 ```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+LEFT JOINの後にWHEREで右側テーブルの条件を書いたら、NULLの行が消えちゃった…。どうすればいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+右側テーブルの条件はWHEREじゃなくてON句に書こう。WHEREに書くとNULL行がフィルタされて、実質INNER JOINと同じになってしまうよ。
+</SpeechBubble>
+
+<Figure src="/images/meeting_color.png" caption="JOINはテーブル同士の関係を理解して正しく結合することが重要です" />
 
 ## 多対多と中間テーブル
 

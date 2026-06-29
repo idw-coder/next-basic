@@ -4,94 +4,268 @@ description: 'ReactコンポーネントをTypeScriptで書くときの型付け
 order: 13
 ---
 
-<Callout type="column">
-### この章は拡充予定です
-
-現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
-</Callout>
-
 この章は[React入門](/books/react-learning)本との接続ポイントです。React本で学んだコンポーネント・props・Hooksを、TypeScriptでどう型付けするかを整理します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 Reactのpropsって、TypeScriptだとどう型を付けるのが正解なの？毎回 `any` にしちゃってる…。
 </SpeechBubble>
 
----
+## Propsの型付け
 
-## 扱うトピック
-
-### Propsの型付け
+Propsの型は `type` または `interface` で定義し、コンポーネントの引数に渡します。
 
 ```tsx
 type ButtonProps = {
   label: string;
   variant?: 'primary' | 'secondary';
+  disabled?: boolean;
   onClick: () => void;
 };
 
-function Button({ label, variant = 'primary', onClick }: ButtonProps) {
-  return <button className={`btn-${variant}`} onClick={onClick}>{label}</button>;
+function Button({ label, variant = 'primary', disabled, onClick }: ButtonProps) {
+  return (
+    <button
+      className={`btn-${variant}`}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
 }
 ```
 
-### childrenの型
+<Callout type="info" title="type と interface どちらを使うか">
+Propsの定義には `type` が一般的です。`interface` でも動きますが、propsはユニオン型やインターセクション型と組み合わせることが多く、`type` の方が柔軟です。チームで統一していれば、どちらでも問題ありません。
+</Callout>
+
+### オプショナルとデフォルト値
 
 ```tsx
 type CardProps = {
-  title: string;
+  title: string;            // 必須
+  subtitle?: string;        // 省略可能（string | undefined）
+  maxWidth?: number;        // 省略可能
+};
+
+// デフォルト値は分割代入で設定
+function Card({ title, subtitle, maxWidth = 400 }: CardProps) {
+  return (
+    <div style={{ maxWidth }}>
+      <h2>{title}</h2>
+      {subtitle && <p>{subtitle}</p>}
+    </div>
+  );
+}
+```
+
+## childrenの型
+
+| 型 | 含まれるもの | 使いどころ |
+|---|---|---|
+| `React.ReactNode` | 文字列、数値、JSX、配列、null、undefined、boolean | 最も一般的。ほとんどの場合これ |
+| `React.ReactElement` | JSX要素のみ（文字列やnullは不可） | 子要素がJSXであることを保証したいとき |
+| `string` | 文字列のみ | テキストだけを受け取りたいとき |
+
+```tsx
+type LayoutProps = {
   children: React.ReactNode;
 };
+
+function Layout({ children }: LayoutProps) {
+  return (
+    <div className="container">
+      <header>ヘッダー</header>
+      <main>{children}</main>
+    </div>
+  );
+}
 ```
 
-`React.ReactNode`、`React.ReactElement`、`JSX.Element` の違いを解説予定です。
+<Marker>`children` の型は迷ったら `React.ReactNode` を使えばほぼ間違いない。</Marker>
 
-### useStateの型
+## useStateの型
+
+`useState` はジェネリクスで型を指定できます。
 
 ```tsx
+// 初期値から推論される場合（ジェネリクス不要）
+const [count, setCount] = useState(0);         // number
+const [name, setName] = useState('');           // string
+const [isOpen, setIsOpen] = useState(false);    // boolean
+
+// 初期値がnullの場合（ジェネリクスが必要）
 const [user, setUser] = useState<User | null>(null);
-const [count, setCount] = useState(0); // number と推論される
+
+// 配列の場合
+const [items, setItems] = useState<string[]>([]);
+
+// オブジェクトの場合
+type FormData = { name: string; email: string };
+const [form, setForm] = useState<FormData>({ name: '', email: '' });
 ```
 
-ジェネリクスを明示すべき場面とそうでない場面を解説予定です。
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+初期値の型から推論できるなら、ジェネリクスを書く必要はない。`useState&lt;number&gt;(0)` は冗長。`null` が初期値のときだけ明示的に書こう。
+</SpeechBubble>
 
-### useRefの型
+## useRefの型
+
+`useRef` は DOM要素を参照する場合と、値を保持する場合で書き方が変わります。
 
 ```tsx
+// DOM要素の参照（初期値は null）
 const inputRef = useRef<HTMLInputElement>(null);
-const countRef = useRef(0); // number と推論される
+
+// 値の保持（初期値は具体的な値）
+const countRef = useRef(0);
+const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
 ```
 
-### イベントハンドラの型
+```tsx
+// DOM参照の使用例
+function SearchInput() {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleClick = () => {
+    inputRef.current?.focus();  // null チェックが必要
+  };
+
+  return (
+    <>
+      <input ref={inputRef} type="text" />
+      <button onClick={handleClick}>フォーカス</button>
+    </>
+  );
+}
+```
+
+## イベントハンドラの型
+
+よく使うイベント型の一覧です。
+
+| イベント | 型 | 使うHTML要素 |
+|---|---|---|
+| クリック | `React.MouseEvent<HTMLButtonElement>` | button, div |
+| 入力変更 | `React.ChangeEvent<HTMLInputElement>` | input, select, textarea |
+| フォーム送信 | `React.FormEvent<HTMLFormElement>` | form |
+| キー入力 | `React.KeyboardEvent<HTMLInputElement>` | input, div |
+| フォーカス | `React.FocusEvent<HTMLInputElement>` | input |
 
 ```tsx
+// onChange
 const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  console.log(e.target.value);
+  setName(e.target.value);
 };
 
+// onSubmit
 const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
+  // フォーム送信処理
+};
+
+// onClick
+const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  console.log('clicked at', e.clientX, e.clientY);
 };
 ```
 
-イベント型の調べ方（エディタの補完を活用する方法）を解説予定です。
+<Callout type="info" title="イベント型の調べ方">
+エディタ（VS Code）でイベントハンドラを書き、引数 `e` にカーソルを合わせると推論された型が表示されます。`onChange={(e) => {}}` と書いてから `e` の型をコピーするのが実務的な調べ方です。
+</Callout>
 
-### コンポーネントの型（React.FC を使うかどうか）
+## コンポーネントの型 — React.FCを使うかどうか
 
-`React.FC` の是非と、関数宣言でpropsの型を直接書くスタイルの比較を解説予定です。
+```tsx
+// ❌ React.FC を使うスタイル（現在は非推奨気味）
+const Button: React.FC<ButtonProps> = ({ label, onClick }) => {
+  return <button onClick={onClick}>{label}</button>;
+};
 
-### ジェネリックコンポーネント
+// ✅ 関数宣言でpropsの型を直接書くスタイル（推奨）
+function Button({ label, onClick }: ButtonProps) {
+  return <button onClick={onClick}>{label}</button>;
+}
+```
+
+`React.FC` は暗黙的に `children` を受け入れる問題（React 18で修正済み）や、ジェネリクスとの相性の悪さから、関数宣言で直接書くスタイルが主流です。
+
+## ジェネリックコンポーネント
+
+リストやセレクトボックスなど、**扱うデータの型をコンポーネント利用側が決める**パターンです。
 
 ```tsx
 type ListProps<T> = {
   items: T[];
   renderItem: (item: T) => React.ReactNode;
+  keyExtractor: (item: T) => string;
 };
 
-function List<T>({ items, renderItem }: ListProps<T>) {
-  return <ul>{items.map(renderItem)}</ul>;
+function List<T>({ items, renderItem, keyExtractor }: ListProps<T>) {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={keyExtractor(item)}>{renderItem(item)}</li>
+      ))}
+    </ul>
+  );
 }
 ```
 
----
+```tsx
+// 使う側 — User型が自動推論される
+type User = { id: string; name: string; age: number };
 
-この章の詳細な内容は順次追加していきます。
+<List<User>
+  items={users}
+  renderItem={(user) => <span>{user.name}（{user.age}歳）</span>}
+  keyExtractor={(user) => user.id}
+/>
+```
+
+<Figure src="/images/creative_color.png" alt="型安全なコンポーネント" caption="ジェネリックコンポーネントは、ライブラリやデザインシステムを作る際に強力" maxWidth="260px" />
+
+## 実務でよく使うパターン集
+
+### コンポーネントpropsを拡張する
+
+```tsx
+// HTMLのbutton属性をすべて引き継ぐ
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant: 'primary' | 'secondary';
+};
+
+function Button({ variant, className, ...rest }: ButtonProps) {
+  return <button className={`btn-${variant} ${className ?? ''}`} {...rest} />;
+}
+```
+
+### discriminated union で状態を表現する
+
+```tsx
+type AsyncState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: string };
+
+function UserProfile({ state }: { state: AsyncState<User> }) {
+  switch (state.status) {
+    case 'idle':    return <p>データを取得してください</p>;
+    case 'loading': return <p>読み込み中...</p>;
+    case 'success': return <p>{state.data.name}</p>;  // data にアクセス可能
+    case 'error':   return <p>エラー: {state.error}</p>;
+  }
+}
+```
+
+## ちゃんと使うためのポイント
+
+- <Marker>Propsの型は `type` で定義し、コンポーネントの引数に直接書く</Marker>
+- `children` は `React.ReactNode` がほぼ万能
+- `useState` の型は初期値から推論できるなら省略、`null` 初期値のときだけ明示
+- イベント型はエディタの推論で調べるのが実務的
+- `React.FC` より関数宣言で直接propsの型を書くスタイルが主流
+- HTML属性の拡張、discriminated union は実務で頻出
+
+次の章では、TypeScriptの実務パターンをさらに掘り下げます。

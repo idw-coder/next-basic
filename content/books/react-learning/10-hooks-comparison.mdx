@@ -133,6 +133,8 @@ flowchart TD
 
 ## よくある疑問
 
+<Figure src="/images/readingbook_woman_color.png" alt="フック全体を振り返って整理するイメージ" maxWidth="120px" />
+
 ### useMemoとuseCallbackはどう使い分ける？
 
 メモ化したい対象が「値」なら `useMemo`、「関数」なら `useCallback` です。`useCallback` は `useMemo` の関数特化版なので、`useMemo(() => () => { ... }, [deps])` と書けば `useCallback` と同じことができますが、意図の明確さから関数には `useCallback` を使います。
@@ -152,6 +154,14 @@ flowchart TD
 「APIからデータを取得したい」→ `useEffect`。
 
 ### useCallbackを使っているのにパフォーマンスが改善しない
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`useCallback` を使ってるのに全然速くならない…。何が足りないの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+受け取る側の子コンポーネントが `React.memo` でラップされているか確認しよう。`useCallback` 単体ではパフォーマンスに影響しない。参照の安定性を「活かす側」がいて初めて効果があるよ。
+</SpeechBubble>
 
 受け取る側の子コンポーネントが `React.memo` でラップされていない可能性が高いです。`useCallback` 単体では効果がなく、参照の安定性を活用する側（`React.memo`、`useEffect` の依存配列）があって初めて意味を持ちます。
 

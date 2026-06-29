@@ -178,6 +178,19 @@ flowchart TD
 `}
 />
 
----
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+コールバック関数の型を書くとき、`Function` 型を使っちゃダメなの？
+</SpeechBubble>
 
-この章の詳細な内容は順次追加していきます。
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`Function` 型は `any` と同じくらい危険。引数も戻り値も何でも受け入れてしまう。`(arg: string) => void` のように具体的に書くのが鉄則だよ。
+</SpeechBubble>
+
+<Figure src="/images/walking_woman_color.png" alt="関数の型付け" caption="関数の型を正確に書くことで、呼び出し側の型安全性も保証される" maxWidth="240px" />
+
+## ちゃんと使うためのポイント
+
+- <Marker>引数と戻り値の型は明示的に書く。型推論に任せるのは `return` が単純な場合だけ</Marker>
+- `void` は「戻り値を使わない」、`never` は「絶対に戻らない」、`undefined` は「undefinedを返す」
+- オーバーロードよりユニオン型やジェネリクスで表現できないか先に検討する
+- `Function` 型は使わない。引数と戻り値を具体的に書く

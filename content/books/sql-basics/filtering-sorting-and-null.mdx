@@ -112,6 +112,10 @@ WHERE name LIKE '田中%';
 大量データで部分一致検索を多用する場合は、全文検索や検索エンジンの利用も検討します。
 </Callout>
 
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+NULLの比較は `= NULL` じゃなくて `IS NULL`。SQLの中でも特につまずきやすいところだけど、「NULLは値じゃなくて状態」と覚えればスッキリするよ。
+</SpeechBubble>
+
 ## NULLは「値がない」状態
 
 `NULL` は、空文字 `''` や数値の `0` とは違います。
@@ -184,6 +188,16 @@ FROM users;
 ただし、`COALESCE(points, 0)` は検索結果として `0` を表示しているだけで、テーブルに保存されている `NULL` が自動で `0` に変わるわけではありません。
 
 <Marker>`COALESCE` は、表示や計算で扱いやすい代替値を作るための関数です。元データの `NULL` を更新するものではありません。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+LIKEで `%keyword%` を使ってるんだけど、データが増えたら遅くなりますか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+前方一致の `keyword%` ならインデックスが使えるけど、`%keyword%` は全行スキャンになりがち。数万件超えるなら全文検索エンジンの導入も検討しよう。
+</SpeechBubble>
+
+<Figure src="/images/deta_man_color.png" caption="WHERE・ORDER BY・LIMITを組み合わせることで、必要なデータだけを効率よく絞り込めます" />
 
 ## ORDER BYで並び替える
 
