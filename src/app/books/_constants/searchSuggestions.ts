@@ -37,6 +37,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'GROUP BY',
     'HAVING',
     'NULL',
+    'COALESCE',
     'EXISTS',
     '正規化',
     '制約',

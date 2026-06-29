@@ -146,6 +146,10 @@ WHERE deleted_at IS NOT NULL;
 
 `COALESCE` は、最初に `NULL` ではない値を返す関数です。
 表示用の値を補完したいときに使います。
+一般的には「コアレス」と読まれます。
+SQLでは `COALESCE(値1, 値2, ...)` の形で書きます。
+
+たとえば、ユーザー名として `nickname` を優先し、未設定なら `name` を表示したい場合に使えます。
 
 ```sql
 SELECT
@@ -155,6 +159,19 @@ FROM users;
 ```
 
 この例では、`nickname` がある場合はニックネームを使い、`NULL` の場合は `name` を使います。
+`COALESCE` には3つ以上の値も渡せます。
+左から順番に見て、最初に `NULL` ではない値が採用されます。
+
+```sql
+SELECT
+  id,
+  COALESCE(nickname, name, '名無し') AS display_name
+FROM users;
+```
+
+この場合は、`nickname` があればそれを使い、なければ `name`、それも `NULL` なら `'名無し'` を使います。
+
+数値列では、未設定を表示上だけ `0` にしたい場面でよく使います。
 
 ```sql
 SELECT
@@ -164,6 +181,9 @@ FROM users;
 ```
 
 集計や表示で `NULL` をそのまま扱うと分かりにくい場合は、`COALESCE` で明示的に置き換えると読みやすくなります。
+ただし、`COALESCE(points, 0)` は検索結果として `0` を表示しているだけで、テーブルに保存されている `NULL` が自動で `0` に変わるわけではありません。
+
+<Marker>`COALESCE` は、表示や計算で扱いやすい代替値を作るための関数です。元データの `NULL` を更新するものではありません。</Marker>
 
 ## ORDER BYで並び替える
 

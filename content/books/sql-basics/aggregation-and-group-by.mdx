@@ -192,6 +192,7 @@ GROUP BY products.id, products.name;
 
 `SUM` は対象行がないと `NULL` になることがあります。
 表示上0にしたい場合は `COALESCE` を使います。
+`COUNT` は0を返せる一方で、`SUM` や `AVG` は集計対象がないと `NULL` になり得るため、一覧画面やレポートでは `COALESCE(SUM(...), 0)` の形がよく使われます。
 
 ## 日別・月別に集計する
 
