@@ -8,6 +8,7 @@ import {
   Menu,
   X,
   BookOpen,
+  Bookmark,
   Bell,
   User as UserIcon,
   LogIn,
@@ -73,6 +74,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showTech, setShowTech] = useState(false);
+  const [quizMenuOpen, setQuizMenuOpen] = useState(false);
   const [booksMenuOpen, setBooksMenuOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -131,14 +133,79 @@ export default function HeaderNav({ books }: HeaderNavProps) {
           ${open ? "block" : "hidden sm:flex"}
         `}
       >
-        <Link href="/search" className={linkClass} onClick={closeMenu}>
-          <Search className={iconClass} />
-          検索
-        </Link>
-        <Link href="/#categories" className={linkClass} onClick={closeMenu}>
-          <BookOpen className={iconClass} />
-          クイズ
-        </Link>
+        <div
+          className="relative"
+          onPointerEnter={() => setQuizMenuOpen(true)}
+          onPointerLeave={() => setQuizMenuOpen(false)}
+          onMouseEnter={() => setQuizMenuOpen(true)}
+          onMouseLeave={() => setQuizMenuOpen(false)}
+          onFocus={() => setQuizMenuOpen(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setQuizMenuOpen(false);
+            }
+          }}
+        >
+          <Link
+            href="/#categories"
+            className={linkClass}
+            onClick={closeMenu}
+            aria-haspopup="menu"
+          >
+            <BookOpen className={iconClass} />
+            クイズ
+            <ChevronDown
+              className={cn(
+                "hidden size-3.5 text-muted-foreground transition-transform sm:block",
+                quizMenuOpen && "rotate-180",
+              )}
+            />
+          </Link>
+
+          <div
+            className={cn(
+              "hidden sm:block",
+              "absolute left-1/2 top-full z-50 w-56 -translate-x-1/2 pt-2",
+              "transition duration-150 ease-out",
+              quizMenuOpen
+                ? "visible pointer-events-auto opacity-100"
+                : "invisible pointer-events-none opacity-0",
+            )}
+            role="menu"
+          >
+            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+              <div className="p-1.5">
+                <Link
+                  href="/#categories"
+                  role="menuitem"
+                  className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-primary"
+                  onClick={closeMenu}
+                >
+                  <BookOpen className="size-4 text-muted-foreground" />
+                  クイズ一覧
+                </Link>
+                <Link
+                  href="/quiz/bookmarks"
+                  role="menuitem"
+                  className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-amber-50 hover:text-amber-700"
+                  onClick={closeMenu}
+                >
+                  <Bookmark className="size-4 text-amber-500" />
+                  ブックマーク
+                </Link>
+                <Link
+                  href="/search"
+                  role="menuitem"
+                  className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 hover:text-primary"
+                  onClick={closeMenu}
+                >
+                  <Search className="size-4 text-muted-foreground" />
+                  問題を検索
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
         <div
           className="relative"
           onPointerEnter={() => setBooksMenuOpen(true)}

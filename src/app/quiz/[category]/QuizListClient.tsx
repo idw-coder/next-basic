@@ -3,12 +3,13 @@
 import { useTransition, useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Search, ChevronRight, CircleCheck, CircleX, Trash2, BookOpen } from 'lucide-react';
+import { Search, ChevronRight, CircleCheck, CircleX, Trash2, BookOpen, Bookmark } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
+import { useQuizBookmarks } from '@/hooks/useQuizBookmarks';
 import type { Quiz, Tag } from './page';
 import type { SectionTagConfig, SectionBookLink } from './sectionTagMap';
 
@@ -80,12 +81,14 @@ function QuizCard({
   index,
   categorySlug,
   getLatestAnswer,
+  isBookmarked,
   hiddenTagSlugs = EMPTY_TAG_SLUGS,
 }: {
   quiz: Quiz;
   index: number;
   categorySlug: string;
   getLatestAnswer: (quizId: number) => { isCorrect: boolean } | null;
+  isBookmarked?: boolean;
   hiddenTagSlugs?: Set<string>;
 }) {
   const latestAnswer = getLatestAnswer(quiz.id);
@@ -131,6 +134,9 @@ function QuizCard({
         )}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
+        {isBookmarked && (
+          <Bookmark className="size-3.5 text-amber-500 fill-amber-500" />
+        )}
         {isNew && (
           <Badge className="bg-red-500 hover:bg-red-500 text-white text-[10px] px-1.5 py-0 leading-4">
             NEW
@@ -153,10 +159,12 @@ function SectionGroup({
   section,
   categorySlug,
   getLatestAnswer,
+  isBookmarked,
 }: {
   section: QuizSection;
   categorySlug: string;
   getLatestAnswer: (quizId: number) => { isCorrect: boolean } | null;
+  isBookmarked: (quizId: number) => boolean;
 }) {
   return (
     <div>
@@ -174,6 +182,7 @@ function SectionGroup({
             index={i}
             categorySlug={categorySlug}
             getLatestAnswer={getLatestAnswer}
+            isBookmarked={isBookmarked(quiz.id)}
             hiddenTagSlugs={section.tagSlugs}
           />
         ))}
@@ -210,6 +219,7 @@ export default function QuizListClient({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const { getLatestAnswer, getCategoryStats, clearHistory } = useQuizHistory();
+  const { isBookmarked } = useQuizBookmarks();
 
   const [inputValue, setInputValue] = useState(currentQuery);
 
@@ -335,6 +345,7 @@ export default function QuizListClient({
                   section={section}
                   categorySlug={categorySlug}
                   getLatestAnswer={getLatestAnswer}
+                  isBookmarked={isBookmarked}
                 />
               ))}
             </div>
@@ -346,6 +357,7 @@ export default function QuizListClient({
                 index={index}
                 categorySlug={categorySlug}
                 getLatestAnswer={getLatestAnswer}
+                isBookmarked={isBookmarked(quiz.id)}
               />
             ))
           )

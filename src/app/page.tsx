@@ -289,9 +289,21 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/06/29',
+    text: 'クイズのブックマーク機能を追加しました。気になる問題を保存して復習できます',
+    isNew: true,
+    link: '/quiz/bookmarks',
+  },
+  {
+    date: '2026/06/26',
+    text: '教科書コンテンツを全面リニューアルしました。図解や解説をより分かりやすく改善しています',
+    isNew: true,
+    link: '/books',
+  },
+  {
     date: '2026/05/26',
     text: '教科書「システム設計をちゃんと理解する」を公開しました',
-    isNew: true,
+    isNew: false,
     link: '/books/system-design',
   },
   {

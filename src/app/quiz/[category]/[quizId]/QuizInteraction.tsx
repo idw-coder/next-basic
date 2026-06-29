@@ -21,7 +21,8 @@ import {
   type RandomQuizSession,
 } from '@/lib/randomQuizSession';
 import { cn } from '@/lib/utils';
-import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Tags, Trophy, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bookmark, Check, Pencil, Plus, Tags, Trophy, X } from 'lucide-react';
+import { useQuizBookmarks } from '@/hooks/useQuizBookmarks';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -82,6 +83,7 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
   const [newTagName, setNewTagName] = useState('');
   const [creatingTag, setCreatingTag] = useState(false);
   const { addAnswer } = useQuizHistory();
+  const { isBookmarked, toggleBookmark } = useQuizBookmarks();
   const router = useRouter();
 
   useEffect(() => {
@@ -314,6 +316,25 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
           </div>
         </div>
       )}
+
+      {/* ブックマークボタン */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => toggleBookmark(quiz.id, quiz.category_id, categorySlug, quiz.question)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
+            isBookmarked(quiz.id)
+              ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:hover:bg-amber-500/30'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+          )}
+        >
+          <Bookmark
+            className={cn('size-3.5', isBookmarked(quiz.id) && 'fill-current')}
+          />
+          {isBookmarked(quiz.id) ? 'ブックマーク済み' : 'ブックマーク'}
+        </button>
+      </div>
 
       {/* 選択肢 */}
       <div className="space-y-2.5 sm:space-y-3">
