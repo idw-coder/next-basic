@@ -173,6 +173,7 @@ git clone git@github.com:example/app.git
 HTTPSはこの章で扱っているWeb通信の延長にあります。ブラウザでWebサイトを見るときと同じく、TLSで通信内容を暗号化します。ただしGitHubではパスワード認証ではなく、Personal Access Tokenなどを使います。
 
 SSHはHTTPとは別のプロトコルです。サーバーにログインしたり、Git操作を安全に行ったりするためによく使われます。SSHでは、手元のPCに **秘密鍵** を置き、対応する **公開鍵** をGitHubに登録して「このPCからの接続は本人だ」と確認します。
+SSHそのものの仕組みや `ssh-keygen`、`authorized_keys`、`known_hosts` については、[SSHと公開鍵認証](/books/cs-basics/network-ssh) で詳しく扱っています。
 
 迷ったら、まずはHTTPSでcloneして問題ありません。pushやpullを頻繁に行う開発用PCでは、SSH鍵を設定してSSH cloneを使うと、認証情報の入力が少なくなり運用しやすくなります。
 

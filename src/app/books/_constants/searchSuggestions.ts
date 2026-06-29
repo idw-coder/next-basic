@@ -28,7 +28,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'バケットポリシー',
   ],
 
-  'http-and-web-api': ['CORS'],
+  'http-and-web-api': ['CORS', 'SSH'],
 
   'sql-basics': [
     'SELECT',
@@ -96,7 +96,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'conflict',
   ],
 
-  'cs-basics': ['CPU', 'メモリ', 'データ構造', 'ネットワーク', 'デバッグ'],
+  'cs-basics': ['CPU', 'メモリ', 'データ構造', 'ネットワーク', 'SSH', 'デバッグ'],
 
   'next-js': [
     'use client',

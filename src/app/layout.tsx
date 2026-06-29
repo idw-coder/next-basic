@@ -14,6 +14,7 @@ const mPlusRounded = M_PLUS_Rounded_1c({
 });
 import GoogleAdSense, { HideAdsForEntry } from '@/components/GoogleAdSense';
 import HeaderNav from '@/components/HeaderNav';
+import { getAllBooks } from '@/lib/books';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://study.ntorelabo.com'),
@@ -55,6 +56,12 @@ export default function RootLayout({
   const clientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
   const adSlot = process.env.NEXT_PUBLIC_ADSENSE_SLOT;
   const isDevelopment = process.env.NODE_ENV === 'development';
+  const headerBooks = getAllBooks().map((book) => ({
+    bookSlug: book.bookSlug,
+    title: book.title,
+    description: book.description,
+    coverImage: book.coverImage,
+  }));
 
   return (
     <html lang="ja">
@@ -82,7 +89,7 @@ export default function RootLayout({
               <span className="text-base md:text-lg">ウェブエンジニア問題集</span>
             </Link>
             <Suspense>
-              <HeaderNav />
+              <HeaderNav books={headerBooks} />
             </Suspense>
           </div>
         </header>

@@ -1,0 +1,209 @@
+---
+title: "SSHと公開鍵認証 — サーバーへ安全に接続する"
+description: "SSHの役割、基本的な接続コマンド、公開鍵認証、秘密鍵と公開鍵、authorized_keys、known_hosts、ssh config、接続できないときの見方を整理します。"
+order: 4.45
+---
+
+SSHは、リモートサーバーへ安全にログインして操作するためのプロトコルです。
+正式には **Secure Shell** と呼ばれ、通信内容を暗号化したうえで、相手のサーバーと自分の認証を確認します。
+
+Web開発では、クラウド上のサーバーへ入る、GitHubへSSHで接続する、踏み台サーバー経由で内部環境へ入る、といった場面でよく使います。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+GitHubのSSH設定はやったことがあります。でも、サーバーに入るSSHと何が同じなのかは曖昧です。
+</SpeechBubble>
+
+## SSHで何ができるか
+
+SSHの代表的な用途は、手元のPCから別のサーバーへログインして、コマンドを実行することです。
+
+```bash
+ssh user@example.com
+```
+
+このコマンドは、`example.com` というサーバーに `user` というユーザーで接続する、という意味です。
+内部では、DNSで名前解決し、IPアドレスへ到達し、TCPで22番ポートへ接続し、その上でSSHの認証と暗号化通信を行います。
+
+```text
+PC
+  -> DNSで example.com をIPへ変換
+  -> TCP 22番ポートへ接続
+  -> SSHでサーバー確認とユーザー認証
+  -> リモートシェルを操作
+```
+
+<Marker>SSHは、TCPの上で動くアプリケーション層のプロトコルです。標準ポートは22番です。</Marker>
+
+## 基本の接続コマンド
+
+よく使う形は次の通りです。
+
+```bash
+# ユーザー名とホスト名を指定
+ssh user@example.com
+
+# ポート番号を指定
+ssh -p 2222 user@example.com
+
+# 秘密鍵ファイルを指定
+ssh -i ~/.ssh/id_ed25519 user@example.com
+```
+
+| 指定 | 意味 |
+|---|---|
+| `user@example.com` | `example.com` に `user` として接続する |
+| `-p 2222` | 22番以外のポートへ接続する |
+| `-i ~/.ssh/id_ed25519` | 使う秘密鍵を明示する |
+
+サーバー側でSSHが22番ではなく2222番などに変更されている場合、`-p` を指定しないと接続できません。
+
+## パスワード認証と公開鍵認証
+
+SSHの認証には、主にパスワード認証と公開鍵認証があります。
+
+| 認証方式 | 仕組み | 実務での扱い |
+|---|---|---|
+| パスワード認証 | サーバー上のユーザーのパスワードを入力する | 総当たり攻撃に弱いため無効化されることが多い |
+| 公開鍵認証 | 手元の秘密鍵と、サーバーに置いた公開鍵の対応を確認する | 推奨されることが多い |
+
+公開鍵認証では、手元のPCに **秘密鍵** を置き、サーバー側に **公開鍵** を登録します。
+秘密鍵そのものをネットワークへ送るわけではありません。
+サーバーは、公開鍵に対応する秘密鍵をクライアントが持っているかを暗号学的に確認します。
+
+<Callout type="warning">
+### 秘密鍵は共有しない
+
+`id_ed25519` のような秘密鍵は、パスワードに近い重要な認証情報です。他人に送らない、チャットに貼らない、リポジトリにコミットしない、バックアップの扱いにも注意する、という前提で管理します。
+</Callout>
+
+## 鍵ペアを作る
+
+新しくSSH鍵を作るときは `ssh-keygen` を使います。
+現在は `ed25519` がよく使われます。
+
+```bash
+ssh-keygen -t ed25519 -C "taro@example.com"
+```
+
+標準の保存先を選ぶと、次のような2つのファイルが作られます。
+
+| ファイル | 種類 | 扱い |
+|---|---|---|
+| `~/.ssh/id_ed25519` | 秘密鍵 | 自分だけが持つ |
+| `~/.ssh/id_ed25519.pub` | 公開鍵 | GitHubやサーバーへ登録できる |
+
+公開鍵の中身は `cat` で確認できます。
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+## authorized_keysに公開鍵を登録する
+
+サーバーへ公開鍵認証でログインするには、接続先ユーザーの `~/.ssh/authorized_keys` に公開鍵を登録します。
+
+```text
+/home/user/.ssh/authorized_keys
+```
+
+このファイルには「このユーザーとしてログインしてよい公開鍵」の一覧が入ります。
+たとえば、手元PCの `id_ed25519.pub` の内容を、サーバー側の `authorized_keys` に1行として追加します。
+
+```bash
+# 手元PCで公開鍵を表示
+cat ~/.ssh/id_ed25519.pub
+```
+
+```text
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... taro@example.com
+```
+
+サーバー側では、`.ssh` ディレクトリや `authorized_keys` の権限が広すぎるとSSHが拒否することがあります。
+
+```bash
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+```
+
+## known_hostsは「接続先サーバーの記録」
+
+初めてSSH接続すると、次のような確認が出ることがあります。
+
+```text
+The authenticity of host 'example.com' can't be established.
+Are you sure you want to continue connecting (yes/no/[fingerprint])?
+```
+
+これは「このサーバーを初めて見るが、本当に接続してよいか」という確認です。
+`yes` と答えると、サーバーのホスト鍵の情報が `~/.ssh/known_hosts` に保存されます。
+
+次回以降、同じホスト名なのにホスト鍵が変わっていると警告が出ます。
+これはサーバーを再作成しただけのこともありますが、中間者攻撃の可能性もあるため、理由を確認してから対応します。
+
+## ssh configで接続を短くする
+
+毎回 `ssh -i ... -p ... user@host` と書くのは面倒です。
+`~/.ssh/config` に設定しておくと、短い名前で接続できます。
+
+```sshconfig
+Host app-server
+  HostName example.com
+  User deploy
+  Port 2222
+  IdentityFile ~/.ssh/id_ed25519
+```
+
+この設定があれば、次のように接続できます。
+
+```bash
+ssh app-server
+```
+
+GitHubで仕事用と個人用の鍵を分ける場合も、`Host` を分けて `IdentityFile` を指定することがあります。
+
+## GitHubのSSH接続との関係
+
+GitHubのSSH cloneも、仕組みとしてはSSHです。
+
+```bash
+git clone git@github.com:owner/repo.git
+ssh -T git@github.com
+```
+
+通常のサーバーログインでは `ssh user@example.com` のように接続しますが、GitHubでは `git@github.com` というユーザーへ接続し、Git操作だけを許可する形になっています。
+GitHub側に登録するのは公開鍵で、手元に置くのは秘密鍵です。
+
+GitHub向けの具体的なセットアップは [Gitのセットアップ](/books/git-basic/02-setup) で扱っています。
+
+## 接続できないときの見方
+
+SSHで接続できないときは、エラーメッセージによって見る場所が変わります。
+
+| エラー例 | よくある原因 |
+|---|---|
+| `Could not resolve hostname` | ホスト名が間違っている、DNSで名前解決できない |
+| `Connection timed out` | ファイアウォール、セキュリティグループ、経路、ポート違い |
+| `Connection refused` | サーバーへ届いたが、SSHが待ち受けていない |
+| `Permission denied (publickey)` | 公開鍵が未登録、別の秘密鍵を使っている、ユーザー名が違う |
+| `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!` | サーバーのホスト鍵が変わった |
+
+原因を詳しく見るには `-v` を付けます。
+
+```bash
+ssh -v user@example.com
+```
+
+さらに詳しく見る場合は `-vv` や `-vvv` も使えます。
+ただし、ログにはローカルのパスや鍵名が出ることがあるため、共有するときは不要な情報を伏せます。
+
+## ちゃんと使うためのポイント
+
+- <Marker>SSHは、リモートサーバーへ安全に接続するためのプロトコル</Marker>
+- 標準ポートは22番だが、環境によって変更されることがある
+- 実務ではパスワード認証より公開鍵認証がよく使われる
+- 秘密鍵は自分だけが持ち、公開鍵をサーバーやGitHubに登録する
+- `authorized_keys` はログインを許可する公開鍵の一覧
+- `known_hosts` は接続先サーバーのホスト鍵の記録
+- 接続できないときは、DNS、ポート、認証、ホスト鍵のどこで失敗しているかを分けて見る
+
+次の章では、SSHも含めた「繋がらない」を下の層から順に調べる **ネットワークの切り分け** を扱います。
