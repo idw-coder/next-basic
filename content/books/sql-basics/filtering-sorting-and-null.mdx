@@ -10,7 +10,7 @@ order: 3
 この章では、行の絞り込み、並び替え、件数制限、そしてSQL初学者がつまずきやすい `NULL` の扱いを整理します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`WHERE deleted_at = NULL` って書いたら結果が返ってこなかった…。NULLって普通の値じゃないの？
+  `WHERE deleted_at = NULL` って書いたら結果が返ってこなかった…。NULLって普通の値じゃないの？
 </SpeechBubble>
 
 ## WHEREで行を絞り込む
@@ -33,14 +33,14 @@ WHERE total_amount >= 5000;
 
 代表的な比較演算子は次の通りです。
 
-| 演算子 | 意味 | 例 |
-| --- | --- | --- |
-| `=` | 等しい | `status = 'paid'` |
-| `<>` / `!=` | 等しくない | `status <> 'cancelled'` |
-| `>` | より大きい | `price > 1000` |
-| `>=` | 以上 | `price >= 1000` |
-| `<` | より小さい | `created_at < '2026-01-01'` |
-| `<=` | 以下 | `stock <= 0` |
+| 演算子      | 意味       | 例                          |
+| ----------- | ---------- | --------------------------- |
+| `=`         | 等しい     | `status = 'paid'`           |
+| `<>` / `!=` | 等しくない | `status <> 'cancelled'`     |
+| `>`         | より大きい | `price > 1000`              |
+| `>=`        | 以上       | `price >= 1000`             |
+| `<`         | より小さい | `created_at < '2026-01-01'` |
+| `<=`        | 以下       | `stock <= 0`                |
 
 <Marker>`WHERE` は「取得対象にする行」を決める条件です。</Marker>
 
@@ -101,19 +101,20 @@ FROM users
 WHERE name LIKE '田中%';
 ```
 
-| パターン | 意味 |
-| --- | --- |
-| `'田中%'` | 田中で始まる |
-| `'%太郎'` | 太郎で終わる |
-| `'%shop%'` | shopを含む |
+| パターン   | 意味         |
+| ---------- | ------------ |
+| `'田中%'`  | 田中で始まる |
+| `'%太郎'`  | 太郎で終わる |
+| `'%shop%'` | shopを含む   |
 
 <Callout type="warning" title="先頭ワイルドカードは重くなりやすい">
-`LIKE '%keyword%'` は便利ですが、通常のインデックスが効きにくい検索です。
-大量データで部分一致検索を多用する場合は、全文検索や検索エンジンの利用も検討します。
+  `LIKE '%keyword%'` は便利ですが、通常のインデックスが効きにくい検索です。
+  大量データで部分一致検索を多用する場合は、全文検索や検索エンジンの利用も検討します。
 </Callout>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-NULLの比較は `= NULL` じゃなくて `IS NULL`。SQLの中でも特につまずきやすいところだけど、「NULLは値じゃなくて状態」と覚えればスッキリするよ。
+  NULLの比較は `= NULL` じゃなくて `IS
+  NULL`。SQLの中でも特につまずきやすいところだけど、「NULLは値じゃなくて状態」と覚えればスッキリするよ。
 </SpeechBubble>
 
 ## NULLは「値がない」状態
@@ -150,7 +151,11 @@ WHERE deleted_at IS NOT NULL;
 
 `COALESCE` は、最初に `NULL` ではない値を返す関数です。
 表示用の値を補完したいときに使います。
-一般的には「コアレス」と読まれます。
+
+一般的には「コアレス」と読まれます。意味は合体する・1つにまとまると言った意味です。
+
+<Figure src="/images/toppa_man_color.png" caption="合体する" />
+
 SQLでは `COALESCE(値1, 値2, ...)` の形で書きます。
 
 たとえば、ユーザー名として `nickname` を優先し、未設定なら `name` を表示したい場合に使えます。
@@ -165,6 +170,8 @@ FROM users;
 この例では、`nickname` がある場合はニックネームを使い、`NULL` の場合は `name` を使います。
 `COALESCE` には3つ以上の値も渡せます。
 左から順番に見て、最初に `NULL` ではない値が採用されます。
+
+全てがnullの場合は
 
 ```sql
 SELECT
@@ -187,17 +194,24 @@ FROM users;
 集計や表示で `NULL` をそのまま扱うと分かりにくい場合は、`COALESCE` で明示的に置き換えると読みやすくなります。
 ただし、`COALESCE(points, 0)` は検索結果として `0` を表示しているだけで、テーブルに保存されている `NULL` が自動で `0` に変わるわけではありません。
 
-<Marker>`COALESCE` は、表示や計算で扱いやすい代替値を作るための関数です。元データの `NULL` を更新するものではありません。</Marker>
+<Marker>
+  `COALESCE` は、表示や計算で扱いやすい代替値を作るための関数です。元データの `NULL`
+  を更新するものではありません。
+</Marker>
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-LIKEで `%keyword%` を使ってるんだけど、データが増えたら遅くなりますか？
+  LIKEで `%keyword%` を使ってるんだけど、データが増えたら遅くなりますか？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-前方一致の `keyword%` ならインデックスが使えるけど、`%keyword%` は全行スキャンになりがち。数万件超えるなら全文検索エンジンの導入も検討しよう。
+  前方一致の `keyword%` ならインデックスが使えるけど、`%keyword%`
+  は全行スキャンになりがち。数万件超えるなら全文検索エンジンの導入も検討しよう。
 </SpeechBubble>
 
-<Figure src="/images/deta_man_color.png" caption="WHERE・ORDER BY・LIMITを組み合わせることで、必要なデータだけを効率よく絞り込めます" />
+<Figure
+  src="/images/deta_man_color.png"
+  caption="WHERE・ORDER BY・LIMITを組み合わせることで、必要なデータだけを効率よく絞り込めます"
+/>
 
 ## ORDER BYで並び替える
 
@@ -209,9 +223,9 @@ FROM users
 ORDER BY created_at DESC;
 ```
 
-| 指定 | 意味 |
-| --- | --- |
-| `ASC` | 昇順。小さい順、古い順、AからZ |
+| 指定   | 意味                             |
+| ------ | -------------------------------- |
+| `ASC`  | 昇順。小さい順、古い順、AからZ   |
 | `DESC` | 降順。大きい順、新しい順、ZからA |
 
 複数条件で並べ替えることもできます。
@@ -238,7 +252,8 @@ LIMIT 10;
 `ORDER BY` なしで `LIMIT` だけ使うと、どの10件が返るかが安定しないことがあります。
 
 <Callout type="warning" title="LIMITにはORDER BYを組み合わせる">
-「最新10件」「金額が高い順に10件」のように意味のある件数制限にするには、必ず `ORDER BY` で並び順を指定します。
+  「最新10件」「金額が高い順に10件」のように意味のある件数制限にするには、必ず `ORDER BY`
+  で並び順を指定します。
 </Callout>
 
 ページネーションでは `OFFSET` と組み合わせることもあります。

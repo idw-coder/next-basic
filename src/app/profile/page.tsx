@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import api from '@/lib/api';
 import { createAvatar } from '@dicebear/core';
 import { identicon } from '@dicebear/collection';
-import { Flame, Target, BookOpen, TrendingUp } from 'lucide-react';
+import { Flame, Target, BookOpen, TrendingUp, Bookmark } from 'lucide-react';
+import Link from 'next/link';
 
 interface User {
   id: string;
@@ -292,28 +293,15 @@ export default function ProfilePage() {
   const roleInfo = ROLE_LABELS[role] ?? { label: role, variant: 'secondary' as const };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-2xl mx-auto px-4 py-4 space-y-4 sm:py-8 sm:space-y-6">
       {/* プロフィールカード */}
       <Card>
-        <CardHeader className="items-center pb-2">
-          <Image
-            src={avatarSvg}
-            alt={`${user.name}のアイコン`}
-            width={96}
-            height={96}
-            className="rounded-full border bg-muted"
-            unoptimized
-          />
-          <CardTitle className="mt-3 text-center">{user.name}</CardTitle>
-          <Badge variant={roleInfo.variant}>{roleInfo.label}</Badge>
-        </CardHeader>
-
-        <CardContent className="space-y-4 pt-2">
+        <CardContent className="pt-4 pb-4 sm:pt-6 sm:pb-6">
           {success && (
-            <p className="text-sm text-green-600 bg-green-50 rounded-md px-3 py-2">{success}</p>
+            <p className="text-sm text-green-600 bg-green-50 rounded-md px-3 py-2 mb-3">{success}</p>
           )}
           {error && (
-            <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
+            <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2 mb-3">
               {error}
             </p>
           )}
@@ -381,27 +369,61 @@ export default function ProfilePage() {
               </div>
             </div>
           ) : (
-            <>
-              <div>
-                <p className="text-sm text-muted-foreground">メールアドレス</p>
-                <p className="font-medium">{user.email}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">登録日</p>
-                <p className="font-medium">
-                  {new Date(user.createdAt).toLocaleDateString('ja-JP')}
+            <div className="flex items-start gap-4">
+              <Image
+                src={avatarSvg}
+                alt={`${user.name}のアイコン`}
+                width={56}
+                height={56}
+                className="rounded-full border bg-muted shrink-0"
+                unoptimized
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <h2 className="text-base font-bold truncate">{user.name}</h2>
+                  <Badge variant={roleInfo.variant} className="shrink-0 text-[10px]">{roleInfo.label}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                <p className="text-xs text-muted-foreground">
+                  登録: {new Date(user.createdAt).toLocaleDateString('ja-JP')}
                 </p>
+                <div className="flex gap-2 mt-3">
+                  <Button onClick={handleEditStart} variant="secondary" size="sm" className="text-xs h-8">
+                    プロフィールを編集
+                  </Button>
+                  <Button onClick={handleLogout} variant="outline" size="sm" className="text-xs h-8">
+                    ログアウト
+                  </Button>
+                </div>
               </div>
-              <Button onClick={handleEditStart} variant="secondary" className="w-full">
-                プロフィールを編集
-              </Button>
-              <Button onClick={handleLogout} variant="outline" className="w-full">
-                ログアウト
-              </Button>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* クイックリンク */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <Link
+          href="/quiz/bookmarks"
+          className="flex items-center gap-2.5 rounded-lg border bg-white p-3 hover:bg-amber-50 transition-colors sm:p-4"
+        >
+          <Bookmark className="size-4 text-amber-500 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-foreground">ブックマーク</p>
+            <p className="text-[10px] text-muted-foreground sm:text-xs">保存した問題を復習</p>
+          </div>
+        </Link>
+        <Link
+          href="/quiz/random"
+          className="flex items-center gap-2.5 rounded-lg border bg-white p-3 hover:bg-blue-50 transition-colors sm:p-4"
+        >
+          <Target className="size-4 text-blue-500 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-foreground">ランダムクイズ</p>
+            <p className="text-[10px] text-muted-foreground sm:text-xs">全カテゴリから出題</p>
+          </div>
+        </Link>
+      </div>
 
       {/* クイズ履歴セクション */}
       {quizStats && (
