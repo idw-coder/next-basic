@@ -134,8 +134,8 @@
   overflow-x: auto;
   border-radius: 0.5rem;
   padding: 0.875rem 1rem;
-  font-size: 0.875rem;
-  line-height: 1.7;
+  font-size: 0.8125rem;
+  line-height: 1.65;
 }
 
 [data-rehype-pretty-code-figure] code {
@@ -200,6 +200,23 @@
 
 .prose a[id] + h2 {
   margin-top: 0;
+}
+
+.prose {
+  font-size: 0.8125rem;
+  line-height: 1.75;
+  letter-spacing: 0.025em;
+}
+
+@media (min-width: 768px) {
+  .prose {
+    font-size: 0.875rem;
+  }
+}
+
+.prose figure {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .prose h2 {

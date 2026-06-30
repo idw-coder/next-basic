@@ -23,15 +23,13 @@ export default function SpeechBubble({
     >
       {character && (
         <div className="flex shrink-0 flex-col items-center">
-          <div className="rounded-full bg-gray-50 p-0.5">
-            <Image
-              src={character}
-              alt={name ?? ''}
-              width={80}
-              height={80}
-              className="h-16 w-16 sm:h-20 sm:w-20 object-contain"
-            />
-          </div>
+          <Image
+            src={character}
+            alt={name ?? ''}
+            width={80}
+            height={80}
+            className="h-16 w-16 sm:h-20 sm:w-20 object-contain"
+          />
           {name && (
             <span className="mt-1 text-[11px] font-medium text-muted-foreground">
               {name}
@@ -48,7 +46,7 @@ export default function SpeechBubble({
               : 'left-[-7px] border-r-8 border-r-blue-50 dark:border-r-slate-800'
           }`}
         />
-        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-relaxed shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3.5 py-2 text-[13px] leading-relaxed shadow-sm dark:border-slate-700 dark:bg-slate-800">
           {children}
         </div>
       </div>

@@ -105,7 +105,7 @@ const html = `
 <Callout type="note" title="この章のメソッド表記について">
   各メソッドは、まず `メソッド名(引数1, 引数2?)`
   という形（**シグネチャ**）を示し、続けて**引数の表**と「戻り値」を載せます（`引数?` のように `?`
-  が付くものは**省略できる引数**）。引数は一番知りたい情報なので、地の文に埋もれさせず**表でパッと確認**できるようにしています。MDNのリファレンス代わりに使ってください。
+  が付くものは**省略できる引数**）。引数は一番知りたい情報なので、地の文に埋もれさせず**表でパッと確認**できるようにしています。より詳しく知りたいときは、各メソッドの [MDN公式リファレンス](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String) も参照してください。
 </Callout>
 
 <a id="section-4"></a>
@@ -332,6 +332,8 @@ const text = 'tel: 03-1234, 06-5678';
 
 主なフラグ：`g`（全マッチ）、`i`（大文字小文字を無視）、`m`（複数行）。
 
+正規表現の全体像は [MDN — 正規表現](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Regular_expressions) にまとまっています。
+
 <a id="section-10"></a>
 
 ## メソッド早見表
@@ -347,6 +349,8 @@ const text = 'tel: 03-1234, 06-5678';
 | 前後の空白除去       | `trim`                        | 新しい文字列 |
 | 区切って配列に       | `split`                       | 配列         |
 | パターンに一致するか | 正規表現 + `test`             | `boolean`    |
+
+各メソッドの詳細は [MDN — String リファレンス](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String) を参照してください。
 
 <a id="section-11"></a>
 
