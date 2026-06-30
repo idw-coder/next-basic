@@ -554,12 +554,12 @@ export default async function Home() {
 
       {/* 教科書 */}
         <section id="books" className="mb-8 rounded-[1.5rem] bg-white px-3 py-5 sm:rounded-[2rem] md:mb-16 md:px-10 md:py-12">
-          <div className="mb-8 grid gap-4 md:grid-cols-[0.8fr_1fr] md:items-end">
+          <div className="mb-4 sm:mb-8 grid gap-2 sm:gap-4 md:grid-cols-[0.8fr_1fr] md:items-end">
             <SectionHeading center={false} subtitle="基礎から体系的に学べる技術書コンテンツ">
               教科書
             </SectionHeading>
-            <p className="text-sm leading-7 text-[#6d6760]">
-              クイズだけで曖昧だったところは、短い章ごとの教科書に戻って確認できます。迷ったときの次の一手がすぐ見つかる構成です。
+            <p className="text-xs leading-relaxed text-[#6d6760] sm:text-sm sm:leading-7">
+              クイズで曖昧だったところは、教科書に戻って確認。迷ったときの次の一手がすぐ見つかります。
             </p>
           </div>
           <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
@@ -600,11 +600,11 @@ export default async function Home() {
             FREE
             </span>
           </div>
-          <SectionHeading className="mb-2">無料会員登録で学習をもっと便利に</SectionHeading>
-          <p className="mb-6 text-center text-sm text-[#6d6760]">
-            登録しなくてもすべての問題を解けます。登録すると以下の機能が使えます。
+          <SectionHeading className="mb-1 sm:mb-2">無料で学習をもっと便利に</SectionHeading>
+          <p className="mb-4 text-center text-xs text-[#6d6760] sm:mb-6 sm:text-sm">
+            登録なしでも全問解けます。登録すると以下が使えます。
           </p>
-          <div className="mx-auto mb-6 grid max-w-3xl grid-cols-2 gap-x-8 gap-y-3 lg:grid-cols-4">
+          <div className="mx-auto mb-4 grid max-w-3xl grid-cols-2 gap-x-4 gap-y-2 sm:mb-6 sm:gap-x-8 sm:gap-y-3 lg:grid-cols-4">
           {[
             {
               icon: Target,
@@ -615,58 +615,57 @@ export default async function Home() {
             {
               icon: Flame,
               color: 'text-orange-500',
-              title: '連続学習ストリーク',
+              title: '学習ストリーク',
               desc: '毎日の習慣を可視化',
             },
             {
               icon: TrendingUp,
               color: 'text-blue-500',
-              title: 'カテゴリ別の進捗',
+              title: 'カテゴリ別進捗',
               desc: '得意・苦手が一目瞭然',
             },
             {
               icon: UserCircle,
               color: 'text-violet-500',
-              title: 'デバイス間で同期',
+              title: 'デバイス間同期',
               desc: 'PC・スマホどちらでも',
             },
           ].map((f) => (
-            <div key={f.title} className="flex items-start gap-2.5">
-              <f.icon className={`mt-0.5 size-4 ${f.color} shrink-0`} />
+            <div key={f.title} className="flex items-start gap-1.5 sm:gap-2.5">
+              <f.icon className={`mt-0.5 size-3.5 ${f.color} shrink-0 sm:size-4`} />
               <div>
-                <p className="text-sm font-bold text-[#2f302f]">{f.title}</p>
-                <p className="text-xs text-[#6d6760]">{f.desc}</p>
+                <p className="text-xs font-bold text-[#2f302f] sm:text-sm">{f.title}</p>
+                <p className="text-[10px] text-[#6d6760] sm:text-xs">{f.desc}</p>
               </div>
             </div>
           ))}
           </div>
           <div className="text-center">
-          <Button className="rounded-full bg-[#df796b] px-8 hover:bg-[#cf685a]" size="lg" asChild>
-            <Link href="/register" className="inline-flex items-center gap-2 font-bold">
+          <Button className="rounded-full bg-[#df796b] px-6 hover:bg-[#cf685a] sm:px-8" size="default" asChild>
+            <Link href="/register" className="inline-flex items-center gap-1.5 text-sm font-bold sm:gap-2">
               無料で会員登録する
-              <ChevronRight className="size-4" />
+              <ChevronRight className="size-3.5 sm:size-4" />
             </Link>
           </Button>
           </div>
         </section>
 
       {/* ランダムクイズ & キーワード検索 CTA */}
-        <section className="mb-8 grid gap-3 sm:gap-4 md:mb-16 sm:grid-cols-2">
+        <section className="mb-8 grid grid-cols-2 gap-2 sm:gap-4 md:mb-16">
         <Link href="/quiz/random" className="group block">
-          <div className="flex h-full flex-col rounded-[1.5rem] border-2 border-[#2f302f]/60 bg-[#e9f6f8] p-4 text-center transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:rounded-[2rem] sm:p-8">
-            <h2 className="mb-1 text-sm font-extrabold text-[#2f302f] sm:mb-1.5 sm:text-lg">
-              ランダムクイズに挑戦
+          <div className="flex h-full flex-col rounded-xl border-2 border-[#2f302f]/60 bg-[#e9f6f8] p-3 text-center transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:rounded-[2rem] sm:p-8">
+            <h2 className="mb-0.5 text-xs font-extrabold text-[#2f302f] sm:mb-1.5 sm:text-lg">
+              ランダムクイズ
             </h2>
-            <p className="mb-3 text-[10px] text-[#6d6760] sm:mb-4 sm:text-sm">
-              全カテゴリからランダムに出題
-              <br />
-              5問・10問など問題数を選んでサクッと力試し
+            <p className="mb-2 text-[10px] leading-relaxed text-[#6d6760] sm:mb-4 sm:text-sm">
+              全カテゴリから出題<br className="sm:hidden" />
+              <span className="hidden sm:inline">、</span>サクッと力試し
             </p>
-            <span className="mx-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-[#2f86c9] px-5 py-1.5 text-xs font-bold text-white transition-colors group-hover:bg-[#2476b4] sm:px-6 sm:py-2 sm:text-sm">
+            <span className="mx-auto inline-flex items-center justify-center gap-1 rounded-full bg-[#2f86c9] px-3.5 py-1 text-[10px] font-bold text-white transition-colors group-hover:bg-[#2476b4] sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
               挑戦する
-              <ArrowRight className="size-3.5 group-hover:translate-x-0.5 transition-transform sm:size-4" />
+              <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform sm:size-4" />
             </span>
-            <div className="mt-auto flex h-20 items-end justify-center pt-3 sm:h-36 sm:pt-4">
+            <div className="mt-auto flex h-14 items-end justify-center pt-2 sm:h-36 sm:pt-4">
               <Image
                 src="/images/plan_selection_man_color.png"
                 alt=""
@@ -679,20 +678,19 @@ export default async function Home() {
         </Link>
 
         <Link href="/search" className="group block">
-          <div className="flex h-full flex-col rounded-[1.5rem] border-2 border-[#2f302f]/60 bg-[#fff3dc] p-4 text-center transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:rounded-[2rem] sm:p-8">
-            <h2 className="mb-1 text-sm font-extrabold text-[#2f302f] sm:mb-1.5 sm:text-lg">
-              キーワードで探す
+          <div className="flex h-full flex-col rounded-xl border-2 border-[#2f302f]/60 bg-[#fff3dc] p-3 text-center transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:rounded-[2rem] sm:p-8">
+            <h2 className="mb-0.5 text-xs font-extrabold text-[#2f302f] sm:mb-1.5 sm:text-lg">
+              キーワード検索
             </h2>
-            <p className="mb-3 text-[10px] text-[#6d6760] sm:mb-4 sm:text-sm">
-              クイズも教科書も横断検索
-              <br />
-              「Promise」「型ガード」「API設計」などから探せます
+            <p className="mb-2 text-[10px] leading-relaxed text-[#6d6760] sm:mb-4 sm:text-sm">
+              クイズも教科書も<br className="sm:hidden" />
+              <span className="hidden sm:inline">、</span>横断検索
             </p>
-            <span className="mx-auto inline-flex items-center justify-center gap-1.5 rounded-full bg-[#df796b] px-5 py-1.5 text-xs font-bold text-white transition-colors group-hover:bg-[#cf685a] sm:px-6 sm:py-2 sm:text-sm">
+            <span className="mx-auto inline-flex items-center justify-center gap-1 rounded-full bg-[#df796b] px-3.5 py-1 text-[10px] font-bold text-white transition-colors group-hover:bg-[#cf685a] sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
               検索する
-              <ArrowRight className="size-3.5 group-hover:translate-x-0.5 transition-transform sm:size-4" />
+              <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform sm:size-4" />
             </span>
-            <div className="mt-auto flex h-20 items-end justify-center pt-3 sm:h-36 sm:pt-4">
+            <div className="mt-auto flex h-14 items-end justify-center pt-2 sm:h-36 sm:pt-4">
               <Image
                 src="/images/search_woman_color.png"
                 alt=""

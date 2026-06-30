@@ -95,22 +95,24 @@ export default async function BookPage({ params }: BookPageProps) {
             <li key={chapter.chapterSlug}>
               <Link
                 href={`/books/${bookSlug}/${chapter.chapterSlug}`}
-                className="group flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors sm:gap-4 sm:px-5 sm:py-4"
+                className="group flex items-center gap-2 px-2.5 py-2 hover:bg-gray-50 transition-colors sm:gap-4 sm:px-5 sm:py-3.5"
               >
                 <span
                   className={cn(
-                    'flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white sm:h-7 sm:w-7 sm:text-xs',
-                    i % 2 === 0 ? 'bg-primary' : 'bg-primary/80',
+                    'w-5 shrink-0 text-center text-[11px] font-bold tabular-nums sm:flex sm:h-7 sm:w-7 sm:items-center sm:justify-center sm:rounded-full sm:text-xs sm:text-white',
+                    i % 2 === 0
+                      ? 'text-primary sm:bg-primary'
+                      : 'text-primary/70 sm:bg-primary/80',
                   )}
                 >
                   {chapter.order}
                 </span>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors sm:text-base">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] leading-snug font-medium text-gray-900 group-hover:text-primary transition-colors sm:text-base">
                     {chapter.title}
                   </div>
                   {chapter.description && (
-                    <p className="mt-0.5 text-xs text-gray-500 line-clamp-1 sm:text-sm">
+                    <p className="mt-0.5 hidden text-gray-500 line-clamp-1 sm:block sm:text-sm">
                       {chapter.description}
                     </p>
                   )}
