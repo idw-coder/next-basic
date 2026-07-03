@@ -136,7 +136,10 @@ docs/books.md / src/lib/books.ts / QuizLink.tsx / mdx-content.tsx
 
 **モデル**: 中位以上（URL実在確認が必須） / **効果**: SEO中（E-E-A-T）+ UX / **工数**: 本あたり中
 
-対象の優先順: typescript → css-basics → react-learning → next-js。
+**進捗**: javascript ✅ / typescript ✅（2026-07-03、14章30本・全URL検証済み） / 残り: css-basics → react-learning → next-js。
+メモ: TypeScript公式ハンドブックに日本語版は無い（/ja/ は tsconfig リファレンスと Playground のみ）。英語リンクには「（英語）」を明記する。
+
+対象の優先順: css-basics → react-learning → next-js。
 リンク先の目安: TS=typescriptlang.org、CSS/JS/Web API=developer.mozilla.org/ja、
 React=ja.react.dev、Next.js=nextjs.org/docs。
 
