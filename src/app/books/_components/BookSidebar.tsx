@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronUp, ChevronDown, Menu, Search, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, Menu, Search, X, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useRef, useTransition, useCallback, useEffect } from 'react';
@@ -257,6 +257,10 @@ function SidebarContent({
       {isSearching && searchResults.length === 0 && (
         <p className="px-2.5 py-2 text-xs text-gray-400">一致する章が見つかりませんでした</p>
       )}
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-400">
+        <BookOpen className="h-3.5 w-3.5" />
+        本の目次（全{chapters.length}章）
+      </p>
       <ol className="flex flex-col gap-0.5">
         {chapters.map((chapter) => {
           if (matchedSlugs && !matchedSlugs.has(chapter.chapterSlug)) return null;
@@ -314,12 +318,12 @@ export function BookSidebarMobile(props: BookSidebarProps) {
         <SheetTrigger asChild>
           <button className="fixed bottom-4 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-colors">
             <Menu className="h-5 w-5" />
-            <span className="sr-only">目次を開く</span>
+            <span className="sr-only">本の目次を開く</span>
           </button>
         </SheetTrigger>
         <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="border-b">
-            <SheetTitle className="text-sm">目次</SheetTitle>
+            <SheetTitle className="text-sm">本の目次</SheetTitle>
           </SheetHeader>
           <div className="overflow-y-auto p-4">
             <SidebarContent {...props} onNavigate={() => setOpen(false)} />

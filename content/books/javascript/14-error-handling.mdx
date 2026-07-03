@@ -15,18 +15,6 @@ order: 14
 
 その「なんとなく」を一つずつ潰していきましょう。`throw` 自体の基礎（`throw` は文、文字列を投げない、など）は[制御構文の章](/books/javascript/04-control-flow)で扱っているので、ここでは**捕まえる側**に集中します。
 
-## 目次
-
-- [try...catch の基本 — エラーが起きても処理を止めない](#try-catch)
-- [catch が受け取る error オブジェクト — name・message・stack](#error-object)
-- [組み込みのエラー型 — TypeError・RangeError…](#built-in-errors)
-- [finally — 成否にかかわらず必ず実行する](#finally)
-- [throw と再スロー — 握りつぶさず、必要なら投げ直す](#throw-and-rethrow)
-- [カスタムエラークラス — Error を継承して種類を作る](#custom-error-class)
-- [非同期処理のエラーハンドリング](#async-error-handling)
-- [よくあるハマりどころ](#common-pitfalls)
-- [ちゃんと使うためのポイント](#checklist)
-
 ---
 
 <a id="try-catch"></a>
@@ -483,3 +471,10 @@ try {
   alt="エラーハンドリングを習得してステップアップするイメージ"
   maxWidth="200px"
 />
+
+## 参考リンク
+
+- [MDN — try...catch](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/try...catch)
+- [MDN — Error](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Error)
+- [MDN — Error: cause](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Error/cause)
+- [MDN — Promise.allSettled](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled)

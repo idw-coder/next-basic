@@ -7,7 +7,7 @@ import BookCard from '@/app/books/_components/BookCard';
 import { SectionHeading } from '@/components/SectionHeading';
 import { Button } from '@/components/ui/button';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web-mondai.com';
+import { SITE_URL } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: '教科書一覧 | ウェブエンジニア問題集',

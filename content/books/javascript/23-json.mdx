@@ -14,17 +14,6 @@ APIとのデータのやり取り、`localStorage` への保存、設定ファ�
   は省略できる引数）。MDNのリファレンス代わりに使ってください。
 </Callout>
 
-## 目次
-
-- [JSONとは — JavaScriptオブジェクトとの違い](#section-1)
-- [JSON.stringify — オブジェクト → JSON文字列](#section-2)
-- [JSON.parse — JSON文字列 → オブジェクト](#section-3)
-- [ディープコピーに使う](#section-4)
-- [よくある落とし穴 — JSONで「消える・変わる」値](#section-5)
-- [早見表](#section-6)
-- [よくあるハマりどころ](#section-7)
-- [ちゃんと使うためのポイント](#section-8)
-
 ---
 
 <a id="section-1"></a>
@@ -272,3 +261,10 @@ JSON.stringify(a); // TypeError: Converting circular structure to JSON
 - `Date`・関数・`undefined`・`BigInt`・循環参照は、JSON化で消える／変わる／エラーになる
 
 この章で、配列・文字列・数値・日付・JSONといった**よく使う組み込みオブジェクト**を一通り押さえました。データを「取得し（fetch）→ パースし → 加工して → 表示する」という一連の流れは、[非同期処理（Promise）](/books/javascript/13-async-callback-promise)や[DOM操作](/books/javascript/16-dom-manipulation)とつながっていきます。リファレンスとして、必要なときにこの章へ戻ってきてください。
+
+## 参考リンク
+
+- [MDN — JSON](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/JSON)
+- [MDN — JSON.stringify](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
+- [MDN — JSON.parse](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse)
+- [MDN — structuredClone](https://developer.mozilla.org/ja/docs/Web/API/Window/structuredClone)

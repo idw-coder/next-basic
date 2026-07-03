@@ -11,15 +11,60 @@ import { defineConfig, defineCollection, s } from 'velite';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypePrettyCode from 'rehype-pretty-code';
+import GithubSlugger from 'github-slugger';
 
 const CHARS_PER_MINUTE = 500;
 
-function calculateReadingTime(raw: string) {
-  const withoutCodeBlocks = raw
+function stripCodeBlocks(raw: string) {
+  return raw
     .replace(/(^|\n)(```+|~~~+)[^\n]*\n[\s\S]*?\n\2[ \t]*(?=\n|$)/g, '\n')
     .replace(/(^|\n)(?: {4}|\t).*(?=\n|$)/g, '\n');
-  const charCount = Array.from(withoutCodeBlocks.replace(/\s/g, '')).length;
+}
+
+function calculateReadingTime(raw: string) {
+  const charCount = Array.from(stripCodeBlocks(raw).replace(/\s/g, '')).length;
   return Math.max(1, Math.ceil(charCount / CHARS_PER_MINUTE));
+}
+
+interface TocEntry {
+  id: string;
+  text: string;
+  level: number;
+}
+
+// 見出しのMarkdown/JSX装飾を除去し、レンダリング後のテキストに近づける
+// （rehype-slug は描画後のテキストから id を生成するため、slug 計算の入力を揃える）
+function headingToText(heading: string) {
+  return heading
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+}
+
+/**
+ * raw から h2/h3 見出しを抽出して目次データを作る。
+ * id は rehype-slug と同じ github-slugger で生成するため、本文の見出し id と一致する。
+ * 重複見出しの連番（-1 サフィックス）を揃えるため、h2/h3 以外の見出しでも slug は消費する。
+ */
+function extractToc(raw: string): TocEntry[] {
+  const slugger = new GithubSlugger();
+  const toc: TocEntry[] = [];
+  const headingRe = /^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$/gm;
+  let match: RegExpExecArray | null;
+  while ((match = headingRe.exec(stripCodeBlocks(raw))) !== null) {
+    const level = match[1].length;
+    const text = headingToText(match[2]);
+    if (!text) continue;
+    const id = slugger.slug(text);
+    // 手書きの「## 目次」セクション自体は目次に載せない
+    if ((level === 2 || level === 3) && text !== '目次') {
+      toc.push({ id, text, level });
+    }
+  }
+  return toc;
 }
 
 /**
@@ -72,6 +117,7 @@ const chapters = defineCollection({
         bookSlug: parts[1],
         chapterSlug: parts[2],
         readingTime: calculateReadingTime(raw),
+        toc: extractToc(raw),
       };
     }),
 });

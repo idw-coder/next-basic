@@ -11,8 +11,9 @@ import {
 } from '@/lib/books';
 import { MDXContent } from '@/components/mdx-content';
 import { ChapterNav } from '../../_components/ChapterNav';
+import { ChapterTocDesktop, ChapterTocMobile } from '../../_components/TableOfContents';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web-mondai.com';
+import { SITE_URL } from '@/lib/site';
 
 export function generateStaticParams() {
   return getAllBooks().flatMap((book) =>
@@ -93,10 +94,22 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         <Clock className="size-3.5" />
         <span>約{chapter.readingTime}分</span>
       </div>
-      <div className="prose prose-gray max-w-none">
-        <MDXContent code={chapter.body} />
+      <ChapterTocMobile items={chapter.toc} />
+      <div className="flex gap-8">
+        <div className="min-w-0 flex-1">
+          <div className="prose prose-gray max-w-none">
+            <MDXContent code={chapter.body} />
+          </div>
+          <ChapterNav prev={prev} next={next} bookSlug={bookSlug} />
+        </div>
+        {chapter.toc.length >= 3 && (
+          <aside className="hidden xl:block w-52 shrink-0">
+            <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pb-8">
+              <ChapterTocDesktop items={chapter.toc} />
+            </div>
+          </aside>
+        )}
       </div>
-      <ChapterNav prev={prev} next={next} bookSlug={bookSlug} />
     </article>
   );
 }

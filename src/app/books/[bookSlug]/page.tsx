@@ -7,7 +7,7 @@ import { getAllBooks, getBook, getChaptersByBook } from '@/lib/books';
 import { getBookTheme } from '@/lib/book-theme';
 import { cn } from '@/lib/utils';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web-mondai.com';
+import { SITE_URL } from '@/lib/site';
 
 export function generateStaticParams() {
   return getAllBooks().map((book) => ({ bookSlug: book.bookSlug }));

@@ -15,21 +15,6 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 
 この章を読めば「変換は `map`、絞り込みは `filter`、集約は `reduce`」のように、**やりたいことから逆引きで**選べるようになります。
 
-## 目次
-
-- [配列メソッドとは — Array インスタンスのメソッドという意味](#array-methods-overview)
-- [map — 各要素を変換して新しい配列を作る](#map)
-- [filter — 条件に合う要素だけを残す](#filter)
-- [reduce — 配列を1つの値にまとめる](#reduce)
-- [find — 条件に合う最初の1つを取得](#find)
-- [some — 1つでも条件を満たすか](#some)
-- [every — すべてが条件を満たすか](#every)
-- [flatMap — 変換と平坦化を同時に行う](#flatmap)
-- [メソッドチェーンの実践パターン](#chaining)
-- [メソッドの使い分け早見表](#method-comparison)
-- [よくあるハマりどころ](#common-pitfalls)
-- [ちゃんと使うためのポイント](#checklist)
-
 ---
 
 <a id="array-methods-overview"></a>
@@ -575,3 +560,10 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 - 破壊的メソッド（`sort` / `reverse` / `splice`）と非破壊メソッドの区別を意識する
 
 次の章では、**文字列操作と正規表現**を取り上げます。実務でよく使うパターンをまとめます。
+
+## 参考リンク
+
+- [MDN — Array.prototype.map](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/map)
+- [MDN — Array.prototype.filter](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
+- [MDN — Array.prototype.reduce](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)
+- [MDN — Array.prototype.find](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/find)

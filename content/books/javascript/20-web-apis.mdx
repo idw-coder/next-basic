@@ -15,21 +15,6 @@ order: 20
   `fetch` を使えますが、CookieやCORSの扱いはブラウザと一致しません。
 </Callout>
 
-## 目次
-
-- [Web APIとは — ブラウザが提供する機能](#section-1)
-- [fetch API — HTTP通信を行う](#section-2)
-- [Request / Response — fetchの入出力](#section-3)
-- [AbortController — fetchを中断する](#section-4)
-- [Storage API — localStorageとsessionStorage](#section-5)
-- [CookieStore API — JavaScriptからCookieを読み書きする](#section-5-cookie-store)
-- [IntersectionObserver — 要素が見えたかを検知する](#section-6)
-- [MutationObserver — DOMの変更を監視する](#section-7)
-- [そのほかよく使うWeb API](#section-8)
-- [早見表](#section-9)
-- [よくあるハマりどころ](#section-10)
-- [ちゃんと使うためのポイント](#section-11)
-
 ---
 
 <a id="section-1"></a>
@@ -588,3 +573,10 @@ StorageはJavaScriptから読めます。XSSが起きると保存した値を盗
 - 監視が不要になったら `unobserve` または `disconnect` で止める
 
 次の章では、**[数値とMath](/books/javascript/21-numbers-and-math)** を扱います。Web APIから受け取った数値を丸める、範囲内に収める、ランダムに選ぶ、といった処理を整理します。
+
+## 参考リンク
+
+- [MDN — Fetch API](https://developer.mozilla.org/ja/docs/Web/API/Fetch_API)
+- [MDN — Web Storage API](https://developer.mozilla.org/ja/docs/Web/API/Web_Storage_API)
+- [MDN — IntersectionObserver](https://developer.mozilla.org/ja/docs/Web/API/IntersectionObserver)
+- [MDN — MutationObserver](https://developer.mozilla.org/ja/docs/Web/API/MutationObserver)

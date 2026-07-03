@@ -14,19 +14,6 @@ order: 22
   は省略できる引数）。MDNのリファレンス代わりに使ってください。
 </Callout>
 
-## 目次
-
-- [Date オブジェクトとは — 現在時刻の取得](#section-1)
-- [Date の作り方 — 引数で挙動が変わる](#section-2)
-- [日付の各要素を取り出す](#section-3)
-- [フォーマット — 表示用の文字列にする](#section-4)
-- [日付の計算 — 差分と加算](#section-5)
-- [タイムゾーンの注意点](#section-6)
-- [これからの選択肢 — Temporal とライブラリ](#section-7)
-- [早見表](#section-8)
-- [よくあるハマりどころ](#section-9)
-- [ちゃんと使うためのポイント](#section-10)
-
 ---
 
 <a id="section-1"></a>
@@ -286,3 +273,10 @@ new Date('06-06-2026'); // 環境依存。避ける
 - タイムゾーンが絡む厳密な処理や複雑な計算は、Day.js / date-fns などのライブラリに任せる
 
 次の章では、**[JSONの基礎と実践](/books/javascript/23-json)** を扱います。APIとデータをやり取りするとき、`Date` を `JSON.stringify` するとどうなるか——という落とし穴もあわせて見ていきます。
+
+## 参考リンク
+
+- [MDN — Date](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Date)
+- [MDN — Date.prototype.toLocaleString](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Date/toLocaleString)
+- [MDN — Date.prototype.toISOString](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
+- [MDN — Temporal](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Temporal)

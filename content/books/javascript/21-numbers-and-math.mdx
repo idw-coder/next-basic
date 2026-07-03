@@ -14,18 +14,6 @@ order: 21
   は省略できる引数）。MDNのリファレンス代わりに、「何を渡すと何が返るか」を確認しながら使ってください。
 </Callout>
 
-## 目次
-
-- [JavaScriptの数値は基本「1種類」だけ — number 型](#section-1)
-- [文字列と数値の相互変換](#section-2)
-- [浮動小数点の罠 — 0.1 + 0.2 が 0.3 にならない](#section-3)
-- [数値のフォーマット — toFixed / toLocaleString](#section-4)
-- [Number の静的メソッド・プロパティ](#section-5)
-- [Math オブジェクト — よく使う計算](#section-6)
-- [早見表](#section-7)
-- [よくあるハマりどころ](#section-8)
-- [ちゃんと使うためのポイント](#section-9)
-
 ---
 
 <a id="section-1"></a>
@@ -379,3 +367,10 @@ parseInt('12.3.4', 10); // 12（最初の整数部分だけ）
 - `Math` はインスタンス化せず直接呼ぶ。配列の最大・最小は `Math.max(...arr)`
 
 次の章では、**[日付と時刻の操作](/books/javascript/22-date)** を扱います。`Date` も数値（ミリ秒）と密接に関わり、`getTime()` で差分を計算するなど、この章の数値の知識がそのまま活きてきます。
+
+## 参考リンク
+
+- [MDN — Number](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Number)
+- [MDN — Number.prototype.toFixed](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Number/toFixed)
+- [MDN — Intl.NumberFormat](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat)
+- [MDN — Math](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Math)

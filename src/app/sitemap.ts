@@ -6,7 +6,7 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   "http://localhost:8888";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://study.ntorelabo.com";
+import { SITE_URL } from '@/lib/site';
 
 interface Category {
   id: number;
