@@ -25,6 +25,7 @@ export default async function BookLayout({
     order: c.order,
     bookSlug: c.bookSlug,
     chapterSlug: c.chapterSlug,
+    draft: c.draft,
   }));
 
   return (

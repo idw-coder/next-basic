@@ -509,6 +509,8 @@ const sharedComponents = {
 
 ウェブエンジニア問題集（study.ntorelabo.com）の教科書を、AIに作成・追加してもらうときに使うプロンプトと添付ファイルのリスト。
 
+> **改善タスクの指示書集は [docs/ai-tasks.md](./ai-tasks.md) にある。** SEO・UX改善（draft運用、JSON-LD、QuizLink一括挿入、公式リンク横展開、sitemap改善、OG画像、GSC分析）は優先度順の指示書をコピペして委任する。委任時は「devサーバーは1セッションだけ」「同じ本を並行編集しない」を必ず守る。
+
 ### 添付ファイルのリスト
 
 #### 毎回必須（仕様理解用）

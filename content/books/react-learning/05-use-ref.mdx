@@ -249,3 +249,9 @@ DOM参照を `ref` 属性で渡すのはOKだけど、それ以外の値をレ�
 <Marker>`useState` との使い分けの判断基準は「その値がUIに映るか」です。</Marker>DOM参照やタイマーID、前回の値の記憶など、画面に直接表示しないデータに使います。
 
 `let` はレンダーごとにリセットされますが、`useRef` はReactのFiberツリーに保管されるため再レンダーをまたいで保持されます。ただし `.current` を変更しても画面は更新されないので、表示用のデータには使えません。
+
+<QuizLink
+  href="/quiz/react-basic"
+  title="Reactクイズに挑戦する"
+  description="この章で学んだReactの知識を、4択クイズでアウトプットして定着させよう"
+/>

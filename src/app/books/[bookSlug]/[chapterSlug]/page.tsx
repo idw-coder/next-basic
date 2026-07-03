@@ -39,6 +39,8 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
     title,
     description,
     alternates: { canonical: `/books/${bookSlug}/${chapterSlug}` },
+    // 執筆中の章はthin contentなのでインデックスさせない（リンクは辿らせる）
+    robots: chapter.draft ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description,
@@ -56,8 +58,40 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
 
   const { prev, next } = getAdjacentChapters(bookSlug, chapterSlug);
 
+  const chapterUrl = `${SITE_URL}/books/${bookSlug}/${chapterSlug}`;
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'TechArticle',
+      headline: chapter.title,
+      description: chapter.description ?? book.description,
+      inLanguage: 'ja',
+      url: chapterUrl,
+      isPartOf: {
+        '@type': 'Book',
+        name: book.title,
+        url: `${SITE_URL}/books/${bookSlug}`,
+      },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: '教科書', item: `${SITE_URL}/books` },
+        { '@type': 'ListItem', position: 2, name: book.title, item: `${SITE_URL}/books/${bookSlug}` },
+        { '@type': 'ListItem', position: 3, name: chapter.title, item: chapterUrl },
+      ],
+    },
+  ];
+
   return (
     <article>
+      {!chapter.draft && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       {/* パンくず */}
       <nav aria-label="パンくずリスト" className="mb-6 text-xs sm:text-sm">
         <ol className="flex items-center gap-1 text-muted-foreground flex-wrap">

@@ -104,6 +104,7 @@ const chapters = defineCollection({
       title: s.string(),
       description: s.string().optional(),
       order: s.number(), // 章の表示順（昇順ソートに使用）
+      draft: s.boolean().default(false), // 執筆中の章。noindex・sitemap除外・バッジ表示の対象
       slug: s.path(),
       raw: s.raw(),
       body: s.mdx(), // コンパイル済み MDX コード

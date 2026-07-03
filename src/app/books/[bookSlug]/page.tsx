@@ -110,6 +110,11 @@ export default async function BookPage({ params }: BookPageProps) {
                 <div className="min-w-0 flex-1">
                   <div className="text-[13px] leading-snug font-medium text-gray-900 group-hover:text-primary transition-colors sm:text-base">
                     {chapter.title}
+                    {chapter.draft && (
+                      <span className="ml-2 inline-block rounded-full bg-gray-200 px-2 py-0.5 align-middle text-[10px] font-medium text-gray-500 sm:text-[11px]">
+                        執筆中
+                      </span>
+                    )}
                   </div>
                   {chapter.description && (
                     <p className="mt-0.5 hidden text-gray-500 line-clamp-1 sm:block sm:text-sm">

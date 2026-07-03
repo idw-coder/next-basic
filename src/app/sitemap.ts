@@ -115,12 +115,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     })),
     ...allBooks.flatMap((book) =>
-      getChaptersByBook(book.bookSlug).map((chapter) => ({
-        url: `${SITE_URL}/books/${book.bookSlug}/${chapter.chapterSlug}`,
-        lastModified: new Date(),
-        changeFrequency: "monthly" as const,
-        priority: 0.6,
-      }))
+      getChaptersByBook(book.bookSlug)
+        // 執筆中の章はnoindexなのでsitemapにも載せない
+        .filter((chapter) => !chapter.draft)
+        .map((chapter) => ({
+          url: `${SITE_URL}/books/${book.bookSlug}/${chapter.chapterSlug}`,
+          lastModified: new Date(),
+          changeFrequency: "monthly" as const,
+          priority: 0.6,
+        }))
     ),
   ];
 

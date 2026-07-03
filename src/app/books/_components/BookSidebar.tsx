@@ -14,6 +14,7 @@ interface Chapter {
   order: number;
   bookSlug: string;
   chapterSlug: string;
+  draft?: boolean;
 }
 
 interface BookSidebarProps {
@@ -283,7 +284,14 @@ function SidebarContent({
                   <span className="shrink-0 text-xs font-mono mt-0.5 text-gray-400 w-4 text-right">
                     {chapter.order}
                   </span>
-                  <span className="line-clamp-2">{chapter.title}</span>
+                  <span className="line-clamp-2">
+                    {chapter.title}
+                    {chapter.draft && (
+                      <span className="ml-1.5 inline-block rounded-full bg-gray-200 px-1.5 py-px align-middle text-[10px] font-medium text-gray-500">
+                        執筆中
+                      </span>
+                    )}
+                  </span>
                 </span>
                 {snippet && (
                   <span className="ml-6.5 w-fit rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">

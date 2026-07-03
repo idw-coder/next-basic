@@ -1,0 +1,241 @@
+# AI委任タスク指示書集
+
+教科書（Books）機能の改善タスクを、別のAIセッションへコピペで委任するための指示書。
+優先度順（P1が最優先）。各コードブロックを丸ごと貼り、「添付」欄のファイルを一緒に渡す。
+
+## 全タスク共通の注意（委任前に必ず伝える）
+
+- **devサーバーを起動するのは1セッションだけ。** 多重起動すると velite が `.velite/` を同時書き込みしてビルドが壊れる。起動前に `lsof -nP -iTCP:3000 -sTCP:LISTEN` 等で確認
+- **同じ本のコンテンツを複数セッションで同時に編集しない**（書き戻し競合が起きる）
+- 作業後は `npx tsc --noEmit` を通し、変更ファイル一覧を報告させる
+
+---
+
+## ✅ P1-a: 執筆中プレースホルダー章の noindex / sitemap除外 / バッジ表示（2026-07-03 完了）
+
+**モデル**: 安価〜中位 / **効果**: SEO大（thin content解消）+ UX大 / **工数**: 半日以下
+
+```
+docs/books.md 仕様の教科書サイト（Next.js App Router + Velite）で、
+本文が「この章は現在執筆中です」だけのプレースホルダー章が約20章公開されており、
+thin content としてSEOに悪影響なので draft 運用に切り替えたい。
+
+# やること
+1. velite.config.ts の chapters スキーマに draft: s.boolean().default(false) を追加し、
+   transform の出力にも含める
+2. grep -rl "この章は現在執筆中です" content/books/ で該当章を特定し、
+   各ファイルの frontmatter に draft: true を追加（本文は変更しない）
+3. 章ページ src/app/books/[bookSlug]/[chapterSlug]/page.tsx の generateMetadata で、
+   draft の章には robots: { index: false, follow: true } を返す
+4. src/app/sitemap.ts で draft の章を sitemap から除外する
+5. 章一覧に「執筆中」バッジ（グレーの小さいピル）を追加する。リンク自体は残す:
+   - src/app/books/_components/BookSidebar.tsx の章リスト
+   - 本トップ src/app/books/[bookSlug]/page.tsx の章一覧
+
+# 確認
+- npx tsc --noEmit が通る
+- draft 章のHTMLに <meta name="robots" content="noindex"> が出力される
+- /sitemap.xml に draft 章のURLが含まれない
+- サイドバーと本トップの両方でバッジが表示される
+
+# 制約
+- devサーバーが他で動いていないことを確認してから起動する（多重起動でveliteが壊れる）
+- 公開章（draft でない章）の挙動を一切変えないこと
+
+# 添付
+docs/books.md / velite.config.ts / 上記4〜5のファイル
+```
+
+---
+
+## P1-b: 未執筆章の執筆（1章ずつ委任）
+
+**モデル**: 高性能必須 / **効果**: SEO大（主要検索クエリの受け皿） / **工数**: 1章あたり数時間
+
+対象（javascript 12章 / system-design 8章）は `grep -rl "この章は現在執筆中です" content/books/` で最新を確認。
+javascript のクロージャ・this・async/Promise・モジュール・DOM操作を優先。
+
+```
+docs/books.md 仕様の教科書、JavaScript本の未執筆章を1章書いてほしい。
+
+# 対象
+ファイル: content/books/javascript/[ここに指定。例: 12-closures.mdx]
+（現在は「執筆中」プレースホルダー。frontmatter の title / description / order は維持）
+
+# 守ること（docs/books.md の規約。必ず読んでから書くこと）
+- H1なし・H2始まり。手書きの「## 目次」は入れない（自動TOCが表示される）
+- メソッド・APIの解説には「構文」「引数の表」「戻り値」を必ず明示（MDN代替の粒度）
+- <Figure> と <SpeechBubble> を章あたり2〜4個、冒頭に固定せず本文中に分散
+  （学習者=/images/usingcomputer_suit_woman_color.png、先生=/images/oksign_man_color.png）
+- 重要な定義・判断基準・ハマりどころに <Marker>、補足は <Callout>（typeを使い分け）
+- MDNへのリンクは節末か章末「## 参考リンク」（2〜4本）に置く。説明の代わりにしない。
+  URLは実際にアクセスして存在確認し、推測で書かない
+- 既存の完成章（07-arrays.mdx、08-string-methods.mdx）とトーン・構成・粒度を揃える
+- 関連する既存章への内部リンクを入れ、次章への橋渡し文で締める
+- 「## よくあるハマりどころ」「## ちゃんと使うためのポイント」の節を入れる
+- 完成したら frontmatter の draft: true を削除する（無ければ何もしない）
+
+# 添付
+docs/books.md / 対象ファイル / content/books/javascript/07-arrays.mdx（トーン参考）
+```
+
+---
+
+## ✅ P2: 章ページの JSON-LD（TechArticle + BreadcrumbList）（2026-07-03 完了）
+
+**モデル**: 安価〜中位 / **効果**: SEO中〜大（パンくずリッチリザルト） / **工数**: 小
+
+```
+docs/books.md 仕様の教科書で、章ページ
+src/app/books/[bookSlug]/[chapterSlug]/page.tsx に JSON-LD を追加してほしい。
+canonical / openGraph は実装済み。サイトURLは src/lib/site.ts の SITE_URL を import して使う。
+
+# やること
+1. BreadcrumbList: 教科書(/books) > 本タイトル(/books/{bookSlug}) > 章タイトル
+2. TechArticle: headline=章タイトル / description / inLanguage: 'ja' /
+   url は canonical と一致 / isPartOf で本を参照
+出力方式は src/app/books/page.tsx の既存 JSON-LD 実装（scriptタグ）に合わせる。
+frontmatter に draft: true がある章には出力しない（draft対応が未導入ならスキップでよい）。
+
+# 確認
+- 章ページのHTMLに application/ld+json が出力される
+- 構造が https://search.google.com/test/rich-results で解釈できる形になっている
+- npx tsc --noEmit が通る
+
+# 添付
+docs/books.md / 章ページ page.tsx / src/app/books/page.tsx / src/lib/site.ts
+```
+
+---
+
+## ✅ P3: 章末クイズ導線（QuizLink）の一括挿入（2026-07-03 完了・126章）
+
+**モデル**: 安価でOK / **効果**: UX大（コア回遊の完成）+ 滞在時間 / **工数**: 小
+
+```
+docs/books.md 仕様の教科書で、章末にクイズへの導線を一括で入れてほしい。
+
+# やること
+1. src/lib/books.ts の categoryToBookMap で「対応クイズカテゴリがある本」を確認
+2. その本の公開章すべてについて、本文末尾（次章への橋渡し文の直前）に
+   <QuizLink category="対応カテゴリ" /> を挿入
+3. props は src/app/books/_components/QuizLink.tsx の実装を確認して合わせる
+
+# 制約
+- 既に QuizLink がある章、「この章は現在執筆中です」のプレースホルダー章はスキップ
+- 1章につき1つだけ。本文中には入れない
+- 挿入した章の一覧と、対応が無くスキップした本の一覧を報告する
+
+# 添付
+docs/books.md / src/lib/books.ts / QuizLink.tsx / mdx-content.tsx
+```
+
+---
+
+## P4: 公式ドキュメントリンクの横展開（本ごとに1セッション）
+
+**モデル**: 中位以上（URL実在確認が必須） / **効果**: SEO中（E-E-A-T）+ UX / **工数**: 本あたり中
+
+対象の優先順: typescript → css-basics → react-learning → next-js。
+リンク先の目安: TS=typescriptlang.org、CSS/JS/Web API=developer.mozilla.org/ja、
+React=ja.react.dev、Next.js=nextjs.org/docs。
+
+```
+docs/books.md の「外部公式ドキュメントへのリンク」の節に厳密に従い、
+content/books/[ここに指定。例: typescript]/ の公開章に公式ドキュメントへの
+参考リンクを追加してほしい。
+
+# フェーズ1: 候補リスト作成（まずこれだけ提示して停止）
+- 全章を読み、「章 / 置く場所（節末 or 章末） / URL」の候補リストを作る
+- 1章あたり2〜4本に絞る。日本語版URLを優先
+- URLは必ず実際にアクセスして存在確認。リダイレクトされる場合はその旨を明記
+- 推測でURLを書くことを禁止。確認できないものは候補から外す
+
+# フェーズ2: 挿入（リスト承認後）
+- 既存の本文・説明は一切削らない（「詳しくは公式へ」で説明を置き換えるのは禁止）
+- 書式は通常のMarkdownリンク。章末にまとめる場合は「## 参考リンク」
+- 完了後、挿入した全URLに curl -sIL で最終ステータスを確認し結果を報告
+
+# 参考
+content/books/javascript/08-string-methods.mdx が導入済みの見本。
+
+# 添付
+docs/books.md / 対象の本の全章
+```
+
+---
+
+## P5: sitemap の lastModified 正確化
+
+**モデル**: 中位（デプロイ環境の制約理解が必要） / **効果**: SEO中 / **工数**: 中
+
+```
+docs/books.md 仕様の教科書で、src/app/sitemap.ts が全URLに new Date() を返しており、
+Google が lastmod を信用しなくなるので、実際の更新日時を返すよう修正してほしい。
+
+# 方針
+- velite.config.ts の transform で各章に updated（ISO日時文字列）を追加
+- 取得は git log -1 --format=%cI -- <ファイルパス>。
+  ただし CI / Vercel は shallow clone で git 履歴が取れないことがあるため、
+  取得できない場合はファイルの mtime にフォールバックする
+- sitemap.ts では、章ページは updated を、本ページは所属章の updated の最大値を使う
+- クイズ・静的ページのエントリは変更しない
+
+# 確認
+- ローカルの /sitemap.xml で章ごとに異なる lastmod が出る
+- git 履歴が無い状態（別ディレクトリへの export 等）でもビルドが落ちない
+- npx tsc --noEmit が通る
+
+# 添付
+docs/books.md / velite.config.ts / src/app/sitemap.ts
+```
+
+---
+
+## P6: 章ごとの動的OG画像
+
+**モデル**: 中位〜高（ImageResponseの制約・フォント処理） / **効果**: SNS CTR中 / **工数**: 中
+
+```
+Next.js App Router の教科書章ページに動的OG画像を追加してほしい。
+
+# やること
+- src/app/books/[bookSlug]/[chapterSlug]/opengraph-image.tsx を作成し、
+  ImageResponse で 1200x630 の画像を生成する
+- 背景は src/lib/book-theme.ts のテーマカラー系統、本タイトル（小）+
+  章タイトル（大）+ サイト名「ウェブエンジニア問題集」を配置
+- 日本語表示のため Noto Sans JP をサブセットで埋め込む
+- generateStaticParams と整合させ、ビルドで全章分生成されることを確認
+- generateMetadata 側の openGraph 設定と競合しないか確認する
+
+# 確認
+- 開発サーバーで /books/{bookSlug}/{chapterSlug}/opengraph-image が表示される
+- 長い章タイトルでもはみ出さない
+- npm run build が通る（ビルド時間の増加も報告）
+
+# 添付
+docs/books.md / 章ページ page.tsx / src/lib/book-theme.ts / src/app/layout.tsx
+```
+
+---
+
+## 運用: Search Console 月次分析
+
+**モデル**: 中位 / **効果**: SEO大（長期・計測起点） / **工数**: 月1で小
+
+```
+Search Console のデータ（添付CSV: クエリ / 表示回数 / クリック数 / 掲載順位）を分析してほしい。
+サイトは docs/books.md 仕様の学習サイト（クイズ + 教科書）。
+
+# やること
+1. 掲載順位5〜20位 かつ 表示回数が多いクエリを抽出
+2. 各クエリに対応する教科書の章（/books/...）またはクイズページを特定
+3. 章ごとに「検索意図に対して不足しているコンテンツ」を診断し、
+   修正案（description書き直し / H2追加 / 補筆 / 新章）を優先度付きで提案
+
+# 制約
+- 提案のみで停止し、承認後に修正へ着手する
+
+# 添付
+GSCのCSVエクスポート / docs/books.md
+```
