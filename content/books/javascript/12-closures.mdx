@@ -2,12 +2,313 @@
 title: 'クロージャ — スコープチェーンとデータの隠蔽'
 description: 'クロージャの仕組み、レキシカルスコープ、プライベート変数パターン、ループ内クロージャの罠を解説します。'
 order: 12
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+クロージャ（closure）は、JavaScriptの概念の中で「名前だけは聞くけど説明できない」の代表格です。面接の定番質問でもあり、なんだか難しそうな響きがあります。
+
+でも実は、あなたがイベントハンドラやコールバックを書いた時点で、**クロージャはもう使っています**。この章では「クロージャとは何か」を一言で言えるようになり、実務のどこで働いているか・どこでハマるかまでを整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  「クロージャを説明してください」って面接で聞かれたら固まる自信がある…。関数の中の関数…？くらいのイメージしかないです。
+</SpeechBubble>
+
+先に一言で答えを出しておきます。クロージャとは、<Marker>関数が「自分が定義された場所の変数」を、実行される場所やタイミングに関係なく参照し続ける仕組み</Marker>のことです。これから順番に分解していきましょう。
+
+## クロージャとは — 関数が「生まれた場所」を覚えている
+
+まずは最小のコード例から見ます。
+
+```js
+function createCounter() {
+  let count = 0; // createCounterのローカル変数
+
+  return function () {
+    count += 1; // 外側の変数を参照している
+    return count;
+  };
+}
+
+const counter = createCounter(); // 実行はここで終わっているのに…
+counter(); // 1
+counter(); // 2
+counter(); // 3 ← countが生き続けている！
+```
+
+注目してほしいのは、`createCounter()` の実行は1行目で**すでに終わっている**ことです。通常の感覚では、関数の実行が終わればローカル変数 `count` は消えるはずです。
+
+ところが、返された内側の関数が `count` を参照しているため、`count` は消えずに残り続け、呼び出すたびに増えていきます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  「関数が終わったら変数は消える」の例外がクロージャなんだ。内側の関数が外側の変数を掴んでいる限り、その変数は生き続ける。この「掴んでいる状態」がクロージャだよ。
+</SpeechBubble>
+
+## 前提: レキシカルスコープ — 「どこで定義したか」がすべて
+
+クロージャを支えているのが**レキシカルスコープ（lexical scope）**というルールです。
+
+<Marker>JavaScriptの関数が参照できる変数は、「どこで呼び出されたか」ではなく「どこで定義されたか」で決まります。</Marker>
+
+```js
+const greeting = 'こんにちは';
+
+function greet() {
+  console.log(greeting); // 定義された場所（グローバル）のgreetingが見える
+}
+
+function main() {
+  const greeting = 'やあ'; // ここにgreetingがあっても…
+  greet(); // "こんにちは" ← 呼び出し場所のgreetingは関係ない
+}
+
+main();
+```
+
+`greet()` は `main()` の中で呼ばれていますが、表示されるのはグローバルの `'こんにちは'` です。関数は**定義された時点のスコープ**を持ち歩くからです。
+
+変数のスコープそのものがあやふやな場合は、[変数宣言とスコープ](/books/javascript/01-variables-and-scope)の章を先に読み直すのがおすすめです。
+
+## スコープチェーン — 変数を探しに行く経路
+
+内側の関数から変数を参照するとき、JavaScriptは**内側から外側へ順番に**変数を探します。この探索経路を**スコープチェーン**と呼びます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["内側の関数"] -->|なければ外へ| B["外側の関数"]
+    B -->|なければ外へ| C["グローバル"]
+`}
+/>
+
+```js
+const level1 = 'グローバル';
+
+function outer() {
+  const level2 = 'outerの変数';
+
+  function inner() {
+    const level3 = 'innerの変数';
+    // inner → outer → グローバル の順に探せる
+    console.log(level3, level2, level1); // 全部見える
+  }
+
+  inner();
+  // console.log(level3); // ❌ 外側から内側は見えない
+}
+
+outer();
+```
+
+<Figure src="/images/search_woman_color.png" alt="変数を内側から外側へ探しに行くイメージ" maxWidth="140px" caption="変数が見つかるまで、スコープを内側から外側へたどっていく" />
+
+探索は**内側から外側への一方通行**です。外側の関数から内側の変数は見えません。この「内側からしか触れない」性質が、後で説明するデータの隠蔽につながります。
+
+## クロージャの基本形 — 「関数を返す関数」
+
+クロージャが最もわかりやすく現れるのが、最初に見た「関数を返す関数」のパターンです。もう一度、動きを追いながら見てみましょう。
+
+```js
+function createGreeter(name) {
+  // このnameは引数＝createGreeterのローカル変数
+  return function () {
+    return `こんにちは、${name}さん`;
+  };
+}
+
+const greetTaro = createGreeter('太郎');
+const greetHanako = createGreeter('花子');
+
+greetTaro(); // "こんにちは、太郎さん"
+greetHanako(); // "こんにちは、花子さん"
+```
+
+ポイントは2つあります。
+
+1. 返された関数は、`createGreeter` の実行が終わった後も引数 `name` を参照できる
+2. **呼び出しごとに別々のスコープが作られる**ので、`greetTaro` と `greetHanako` はそれぞれ独立した `name` を持つ
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  同じ関数から作ったのに、それぞれ違う値を覚えてるんだ…！関数を「値を抱えたコピー」として量産できるイメージ？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  いいイメージだね。工場（外側の関数）が、それぞれ固有の材料（変数）を抱えた製品（内側の関数）を出荷していく感じ。これがクロージャの実用パターンの入り口だよ。
+</SpeechBubble>
+
+## データの隠蔽 — プライベート変数パターン
+
+クロージャの代表的な使い道が、**外から直接触れない変数**を作ることです。
+
+```js
+function createWallet(initialBalance) {
+  let balance = initialBalance; // 外から直接アクセスできない
+
+  return {
+    deposit(amount) {
+      if (amount <= 0) return balance;
+      balance += amount;
+      return balance;
+    },
+    withdraw(amount) {
+      if (amount > balance) {
+        throw new Error('残高不足です');
+      }
+      balance -= amount;
+      return balance;
+    },
+    getBalance() {
+      return balance;
+    },
+  };
+}
+
+const wallet = createWallet(1000);
+wallet.deposit(500); // 1500
+wallet.withdraw(200); // 1300
+
+wallet.balance; // undefined ← 直接は見えない
+wallet.balance = 999999; // 書き換えたつもりでも…
+wallet.getBalance(); // 1300 ← 本体は守られている
+```
+
+`balance` に触る方法は、返されたオブジェクトのメソッド経由しかありません。<Marker>「不正な値を弾く」「必ずチェックを通す」といったルールを、変数への唯一の通り道であるメソッドに集約できる</Marker>のがこのパターンの価値です。
+
+<Callout type="column">
+クラス構文にも `#balance` のような**プライベートフィールド**があり、同じ目的を実現できます。ただしクラスにこの機能が入ったのは2022年（ES2022）とかなり最近で、それまでクロージャはJavaScriptで唯一の「プライベート変数」の作り方でした。ライブラリの内部実装では今もよく見かけます。
+</Callout>
+
+## 実務でクロージャが働いている場所
+
+「関数を返す関数なんて自分では書かないよ」と思うかもしれません。でも、クロージャはもっと日常的な場所で働いています。
+
+### イベントハンドラ
+
+```js
+function setupButton(label) {
+  const button = document.createElement('button');
+  button.textContent = label;
+
+  button.addEventListener('click', () => {
+    // このコールバックはlabelを「覚えている」＝クロージャ
+    console.log(`${label} がクリックされました`);
+  });
+
+  document.body.appendChild(button);
+}
+
+setupButton('保存');
+setupButton('削除');
+```
+
+クリックが発生するのは `setupButton()` の実行がとっくに終わった後です。それでもコールバックが正しい `label` を表示できるのは、クロージャが変数を保持しているからです。
+
+### debounce — 連打を間引く
+
+検索ボックスの入力のたびにAPIを叩かないよう、「入力が止まってから実行する」定番テクニックもクロージャで作られています。
+
+```js
+function debounce(fn, delay) {
+  let timerId; // 前回のタイマーを覚えておく変数
+
+  return function (...args) {
+    clearTimeout(timerId); // 前回の予約をキャンセル
+    timerId = setTimeout(() => fn(...args), delay);
+  };
+}
+
+const search = debounce((keyword) => {
+  console.log(`「${keyword}」で検索実行`);
+}, 300);
+
+search('J');
+search('Ja');
+search('Jav'); // 300ms以内の連続呼び出しは間引かれ、最後の1回だけ実行される
+```
+
+`timerId` が呼び出しをまたいで生き続けるからこそ、「前回の予約をキャンセルする」が実現できます。
+
+<Callout type="note">
+Reactの `useState` が「関数コンポーネントの実行が終わっても状態を覚えていられる」のも、内部ではクロージャと同じ仕組みに支えられています。フレームワークの「魔法」の正体は、こうした素のJavaScriptの仕組みであることが多いのです。
+</Callout>
+
+## よくあるハマりどころ
+
+### ループ内クロージャ — 全部同じ値になる罠
+
+クロージャ最大の古典的トラップです。まずは罠を踏んでみましょう。
+
+```js
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => {
+    console.log(i); // 3, 3, 3 ← 0, 1, 2 にならない！
+  }, 100);
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  全部3！？ `0, 1, 2` って出てほしいのに…。なんで最後の値だけになっちゃうの？
+</SpeechBubble>
+
+原因は、2つの事実の組み合わせです。
+
+1. `var` は**関数スコープ**なので、ループ全体で `i` は**たった1つ**しかない
+2. `setTimeout` のコールバックが実行されるのはループが**終わった後**
+
+つまり3つのコールバックは全員が「同じ1つの `i`」を掴んでおり、実行される頃にはその `i` が `3` になっているわけです。
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="予想外の出力に驚くイメージ" maxWidth="140px" />
+
+解決策はシンプルで、**`let` を使う**だけです。
+
+```js
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => {
+    console.log(i); // 0, 1, 2 ← 期待どおり！
+  }, 100);
+}
+```
+
+<Marker>`let` はブロックスコープなので、ループの1周ごとに新しい `i` が作られ、各コールバックはそれぞれ「自分の周の `i`」を掴みます。</Marker>「`var` を使わない」という現代の基本方針（[変数宣言とスコープ](/books/javascript/01-variables-and-scope)）は、この罠の予防でもあるのです。
+
+### 意図せず「その時点の値」を固定してしまう
+
+クロージャが掴むのは「変数そのもの」です。変数から**値をコピーした場合**は、コピーした瞬間の値で固定されます。
+
+```js
+let user = { name: '太郎' };
+
+const name = user.name; // この時点の値をコピー
+const showName = () => console.log(name);
+
+user = { name: '花子' }; // userを差し替えても…
+showName(); // "太郎" ← コピーした時点の値のまま
+```
+
+「常に最新の値を見たい」なら変数そのもの（`user.name`）を参照し、「その時点の値を固定したい」ならコピーする——どちらの挙動が欲しいのかを意識して書き分けましょう。
+
+### メモリへの影響 — 掴んだ変数は解放されない
+
+<Callout type="warning">
+クロージャが参照している変数は、ガベージコレクション（自動メモリ解放）の対象になりません。巨大な配列やDOM要素を掴んだままのコールバックを大量に登録し続けると、メモリリークの原因になります。不要になったイベントリスナーは `removeEventListener` で解除する習慣をつけましょう。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- クロージャ＝<Marker>関数が「定義された場所の変数」を参照し続ける仕組み</Marker>。一言で説明できるようにしておく
+- 変数の探索は**内側から外側への一方通行**（スコープチェーン）。外から内側は見えない
+- 「関数を返す関数」では、**呼び出しごとに独立したスコープ**が作られる
+- 外から触られたくない状態は、クロージャで隠蔽してメソッド経由のみにできる
+- ループ×非同期の組み合わせでは `var` の罠に注意。**`let` なら1周ごとに変数が作られる**
+- イベントハンドラ・コールバック・debounceなど、実務のコールバックはほぼすべてクロージャ
+
+次の章では**非同期処理（コールバック・Promise・async/await）**を扱います。「コールバックが実行されるのはずっと後なのに、なぜ周囲の変数を使えるのか」——その答えがこの章で学んだクロージャです。仕組みを知ったうえで進むと、非同期コードの見え方が変わりますよ。
 
 ## 参考リンク
 
-- [MDN — クロージャ](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Closures)
-- [MDN — スコープ](https://developer.mozilla.org/ja/docs/Glossary/Scope)
+- [MDN — クロージャ](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Closures) — クロージャの公式解説
+- [MDN — スコープ](https://developer.mozilla.org/ja/docs/Glossary/Scope) — スコープの用語定義
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>

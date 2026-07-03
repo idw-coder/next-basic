@@ -55,6 +55,9 @@ docs/books.md / velite.config.ts / 上記4〜5のファイル
 対象（javascript 12章 / system-design 8章）は `grep -rl "この章は現在執筆中です" content/books/` で最新を確認。
 javascript のクロージャ・this・async/Promise・モジュール・DOM操作を優先。
 
+**進捗**: `javascript/12-closures.mdx` ✅（2026-07-03執筆・公開済み。トーンの見本としてこの章も参照可）。
+執筆完了時のチェック: frontmatterの `draft: true` を削除 → noindexが外れsitemapに載る。章末に参考リンク＋QuizLinkを置く。draft章へのMarkdownリンクは張らない（執筆中ページに誘導しない）。
+
 ```
 docs/books.md 仕様の教科書、JavaScript本の未執筆章を1章書いてほしい。
 
@@ -218,6 +221,36 @@ Next.js App Router の教科書章ページに動的OG画像を追加してほ�
 
 # 添付
 docs/books.md / 章ページ page.tsx / src/lib/book-theme.ts / src/app/layout.tsx
+```
+
+---
+
+## TODO — P7: 章末フィードバックウィジェット（「この章は役に立ちましたか？」）
+
+**モデル**: 中位以上（API設計を含む） / **効果**: 改善サイクルのデータ源 + エンゲージメント / **工数**: 中
+**状態**: 未着手。着手時は以下をそのまま委任できる。
+
+```
+docs/books.md 仕様の教科書サイトに、章末フィードバックウィジェットを実装してほしい。
+
+# 要件
+- 各章ページの末尾（QuizLinkバナーの下、ChapterNavの上）に
+  「この章は役に立ちましたか？」+ 👍/👎 ボタンを表示
+- 投票するとお礼メッセージに切り替わる。連打防止に localStorage で章ごとの投票済みを記録
+- 集計データは章単位（bookSlug / chapterSlug / 種別 / 日時）で保存する
+
+# 実装前に確認すること
+1. 既存APIの実装パターンを調べる（sitemap.ts が参照する Express バックエンド
+   {API_BASE_URL}/api/... と、src/app/api/ の Next.js Route Handler のどちらに寄せるか）
+2. DBスキーマ（テーブル1つ: chapter_feedback）とAPI設計を先に提案し、承認後に実装
+3. 認証は不要（匿名投票）。ただしスパム対策として同一章への連投は弾く
+
+# 将来の使い道（設計時に意識）
+- 👎が多い章を Search Console 分析（本ファイルの月次運用）と突き合わせて改善対象を決める
+- 管理画面（/admin）に章ごとの集計を表示できる形でデータを持つ
+
+# 添付
+docs/books.md / 章ページ page.tsx / src/app/api/ 配下の既存Route Handler例 / sitemap.ts
 ```
 
 ---
