@@ -1,4 +1,5 @@
 import * as runtime from 'react/jsx-runtime';
+import { ExternalLink } from 'lucide-react';
 import MermaidDiagram from '@/components/MermaidDiagram';
 import Figure from '@/app/books/_components/Figure';
 import Callout from '@/app/books/_components/Callout';
@@ -16,6 +17,25 @@ function ResponsiveTable(props: React.ComponentPropsWithoutRef<'table'>) {
   );
 }
 
+function Anchor(props: React.ComponentPropsWithoutRef<'a'>) {
+  const { href, children } = props;
+  const isExternal = typeof href === 'string' && /^https?:\/\//.test(href);
+
+  if (!isExternal) {
+    return <a {...props} />;
+  }
+
+  return (
+    <a {...props} target="_blank" rel="noopener noreferrer">
+      {children}
+      <ExternalLink
+        aria-hidden="true"
+        className="ml-0.5 inline h-3 w-3 align-baseline"
+      />
+    </a>
+  );
+}
+
 const sharedComponents = {
   MermaidDiagram,
   Figure,
@@ -24,6 +44,7 @@ const sharedComponents = {
   Marker,
   TailwindPreview,
   QuizLink,
+  a: Anchor,
   table: ResponsiveTable,
 };
 

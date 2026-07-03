@@ -1,30 +1,49 @@
+import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, HelpCircle } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface QuizLinkProps {
   href: string;
   title: string;
   description?: string;
+  imageSrc?: string;
 }
 
-export default function QuizLink({ href, title, description }: QuizLinkProps) {
+export default function QuizLink({
+  href,
+  title,
+  description,
+  imageSrc = '/images/phone_check.png',
+}: QuizLinkProps) {
   return (
     <Link
       href={href}
-      className="group my-6 flex items-center gap-4 rounded-lg border border-primary/20 bg-primary/5 p-4 no-underline transition-all hover:border-primary/40 hover:bg-primary/10 hover:shadow-sm"
+      className="group relative my-6 flex items-center gap-3 overflow-hidden rounded-lg border border-sky-300 bg-sky-600 px-4 py-4 no-underline shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md sm:px-5 sm:py-4"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
-        <HelpCircle className="size-5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <span className="block text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+      <span className="absolute inset-0 bg-gradient-to-r from-sky-700/95 via-cyan-600/88 to-blue-500/74" />
+      <span className="absolute inset-0 bg-[radial-gradient(circle_at_56%_48%,rgba(255,255,255,0.22),transparent_42%)]" />
+      <span className="absolute inset-0 bg-gradient-to-r from-slate-950/18 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute right-16 top-1/2 h-44 w-36 -translate-y-1/2 rotate-[15deg] opacity-35 mix-blend-multiply blur-[1px] transition-transform duration-300 group-hover:scale-105 sm:h-56 sm:w-44">
+        <Image
+          src={imageSrc}
+          alt=""
+          fill
+          sizes="176px"
+          aria-hidden="true"
+          className="object-contain saturate-125"
+        />
+      </div>
+      <div className="relative min-w-0 flex-1">
+        <span className="inline-block rounded-md bg-white px-2.5 py-1 text-base font-extrabold leading-snug text-sky-700 shadow-sm sm:text-lg">
           {title}
         </span>
         {description && (
-          <span className="block text-xs text-muted-foreground mt-0.5">{description}</span>
+          <span className="mt-2 block text-sm font-bold leading-relaxed text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+            {description}
+          </span>
         )}
       </div>
-      <ArrowRight className="size-4 shrink-0 text-primary/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+      <ArrowRight className="relative size-6 shrink-0 text-white transition-transform group-hover:translate-x-1" />
     </Link>
   );
 }

@@ -12,6 +12,16 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypePrettyCode from 'rehype-pretty-code';
 
+const CHARS_PER_MINUTE = 500;
+
+function calculateReadingTime(raw: string) {
+  const withoutCodeBlocks = raw
+    .replace(/(^|\n)(```+|~~~+)[^\n]*\n[\s\S]*?\n\2[ \t]*(?=\n|$)/g, '\n')
+    .replace(/(^|\n)(?: {4}|\t).*(?=\n|$)/g, '\n');
+  const charCount = Array.from(withoutCodeBlocks.replace(/\s/g, '')).length;
+  return Math.max(1, Math.ceil(charCount / CHARS_PER_MINUTE));
+}
+
 /**
  * booksコレクション
  *
@@ -50,15 +60,18 @@ const chapters = defineCollection({
       description: s.string().optional(),
       order: s.number(), // 章の表示順（昇順ソートに使用）
       slug: s.path(),
+      raw: s.raw(),
       body: s.mdx(), // コンパイル済み MDX コード
     })
     .transform((data) => {
       // "books/nextjs/01-introduction" → bookSlug: "nextjs", chapterSlug: "01-introduction"
       const parts = data.slug.split('/');
+      const { raw, ...chapter } = data;
       return {
-        ...data,
+        ...chapter,
         bookSlug: parts[1],
         chapterSlug: parts[2],
+        readingTime: calculateReadingTime(raw),
       };
     }),
 });

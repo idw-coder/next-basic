@@ -44,7 +44,7 @@ export default async function BookPage({ params }: BookPageProps) {
 
   const chapters = getChaptersByBook(bookSlug);
   const theme = getBookTheme(bookSlug);
-  const estimatedMinutes = chapters.length * 5;
+  const estimatedMinutes = chapters.reduce((total, chapter) => total + chapter.readingTime, 0);
 
   return (
     <div>
@@ -116,6 +116,10 @@ export default async function BookPage({ params }: BookPageProps) {
                       {chapter.description}
                     </p>
                   )}
+                  <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground sm:text-xs">
+                    <Clock className="size-3" />
+                    <span>約{chapter.readingTime}分</span>
+                  </div>
                 </div>
                 <ChevronRight className="size-3.5 shrink-0 text-gray-300 group-hover:text-primary transition-colors sm:size-4" />
               </Link>

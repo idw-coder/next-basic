@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Clock } from 'lucide-react';
 import {
   getBook,
   getChapter,
@@ -11,6 +11,8 @@ import {
 } from '@/lib/books';
 import { MDXContent } from '@/components/mdx-content';
 import { ChapterNav } from '../../_components/ChapterNav';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://web-mondai.com';
 
 export function generateStaticParams() {
   return getAllBooks().flatMap((book) =>
@@ -30,9 +32,18 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
   const book = getBook(bookSlug);
   const chapter = getChapter(bookSlug, chapterSlug);
   if (!book || !chapter) return {};
+  const title = `${chapter.title} - ${book.title} | ウェブエンジニア問題集`;
+  const description = chapter.description ?? book.description;
   return {
-    title: `${chapter.title} - ${book.title} | ウェブエンジニア問題集`,
-    description: chapter.description ?? book.description,
+    title,
+    description,
+    alternates: { canonical: `/books/${bookSlug}/${chapterSlug}` },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: `${SITE_URL}/books/${bookSlug}/${chapterSlug}`,
+    },
   };
 }
 
@@ -75,9 +86,13 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
           第{chapter.order}章
         </span>
       </div>
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
         {chapter.title}
       </h1>
+      <div className="mt-3 mb-8 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Clock className="size-3.5" />
+        <span>約{chapter.readingTime}分</span>
+      </div>
       <div className="prose prose-gray max-w-none">
         <MDXContent code={chapter.body} />
       </div>
