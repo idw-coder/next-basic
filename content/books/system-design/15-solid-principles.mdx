@@ -2,7 +2,463 @@
 title: 'SOLID原則 — 変更に強いコードを書くための5つの指針'
 description: 'SOLID原則の5つの指針を、実務のコード例を使って解説します。'
 order: 15
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+機能を1つ追加しただけなのに、関係ないはずの画面が壊れた。修正のたびに同じファイルを何人もが触ってコンフリクトする——こうした「変更のつらさ」の多くは、コードの依存関係と責務の切り方に原因があります。
+
+SOLID原則は、この問題に対処するためにオブジェクト指向設計の文脈でまとめられた5つの原則です。ロバート・C・マーティン（通称 Uncle Bob）が整理したもので、頭文字をとってSOLIDと呼ばれます。
+
+この章では、5つの原則それぞれを「違反しているコード → 改善したコード」の対比で見ていきます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+SOLIDって名前はよく聞くけど、5つもあって覚えられない…。全部ちゃんと守らないとダメなの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+暗記する必要はないよ。5つはバラバラのルールではなくて、全部「変更の影響範囲を小さくする」という同じゴールに向かっている。そのつながりが見えれば、自然に思い出せるようになる。
+</SpeechBubble>
+
+## SOLID原則の全体像
+
+まず5つの原則を一覧で押さえます。
+
+| 頭文字 | 原則名 | 一言でいうと |
+| ------ | ------ | ------------ |
+| **S** | 単一責任の原則（Single Responsibility Principle） | モジュールを変更する理由は1つにする |
+| **O** | オープン・クローズドの原則（Open/Closed Principle） | 拡張は既存コードの修正なしでできるようにする |
+| **L** | リスコフの置換原則（Liskov Substitution Principle） | 派生型は基底型として問題なく使えるようにする |
+| **I** | インターフェース分離の原則（Interface Segregation Principle） | 使わないメソッドへの依存を強制しない |
+| **D** | 依存性逆転の原則（Dependency Inversion Principle） | 具体ではなく抽象に依存する |
+
+5つの原則はすべて、[なぜ設計が必要なのか](/books/system-design/01-why-design-matters)で見た「変更コストを下げる」という設計の目的につながっています。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    S["S: 責務を分ける"] --> G["変更の影響範囲が小さい"]
+    O["O: 修正せず拡張"] --> G
+    L["L: 置換できる継承"] --> G
+    I["I: 小さなインターフェース"] --> G
+    D["D: 抽象に依存"] --> G
+    G --> R["変更に強いコード"]
+`}
+/>
+
+それでは、1つずつ見ていきます。
+
+## S: 単一責任の原則（SRP）
+
+<Marker>単一責任の原則 —— モジュール（クラスや関数）を変更する理由は、1つでなければならない。</Marker>
+
+「責任（責務）」というと「やることを1つにする」と誤解されがちですが、正確には**変更を要求してくる人（アクター）が1種類になるように分ける**、という原則です。マーティン自身も後年、「モジュールはたった1つのアクターに対して責務を負うべきである」と言い換えています。
+
+### 違反しているコード
+
+売上レポートを扱うクラスを考えます。
+
+```ts
+// ❌ SRP違反: 3種類のアクターの関心事が1クラスに同居している
+class ReportService {
+  // 集計ルール —— 経理部門の要望で変わる
+  generate(orders: Order[]): Report {
+    const total = orders.reduce((sum, o) => sum + o.amount, 0);
+    return { total, count: orders.length, createdAt: new Date() };
+  }
+
+  // 出力フォーマット —— デザイン変更の要望で変わる
+  formatAsHtml(report: Report): string {
+    return `<h1>売上レポート</h1><p>合計: ${report.total}円</p>`;
+  }
+
+  // 保存処理 —— インフラ構成の変更で変わる
+  async save(report: Report): Promise<void> {
+    await db.reports.insert(report);
+  }
+}
+```
+
+このクラスは「経理部門が集計ルールを変えたいとき」「デザイナーが見た目を変えたいとき」「インフラ担当が保存先を変えたいとき」のすべてで修正されます。変更理由が3つある、つまりSRPに違反しています。
+
+一見きれいにまとまって見えますが、集計ロジックを直しただけのつもりが、同じファイルにあるHTML生成を巻き込んで壊す——といった事故が起きやすくなります。
+
+### 改善したコード
+
+変更理由ごとにクラスを分割します。
+
+```ts
+// ⭕ 変更理由（アクター）ごとに分割する
+class ReportGenerator {
+  generate(orders: Order[]): Report {
+    const total = orders.reduce((sum, o) => sum + o.amount, 0);
+    return { total, count: orders.length, createdAt: new Date() };
+  }
+}
+
+class ReportHtmlFormatter {
+  format(report: Report): string {
+    return `<h1>売上レポート</h1><p>合計: ${report.total}円</p>`;
+  }
+}
+
+class ReportRepository {
+  async save(report: Report): Promise<void> {
+    await db.reports.insert(report);
+  }
+}
+```
+
+集計ルールの変更は `ReportGenerator` だけを触ればよく、フォーマットや保存処理に影響しません。テストも書きやすくなります（HTML生成のテストにDBが不要になる）。
+
+<Callout type="note">
+「責務が1つか」を判定する実務的な質問は「このクラスの変更を依頼してくる部門・役割は何種類あるか？」です。集計ルールは経理、見た目はデザイン、保存先はインフラ——依頼元が複数あるなら、分割のサインです。
+</Callout>
+
+## O: オープン・クローズドの原則（OCP）
+
+<Marker>オープン・クローズドの原則 —— ソフトウェアの構成要素は、拡張に対して開いていて（Open）、修正に対して閉じている（Closed）べきである。</Marker>
+
+「新しい振る舞いを追加するとき、既存のコードを書き換えずに済む構造にしておく」という原則です。
+
+### 違反しているコード
+
+会員ランクごとに割引率を計算する処理を考えます。
+
+```ts
+// ❌ OCP違反: ランクが増えるたびに、この関数を修正することになる
+function calcDiscount(price: number, memberRank: string): number {
+  if (memberRank === 'gold') {
+    return price * 0.1;
+  } else if (memberRank === 'silver') {
+    return price * 0.05;
+  } else {
+    return 0;
+  }
+}
+```
+
+「プラチナ会員を追加したい」という要望が来るたびに、この関数へ `else if` を足すことになります。修正のたびに既存の分岐を壊すリスクがあり、割引計算を使う箇所が増えるほど同じ分岐がコピーされていきます。
+
+### 改善したコード
+
+「割引を計算する」という抽象（インターフェース）を定義し、ランクごとの具体的な計算をその実装として分離します。
+
+```ts
+// ⭕ 抽象を定義し、バリエーションを実装の追加で表現する
+interface DiscountPolicy {
+  calc(price: number): number;
+}
+
+class GoldDiscount implements DiscountPolicy {
+  calc(price: number): number {
+    return price * 0.1;
+  }
+}
+
+class SilverDiscount implements DiscountPolicy {
+  calc(price: number): number {
+    return price * 0.05;
+  }
+}
+
+class NoDiscount implements DiscountPolicy {
+  calc(): number {
+    return 0;
+  }
+}
+
+// 利用側は抽象にしか依存しない
+function calcDiscount(price: number, policy: DiscountPolicy): number {
+  return policy.calc(price);
+}
+```
+
+プラチナ会員を追加するときは `PlatinumDiscount` クラスを**新規追加するだけ**で、既存のクラスや `calcDiscount` 関数は一切修正しません。既存コードを触らないので、既存の動作を壊す心配が構造的になくなります。
+
+この「振る舞いをインターフェースで差し替える」形は、デザインパターンでいう**Strategyパターン**そのものです。OCPを実現する代表的な手段として覚えておくとよいでしょう。
+
+<Figure src="/images/plan_selection_man_color.png" alt="複数の選択肢から選ぶ人" maxWidth="180px" caption="バリエーションは「分岐の追加」ではなく「実装の追加」で表現する" />
+
+<Callout type="warning">
+OCPは「あらゆる変更に備えて最初から全部抽象化しておけ」という意味ではありません。将来の拡張を予測しすぎた抽象化は、使われない複雑さ（過剰設計）になります。実際に2回目・3回目の同種の変更が来た時点で抽象を導入する、という進め方が現実的です。
+</Callout>
+
+## L: リスコフの置換原則（LSP）
+
+<Marker>リスコフの置換原則 —— 派生型（サブクラス）は、その基底型（スーパークラス）と置き換えても、プログラムの正しさを損なってはならない。</Marker>
+
+継承やインターフェース実装をしたとき、「親の型として扱っても壊れないこと」を要求する原則です。コンパイルが通るかどうかではなく、**振る舞いの約束（契約）を守っているか**が問われます。
+
+### 違反しているコード
+
+鳥を表すクラスを継承で拡張した例です。
+
+```ts
+// ❌ LSP違反: 「Birdはflyできる」という契約をPenguinが破っている
+class Bird {
+  fly(): void {
+    console.log('飛んだ');
+  }
+}
+
+class Penguin extends Bird {
+  fly(): void {
+    throw new Error('ペンギンは飛べません');
+  }
+}
+
+function letBirdsFly(birds: Bird[]): void {
+  for (const bird of birds) {
+    bird.fly(); // Penguinが混ざっていると実行時に例外で落ちる
+  }
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+型としてはちゃんと `Bird` を継承しているのに、ダメなの？コンパイルエラーも出てないよ？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そこがLSPのポイント。型チェックは通っていても、「`Bird` なら `fly()` を呼べる」という利用側の期待を裏切っている。`letBirdsFly` を書いた人は `Penguin` の存在を知らなくても正しく動くべき——それが「置換可能」という意味だよ。
+</SpeechBubble>
+
+### 改善したコード
+
+「飛べる」という能力を継承階層に押し込まず、別のインターフェースとして切り出します。
+
+```ts
+// ⭕ 「飛べる」を別の抽象として分離し、飛べるものだけが実装する
+interface Flyable {
+  fly(): void;
+}
+
+class Sparrow implements Flyable {
+  fly(): void {
+    console.log('飛んだ');
+  }
+}
+
+class Penguin {
+  swim(): void {
+    console.log('泳いだ');
+  }
+}
+
+function letBirdsFly(birds: Flyable[]): void {
+  for (const bird of birds) {
+    bird.fly(); // Flyableを実装した型しか渡せないので、実行時に落ちない
+  }
+}
+```
+
+`letBirdsFly` に渡せるのは `Flyable` を実装した型だけになり、「飛べない鳥が混ざって落ちる」ことが**型レベルで**起きなくなりました。
+
+LSP違反の典型的な兆候は次のとおりです。
+
+- サブクラスがオーバーライドしたメソッドで**例外を投げるだけ**にしている
+- サブクラスのメソッドが**何もしない空実装**になっている
+- 利用側が `instanceof` で**型を判定して分岐**している（置換できていない証拠）
+
+<Callout type="column">
+LSPは計算機科学者バーバラ・リスコフが1987年の講演で示した「振る舞いのサブタイピング」の考え方が元になっています。有名な反例が「正方形は長方形のサブクラスにできるか」問題です。数学的には正方形は長方形の一種ですが、「幅だけを変更できる」という長方形の契約を正方形は守れない（幅を変えると高さも変わる）ため、継承させると置換可能性が壊れます。「is-a に見えても契約を守れなければ継承してはいけない」という好例です。
+</Callout>
+
+## I: インターフェース分離の原則（ISP）
+
+<Marker>インターフェース分離の原則 —— クライアントに、利用しないメソッドへの依存を強制してはならない。</Marker>
+
+1つの大きなインターフェースより、利用者ごとに分割された小さなインターフェースを提供すべき、という原則です。
+
+### 違反しているコード
+
+複合機（印刷・スキャン・FAX）を表すインターフェースの例です。
+
+```ts
+// ❌ ISP違反: 「多機能な1つのインターフェース」を全員に強制している
+interface MultiFunctionDevice {
+  print(doc: Document): void;
+  scan(): Document;
+  fax(doc: Document, to: string): void;
+}
+
+// 印刷しかできない安価なプリンタも、この巨大な契約を結ばされる
+class SimplePrinter implements MultiFunctionDevice {
+  print(doc: Document): void {
+    console.log('印刷しました');
+  }
+  scan(): Document {
+    throw new Error('スキャン機能はありません'); // 空実装 or 例外になる
+  }
+  fax(): void {
+    throw new Error('FAX機能はありません');
+  }
+}
+```
+
+`SimplePrinter` は使いもしない `scan` と `fax` の実装を強制され、結果として「例外を投げるだけのメソッド」が生まれています。これは先ほどのLSP違反も同時に引き起こしています——太ったインターフェースは、置換できない実装を量産するのです。
+
+### 改善したコード
+
+機能ごとにインターフェースを分割し、必要なものだけを実装します。
+
+```ts
+// ⭕ 利用者の関心ごとにインターフェースを分ける
+interface Printer {
+  print(doc: Document): void;
+}
+
+interface Scanner {
+  scan(): Document;
+}
+
+interface Fax {
+  fax(doc: Document, to: string): void;
+}
+
+// 印刷専用機はPrinterだけ実装すればよい
+class SimplePrinter implements Printer {
+  print(doc: Document): void {
+    console.log('印刷しました');
+  }
+}
+
+// 複合機は複数のインターフェースを実装する
+class MultiFunctionPrinter implements Printer, Scanner, Fax {
+  print(doc: Document): void { /* ... 印刷処理 */ }
+  scan(): Document { /* ... スキャン処理 */ }
+  fax(doc: Document, to: string): void { /* ... FAX送信処理 */ }
+}
+
+// 印刷だけしたい利用側は、Printerにだけ依存する
+function printReport(printer: Printer, report: Document): void {
+  printer.print(report);
+}
+```
+
+利用側の `printReport` は `Printer` だけに依存するため、スキャンやFAXの仕様変更から完全に切り離されます。<Marker>インターフェースは「提供側が持っている機能」ではなく「利用側が必要とする機能」を基準に切る</Marker>のがISPの実践です。
+
+## D: 依存性逆転の原則（DIP）
+
+<Marker>依存性逆転の原則 —— 上位モジュールは下位モジュールに依存してはならない。どちらも抽象に依存すべきである。</Marker>
+
+ここでいう「上位」はビジネスロジック（アプリの本質的な価値）、「下位」はDBアクセスや外部API呼び出しなどの技術的詳細を指します。
+
+### 違反しているコード
+
+注文処理のビジネスロジックが、MySQLの具体的な実装に直接依存している例です。
+
+```ts
+// ❌ DIP違反: ビジネスロジックが具体的な技術（MySQL）に依存している
+import { MySqlOrderTable } from './infra/mysql-order-table';
+
+class OrderService {
+  private orderTable = new MySqlOrderTable(); // 具体クラスを直接生成
+
+  async placeOrder(order: Order): Promise<void> {
+    if (order.items.length === 0) {
+      throw new Error('商品が選択されていません');
+    }
+    await this.orderTable.insert(order);
+  }
+}
+```
+
+この構造では「DBをPostgreSQLに移行したい」「テストではDBに繋がずに検証したい」といった要求のたびに、ビジネスロジックである `OrderService` を修正することになります。**本来変わってほしくない上位（業務ルール）が、変わりやすい下位（技術詳細）の都合に振り回される**わけです。
+
+### 改善したコード
+
+上位モジュール側でインターフェース（抽象）を定義し、下位モジュールにそれを実装させます。依存の向きが逆転するので「依存性逆転」と呼ばれます。
+
+```ts
+// ⭕ 上位が「必要とする抽象」を定義する
+interface OrderRepository {
+  insert(order: Order): Promise<void>;
+}
+
+class OrderService {
+  // 具体クラスではなく抽象を受け取る（コンストラクタインジェクション）
+  constructor(private readonly orderRepo: OrderRepository) {}
+
+  async placeOrder(order: Order): Promise<void> {
+    if (order.items.length === 0) {
+      throw new Error('商品が選択されていません');
+    }
+    await this.orderRepo.insert(order);
+  }
+}
+
+// 下位モジュールが抽象を実装する
+class MySqlOrderRepository implements OrderRepository {
+  async insert(order: Order): Promise<void> {
+    // MySQLへの保存処理
+  }
+}
+
+// 組み立ては外側（エントリポイントやDIコンテナ）で行う
+const orderService = new OrderService(new MySqlOrderRepository());
+```
+
+依存の向きを図で比べると、変化がはっきり分かります。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    subgraph Before["改善前"]
+        A["OrderService"] -->|依存| B["MySqlOrderTable"]
+    end
+    subgraph After["改善後"]
+        C["OrderService"] -->|依存| I["OrderRepository(抽象)"]
+        D["MySqlOrderRepository"] -->|実装| I
+    end
+`}
+/>
+
+改善前は上位が下位に依存していましたが、改善後は**上位も下位も抽象に依存**しています。DB移行は `OrderRepository` の新しい実装を差し替えるだけで済み、テストではインメモリのフェイク実装を渡せます。
+
+<Callout type="info">
+テストコードでは `OrderRepository` を実装したフェイク（配列に貯めるだけの実装など）を `OrderService` に渡せば、DBなしでビジネスロジックだけを高速に検証できます。DIPは「テストしやすい設計」とほぼ同義と言ってよいくらい、テスタビリティに直結します。
+</Callout>
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="段階を上る人" maxWidth="180px" caption="5つの原則は独立ではなく、互いに支え合っている" />
+
+ここまで見てきたように、5つの原則は連動しています。ISPで小さく切ったインターフェースはLSPを守りやすくし、DIPで導入した抽象はOCPの拡張ポイントになります。SRPで責務を分けたクラスは、そもそも巨大なインターフェースを持ちません。
+
+## よくあるハマりどころ
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+よし、明日から全部のクラスにインターフェースを付けて、クラスも全部細かく分割します！
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+ちょっと待って、それが一番よくあるハマり方（笑）。SOLIDは「変更がつらい」という問題を解決する道具であって、守ること自体が目的ではないよ。変更の予定がない場所への適用は、ただの複雑化になる。
+</SpeechBubble>
+
+### 過剰な分割・過剰な抽象化
+
+- **SRPの誤用**: 「1クラス1メソッド」のような機械的な分割は、かえって処理の流れを追いにくくします。分割の単位は「変更理由（アクター）」であって、コードの行数ではありません
+- **OCP/DIPの誤用**: 実装クラスが1つしかなく、今後も増える見込みがないのに全クラスへインターフェースを用意するのは過剰です。抽象は「変化する箇所」に絞って導入します
+
+### 「原則違反=悪」と考えてしまう
+
+小さなスクリプト、書き捨てのツール、まだ仕様が固まっていないプロトタイプでは、SOLIDを厳密に適用するコストが利益を上回ります。<Marker>SOLIDを適用すべきかの判断軸は「そのコードが今後、誰によって・どんな理由で変更されるか」</Marker>です。長く保守され、変更が繰り返される中核ロジックほど、原則の効果が大きくなります。
+
+### 継承で再利用しようとしてLSPを踏む
+
+「コードを再利用したいから」という理由だけで継承を使うと、契約を守れないサブクラス（LSP違反）が生まれがちです。再利用が目的なら、まずコンポジション（部品として持つ）や関数の切り出しを検討し、継承は「本当に置換可能なis-a関係」に限定するのが安全です。
+
+## ちゃんと使うためのポイント
+
+- <Marker>5つの原則のゴールは共通して「変更の影響範囲を小さくする」こと</Marker>——個別に暗記するより、この軸で理解する
+- **S**: 分割の単位は「変更を依頼してくるアクター」。依頼元が複数あるクラスは分割候補
+- **O**: バリエーションの追加は「分岐の追加」ではなく「実装の追加」で。ただし抽象の導入は変更が実際に発生してからでよい
+- **L**: 例外を投げるだけのオーバーライド・空実装・`instanceof` 分岐はLSP違反のサイン
+- **I**: インターフェースは提供側の機能一覧ではなく、利用側の必要性を基準に切る
+- **D**: ビジネスロジックは技術詳細（DB・外部API）の抽象に依存させる。テスタビリティが劇的に上がる
+- 原則の適用はコスト。変更が繰り返される中核ロジックに絞り、過剰設計を避ける
+
+責務と依存関係の整理ができたら、次はその設計を他者に伝える番です。次の章では、処理の流れを可視化する[シーケンス図の書き方](/books/system-design/16-sequence-diagram)を解説します。
+
+## 参考リンク
+
+- [SOLID - Wikipedia](https://ja.wikipedia.org/wiki/SOLID) — 5原則の定義と歴史的経緯のまとめ
+- [Solid Relevance - Clean Coder Blog](https://blog.cleancoder.com/uncle-bob/2020/10/18/Solid-Relevance.html) — 提唱者ロバート・C・マーティン自身による「SOLIDは今も有効か」への回答（英語）
+- [アーキテクチャの原則 - Microsoft Learn](https://learn.microsoft.com/ja-jp/dotnet/architecture/modern-web-apps-azure/architectural-principles) — SOLIDを含む設計原則の実践的な解説

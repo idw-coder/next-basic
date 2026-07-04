@@ -7,6 +7,9 @@
  *
  * @see https://velite.js.org
  */
+import { execSync } from 'node:child_process';
+import { statSync } from 'node:fs';
+import path from 'node:path';
 import { defineConfig, defineCollection, s } from 'velite';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
@@ -68,6 +71,29 @@ function extractToc(raw: string): TocEntry[] {
 }
 
 /**
+ * ファイルの最終更新日時（ISO文字列）を返す。sitemapのlastModifiedに使用。
+ * 1. gitの最終コミット日時（正確・ローカル/履歴ありCI向け）
+ * 2. shallow cloneや未コミットファイルで取れない場合はファイルmtimeにフォールバック
+ */
+function getUpdatedAt(relPath: string): string {
+  const filePath = path.join('content', relPath);
+  try {
+    const out = execSync(`git log -1 --format=%cI -- "${filePath}"`, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (out) return out;
+  } catch {
+    // gitが使えない環境（shallow clone等）はmtimeへ
+  }
+  try {
+    return statSync(filePath).mtime.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
+
+/**
  * booksコレクション
  *
  * 対象 content/books/{bookSlug}/index.yaml
@@ -119,6 +145,7 @@ const chapters = defineCollection({
         chapterSlug: parts[2],
         readingTime: calculateReadingTime(raw),
         toc: extractToc(raw),
+        updated: getUpdatedAt(`${data.slug}.mdx`),
       };
     }),
 });

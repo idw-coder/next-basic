@@ -2,14 +2,342 @@
 title: 'thisの正体 — 呼び出しパターンごとの挙動を整理する'
 description: 'グローバル・メソッド・コンストラクタ・アロー関数の4パターンでthisがどう決まるかを整理します。'
 order: 11
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+`this` は、JavaScriptで最も誤解されているキーワードです。「クラスの中では自分自身のこと」と覚えていると、コールバックに渡した途端に `undefined` になって裏切られます。他の言語の経験者ほど、この挙動に混乱します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `this` って「そのオブジェクト自身」のことじゃないんですか？ 同じ関数なのに、動かし方によって `this` の中身が変わることがあって、もう信用できない…。
+</SpeechBubble>
+
+その「動かし方によって変わる」こそが、`this` の本質です。先に結論を言ってしまいます。<Marker>`this` の中身は、関数が「どこに書かれたか」ではなく「どう呼び出されたか」で、呼び出しのたびに決まります（唯一の例外がアロー関数）。</Marker>
+
+つまり `this` は暗記の対象ではなく、**呼び出しパターンの見分け方**の問題です。パターンは実質4つしかありません。この章で1つずつ潰していきましょう。
+
+## 大原則 — thisは「呼び出し時」に決まる
+
+普通の変数は、[クロージャ](/books/javascript/12-closures)の章で学ぶとおり「どこで定義されたか」（レキシカルスコープ）で参照先が決まります。`this` はその真逆で、**定義時には何も決まっていません**。
+
+```js
+function showThis() {
+  console.log(this);
+}
+// この時点では、thisが何になるかは決まっていない。
+// showThisが「どう呼ばれるか」で毎回変わる。
+```
+
+同じ関数でも、呼び出し方が違えば `this` は別物になります。
+
+```js
+const user = { name: '太郎', showThis };
+
+showThis(); // グローバルオブジェクト（またはundefined）← パターン1
+user.showThis(); // userオブジェクト ← パターン2
+new showThis(); // 新しく作られたオブジェクト ← パターン3
+```
+
+<Figure src="/images/calling_suit_man_color.png" alt="呼び出し方によって応答が変わるイメージ" maxWidth="140px" caption="thisは関数の性質ではなく「呼び出し方」の性質。同じ関数でも呼び方次第で変わる" />
+
+判定の全体像を先に図で示します。以降の節は、この分岐を1つずつ確認していく構成です。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    Q["どう呼び出された？"] -->|"アロー関数"| E["外側のthisをそのまま使う"]
+    Q -->|"new fn()"| B["新しく作られるオブジェクト"]
+    Q -->|"obj.fn()"| C["ドットの左のオブジェクト"]
+    Q -->|"fn() 単独"| D["グローバルオブジェクト / undefined"]
+`}
+/>
+
+## パターン1: 単独の関数呼び出し — グローバル or undefined
+
+`fn()` のように、何にも付けずに関数を呼び出すと、`this` は**グローバルオブジェクト**（ブラウザでは `window`）になります。ただし**strictモードでは `undefined`** です。
+
+```js
+function showThis() {
+  console.log(this);
+}
+
+showThis();
+// 非strictモード: window（グローバルオブジェクト）
+// strictモード:   undefined
+```
+
+<Callout type="note">
+「strictモードかどうか」は自分で意識する場面が減っています。ESモジュール（`import` / `export` を使うファイル）とクラスの内部は**自動的にstrictモード**になるため、現代の開発ではほぼ「単独呼び出しの `this` は `undefined`」と考えて構いません。
+</Callout>
+
+このパターンで `this` を意図的に使うことはまずありません。重要なのは、**後述の「thisが失われる」事故の落下先**がここだという点です。メソッドとして呼ばれるはずだった関数が単独呼び出しに変わってしまうと、`this` は `undefined` になり、`this.name` のようなアクセスが `TypeError` で落ちます。
+
+## パターン2: メソッド呼び出し — 「ドットの左」を見る
+
+`obj.fn()` の形で呼び出すと、`this` は**ドットの左にあるオブジェクト**になります。最頻出パターンにして、判定はいちばん簡単です。
+
+```js
+const user = {
+  name: '太郎',
+  greet() {
+    console.log(`こんにちは、${this.name}です`);
+  },
+};
+
+user.greet(); // "こんにちは、太郎です" ← thisはuser（ドットの左）
+```
+
+<Marker>メソッド呼び出しの `this` は「ドットの左のオブジェクト」。それ以上でも以下でもありません。</Marker>「そのメソッドを定義したオブジェクト」ではない、という点が重要です。
+
+```js
+const admin = { name: '管理者' };
+admin.greet = user.greet; // userのメソッドをadminに付け替える
+
+admin.greet(); // "こんにちは、管理者です" ← thisはadmin（呼び出し時のドットの左）
+```
+
+同じ `greet` 関数なのに、`user.greet()` なら太郎、`admin.greet()` なら管理者。関数がどこ生まれかは関係なく、**呼び出しの瞬間のドットの左**がすべてです。
+
+### メソッドを「取り出す」とthisは消える
+
+このルールの裏返しとして、メソッドを変数に代入したりコールバックとして渡したりすると、呼び出しからドットが消えるため、`this` は失われます。
+
+```js
+const greet = user.greet; // 関数を取り出した時点で、userとの縁は切れる
+
+greet(); // TypeError: Cannot read properties of undefined (reading 'name')
+// ← 単独呼び出し（パターン1）になり、thisはundefined
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  えっ、`user.greet` を代入しただけなのに！ 関数は「userのもの」って情報ごとコピーされるんじゃないんだ…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  そこが最大の誤解ポイント。関数はどのオブジェクトにも属していない、独立した値なんだ。`user.greet` は「userが持つ関数への参照」にすぎない。だから取り出したら、ただの関数に戻る。`this` が決まるのはあくまで**呼び出す瞬間**だよ。
+</SpeechBubble>
+
+この「thisの喪失」は実務で最も踏む罠なので、「よくあるハマりどころ」でも改めて扱います。
+
+## パターン3: コンストラクタ呼び出し — newが作る新しいオブジェクト
+
+関数を `new` 付きで呼び出すと、その関数は**コンストラクタ**として動作し、`this` は**新しく作られる空のオブジェクト**を指します。
+
+```js
+function User(name) {
+  // newで呼ばれると、thisは新品の空オブジェクト
+  this.name = name;
+  // return を書かなければ、thisが自動的に返される
+}
+
+const taro = new User('太郎');
+console.log(taro.name); // "太郎"
+```
+
+`new` が裏でやっていることを分解すると、次の3ステップです。
+
+1. 新しい空のオブジェクトを作る
+2. そのオブジェクトを `this` として関数を実行する
+3. 関数が明示的にオブジェクトを `return` しなければ、`this` を返す
+
+クラス構文の `constructor` の中の `this` も、これとまったく同じ仕組みです。クラスは `new` 専用になっているぶん、事故が起きにくくなっています。
+
+```js
+class User {
+  constructor(name) {
+    this.name = name; // thisは作られつつあるインスタンス
+  }
+}
+```
+
+<Callout type="warning">
+コンストラクタとして設計した関数を、`new` を付け忘れて呼ぶと悲惨です。`this` はパターン1（グローバル/undefined）になり、strictモードなら `TypeError`、非strictモードでは**グローバルオブジェクトにプロパティを生やしてしまい**、静かにバグります。コンストラクタ関数名を大文字始まりにする慣習は、この付け忘れに気づくためのものです。
+</Callout>
+
+## パターン4: アロー関数 — thisを持たない
+
+最後のパターンは、これまでと毛色が違います。**アロー関数は自分の `this` を持ちません**。アロー関数の中で `this` を書くと、**それが定義された場所の外側の `this`** がそのまま使われます。
+
+```js
+const timer = {
+  seconds: 0,
+  start() {
+    // startはメソッド呼び出しなので、ここのthisはtimer
+    setInterval(() => {
+      // アロー関数は自分のthisを持たない
+      // → 外側（start）のthis、つまりtimerをそのまま使う
+      this.seconds += 1;
+      console.log(this.seconds);
+    }, 1000);
+  },
+};
+
+timer.start(); // 1, 2, 3, ... と正しくカウントされる
+```
+
+もしこのコールバックを `function () { ... }` で書くと、`setInterval` が呼び出す時点で「ドットの左」が存在しないため、`this` はパターン1に落ちてしまい、`this.seconds` は動きません。アロー関数は、この**「コールバックの中でも外側のthisを使い続けたい」**という頻出ニーズへの言語側の回答です。
+
+<Marker>アロー関数の `this` は呼び出し方の影響を一切受けず、「定義された場所の外側の `this`」で固定されます。</Marker>変数がレキシカルスコープで解決されるのと同じ仕組みなので、「レキシカルな `this`」とも呼ばれます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  じゃあ全部アロー関数で書けば `this` に悩まなくて済むのでは…？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  コールバックは基本アロー関数でOK。ただし「thisを使いたいオブジェクトのメソッド」をアロー関数で定義すると、今度は逆に**ドットの左を無視してしまう**から逆効果なんだ。使い分けはこの後のハマりどころで見ていくよ。
+</SpeechBubble>
+
+## thisを自分で指定する — call・apply・bind
+
+4パターンの自動決定に任せず、`this` を**明示的に指定する**手段も用意されています。すべての関数が持つ `call` / `apply` / `bind` メソッドです。
+
+| メソッド | 引数 | 戻り値 |
+| -------- | ---- | ------ |
+| `fn.call(thisArg, arg1, arg2, ...)` | `this` にする値 + 関数への引数を**個別に** | 関数を即実行した結果 |
+| `fn.apply(thisArg, argsArray)` | `this` にする値 + 関数への引数を**配列で** | 関数を即実行した結果 |
+| `fn.bind(thisArg, ...args?)` | `this` にする値（+ 先頭の引数を固定も可） | **`this` を固定した新しい関数**（実行はしない） |
+
+`call` と `apply` は「thisを指定して、その場で実行する」、`bind` は「thisを縛り付けた別の関数を作っておく」という違いです。
+
+```js
+function greet(greeting) {
+  console.log(`${greeting}、${this.name}です`);
+}
+
+const user = { name: '太郎' };
+
+greet.call(user, 'こんにちは'); // "こんにちは、太郎です"（即実行）
+greet.apply(user, ['こんばんは']); // "こんばんは、太郎です"（引数は配列で）
+
+const greetTaro = greet.bind(user); // thisをuserに固定した新しい関数を作る
+greetTaro('おはよう'); // "おはよう、太郎です"
+```
+
+`bind` で作った関数の `this` は、その後どう呼び出しても変わりません。「メソッドをコールバックとして渡すと `this` が消える」問題の、アロー関数と並ぶ解決策です。
+
+```js
+const button = document.querySelector('button');
+
+// ❌ 渡した時点でthisが失われる
+button.addEventListener('click', user.greet);
+
+// ⭕ thisをuserに固定してから渡す
+button.addEventListener('click', user.greet.bind(user));
+```
+
+<Callout type="column">
+`call` と `apply` の使い分けは「引数を個別に渡すか、配列で渡すか」だけで、機能は同じです。かつては「配列を引数リストに展開する」目的で `apply` が多用されましたが、その役目はスプレッド構文 `fn(...args)` に置き換わりました。現代のコードで見かける頻度は `bind` が圧倒的です。
+</Callout>
+
+## 呼び出しパターン早見表
+
+<Figure src="/images/readingbook_woman_color.png" alt="早見表で確認するイメージ" maxWidth="120px" />
+
+| 呼び出し方 | 例 | this |
+| ---------- | -- | ---- |
+| 単独呼び出し | `fn()` | グローバルオブジェクト（strictモードは `undefined`） |
+| メソッド呼び出し | `obj.fn()` | ドットの左のオブジェクト（`obj`） |
+| コンストラクタ呼び出し | `new fn()` | 新しく作られるオブジェクト |
+| アロー関数 | `() => {}` | 外側の `this` を継承（呼び出し方は無関係） |
+| 明示指定 | `fn.call(x)` / `fn.apply(x)` / `fn.bind(x)` | 指定した `x` |
+
+迷ったら、**呼び出している行**（定義ではなく）を見て、この表に当てはめてください。
+
+## よくあるハマりどころ
+
+### コールバックに渡したメソッドのthisが消える
+
+パターン2の節で見た「thisの喪失」は、コールバックの形で最も頻繁に起きます。
+
+```js
+const user = {
+  name: '太郎',
+  greet() {
+    console.log(`こんにちは、${this.name}です`);
+  },
+};
+
+setTimeout(user.greet, 1000);
+// "こんにちは、undefinedです"（またはTypeError）
+// ← setTimeoutが後で呼ぶときは greet() 単独呼び出しになっている
+```
+
+`setTimeout(user.greet, ...)` と書いた時点で渡っているのは**関数そのものだけ**で、「userの」という情報は付いてきません。対策は2つ、どちらでも構いません。
+
+```js
+// 対策1: アロー関数で包む（呼び出しの形を user.greet() のまま保つ）
+setTimeout(() => user.greet(), 1000);
+
+// 対策2: bindでthisを固定した関数を渡す
+setTimeout(user.greet.bind(user), 1000);
+```
+
+### オブジェクトのメソッドをアロー関数で書いてしまう
+
+「アロー関数は便利」を拡大解釈すると、逆パターンの事故が起きます。
+
+```js
+const counter = {
+  count: 0,
+  // ❌ メソッドをアロー関数で定義
+  increment: () => {
+    this.count += 1; // このthisはcounterではない！
+  },
+};
+
+counter.increment();
+console.log(counter.count); // 0 ← 増えていない
+```
+
+アロー関数は**ドットの左を無視して**外側の `this`（ここではモジュールのトップレベル）を使うため、`counter.increment()` と呼んでも `this` は `counter` になりません。
+
+<Marker>使い分けの軸はシンプルです——オブジェクトの「メソッド」は通常の関数（短縮記法 `increment() {}`）で、その中の「コールバック」はアロー関数で書く。</Marker>
+
+### メソッドの中のネストした関数でthisが変わる
+
+メソッドの中で `function` を定義すると、その関数の呼び出しは単独呼び出し（パターン1）なので、`this` は外側のメソッドから引き継がれません。
+
+```js
+const team = {
+  name: '開発チーム',
+  members: ['太郎', '花子'],
+  introduce() {
+    this.members.forEach(function (member) {
+      // ❌ このfunctionは単独呼び出し → thisはundefined
+      console.log(`${member}は${this.name}の一員です`); // TypeError
+    });
+  },
+};
+```
+
+「`this` は関数の境界を越えるたびにリセットされる」と考えてください。コールバックをアロー関数にすれば、外側（`introduce`）の `this` がそのまま届きます。
+
+```js
+introduce() {
+  this.members.forEach((member) => {
+    console.log(`${member}は${this.name}の一員です`); // ⭕ thisはteam
+  });
+}
+```
+
+## ちゃんと使うためのポイント
+
+- <Marker>`this` は「どこで定義したか」ではなく「どう呼び出されたか」で毎回決まる</Marker>。迷ったら呼び出している行を見る
+- メソッド呼び出しの `this` は**ドットの左**。関数を取り出したり、コールバックとして渡したりした瞬間にその縁は切れる
+- `new` 付きの呼び出しでは、`this` は新しく作られるオブジェクト。クラスの `constructor` も同じ仕組み
+- アロー関数は `this` を持たず、**外側の `this` を継承する**。呼び出し方の影響を受けない唯一のパターン
+- メソッドは通常の関数で、コールバックはアロー関数で書くのが基本の使い分け
+- `this` を明示的に決めたいときは `call`（即実行）/ `apply`（引数を配列で即実行）/ `bind`（固定した関数を作る）
+
+「アロー関数は外側の `this` を使う」「コールバックは周囲の変数を覚えている」——この章で何度も出てきた**「外側のものを参照し続ける」仕組み**の正体が、次章の[クロージャ](/books/javascript/12-closures)です。`this` とセットで理解すると、JavaScriptの関数の挙動はほぼ説明がつくようになります。
 
 ## 参考リンク
 
 - [MDN — this](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/this)
 - [MDN — アロー関数式](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Functions/Arrow_functions)
 - [MDN — Function.prototype.bind](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Function/bind)
-- [MDN — new 演算子](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/new)
+- [MDN — Strictモード](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Strict_mode)
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>

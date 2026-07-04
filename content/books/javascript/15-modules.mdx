@@ -2,14 +2,302 @@
 title: 'モジュールシステム — import/exportとCommonJSの違い'
 description: 'ESModules（import/export）とCommonJS（require/module.exports）の違い、動的import、Tree Shakingの仕組みを解説します。'
 order: 15
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+実務のJavaScriptプロジェクトは、数十〜数千のファイルでできています。ファイルを分割し、必要なものを取り込み合う仕組みが**モジュールシステム**です。あなたが毎日書いている `import` 文がまさにそれです。
+
+ただしJavaScriptには、歴史的な事情でモジュールの方式が**2つ**あります。標準の**ESModules**（`import` / `export`）と、Node.js発祥の**CommonJS**（`require` / `module.exports`）です。この2つの違いを知らないと、「Reactのコードでは `import` なのに、古い設定ファイルでは `require` と書いてある」「`Cannot use import statement outside a module` というエラーが出た」といった場面で手が止まります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `import` は毎日書いてますけど、正直「おまじない」です…。`{}` を付けるときと付けないときの違いも、雰囲気で使い分けてます。
+</SpeechBubble>
+
+この章では、`import` / `export` の全パターンを整理したうえで、CommonJSとの違い、動的import、Tree Shakingまでを一気につなげます。読み終わるころには「おまじない」が「仕組み」に変わっているはずです。
+
+## なぜモジュールが必要か — 全部グローバルだった時代
+
+かつてのJavaScriptにはモジュールの仕組みがなく、複数の `<script>` タグでファイルを読み込んでいました。この方式には致命的な問題があります。**すべてのファイルがグローバルスコープを共有する**のです。
+
+```html
+<script src="utils.js"></script>
+<script src="app.js"></script>
+```
+
+```js
+// utils.js
+var format = function (date) { /* ... */ };
+
+// app.js — 別ファイルなのに、同じ名前を使うと上書きしてしまう
+var format = function (price) { /* ... */ }; // utils.jsのformatが消えた！
+```
+
+ファイルが増えるほど、名前の衝突・読み込み順の管理・「この関数どこで定義されてるの？」問題が深刻になります。モジュールシステムは、この問題を根本から解決します。
+
+<Marker>モジュールとは「独立したスコープを持ち、公開したいものだけを `export` で明示するファイル」のことです。</Marker>export していないものは外から一切見えません。[クロージャ](/books/javascript/12-closures)で学んだ「隠蔽」を、ファイル単位で言語がサポートしてくれる仕組みと言えます。
+
+<Figure src="/images/highfive_hi_color.png" alt="モジュール同士が連携するイメージ" maxWidth="150px" caption="各ファイルは独立した部屋。exportした窓口を通じてだけ、やり取りできる" />
+
+## ESModules — 標準のimport/export
+
+**ESModules（ESM）**は、ES2015で言語標準になったモジュール方式です。ブラウザもNode.jsもネイティブに対応しており、**新しく書くコードはESM一択**と考えて構いません。
+
+エクスポートには**名前付き**と**デフォルト**の2種類があります。ここが `{}` の有無の分かれ目なので、しっかり区別しましょう。
+
+### 名前付きエクスポート — 複数OK・名前で取り出す
+
+宣言の頭に `export` を付けると、その名前のまま公開されます。1ファイルからいくつでもエクスポートできます。
+
+```js
+// math.js
+export const TAX_RATE = 0.1;
+
+export function addTax(price) {
+  return price * (1 + TAX_RATE);
+}
+```
+
+インポートする側は、**同じ名前**を `{}` で指定して取り出します。
+
+```js
+// app.js
+import { addTax, TAX_RATE } from './math.js';
+
+addTax(1000); // 1100
+```
+
+<Marker>名前付きエクスポートは「エクスポート時の名前」と「インポート時の名前」が一致している必要があります。</Marker>名前が違うとエラーではなく `undefined` になる…ことはなく、ESMでは**ビルド時・読み込み時にエラーで検出されます**。この「名前の対応を機械的にチェックできる」性質が、後述のTree Shakingにもつながります。
+
+名前を変えたいときは `as` を使います。
+
+```js
+import { addTax as calcPriceWithTax } from './math.js';
+```
+
+### デフォルトエクスポート — 1ファイル1つ・名前は自由
+
+`export default` は「このファイルの代表」を1つだけ公開する書き方です。
+
+```js
+// Button.js
+export default function Button() {
+  /* ... */
+}
+```
+
+インポートする側は `{}` を付けず、**好きな名前**で受け取れます。
+
+```js
+import Button from './Button.js'; // この名前は自由（MyButtonでも動く）
+```
+
+### インポートの書き方まとめ
+
+| 書き方 | 例 | 用途 |
+| ------ | -- | ---- |
+| 名前付きインポート | `import { a, b } from './m.js'` | 名前付きエクスポートを取り出す |
+| リネーム | `import { a as x } from './m.js'` | 名前の衝突を避ける |
+| デフォルトインポート | `import a from './m.js'` | デフォルトエクスポートを受け取る |
+| 名前空間インポート | `import * as m from './m.js'` | 全エクスポートを `m.a` の形でまとめて使う |
+| 副作用インポート | `import './m.js'` | 何も受け取らず、実行だけする（CSS読み込み等） |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `{}` を付けるかどうかって、「気分」じゃなくて「相手が名前付きかデフォルトか」で決まってたんですね…！
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  そのとおり。だからインポートでつまずいたら、**相手のファイルのexportの書き方を見る**のが正解。`export default` なら `{}` なし、`export const` なら `{}` あり。これだけで迷いは消えるよ。
+</SpeechBubble>
+
+### ブラウザでESMを使う
+
+ブラウザで直接使う場合は、`<script>` タグに `type="module"` を付けます。
+
+```html
+<script type="module" src="app.js"></script>
+```
+
+`type="module"` のスクリプトは、通常のスクリプトといくつか挙動が違います。
+
+- 自動的に**strictモード**になる（[thisの章](/books/javascript/11-this-keyword)で触れたとおり、単独呼び出しの `this` は `undefined`）
+- 変数がグローバルを汚染しない（モジュールスコープ）
+- 読み込みが自動的に遅延され、HTMLの解析をブロックしない
+
+なお、ReactやNext.jsのプロジェクトではバンドラー（ViteやTurbopackなど）がモジュールの解決を担うため、`type="module"` を自分で書く機会はほぼありません。書き方はまったく同じESMです。
+
+## CommonJS — Node.js発祥のrequire
+
+ESMが標準化される前、サーバーサイドのNode.jsは独自のモジュール方式**CommonJS（CJS）**を採用しました。`require` で読み込み、`module.exports` で公開します。
+
+```js
+// math.js（CommonJS）
+const TAX_RATE = 0.1;
+
+function addTax(price) {
+  return price * (1 + TAX_RATE);
+}
+
+module.exports = { addTax, TAX_RATE };
+```
+
+```js
+// app.js（CommonJS）
+const { addTax } = require('./math.js');
+```
+
+新規に書く機会は減りましたが、**読めることは今も必須**です。npmの古いパッケージ、Node.js用の設定ファイル、既存プロジェクトのコードなど、CJSは至るところに現存しています。
+
+### ESMとCommonJSの違い
+
+| 観点 | ESModules | CommonJS |
+| ---- | --------- | -------- |
+| 構文 | `import` / `export` | `require()` / `module.exports` |
+| 読み込みの決定 | **静的**（コードの実行前に解析される） | **動的**（実行時に関数として評価される） |
+| 書ける場所 | ファイルのトップレベルのみ | どこでも（if文の中でも可） |
+| 読み込み方式 | 非同期を前提とした設計 | 同期（読み終わるまで次に進まない） |
+| ブラウザ対応 | ネイティブ対応 | 非対応（バンドラーによる変換が必要） |
+| Tree Shaking | 効く | 原則効かない |
+
+いちばん重要な違いは「静的か動的か」です。ESMの `import` は**コードを1行も実行する前に**すべて確定します。一方CJSの `require` はただの関数呼び出しなので、実行してみるまで何が読み込まれるかわかりません。
+
+```js
+// CommonJSではこう書けてしまう（実行時にしか判明しない）
+if (process.env.NODE_ENV === 'development') {
+  const debugTool = require('./debug.js');
+}
+```
+
+<Marker>「実行前に依存関係がすべて確定する」というESMの静的な性質こそが、ビルドツールによる最適化（Tree Shaking）を可能にしています。</Marker>
+
+<Callout type="note">
+Node.jsで「このファイルはどちらの方式か」は、拡張子（`.mjs` = ESM、`.cjs` = CJS）または `package.json` の `"type": "module"` の有無で決まります。`Cannot use import statement outside a module` というエラーは、「ESMの構文をCJS扱いのファイルに書いた」というサインです。
+</Callout>
+
+## 動的import — 必要になってから読み込む
+
+ESMの `import` 文は静的で、条件分岐の中には書けません。しかし「この機能は、使う人だけが読み込めばいい」という場面は確実にあります。そのための仕組みが**動的import**、つまり関数のように呼べる `import()` です。
+
+**構文：** `import(moduleSpecifier)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `moduleSpecifier`（第1引数） | 読み込むモジュールのパス（文字列）。変数や式でもよい |
+
+**戻り値：** モジュールオブジェクト（全エクスポートを持つオブジェクト）で解決される **Promise**
+
+戻り値がPromiseなので、[非同期処理の章](/books/javascript/13-async-callback-promise)で学んだ `await` がそのまま使えます。
+
+```js
+// 重いグラフ描画ライブラリを、ボタンが押されたときだけ読み込む
+button.addEventListener('click', async () => {
+  const { drawChart } = await import('./chart.js');
+  drawChart(data);
+});
+```
+
+初期表示に不要なコードを後回しにしてページの読み込みを速くする、この手法は**コード分割（code splitting）**と呼ばれます。Next.jsのページ単位の自動分割や `next/dynamic` も、この `import()` が土台です。
+
+<Figure src="/images/walking_woman_color.png" alt="必要になってから取りに行くイメージ" maxWidth="130px" caption="全部を最初に抱えて出発せず、必要になった時点で取りに行くのが動的import" />
+
+## Tree Shaking — 使わないコードを削ぎ落とす
+
+モジュールの静的な性質が最も活きるのが**Tree Shaking**です。ビルドツール（Viteやwebpackなどのバンドラー）が、**インポートされていないエクスポートを最終成果物から削除する**最適化を指します。木を揺すって枯れ葉を落とすイメージからこの名前が付きました。
+
+```js
+// utils.js — 10個の関数をエクスポートしているとする
+export function formatDate() { /* ... */ }
+export function formatPrice() { /* ... */ }
+// ...他8個
+
+// app.js — 使うのは1個だけ
+import { formatDate } from './utils.js';
+```
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["utils.js<br/>エクスポート10個"] -->|"importは1個だけ"| B["ビルド（バンドラー）"]
+    B --> C["成果物には<br/>formatDateだけ残る"]
+`}
+/>
+
+これが成立するのは、ESMの `import` / `export` が静的で、**「どの名前が使われているか」を実行せずに追跡できる**からです。実行してみないと何をエクスポートするかわからないCommonJSでは、バンドラーは安全のために全部を残すしかありません。
+
+<Callout type="info">
+ライブラリのドキュメントで「名前付きインポートを推奨」とされているのは、Tree Shakingを効かせるためであることが多いです。たとえば `import _ from 'lodash'`（全体）ではなく `import debounce from 'lodash/debounce'`（個別）と書くだけで、バンドルサイズが数百KB変わることもあります。
+</Callout>
+
+## よくあるハマりどころ
+
+### `{}` の有無を間違える — defaultと名前付きの混同
+
+エクスポート方式とインポート構文が食い違うのは、最も頻繁に起きるエラーです。
+
+```js
+// Button.js
+export default function Button() { /* ... */ }
+
+// ❌ デフォルトエクスポートを {} で受けようとしている
+import { Button } from './Button.js';
+// → SyntaxError または「Buttonがundefined」系のエラー
+```
+
+エラーメッセージに `does not provide an export named 'Button'` とあれば、相手のファイルの `export` の書き方を確認してください。**インポートの書き方は、常にエクスポート側が決める**のでした。
+
+### デフォルトエクスポートは名前のtypoに気づけない
+
+デフォルトインポートの名前は自由——この便利さは、裏返すとノーチェックということです。
+
+```js
+// ❌ 動いてしまう（本来はButtonという名前のコンポーネント）
+import Botton from './Button.js';
+```
+
+名前付きエクスポートなら、typoは即エラーで検出されます。エディタの自動インポートや一括リネームとも相性がよいため、<Marker>チーム開発では「原則、名前付きエクスポートを使う」という規約を採用するプロジェクトが増えています。</Marker>
+
+### ESMのファイルでrequireは使えない（逆も然り）
+
+2つの方式の構文は混ぜられません。Node.jsで頻出のエラーとして覚えておきましょう。
+
+| エラーメッセージ | 原因 |
+| ---------------- | ---- |
+| `Cannot use import statement outside a module` | CJS扱いのファイルに `import` を書いた |
+| `require is not defined in ES module scope` | ESM扱いのファイルに `require` を書いた |
+
+対処は「ファイルの扱いを合わせる」ことです。`package.json` に `"type": "module"` を追加してプロジェクトをESM化するか、そのファイルの拡張子を `.mjs` / `.cjs` にして個別に指定します。
+
+### ブラウザのESMではパスを省略できない
+
+バンドラー環境では `import React from 'react'` のような**パッケージ名だけの指定**（ベア指定子）が使えますが、これはバンドラーが `node_modules` から解決してくれているからです。ブラウザで直接ESMを使う場合、相対パス（`./` や `../`）または絶対URLで、**拡張子まで**書く必要があります。
+
+```js
+// バンドラー環境ではOK / ブラウザ直接ではエラー
+import { format } from 'date-fns';
+import { addTax } from './math'; // 拡張子なしもNG
+
+// ブラウザ直接で動く形
+import { addTax } from './math.js';
+```
+
+## ちゃんと使うためのポイント
+
+- モジュール＝<Marker>独立したスコープを持ち、`export` したものだけを公開するファイル</Marker>。グローバル汚染と名前衝突を根本から防ぐ
+- エクスポートは2種類。**名前付き**（複数OK・名前一致必須・`{}` で受ける）と**デフォルト**（1つだけ・名前自由・`{}` なし）
+- インポートの書き方は常に**エクスポート側の書き方**で決まる。迷ったら相手のファイルを見る
+- CommonJS（`require` / `module.exports`）はNode.js発祥の旧方式。新規はESMで書き、CJSは「読める」状態を保つ
+- `import()`（動的import）は**モジュールオブジェクトのPromise**を返す。初期表示に不要なコードの遅延読み込み（コード分割）に使う
+- ESMの静的な性質がTree Shakingを可能にする。バンドルサイズが気になるなら名前付き・個別インポートを意識する
+
+ここまでで、JavaScriptの言語としての主要な仕組み——関数、オブジェクト、`this`、クロージャ、非同期処理、モジュール——が一通り揃いました。次の章では、その力を使ってブラウザの画面を動かす**DOM操作**に進みます。「JavaScriptでHTMLを書き換える」という、フロントエンドの原点です。
 
 ## 参考リンク
 
-- [MDN — JavaScript modules](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Modules)
+- [MDN — JavaScript モジュール（ガイド）](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Modules)
 - [MDN — import](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/import)
 - [MDN — export](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/export)
-- [MDN — import()](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/import)
+- [MDN — import()（動的インポート）](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/import)
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>

@@ -101,29 +101,43 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const allBooks = getAllBooks();
 
+  // 章の更新日時はVeliteビルド時に算出した実更新日時（git log / mtime）を使う。
+  // 本ページは公開章の更新日時の最大値。
+  const publicChaptersByBook = new Map(
+    allBooks.map((book) => [
+      book.bookSlug,
+      getChaptersByBook(book.bookSlug).filter((chapter) => !chapter.draft),
+    ])
+  );
+  const latestUpdated = (bookSlug: string): Date => {
+    const timestamps = (publicChaptersByBook.get(bookSlug) ?? []).map((c) =>
+      new Date(c.updated).getTime()
+    );
+    return timestamps.length > 0 ? new Date(Math.max(...timestamps)) : new Date();
+  };
+
   const bookPages: MetadataRoute.Sitemap = [
     {
       url: `${SITE_URL}/books`,
-      lastModified: new Date(),
+      lastModified: new Date(
+        Math.max(...allBooks.map((b) => latestUpdated(b.bookSlug).getTime()))
+      ),
       changeFrequency: "weekly",
       priority: 0.7,
     },
     ...allBooks.map((book) => ({
       url: `${SITE_URL}/books/${book.bookSlug}`,
-      lastModified: new Date(),
+      lastModified: latestUpdated(book.bookSlug),
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
     ...allBooks.flatMap((book) =>
-      getChaptersByBook(book.bookSlug)
-        // 執筆中の章はnoindexなのでsitemapにも載せない
-        .filter((chapter) => !chapter.draft)
-        .map((chapter) => ({
-          url: `${SITE_URL}/books/${book.bookSlug}/${chapter.chapterSlug}`,
-          lastModified: new Date(),
-          changeFrequency: "monthly" as const,
-          priority: 0.6,
-        }))
+      (publicChaptersByBook.get(book.bookSlug) ?? []).map((chapter) => ({
+        url: `${SITE_URL}/books/${book.bookSlug}/${chapter.chapterSlug}`,
+        lastModified: new Date(chapter.updated),
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+      }))
     ),
   ];
 

@@ -2,14 +2,396 @@
 title: '非同期処理の基本 — コールバック・Promise・async/await'
 description: 'コールバック地獄からPromiseチェーン、async/awaitへの進化を順を追って整理し、エラー処理のパターンもカバーします。'
 order: 13
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+「APIからデータを取ってきて表示する」——フロントエンドの仕事の大半はこれです。そしてデータの取得には時間がかかります。0.1秒かもしれないし、3秒かもしれない。**結果がいつ届くかわからない処理**とどう付き合うかが、この章のテーマである非同期処理です。
+
+JavaScriptの非同期処理は、コールバック → Promise → async/await という順に進化してきました。この章ではその進化を順にたどります。歴史の勉強のためではなく、<Marker>async/awaitはPromiseの糖衣構文であり、PromiseはコールバックのAPI化である</Marker>——つまり新しい書き方は古い仕組みの上に乗っているので、順に理解するのが結局いちばんの近道だからです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `async` とか `await` とか、コードで見かけるたびに雰囲気で読み飛ばしてます…。`then` が続くコードもあって、何が同じで何が違うのかわからない。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  その3つは全部「時間のかかる処理の結果を、後から受け取る」ための道具なんだ。道具が3世代あるだけで、やりたいことは1つ。まずは「なぜ待てないのか」から始めよう。
+</SpeechBubble>
+
+## 同期処理と非同期処理 — JavaScriptは「待たない」
+
+JavaScriptのコードは、基本的に**上から順に1行ずつ**実行されます。これを**同期処理**と呼びます。前の行が終わるまで、次の行は始まりません。
+
+```js
+console.log('1番目');
+console.log('2番目');
+console.log('3番目');
+// 必ず 1番目 → 2番目 → 3番目 の順に出力される
+```
+
+ここで問題になるのが、JavaScriptは**シングルスレッド**（一度に1つの処理しかできない）だということです。もしサーバーからのデータ取得（数秒かかるかもしれない）を同期処理で「待って」しまうと、その間ボタンクリックもスクロールも一切反応しない、固まった画面になります。
+
+そこでJavaScriptは、時間のかかる処理を「待たずに」先へ進みます。これが**非同期処理**です。
+
+```js
+console.log('1番目');
+
+setTimeout(() => {
+  console.log('2番目…のつもり');
+}, 1000);
+
+console.log('3番目');
+
+// 出力順:
+// 1番目
+// 3番目
+// 2番目…のつもり ← 1秒後に最後に出力される
+```
+
+`setTimeout` は「1秒後にこの関数を実行して」という**予約**だけをして、すぐに次の行へ進みます。予約した関数が実行されるのは、1秒後、かつ**今実行中のコードが全部終わってから**です。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["時間のかかる処理を予約"] --> B["先に残りのコードを実行"]
+    B --> C["処理が終わったら通知"]
+    C --> D["予約した関数を実行"]
+`}
+/>
+
+<Figure src="/images/phone_check.png" alt="通知を待つイメージ" maxWidth="140px" caption="「終わったら知らせて」と頼んで、自分は別の作業を進めるのが非同期処理" />
+
+ここで登場した `setTimeout` は、非同期処理の最も基本的な入り口なので、構文を押さえておきましょう。
+
+**構文：** `setTimeout(callback, delay?, ...args?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `callback`（第1引数） | 時間が経ったら実行する関数 |
+| `delay`（第2引数・省略可） | 待ち時間（ミリ秒）。省略すると `0` |
+| `...args`（第3引数以降・省略可） | `callback` に渡す引数 |
+
+**戻り値：** タイマーID（数値）。`clearTimeout(id)` に渡すと予約をキャンセルできる
+
+<Callout type="note">
+`delay` に `0` を指定しても「即実行」にはなりません。「今実行中のコードが終わったら、できるだけ早く」という意味です。非同期の予約は、必ず現在のコードが最後まで走ってから処理されます。
+</Callout>
+
+## コールバック — 「終わったらこの関数を呼んで」
+
+`setTimeout` に渡した関数のように、<Marker>「処理が終わったときに呼び出してもらう関数」をコールバック関数と呼びます</Marker>。これが非同期処理の第1世代の道具です。
+
+「終わったら知らせてほしい」を素直に実現できる仕組みで、[配列メソッド](/books/javascript/07-arrays)や[クロージャ](/books/javascript/12-closures)の章でも登場した、JavaScriptの基本パターンです。
+
+### コールバック地獄 — ネストが深くなる問題
+
+コールバックには構造的な弱点があります。**非同期処理を順番につなげると、ネストがどんどん深くなる**のです。
+
+「ユーザー情報を取得 → そのユーザーの投稿を取得 → 投稿へのコメントを取得」という、実務でよくある「前の結果を使って次を取得する」処理をコールバックで書くと、こうなります。
+
+```js
+// getUser などは「結果をコールバックで受け取る」古いスタイルのAPIとする
+getUser(userId, (user) => {
+  getPosts(user.id, (posts) => {
+    getComments(posts[0].id, (comments) => {
+      console.log(comments);
+      // さらに続けるなら、もっと深くなっていく…
+    });
+  });
+});
+```
+
+右へ右へと深くなるこの形は**コールバック地獄（callback hell）**と呼ばれます。見た目が悪いだけでなく、実務では次の点が深刻です。
+
+- **エラー処理が書きにくい。** 各階層でエラー用の分岐を書く必要があり、`try/catch` ではコールバック内のエラーを捕まえられない
+- **処理の流れが追いにくい。** 「AのあとB、そのあとC」という単純な流れが、ネストの奥に埋もれる
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  たしかに読みにくい…。でもコールバックを渡す以外に、「終わってから次」ってどう書けばいいんだろう？
+</SpeechBubble>
+
+この問いへのJavaScriptの答えが、次のPromiseです。
+
+## Promise — 「未来の結果」を入れる箱
+
+**Promise**は、ES2015で導入された「**非同期処理の結果を表すオブジェクト**」です。処理が終わったときに関数を呼んでもらう（コールバック）のではなく、「結果が入る予定の箱」を先に受け取る、という発想の転換です。
+
+<Figure src="/images/plan_selection_man_color.png" alt="結果を待って選択するイメージ" maxWidth="140px" caption="Promiseは「あとで成功か失敗のどちらかが入る箱」。届いてから中身に応じた処理を選ぶ" />
+
+### Promiseの3つの状態
+
+Promiseは、次の3つの状態のいずれかを取ります。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["pending（待機中）"] -->|成功| B["fulfilled（成功）"]
+    A -->|失敗| C["rejected（失敗）"]
+`}
+/>
+
+| 状態 | 意味 |
+| ---- | ---- |
+| `pending` | まだ結果が出ていない（初期状態） |
+| `fulfilled` | 成功した。結果の値を持っている |
+| `rejected` | 失敗した。失敗の理由（エラー）を持っている |
+
+<Marker>Promiseの状態は pending から一度だけ遷移し、fulfilled または rejected になったら二度と変わりません。</Marker>「成功したあとにやっぱり失敗」はあり得ない、という保証がPromiseの信頼性の土台です。
+
+### Promiseを作る — new Promise
+
+Promiseは `fetch()` など多くのAPIが返してくれるので、自分で作る機会は多くありませんが、仕組みの理解のために作り方も見ておきます。
+
+**構文：** `new Promise(executor)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `executor`（第1引数） | `(resolve, reject) => { ... }` の形の関数。Promise作成と同時に実行される。成功したら `resolve(値)`、失敗したら `reject(エラー)` を呼ぶ |
+
+**戻り値：** 新しい `Promise` オブジェクト
+
+```js
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`${ms}ミリ秒待ちました`);
+    }, ms);
+  });
+}
+```
+
+コールバックスタイルの `setTimeout` が、「結果の箱を返す関数」に変わりました。この `wait` の使い方が次のテーマです。
+
+### then・catch・finally — 結果を受け取る
+
+Promiseの結果は、次の3つのメソッドで受け取ります。
+
+| メソッド | 引数 | 戻り値 |
+| -------- | ---- | ------ |
+| `then(onFulfilled, onRejected?)` | 成功時に呼ぶ関数（と、省略可で失敗時の関数） | 新しい `Promise` |
+| `catch(onRejected)` | 失敗時に呼ぶ関数 | 新しい `Promise` |
+| `finally(onFinally)` | 成否に関わらず最後に呼ぶ関数（引数なし） | 新しい `Promise` |
+
+```js
+wait(1000)
+  .then((message) => {
+    console.log(message); // "1000ミリ秒待ちました"
+  })
+  .catch((error) => {
+    console.error(error); // 失敗したときだけ実行される
+  })
+  .finally(() => {
+    console.log('成功でも失敗でもここは実行される'); // ローディング表示の解除などに
+  });
+```
+
+注目すべきは戻り値の列です。<Marker>`then` は新しいPromiseを返すため、`.then().then()...` と数珠つなぎにできます。これをPromiseチェーンと呼びます。</Marker>
+
+### Promiseチェーン — コールバック地獄の解消
+
+`then` のコールバックが**値を返すと、その値が次の `then` に渡ります**。さらに、**Promiseを返すと、そのPromiseの結果が出るまで待ってから**次の `then` に進みます。この性質を使うと、先ほどのコールバック地獄はこう書き直せます。
+
+```js
+// getUser などは「Promiseを返す」スタイルのAPIとする
+getUser(userId)
+  .then((user) => getPosts(user.id))
+  .then((posts) => getComments(posts[0].id))
+  .then((comments) => {
+    console.log(comments);
+  })
+  .catch((error) => {
+    // チェーンのどこで失敗しても、ここで1か所で捕まえられる
+    console.error('取得に失敗:', error);
+  });
+```
+
+ネストは消え、処理は上から下へ一直線に読めます。エラー処理も、各階層に書く代わりに**末尾の `catch` 1つ**に集約できました。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `then` の中で `return` したものが次の `then` に渡るんだ…。じゃあ `return` を書き忘れたらどうなるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  いいところに気づいたね。`return` がないと次の `then` には `undefined` が渡る。「チェーンの途中で値が `undefined` になった」ときは、まず `return` の書き忘れを疑うのが定石だよ。
+</SpeechBubble>
+
+<Callout type="column">
+Promiseが普及した大きな理由のひとつが、2015年に登場した `fetch` APIです。サーバーとの通信という「非同期処理の代表格」がPromiseを返す設計で標準化されたことで、Promiseはフロントエンド開発の共通言語になりました。`fetch` 自体の詳しい使い方は[知っておきたいWeb API](/books/javascript/20-web-apis)の章で扱います。
+</Callout>
+
+## async/await — 非同期処理を「同期処理のように」書く
+
+Promiseチェーンでコールバック地獄は解消されましたが、`then` の連続はまだ「普通のコード」とは見た目が違います。ES2017で導入された **async/await** を使うと、Promiseベースの非同期処理を**同期処理とほぼ同じ見た目**で書けます。
+
+**構文：** `async function 関数名() { ... }` / `await 式`
+
+| キーワード | 書ける場所 | 説明 |
+| ---------- | ---------- | ---- |
+| `async` | 関数宣言・関数式・アロー関数の頭 | その関数を「async関数」にする。中で `await` が使えるようになる |
+| `await` | async関数の中 | 右側のPromiseが決着するまで待ち、成功ならその値を取り出す。失敗ならエラーを投げる |
+
+**戻り値：** async関数は**常にPromiseを返す**。`return した値` がそのPromiseの成功値になる
+
+先ほどのPromiseチェーンを書き直してみましょう。
+
+```js
+async function showComments(userId) {
+  const user = await getUser(userId);
+  const posts = await getPosts(user.id);
+  const comments = await getComments(posts[0].id);
+  console.log(comments);
+}
+```
+
+`then` が消え、「取得して、変数に入れて、次に使う」という**普通の手続き型のコード**になりました。1行ごとに `await` がPromiseの決着を待ってくれるので、上から順に読めば処理の順序どおりです。
+
+ただし誤解しないでほしいのは、<Marker>async/awaitは新しい仕組みではなく、Promiseチェーンを読みやすく書くための糖衣構文（シンタックスシュガー）だ</Marker>という点です。`await` の右側にあるのはPromiseですし、async関数の戻り値もPromiseです。だからこそ、この章で先にPromiseを学びました。
+
+```js
+// async関数の戻り値はPromiseなので、外からはthenでもawaitでも受け取れる
+async function getMessage() {
+  return 'こんにちは'; // ← Promiseで包まれて返る
+}
+
+getMessage().then((msg) => console.log(msg)); // "こんにちは"
+```
+
+### エラー処理は try/catch
+
+`await` しているPromiseが失敗（rejected）すると、その場で**エラーが投げられます**。つまり、同期処理と同じ `try/catch` で捕まえられます。
+
+```js
+async function showComments(userId) {
+  try {
+    const user = await getUser(userId);
+    const posts = await getPosts(user.id);
+    const comments = await getComments(posts[0].id);
+    console.log(comments);
+  } catch (error) {
+    // どのawaitで失敗しても、ここで捕まえられる
+    console.error('取得に失敗:', error);
+  } finally {
+    console.log('ローディング表示を解除'); // 成否に関わらず実行
+  }
+}
+```
+
+Promiseチェーンの `catch` / `finally` が、そのまま `try/catch/finally` に対応しています。`try/catch` 自体の詳しい挙動やカスタムエラーの作り方は、次の[エラーハンドリング](/books/javascript/14-error-handling)の章で掘り下げます。
+
+## 複数のPromiseをまとめて扱う — Promise.all と仲間たち
+
+「ユーザー情報と通知一覧を**同時に**取得したい」のように、互いに依存しない複数の非同期処理を扱う場面では、`Promise` の静的メソッドを使います。
+
+<Figure src="/images/running_man_color-1.png" alt="複数の処理を並行して走らせるイメージ" maxWidth="140px" caption="依存関係のない処理は、1つずつ待たずに同時にスタートさせる" />
+
+| メソッド | 成功する条件 | 成功時の値 |
+| -------- | ------------ | ---------- |
+| `Promise.all(promises)` | **すべて**成功したとき。1つでも失敗すると即座に失敗 | 結果の配列（渡した順） |
+| `Promise.allSettled(promises)` | 常に成功（全員の決着を待つ） | `{ status, value または reason }` の配列 |
+| `Promise.race(promises)` | **最初に決着した**1つが成功なら成功、失敗なら失敗 | 最初に決着したPromiseの値 |
+| `Promise.any(promises)` | **どれか1つでも**成功したとき。全滅で失敗 | 最初に成功したPromiseの値 |
+
+**戻り値：** いずれも新しい `Promise`（引数にはPromiseの配列などの反復可能オブジェクトを渡す）
+
+最もよく使うのは `Promise.all` です。
+
+```js
+async function loadDashboard() {
+  // 2つの取得を同時にスタートし、両方の完了を待つ
+  const [user, notifications] = await Promise.all([
+    getUser(userId),
+    getNotifications(userId),
+  ]);
+
+  console.log(user, notifications);
+}
+```
+
+依存関係のない処理を1つずつ `await` すると、かかる時間は**足し算**になります。`Promise.all` なら並行して走るので、**いちばん遅い1つ分**の時間で済みます。
+
+## よくあるハマりどころ
+
+### await のつけ忘れ — 中身ではなくPromiseが返ってくる
+
+```js
+async function getUserName(userId) {
+  const user = getUser(userId); // ← awaitを忘れた！
+  return user.name; // undefined（userはPromiseオブジェクトなので.nameは無い）
+}
+```
+
+`console.log` したときに `Promise { <pending> }` と表示されたら、それは値ではなく**箱のほう**を掴んでいるサインです。<Marker>「取得したはずの値が `undefined`」「`Promise { <pending> }` が表示される」ときは、まず `await` のつけ忘れを疑いましょう。</Marker>
+
+### forEach の中の await は待ってくれない
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  配列の各要素に対して順番にAPIを呼びたくて、`forEach` の中に `await` を書いたんですけど…全然待ってくれないんです。
+</SpeechBubble>
+
+これは非常によく踏む罠です。`await` が効くのは**それを直接囲むasync関数**の中だけ。`forEach` に渡したコールバックをasyncにしても、`forEach` 自身はPromiseを一切待たずに次々とコールバックを呼び出します。
+
+```js
+// ❌ 順番に実行されない（forEachは待たない）
+ids.forEach(async (id) => {
+  await sendRequest(id);
+});
+console.log('完了'); // ← 全リクエストが終わる前に出力される
+
+// ⭕ 順番に実行したいなら for...of
+for (const id of ids) {
+  await sendRequest(id);
+}
+console.log('完了'); // ← 全部終わってから出力される
+```
+
+<Callout type="warning">
+`map` / `filter` / `reduce` も同様に、コールバック内の `await` を待ちません。「順番に処理したいなら `for...of`」「並行でよいなら `map` でPromiseの配列を作って `Promise.all`」と覚えてください。
+</Callout>
+
+```js
+// ⭕ 並行でよい場合の定番: map + Promise.all
+const results = await Promise.all(ids.map((id) => sendRequest(id)));
+```
+
+### 直列 await で無駄に遅くなる
+
+逆のパターンもあります。依存関係がないのに1つずつ `await` してしまい、無駄に遅くなるケースです。
+
+```js
+// ❌ 2つは無関係なのに、直列で待っている（合計時間 = 足し算）
+const user = await getUser(userId);
+const news = await getNews();
+
+// ⭕ 同時にスタートして両方待つ（合計時間 = 遅いほう）
+const [user, news] = await Promise.all([getUser(userId), getNews()]);
+```
+
+「後の処理が前の結果を**使っているか**」が判断基準です。使っていないなら `Promise.all` にまとめられます。
+
+### エラーの取りこぼし — catch のないPromise
+
+`catch` も `try/catch` も書かずにPromiseが失敗すると、エラーはどこにも捕まえられず、コンソールに `Unhandled promise rejection` という警告が出ます。処理は静かに中断し、ユーザーには何も表示されない——発見が遅れやすい不具合の典型です。
+
+<Marker>Promiseを使う処理には、チェーンの末尾の `catch`、またはasync関数内の `try/catch` を必ず用意しましょう。</Marker>具体的なエラー処理の設計は[エラーハンドリング](/books/javascript/14-error-handling)の章で扱います。
+
+## ちゃんと使うためのポイント
+
+- 非同期処理とは、時間のかかる処理を**待たずに予約し、終わったら結果を受け取る**仕組み。シングルスレッドのJavaScriptが画面を固まらせないための必須装置
+- コールバック → Promise → async/await は別物ではなく**同じ仕組みの書き方の進化**。async/awaitはPromiseの糖衣構文
+- Promiseは `pending` → `fulfilled` / `rejected` に**一度だけ**遷移する「未来の結果の箱」
+- `then` は新しいPromiseを返すのでチェーンできる。`return` を忘れると次に `undefined` が渡る
+- async関数は**常にPromiseを返し**、`await` はPromiseの決着を待って値を取り出す。エラーは `try/catch` で捕まえる
+- 依存関係のない複数の処理は `Promise.all` で並行に。順番に処理したいループは `forEach` ではなく `for...of`
+
+非同期処理では「失敗」が日常茶飯事です——ネットワークは切れるし、サーバーはエラーを返します。次の章では、その失敗と正面から向き合う**[エラーハンドリング](/books/javascript/14-error-handling)**を扱います。`try/catch/finally` の正確な挙動から、カスタムエラーの設計、この章で学んだ非同期エラーの実践パターンまでを整理します。
 
 ## 参考リンク
 
 - [MDN — Promise](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 - [MDN — async function](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/async_function)
-- [MDN — await](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/await)
-- [MDN — Promise.prototype.catch](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch)
+- [MDN — プロミスの使用（ガイド）](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Using_promises)
+- [MDN — Promise.all](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise/all)
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>
