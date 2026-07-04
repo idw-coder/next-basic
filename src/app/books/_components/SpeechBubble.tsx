@@ -16,11 +16,7 @@ export default function SpeechBubble({
   const isRight = side === 'right';
 
   return (
-    <div
-      className={`my-6 flex items-start gap-3 ${
-        isRight ? 'flex-row-reverse' : 'flex-row'
-      }`}
-    >
+    <div className={`my-6 flex items-start gap-3 ${isRight ? 'flex-row-reverse' : 'flex-row'}`}>
       {character && (
         <div className="flex shrink-0 flex-col items-center">
           <Image
@@ -31,9 +27,7 @@ export default function SpeechBubble({
             className="h-16 w-16 sm:h-20 sm:w-20 object-contain"
           />
           {name && (
-            <span className="mt-1 text-[11px] font-medium text-muted-foreground">
-              {name}
-            </span>
+            <span className="mt-1 text-[11px] font-medium text-muted-foreground">{name}</span>
           )}
         </div>
       )}
@@ -46,7 +40,7 @@ export default function SpeechBubble({
               : 'left-[-7px] border-r-8 border-r-blue-50 dark:border-r-slate-800'
           }`}
         />
-        <div className="rounded-2xl border border-blue-100 bg-blue-50 px-3.5 py-2 text-[13px] leading-relaxed shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="rounded-lg border border-blue-100 bg-blue-50 px-3.5 py-0 text-[13px] leading-relaxed [&_p]:my-2 dark:border-slate-700 dark:bg-slate-800">
           {children}
         </div>
       </div>

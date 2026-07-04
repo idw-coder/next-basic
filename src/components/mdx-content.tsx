@@ -8,12 +8,15 @@ import Marker from '@/app/books/_components/Marker';
 import TailwindPreview from '@/app/books/_components/TailwindPreview';
 import QuizLink from '@/app/books/_components/QuizLink';
 import CodeBlock from '@/app/books/_components/CodeBlock';
+import { ScrollHintInitializer } from '@/components/ScrollHintInitializer';
 
 // MDX 内で <MermaidDiagram /> と記述するだけで自動的にこのコンポーネントが使われる。
 function ResponsiveTable(props: React.ComponentPropsWithoutRef<'table'>) {
+  const { className, ...tableProps } = props;
+
   return (
-    <div className="overflow-x-auto -mx-1">
-      <table {...props} />
+    <div className="mdx-table-scroll js-scrollable" tabIndex={0}>
+      <table className={className} {...tableProps} />
     </div>
   );
 }
@@ -68,5 +71,10 @@ interface MDXContentProps {
 // MDX コンテンツをレンダリングするコンポーネント
 export function MDXContent({ code, components }: MDXContentProps) {
   const Component = useMDXComponent(code);
-  return <Component components={{ ...sharedComponents, ...components }} />; // マーメイド図のコンポーネントを追加して上書き
+  return (
+    <>
+      <ScrollHintInitializer />
+      <Component components={{ ...sharedComponents, ...components }} />
+    </>
+  ); // マーメイド図のコンポーネントを追加して上書き
 }

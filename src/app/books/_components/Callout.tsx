@@ -46,14 +46,14 @@ export default function Callout({ type = 'note', title, children }: CalloutProps
   const Icon = s.icon;
 
   return (
-    <aside className={`relative my-5 rounded-lg border ${s.border} ${s.bg} px-5 pb-4 pt-7`}>
+    <aside className={`relative my-5 rounded-lg border ${s.border} ${s.bg} px-5 pb-2 pt-2`}>
       <span
         className={`absolute -top-3 left-4 inline-flex items-center gap-1.5 rounded-md ${s.labelBg} px-3 py-1 text-xs font-bold tracking-wide text-white shadow-sm`}
       >
         <Icon className="size-3" />
         {title || s.defaultTitle}
       </span>
-      <div className="text-sm leading-relaxed">{children}</div>
+      <div className="text-sm leading-relaxed [&_h3]:mb-1 [&_h3]:mt-4">{children}</div>
     </aside>
   );
 }

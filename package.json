@@ -41,6 +41,7 @@
     "react-dom": "19.1.0",
     "react-hook-form": "^7.71.2",
     "reflect-metadata": "^0.2.2",
+    "scroll-hint": "^1.2.9",
     "sharp": "^0.34.5",
     "tailwind-merge": "^3.4.0",
     "typeorm": "^1.0.0"

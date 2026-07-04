@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import 'scroll-hint/css/scroll-hint.css';
 
 @plugin "@tailwindcss/typography";
 
@@ -237,7 +238,50 @@
 .prose table {
   width: 100%;
   border-collapse: collapse;
-  font-size: clamp(0.8rem, 1.2vw + 0.3rem, 0.9375rem);
+  font-size: 0.75rem;
+}
+
+.prose .mdx-table-scroll {
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+}
+
+.prose .mdx-table-scroll:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.prose .mdx-table-scroll table {
+  margin: 0;
+  width: max-content;
+  min-width: 100%;
+  border-style: hidden;
+}
+
+.prose .scroll-hint-shadow-wrap {
+  margin: 1.5rem 0;
+}
+
+.prose .scroll-hint-shadow-wrap .mdx-table-scroll {
+  margin: 0;
+}
+
+.prose .scroll-hint-icon {
+  width: 82px;
+  padding: 12px 6px 6px;
+}
+
+.prose .scroll-hint-text {
+  margin-top: 2px;
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+.prose table code {
+  font-size: 0.875em;
+  white-space: nowrap;
 }
 
 .prose table th {
