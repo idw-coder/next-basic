@@ -2,7 +2,290 @@
 title: '画面遷移図と画面設計 — UIとロジックの境界を決める'
 description: '画面遷移図の書き方、画面単位の責務設計、UIとビジネスロジックの境界を整理します。'
 order: 17
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+画面設計でよくある失敗は、見た目のワイヤーフレームだけを先に作り、「どの操作でどこへ移動するか」「どの状態なら入れるか」「戻るとどうなるか」が後回しになることです。実装が始まってから、ログイン前後の分岐、権限による表示差分、入力途中の離脱確認などが次々に出てきます。
+
+画面遷移図は、ページの一覧表ではありません。ユーザーの操作、システムの状態、権限、エラー時の戻り先をまとめて合意するための設計図です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+画面遷移図って、ページを線でつなげばいいだけだと思ってた。実装でそんなに困るものなの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+線だけだと「どの条件で遷移できるか」が抜けやすいんだ。ログイン済みか、権限があるか、保存前の入力があるか。実装で揉めるのは、だいたいその条件が未定義なところだよ。
+</SpeechBubble>
+
+## 画面遷移図で決めること
+
+画面遷移図で最低限決めたいのは、次の4つです。
+
+| 観点 | 決めること | 例 |
+| ---- | ---------- | -- |
+| 画面 | どの画面が存在するか | 商品一覧、商品詳細、カート、注文完了 |
+| 操作 | 何をしたら遷移するか | 商品をクリック、購入ボタン、戻る |
+| 条件 | どの状態なら遷移できるか | ログイン済み、在庫あり、管理者のみ |
+| 例外 | 失敗時にどう戻すか | 401ならログインへ、入力エラーなら同画面へ |
+
+<Marker>画面遷移図の目的は「ページを並べること」ではなく、「ユーザー操作とシステム状態によって、次に表示される画面を一意に決めること」です。</Marker>
+
+たとえばECサイトの購入フローなら、単純な線だけでは足りません。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["商品一覧"] --> B["商品詳細"]
+    B --> C["カート"]
+    C --> D["ログイン"]
+    C --> E["配送先入力"]
+    D --> E
+    E --> F["支払い入力"]
+    F --> G["注文確認"]
+    G --> H["注文完了"]
+    F --> I["支払い失敗"]
+    I --> F
+`}
+/>
+
+この図を見ると、カートから配送先入力へ進む前にログインが必要なこと、支払い失敗時は支払い入力へ戻ることが分かります。画面遷移図には、正常系だけでなく「失敗したらどこへ戻るか」も含めます。
+
+<Callout type="note">
+画面遷移図は、[シーケンス図](/books/system-design/16-sequence-diagram) と役割が違います。シーケンス図は内部処理の時系列、画面遷移図はユーザーが見ている画面の移動を表します。購入ボタンを押した後のAPI呼び出し順序はシーケンス図、成功・失敗で表示画面がどう変わるかは画面遷移図で表すと整理しやすくなります。
+</Callout>
+
+## 画面単位の責務を決める
+
+画面遷移を決めるときは、「その画面が何を担当するか」も一緒に決めます。画面の責務が曖昧だと、UIコンポーネントに業務ルールが入り込みます。
+
+画面ごとに次のような項目を持つと、実装者間で認識が揃います。
+
+| 項目 | 書くこと |
+| ---- | -------- |
+| 目的 | その画面でユーザーが達成すること |
+| 入力 | URLパラメータ、フォーム値、前画面から渡る情報 |
+| 表示データ | APIから取得するデータ、ローカル状態 |
+| 操作 | クリック、送信、戻る、キャンセル |
+| 遷移先 | 操作・条件ごとの次画面 |
+| エラー | 表示方法、再試行、戻り先 |
+
+<Figure src="/images/idea_drawing_woman.png" alt="画面設計を考えている人" maxWidth="160px" caption="画面ごとに目的・入力・操作・遷移先をそろえると、実装前の抜け漏れが見える" />
+
+例として、注文確認画面なら次のように整理できます。
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 目的 | 注文内容を確認し、注文を確定する |
+| 入力 | カートID、配送先ID、支払い方法ID |
+| 表示データ | 商品明細、送料、合計金額、配送先、支払い方法 |
+| 操作 | 注文確定、配送先変更、支払い方法変更、戻る |
+| 遷移先 | 成功なら注文完了、支払い失敗なら支払い入力、在庫不足ならカート |
+| エラー | 入力不備は同画面、認証切れはログインへ |
+
+<Marker>画面の責務は「何を表示するか」だけでなく、「どの操作を受け付け、どの条件で次へ進めるか」まで含めて定義します。</Marker>
+
+## UIとロジックの境界を分ける
+
+画面設計で重要なのは、UIコンポーネントに業務判断を埋め込みすぎないことです。特に、遷移条件・権限・入力状態の判定は、複数画面で再利用されやすく、画面の中に直書きすると変更に弱くなります。
+
+### 原則違反のコード
+
+注文確認画面のコンポーネントが、表示・権限・遷移先・業務ルールをすべて抱えています。
+
+```tsx
+// ❌ UIが遷移条件と業務ルールを抱えすぎている
+function OrderConfirmPage({ user, cart, payment }: Props) {
+  async function handleSubmit() {
+    if (!user) {
+      router.push('/login?redirect=/orders/confirm');
+      return;
+    }
+
+    if (!user.emailVerified) {
+      setError('メール認証が必要です');
+      return;
+    }
+
+    if (cart.items.length === 0) {
+      router.push('/cart');
+      return;
+    }
+
+    if (!payment || payment.status !== 'valid') {
+      router.push('/checkout/payment');
+      return;
+    }
+
+    const result = await createOrder({ cartId: cart.id, paymentId: payment.id });
+
+    if (result.status === 'failed') {
+      router.push('/checkout/payment?reason=failed');
+      return;
+    }
+
+    router.push(`/orders/${result.orderId}/complete`);
+  }
+
+  return <button onClick={handleSubmit}>注文を確定する</button>;
+}
+```
+
+この形では、同じ条件をモバイル画面や確認モーダルでも再実装することになります。遷移先URLも画面のあちこちに散らばります。
+
+### 改善したコード
+
+遷移条件を「画面ポリシー」として切り出します。
+
+```ts
+type OrderConfirmState = {
+  user: User | null;
+  cart: Cart;
+  payment: Payment | null;
+};
+
+type TransitionResult =
+  | { type: 'allow' }
+  | { type: 'redirect'; to: string }
+  | { type: 'block'; message: string };
+
+function canSubmitOrder(state: OrderConfirmState): TransitionResult {
+  if (!state.user) {
+    return { type: 'redirect', to: '/login?redirect=/orders/confirm' };
+  }
+
+  if (!state.user.emailVerified) {
+    return { type: 'block', message: 'メール認証が必要です' };
+  }
+
+  if (state.cart.items.length === 0) {
+    return { type: 'redirect', to: '/cart' };
+  }
+
+  if (!state.payment || state.payment.status !== 'valid') {
+    return { type: 'redirect', to: '/checkout/payment' };
+  }
+
+  return { type: 'allow' };
+}
+```
+
+UI側は、判定結果に従って表示と遷移だけを担当します。
+
+```tsx
+function OrderConfirmPage({ user, cart, payment }: Props) {
+  async function handleSubmit() {
+    const result = canSubmitOrder({ user, cart, payment });
+
+    if (result.type === 'redirect') {
+      router.push(result.to);
+      return;
+    }
+
+    if (result.type === 'block') {
+      setError(result.message);
+      return;
+    }
+
+    const order = await orderService.createOrder({
+      cartId: cart.id,
+      paymentId: payment!.id,
+    });
+
+    router.push(`/orders/${order.id}/complete`);
+  }
+
+  return <button onClick={handleSubmit}>注文を確定する</button>;
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+でも、遷移先ってUIの都合じゃないの？ロジック側にURLを持たせると逆に密結合にならない？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そこは分け方に注意が必要だね。業務上の判定は `canSubmitOrder`、具体的なURL名はルーティング定義に寄せる、という分け方もできる。大事なのは、同じ判定が画面ごとにコピーされないことだよ。
+</SpeechBubble>
+
+URL文字列までポリシーに持たせるか、`redirect: 'login'` のような論理名にして画面側でURLへ変換するかは、アプリの規模で決めます。ルートが頻繁に変わるなら論理名に寄せる方が安全です。
+
+## 戻る・キャンセル・離脱を設計する
+
+画面遷移図では、前へ進む線だけでなく、戻る・キャンセル・ブラウザバックも考えます。ここが曖昧だと、入力途中のデータ消失や、完了画面から戻って二重送信できる事故が起きます。
+
+よく決めておくべき戻り方は次のとおりです。
+
+- **戻る** — 直前の画面へ戻すのか、一覧などの固定画面へ戻すのか
+- **キャンセル** — 入力内容を破棄するのか、下書き保存するのか
+- **ブラウザバック** — 完了画面から確認画面に戻れるのか、戻った場合に再送信できるのか
+- **認証切れ** — ログイン後に元の画面へ戻すのか、トップへ送るのか
+- **権限不足** — 403画面を出すのか、一覧へ戻すのか
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["入力"] --> B["確認"]
+    B --> C["送信中"]
+    C --> D["完了"]
+    C --> E["失敗"]
+    E --> B
+    B --> A
+    A --> F["キャンセル確認"]
+    F --> G["一覧"]
+    F --> A
+`}
+/>
+
+<Callout type="warning">
+完了画面からブラウザバックで確認画面に戻れる場合、再送信対策が必要です。注文・決済・予約のような処理では、画面遷移だけでなくバックエンド側の冪等性（同じリクエストが複数回来ても結果が壊れない設計）もセットで考えます。
+</Callout>
+
+## 画面遷移図に書きすぎない
+
+画面遷移図は、細かく書こうと思えばどこまでも細かくできます。しかし、すべてのボタンやモーダルを線にすると、図が読めなくなります。
+
+書くべきものと、別の資料に逃がすものを分けます。
+
+| 図に書く | 別資料に逃がす |
+| -------- | -------------- |
+| 主要画面間の遷移 | ボタンの細かい見た目 |
+| 認証・権限による分岐 | 文言やアイコン |
+| 入力完了・失敗時の戻り先 | フォーム項目の詳細仕様 |
+| 完了後の再遷移 | APIの内部処理順序 |
+
+フォーム項目の詳細は [バリデーション設計](/books/system-design/11-validation-design) に寄せ、APIの呼び出し順序はシーケンス図に寄せると、画面遷移図が読みやすく保てます。
+
+<Marker>画面遷移図は「ユーザーが次にどの画面を見るか」を決める図です。内部処理のすべてを詰め込まないようにします。</Marker>
+
+## よくあるハマりどころ
+
+### 正常系しか書いていない
+
+画面遷移図が「一覧 → 詳細 → 入力 → 完了」だけだと、実装時にエラー遷移が各自判断になります。認証切れ、権限不足、入力エラー、外部決済失敗など、ユーザーが本当に困るのは例外系です。
+
+### モーダルを画面として扱うか決めていない
+
+削除確認や離脱確認のようなモーダルは、状態としては重要です。独立したURLを持たない場合でも、画面遷移図か画面仕様に「どの操作で開き、どの操作で閉じるか」を書いておきます。
+
+### 画面名とURLがずれている
+
+「ユーザー詳細」と呼んでいる画面のURLが `/members/:id` だったり、逆に同じURLで権限ごとに違う画面を出したりすると、会話がずれます。画面名・URL・目的はセットで管理します。
+
+### 戻り先が実装任せになっている
+
+「戻る」は単純に `history.back()` でよいとは限りません。通知メールから直接来た場合、ブラウザ履歴に戻り先がないこともあります。固定の戻り先を用意するのか、`redirect` パラメータを使うのかを設計で決めます。
+
+## ちゃんと使うためのポイント
+
+- <Marker>画面遷移図では、画面・操作・条件・例外時の戻り先をセットで決めます。</Marker>
+- 正常系だけでなく、認証切れ・権限不足・入力エラー・外部サービス失敗を図に含める
+- 画面ごとに目的、入力、表示データ、操作、遷移先、エラーを整理する
+- UIコンポーネントに業務判断を直書きしない。遷移条件はテスト可能な関数やServiceへ切り出す
+- 戻る・キャンセル・ブラウザバックは実装任せにしない。完了画面からの再送信対策も考える
+- 図に詰め込みすぎない。フォーム詳細やAPI内部処理は別の設計資料に分ける
+
+次の章では、ここまで作った設計をチームで確認するための [設計レビューの観点](/books/system-design/18-design-review) を解説します。
+
+## 参考リンク
+
+- [Material Design: Understanding navigation](https://m2.material.io/design/navigation/understanding-navigation.html) — ナビゲーション設計の考え方
+- [Apple Human Interface Guidelines: Navigation and search](https://developer.apple.com/design/human-interface-guidelines/navigation-and-search) — Apple公式のナビゲーション設計ガイド
+- [WCAG 2.2 Understanding Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html) — フォーカス順序と操作の一貫性に関するアクセシビリティ解説

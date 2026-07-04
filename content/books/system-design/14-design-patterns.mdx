@@ -2,7 +2,409 @@
 title: '頻出デザインパターン — Repository・Service・Factory'
 description: 'Repository・Service・Factoryなど、実務で頻出するデザインパターンを具体例で紹介します。'
 order: 14
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+デザインパターンという言葉を聞くと、難しい名前を暗記するものに見えるかもしれません。しかし実務で本当に大事なのは、「この処理はどこに置くべきか」「依存をどこで切るべきか」を判断することです。
+
+この章では、Webアプリケーションで頻出する **Repository**、**Service**、**Factory** の3つを扱います。どれも特別な魔法ではなく、責務を分けて変更しやすくするための置き場所の名前です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+デザインパターンって、GoFの23個を全部覚えないと使えないの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+最初から全部覚える必要はないよ。まずは実務でよく出る「DBアクセスをどこに置くか」「業務ルールをどこに置くか」「作り方をどこに隠すか」の3つを押さえよう。
+</SpeechBubble>
+
+## 3つの役割を先に整理する
+
+まず、Repository・Service・Factory の役割を並べて見ます。
+
+| パターン | 主な責務 | 置くもの | 置かないもの |
+| -------- | -------- | -------- | ------------ |
+| Repository | データ取得・保存を隠す | DBクエリ、永続化、検索条件の組み立て | 業務ルール、画面表示の都合 |
+| Service | ユースケースを実行する | 業務ルール、複数Repositoryの呼び出し、トランザクション境界 | SQLの詳細、UI状態 |
+| Factory | オブジェクト生成を隠す | 生成条件、初期値、依存オブジェクトの組み立て | 永続化、ユースケース全体 |
+
+<Marker>Repositoryは「データの出し入れ」、Serviceは「業務上の判断」、Factoryは「作り方」を担当します。</Marker>
+
+この3つを分けると、画面やAPIハンドラは「何をするか」を読む場所になり、DBや生成条件の細部から解放されます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    UI["画面・API"] --> S["Service"]
+    S --> R["Repository"]
+    S --> F["Factory"]
+    R --> DB["DB"]
+    F --> E["Entity"]
+`}
+/>
+
+<Callout type="note">
+ここで紹介する名前は、フレームワークによって多少意味が変わります。重要なのは名前そのものではなく、「DBアクセス」「業務ルール」「生成処理」を同じ場所に混ぜないことです。
+</Callout>
+
+## Repository — DBアクセスを閉じ込める
+
+Repository は、データの取得・保存・検索を担当する層です。利用側は「ユーザーをIDで取得する」「注文を保存する」といった意図だけを呼び出し、SQLやORMの詳細を知りません。
+
+### 原則違反のコード
+
+APIハンドラにDBアクセスと業務判断が混ざっている例です。
+
+```ts
+// ❌ DBアクセス・業務ルール・レスポンス組み立てが1か所に混ざっている
+export async function POST(request: Request): Promise<Response> {
+  const body = await request.json();
+
+  const user = await db.user.findUnique({
+    where: { id: body.userId },
+  });
+
+  if (!user) {
+    return Response.json({ message: 'ユーザーが見つかりません' }, { status: 404 });
+  }
+
+  const activeOrders = await db.order.findMany({
+    where: {
+      userId: user.id,
+      status: { in: ['pending', 'paid'] },
+    },
+  });
+
+  if (activeOrders.length >= 5) {
+    return Response.json({ message: '注文上限に達しています' }, { status: 400 });
+  }
+
+  const order = await db.order.create({
+    data: {
+      userId: user.id,
+      totalPrice: body.totalPrice,
+      status: 'pending',
+    },
+  });
+
+  return Response.json(order, { status: 201 });
+}
+```
+
+この形だと、ORMを変えるとAPIハンドラが壊れます。注文上限のルールをテストしたいだけなのに、DBの準備も必要になります。
+
+### 改善したコード
+
+DBアクセスを Repository に閉じ込めます。
+
+```ts
+type OrderStatus = 'pending' | 'paid' | 'cancelled';
+
+type User = {
+  id: string;
+  email: string;
+  emailVerified: boolean;
+};
+
+type Order = {
+  id: string;
+  userId: string;
+  totalPrice: number;
+  status: OrderStatus;
+};
+
+class UserRepository {
+  async findById(id: string): Promise<User | null> {
+    return db.user.findUnique({ where: { id } });
+  }
+}
+
+class OrderRepository {
+  async findActiveByUserId(userId: string): Promise<Order[]> {
+    return db.order.findMany({
+      where: {
+        userId,
+        status: { in: ['pending', 'paid'] },
+      },
+    });
+  }
+
+  async create(input: Pick<Order, 'userId' | 'totalPrice'>): Promise<Order> {
+    return db.order.create({
+      data: {
+        ...input,
+        status: 'pending',
+      },
+    });
+  }
+
+  async save(order: Order): Promise<Order> {
+    return db.order.create({ data: order });
+  }
+}
+```
+
+APIハンドラから見ると、「どのテーブルをどう検索するか」ではなく「アクティブな注文を取得する」という意味だけが見えるようになります。
+
+<Marker>Repositoryのメソッド名は、DBの都合ではなく利用側の意図で命名します。</Marker>
+
+`findManyByStatusIn` のようなORM操作の説明ではなく、`findActiveByUserId` のように業務上の意味を表す名前にすると、Service側のコードが読みやすくなります。
+
+## Service — ユースケースを1か所に集める
+
+Service は、業務ルールを実行する層です。複数のRepositoryを呼び出し、条件を判定し、必要ならメール送信や外部API呼び出しもまとめます。
+
+<Figure src="/images/planning_suit_man_color.png" alt="設計を整理している人" maxWidth="140px" caption="Serviceは、画面やDBの細部から業務ルールを切り離す場所" />
+
+### 原則違反のコード
+
+画面コンポーネントに注文可否の判断が入っています。
+
+```tsx
+// ❌ UIが業務ルールを知りすぎている
+function OrderButton({ user, activeOrders, totalPrice }: Props) {
+  const disabled =
+    !user.emailVerified ||
+    activeOrders.length >= 5 ||
+    totalPrice <= 0;
+
+  async function handleClick() {
+    if (!user.emailVerified) {
+      alert('メール認証が必要です');
+      return;
+    }
+
+    if (activeOrders.length >= 5) {
+      alert('注文上限に達しています');
+      return;
+    }
+
+    await fetch('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify({ userId: user.id, totalPrice }),
+    });
+  }
+
+  return <button disabled={disabled} onClick={handleClick}>注文する</button>;
+}
+```
+
+このままだと、モバイル画面や管理画面でも同じ注文ルールをコピーすることになります。ルール変更時の修正漏れが起きやすい構造です。
+
+### 改善したコード
+
+注文作成というユースケースを Service にまとめます。
+
+```ts
+type CreateOrderInput = {
+  userId: string;
+  totalPrice: number;
+};
+
+class OrderService {
+  constructor(
+    private readonly users: UserRepository,
+    private readonly orders: OrderRepository,
+  ) {}
+
+  async createOrder(input: CreateOrderInput): Promise<Order> {
+    const user = await this.users.findById(input.userId);
+
+    if (!user) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    if (!user.emailVerified) {
+      throw new Error('EMAIL_NOT_VERIFIED');
+    }
+
+    if (input.totalPrice <= 0) {
+      throw new Error('INVALID_PRICE');
+    }
+
+    const activeOrders = await this.orders.findActiveByUserId(user.id);
+
+    if (activeOrders.length >= 5) {
+      throw new Error('ORDER_LIMIT_EXCEEDED');
+    }
+
+    return this.orders.create({
+      userId: user.id,
+      totalPrice: input.totalPrice,
+    });
+  }
+}
+```
+
+APIハンドラは Service を呼ぶだけになります。
+
+```ts
+export async function POST(request: Request): Promise<Response> {
+  const body = await request.json();
+
+  try {
+    const order = await orderService.createOrder(body);
+    return Response.json(order, { status: 201 });
+  } catch (error) {
+    return Response.json(
+      { message: toUserMessage(error) },
+      { status: toStatusCode(error) },
+    );
+  }
+}
+```
+
+画面が増えても、注文ルールは `OrderService` の1か所に残ります。これは [ディレクトリ構成](/books/system-design/13-directory-structure) で扱った「一緒に変わるものを近くに置く」という考え方にもつながります。
+
+<Callout type="warning">
+Serviceに何でも入れすぎると、今度は `UserService` や `OrderService` が巨大化します。Serviceは「ユースケースの流れ」を置く場所であり、日付計算・価格計算・文字列整形のような純粋関数まで抱え込む場所ではありません。
+</Callout>
+
+## Factory — 作り方を隠して初期化を安定させる
+
+Factory は、オブジェクト生成の条件や初期値を1か所に集めるパターンです。特に「ステータスの初期値」「IDの採番」「デフォルト設定」「複数の依存オブジェクトの組み立て」が増えてきたときに効きます。
+
+### 原則違反のコード
+
+注文オブジェクトを作るたびに、あちこちで初期値を書いています。
+
+```ts
+// ❌ 生成ルールが呼び出し側に散らばっている
+const order: Order = {
+  id: crypto.randomUUID(),
+  userId,
+  totalPrice,
+  status: 'pending',
+  createdAt: new Date(),
+  cancelledAt: null,
+};
+```
+
+このコードが複数箇所にあると、「初期ステータスを `draft` に変える」「作成時に期限を持たせる」といった変更で、すべての生成箇所を探す必要があります。
+
+### 改善したコード
+
+生成ルールを Factory に閉じ込めます。
+
+```ts
+type NewOrderInput = {
+  userId: string;
+  totalPrice: number;
+};
+
+class OrderFactory {
+  create(input: NewOrderInput): Order {
+    if (input.totalPrice <= 0) {
+      throw new Error('INVALID_PRICE');
+    }
+
+    return {
+      id: crypto.randomUUID(),
+      userId: input.userId,
+      totalPrice: input.totalPrice,
+      status: 'pending',
+      createdAt: new Date(),
+      cancelledAt: null,
+    };
+  }
+}
+```
+
+Service からは、Factory を使って注文を作ります。
+
+```ts
+class OrderService {
+  constructor(
+    private readonly users: UserRepository,
+    private readonly orders: OrderRepository,
+    private readonly orderFactory: OrderFactory,
+  ) {}
+
+  async createOrder(input: CreateOrderInput): Promise<Order> {
+    const user = await this.users.findById(input.userId);
+
+    if (!user) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    const order = this.orderFactory.create({
+      userId: user.id,
+      totalPrice: input.totalPrice,
+    });
+
+    return this.orders.save(order);
+  }
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Factoryって、ただ `new` するだけなら大げさじゃない？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+その感覚は正しいよ。生成が1行で済むなら不要。初期値・分岐・依存オブジェクトの組み立てが増えて、呼び出し側が作り方を知りすぎたら導入すればいい。
+</SpeechBubble>
+
+<Marker>Factoryを導入する判断基準は、「生成ルールが複数箇所に散らばり始めたか」です。</Marker>
+
+## 3つを組み合わせた設計例
+
+Repository・Service・Factory を組み合わせると、注文作成の流れは次のように整理できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["API"] --> B["OrderService"]
+    B --> C["UserRepository"]
+    B --> D["OrderRepository"]
+    B --> E["OrderFactory"]
+    C --> F["User取得"]
+    E --> G["Order生成"]
+    D --> H["Order保存"]
+`}
+/>
+
+それぞれの責務は次のように分かれます。
+
+- APIハンドラ: リクエストを受け取り、レスポンスに変換する
+- Service: 注文作成というユースケースを進める
+- Repository: ユーザー取得・注文保存の詳細を隠す
+- Factory: 注文オブジェクトの生成ルールを守る
+
+この形にすると、テストも分けやすくなります。RepositoryはDB込みのテスト、ServiceはRepositoryを差し替えたユースケーステスト、Factoryは純粋な生成ルールのテスト、というように関心ごとごとに確認できます。
+
+## よくあるハマりどころ
+
+### Repositoryに業務ルールを入れてしまう
+
+`OrderRepository.createIfUserCanOrder()` のように、Repositoryが注文可否まで判断し始めると、DBアクセス層と業務ルールが再び混ざります。Repositoryは「保存できるか」をDB制約の範囲で扱い、「業務上作ってよいか」はServiceで判断します。
+
+### Serviceがただの中継係になる
+
+`UserService.findById()` が `UserRepository.findById()` を呼ぶだけなら、そのServiceは価値を生んでいません。Serviceは複数の処理をまとめる、業務判断を置く、トランザクション境界を表すなど、ユースケースとしての意味があるときに作ります。
+
+### Factoryを早く作りすぎる
+
+生成処理が `new User(name)` だけならFactoryは不要です。パターンを使うためにクラスを増やすと、追うファイルが増えて学習コストだけが上がります。
+
+### パターン名で会話して中身を曖昧にする
+
+「ここはServiceで」「Factoryを作りましょう」だけでは設計になりません。何を隠したいのか、どの変更に強くしたいのかを説明できる必要があります。
+
+<Callout type="info">
+レビューでは「このクラスは何パターンですか？」より、「この変更が来たとき、どのファイルを触りますか？」と聞く方が実践的です。変更シナリオに答えられない抽象化は、まだ設計として弱い可能性があります。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- <Marker>Repository・Service・Factoryは、責務を分けるための名前であり、暗記するための型ではありません。</Marker>
+- Repositoryにはデータ取得・保存を置き、業務ルールを混ぜない
+- Serviceにはユースケースの流れと業務判断を置き、画面やDBの詳細から切り離す
+- Factoryは生成ルールが散らばり始めたときに導入する。単純な `new` だけなら不要
+- パターンを増やす目的は、変更時に触る場所を減らすこと。ファイル数を増やすこと自体が目的ではない
+
+次の章では、こうした責務分割をさらに一般化した [SOLID原則](/books/system-design/15-solid-principles) を解説します。
+
+## 参考リンク
+
+- [Repository - Patterns of Enterprise Application Architecture](https://martinfowler.com/eaaCatalog/repository.html) — Repositoryパターンの定番解説
+- [Service Layer - Patterns of Enterprise Application Architecture](https://martinfowler.com/eaaCatalog/serviceLayer.html) — Service Layerの役割を説明する定番リソース
+- [Factory Method - Refactoring.Guru](https://refactoring.guru/design-patterns/factory-method) — Factory Methodパターンの図解と実装例
