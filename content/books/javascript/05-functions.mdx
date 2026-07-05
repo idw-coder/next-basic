@@ -2,10 +2,598 @@
 title: '関数とアロー関数 — 定義方法・this・デフォルト引数'
 description: '関数宣言・関数式・アロー関数の違い、デフォルト引数・残余引数・thisの束縛ルールを整理します。'
 order: 5
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+JavaScriptの関数は、処理に名前を付けて再利用するための基本部品です。`function` で書く関数宣言、変数に代入する関数式、短く書けるアロー関数など、同じ「関数」でも書き方によって挙動が変わります。
+
+この章では、関数の定義方法、ホイスティング、デフォルト引数、残余引数、コールバック、IIFE、そしてアロー関数と `this` の決定的な違いを整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `function greet()` と `const greet = () => {}`、どっちも関数に見えるけど、何が違うんですか？
+</SpeechBubble>
+
+先に結論を出しておくと、<Marker>関数宣言は巻き上げられる、関数式は値として扱いやすい、アロー関数は自分の `this` を持たない</Marker>、この3点が大きな違いです。
+
+---
+
+## 関数とは — 処理に名前を付ける仕組み
+
+関数は、入力（引数）を受け取り、処理を行い、結果（戻り値）を返す仕組みです。
+
+```js
+function add(a, b) {
+  return a + b;
+}
+
+const result = add(2, 3);
+console.log(result); // 5
+```
+
+**構文:** `function name(param1, param2) { statements }`
+
+| 要素 | 説明 |
+|---|---|
+| `name` | 関数名 |
+| `param1`, `param2` | 関数が受け取る引数名 |
+| `statements` | 関数の中で実行する処理 |
+
+**戻り値:** `return` した値。`return` がない場合は `undefined`
+
+```js
+function logMessage(message) {
+  console.log(message);
+}
+
+const value = logMessage('hello');
+console.log(value); // undefined
+```
+
+`return` は関数を終了し、呼び出し元へ値を返します。条件分岐と組み合わせると、後述する早期リターンにも使えます。
+
+<Figure src="/images/deta_man_color.png" alt="関数に入力を渡して結果を受け取るイメージ" maxWidth="160px" />
+
+---
+
+## 関数宣言・関数式・アロー関数の違い
+
+JavaScriptでよく使う関数の書き方は、主に3つあります。
+
+| 書き方 | 例 | 主な特徴 |
+|---|---|---|
+| 関数宣言 | `function add(a, b) { ... }` | 巻き上げられる。名前付きの処理に向く |
+| 関数式 | `const add = function (a, b) { ... }` | 関数を値として変数に入れる |
+| アロー関数 | `const add = (a, b) => ...` | 短く書ける。自分の `this` を持たない |
+
+### 関数宣言
+
+関数宣言は、名前付きの関数を定義する基本形です。
+
+**構文:** `function name(param1, param2) { statements }`
+
+| 要素 | 説明 |
+|---|---|
+| `name` | 関数名 |
+| `param1`, `param2` | 引数名。必要な数だけ並べる |
+| `statements` | 実行する処理 |
+
+**戻り値:** `return` した値。`return` がなければ `undefined`
+
+```js
+function calculateTotal(price, taxRate) {
+  return Math.floor(price * (1 + taxRate));
+}
+
+calculateTotal(1000, 0.1); // 1100
+```
+
+関数宣言は読みやすく、ファイル内の主要な処理を定義するのに向いています。
+
+### 関数式
+
+関数式は、関数を値として作り、変数に代入する書き方です。
+
+**構文:** `const name = function (param1, param2) { statements };`
+
+| 要素 | 説明 |
+|---|---|
+| `name` | 関数を代入する変数名 |
+| `param1`, `param2` | 引数名 |
+| `statements` | 実行する処理 |
+
+**戻り値:** 関数が `return` した値。関数式そのものは関数オブジェクトを作る式
+
+```js
+const calculateTotal = function (price, taxRate) {
+  return Math.floor(price * (1 + taxRate));
+};
+
+calculateTotal(1000, 0.1); // 1100
+```
+
+関数式は、関数を変数に入れる、配列に入れる、別の関数へ渡すなど、「関数を値として扱う」場面で自然です。
+
+### アロー関数
+
+アロー関数は、関数式を短く書ける構文です。
+
+**構文:** `const name = (param1, param2) => expression`
+
+| 要素 | 説明 |
+|---|---|
+| `name` | 関数を代入する変数名 |
+| `param1`, `param2` | 引数名。1つだけなら括弧を省略できる |
+| `expression` | そのまま戻り値になる式 |
+
+**戻り値:** `{}` を使わない短縮形では式の値。`{}` を使う場合は `return` した値
+
+```js
+const add = (a, b) => a + b;
+add(2, 3); // 5
+
+const greet = (name) => {
+  return `こんにちは、${name}さん`;
+};
+greet('太郎'); // "こんにちは、太郎さん"
+```
+
+`map` や `filter` のような配列メソッドのコールバックでは、アロー関数がよく使われます。
+
+```js
+const prices = [100, 200, 300];
+const withTax = prices.map((price) => Math.floor(price * 1.1));
+// [110, 220, 330]
+```
+
+配列メソッドでの使い方は、[配列メソッド完全ガイド](/books/javascript/07-arrays)で詳しく扱います。
+
+---
+
+## ホイスティング — 関数宣言だけ先に呼べる
+
+関数宣言は、定義より前の行から呼び出せます。これは関数宣言がスコープの先頭へ巻き上げられるためです。
+
+```js
+console.log(add(2, 3)); // 5
+
+function add(a, b) {
+  return a + b;
+}
+```
+
+一方、`const` に代入した関数式やアロー関数は、変数の初期化前には使えません。
+
+```js
+console.log(add(2, 3)); // ReferenceError
+
+const add = function (a, b) {
+  return a + b;
+};
+```
+
+```js
+console.log(add(2, 3)); // ReferenceError
+
+const add = (a, b) => a + b;
+```
+
+<Callout type="warning" title="巻き上げは便利だが頼りすぎない">
+  関数宣言は前から呼べますが、コードを読む人は上から下へ読みます。大きなファイルでは、使う場所より前に関数を置くか、役割ごとにファイルを分けた方が読みやすくなります。
+</Callout>
+
+ホイスティングの考え方は、[変数宣言とスコープ](/books/javascript/01-variables-and-scope)でも扱いました。関数式は「関数」よりも先に「変数」としてのルールを受ける、と考えると整理しやすいです。
+
+---
+
+## デフォルト引数
+
+デフォルト引数を使うと、引数が `undefined` のときに使う初期値を指定できます。
+
+**構文:** `function name(param = defaultValue) { statements }`
+
+| 要素 | 説明 |
+|---|---|
+| `param` | 引数名 |
+| `defaultValue` | 引数が `undefined` のときに使う値 |
+| `statements` | 実行する処理 |
+
+**戻り値:** 関数が `return` した値
+
+```js
+function greet(name = 'ゲスト') {
+  return `こんにちは、${name}さん`;
+}
+
+greet('太郎'); // "こんにちは、太郎さん"
+greet(); // "こんにちは、ゲストさん"
+greet(undefined); // "こんにちは、ゲストさん"
+```
+
+注意点は、デフォルト値が使われるのは `undefined` のときだけです。`null`、空文字、`0` は「値が渡された」と扱われます。
+
+```js
+greet(null); // "こんにちは、nullさん"
+greet(''); // "こんにちは、さん"
+```
+
+<Marker>デフォルト引数は「引数が省略されたとき」の保険であって、`null` や空文字のバリデーションではありません。</Marker>
+
+---
+
+## 残余引数 — ...argsで可変長引数を受け取る
+
+残余引数（rest parameters）は、残りの引数を配列として受け取る構文です。
+
+**構文:** `function name(param1, ...rest) { statements }`
+
+| 要素 | 説明 |
+|---|---|
+| `param1` | 通常の引数 |
+| `...rest` | 残りの引数をまとめて受け取る配列。最後の引数にだけ書ける |
+| `statements` | 実行する処理 |
+
+**戻り値:** 関数が `return` した値。`...rest` 自体は配列
+
+```js
+function sum(...numbers) {
+  return numbers.reduce((total, n) => total + n, 0);
+}
+
+sum(1, 2, 3); // 6
+sum(10, 20, 30, 40); // 100
+```
+
+通常の引数と組み合わせることもできます。
+
+```js
+function log(level, ...messages) {
+  console.log(`[${level}]`, messages.join(' '));
+}
+
+log('INFO', 'user', 'created'); // "[INFO] user created"
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  昔のコードで `arguments` って見たことがあります。`...args` とは違うんですか？
+</SpeechBubble>
+
+`arguments` は、通常関数の中で使える疑似配列です。配列のようにインデックスで読めますが、本物の配列ではありません。
+
+```js
+function oldSum() {
+  console.log(Array.isArray(arguments)); // false
+  return Array.from(arguments).reduce((total, n) => total + n, 0);
+}
+```
+
+現代のコードでは、基本的に `arguments` より残余引数を使います。
+
+```js
+function newSum(...numbers) {
+  return numbers.reduce((total, n) => total + n, 0);
+}
+```
+
+残余引数なら最初から配列なので、`map`、`filter`、`reduce` などをそのまま使えます。
+
+---
+
+## thisの束縛ルール — 通常関数とアロー関数の決定的な違い
+
+通常関数の `this` は、関数が**どう呼び出されたか**で決まります。アロー関数は自分の `this` を持たず、外側の `this` をそのまま使います。
+
+```js
+const user = {
+  name: '太郎',
+  greet() {
+    return `こんにちは、${this.name}です`;
+  },
+};
+
+user.greet(); // "こんにちは、太郎です"
+```
+
+メソッドを変数に取り出すと、呼び出し元のオブジェクトが失われます。
+
+```js
+const greet = user.greet;
+greet(); // TypeError または this が undefined
+```
+
+この章では入口だけ押さえます。`this` の呼び出しパターンは [thisの正体](/books/javascript/11-this-keyword) で詳しく扱います。
+
+### アロー関数は自分のthisを持たない
+
+アロー関数は、コールバックの中で外側の `this` を使いたい場面に向いています。
+
+```js
+const timer = {
+  seconds: 0,
+  start() {
+    setInterval(() => {
+      this.seconds += 1;
+      console.log(this.seconds);
+    }, 1000);
+  },
+};
+```
+
+ここで `setInterval` のコールバックを通常関数にすると、`this` は `timer` ではなくなります。
+
+```js
+const timer = {
+  seconds: 0,
+  start() {
+    setInterval(function () {
+      this.seconds += 1; // thisはtimerではない
+    }, 1000);
+  },
+};
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  アロー関数は「短く書ける関数」だけではありません。`this` を自分で作らず、外側から借りる関数です。
+</SpeechBubble>
+
+### オブジェクトのメソッドにアロー関数を使わない
+
+アロー関数は自分の `this` を持たないため、オブジェクトメソッドには向きません。
+
+```js
+const user = {
+  name: '太郎',
+  greet: () => {
+    return `こんにちは、${this.name}です`;
+  },
+};
+
+user.greet(); // 期待通りにならない
+```
+
+メソッドでは通常の関数構文を使います。
+
+```js
+const user = {
+  name: '太郎',
+  greet() {
+    return `こんにちは、${this.name}です`;
+  },
+};
+```
+
+<Marker>オブジェクトのメソッドには通常関数、コールバックで外側の `this` を保ちたいときはアロー関数、と覚えると実務で迷いにくくなります。</Marker>
+
+---
+
+## コールバック関数
+
+コールバック関数とは、別の関数に引数として渡され、後から呼び出される関数です。
+
+**構文:** `functionName(callback)`
+
+| 要素 | 説明 |
+|---|---|
+| `callback` | 後から実行してほしい関数 |
+
+**戻り値:** 呼び出す側の関数設計による。コールバック自身は任意の値を返せる
+
+```js
+function runTwice(callback) {
+  callback();
+  callback();
+}
+
+runTwice(() => {
+  console.log('hello');
+});
+```
+
+配列メソッドの `map` もコールバック関数を受け取ります。
+
+```js
+const numbers = [1, 2, 3];
+const doubled = numbers.map((n) => n * 2);
+// mapに渡した (n) => n * 2 がコールバック
+```
+
+イベント処理でもコールバックは頻出します。
+
+```js
+button.addEventListener('click', () => {
+  console.log('clicked');
+});
+```
+
+コールバックは、非同期処理の基本にもなります。Promiseや `async` / `await` へ進む前に、関数を値として渡せる感覚を持っておくと理解しやすくなります。非同期処理の流れは [非同期処理の基本](/books/javascript/13-async-callback-promise) で扱います。
+
+<Figure src="/images/boomerang_woman_color.png" alt="関数を別の関数へ渡して戻ってくるイメージ" maxWidth="150px" />
+
+---
+
+## 即時実行関数式（IIFE）
+
+IIFE（Immediately Invoked Function Expression）は、定義した直後に実行する関数式です。
+
+**構文:** `(function () { statements })()`
+
+| 要素 | 説明 |
+|---|---|
+| `function () { ... }` | 実行したい関数式 |
+| 最後の `()` | その関数をすぐ呼び出す |
+
+**戻り値:** IIFE内の関数が `return` した値。`return` がなければ `undefined`
+
+```js
+(function () {
+  const message = 'IIFEの中だけで使う変数';
+  console.log(message);
+})();
+```
+
+アロー関数でも書けます。
+
+```js
+(() => {
+  const message = 'すぐ実行';
+  console.log(message);
+})();
+```
+
+IIFEは、昔のJavaScriptで「一時的なスコープを作る」ためによく使われました。現在は `let` / `const` のブロックスコープやES Modulesがあるため、昔ほど頻繁には書きません。
+
+```js
+{
+  const message = 'ブロックの中だけで使う変数';
+  console.log(message);
+}
+```
+
+ただし、古いコードやライブラリの内部では今でも見かけます。読めるようにしておく価値はあります。
+
+---
+
+## 引数のバリデーションと早期リターン
+
+関数は、想定外の引数を受け取ったときにどう振る舞うかを決めておく必要があります。
+
+```js
+function calculateDiscount(price, rate) {
+  if (typeof price !== 'number' || Number.isNaN(price)) {
+    return 0;
+  }
+
+  if (typeof rate !== 'number' || rate < 0) {
+    return price;
+  }
+
+  return Math.floor(price * (1 - rate));
+}
+```
+
+このように、先に不正な入力を弾いて早く `return` する書き方を**早期リターン**と呼びます。
+
+早期リターンを使うと、正常系の処理を深い `if` の中に閉じ込めずに済みます。
+
+```js
+// ❌ ネストが深い
+function getUserName(user) {
+  if (user) {
+    if (user.name) {
+      return user.name;
+    }
+  }
+  return 'ゲスト';
+}
+
+// ⭕ 早期リターンで読みやすい
+function getUserName(user) {
+  if (!user) return 'ゲスト';
+  if (!user.name) return 'ゲスト';
+
+  return user.name;
+}
+```
+
+条件分岐や `return` の使い方は、制御構文の章でさらに整理します。
+
+<Callout type="info" title="バリデーションは関数の入口に寄せる">
+  引数チェックを関数の途中に散らすと、どの値が安全なのか追いにくくなります。入口で不正値を弾き、以降は「期待した型の値が来ている」前提で読めるようにすると、関数全体がシンプルになります。
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### アロー関数でオブジェクトリテラルを返す
+
+アロー関数の短縮形でオブジェクトを返したいときは、オブジェクトリテラルを `()` で囲みます。
+
+```js
+// ❌ {} が関数本体として解釈される
+const createUser = (name) => { name: name };
+createUser('太郎'); // undefined
+
+// ⭕ オブジェクトを返すなら () で囲む
+const createUser = (name) => ({ name: name });
+createUser('太郎'); // { name: "太郎" }
+```
+
+### thisがundefinedになる
+
+メソッドを取り出して単独で呼ぶと、`this` が失われます。
+
+```js
+const user = {
+  name: '太郎',
+  greet() {
+    return this.name;
+  },
+};
+
+const greet = user.greet;
+greet(); // TypeError: Cannot read properties of undefined
+```
+
+この問題は、呼び出し元のオブジェクトを保つ、`bind` する、または設計を変えて `this` に依存しない関数にすることで避けられます。
+
+```js
+const greet = user.greet.bind(user);
+greet(); // "太郎"
+```
+
+### argumentsは本物の配列ではない
+
+`arguments` は通常関数で使える疑似配列ですが、`map` や `reduce` は直接使えません。
+
+```js
+function example() {
+  arguments.map((x) => x); // TypeError
+}
+```
+
+現代のコードでは、残余引数を使います。
+
+```js
+function example(...args) {
+  return args.map((x) => x);
+}
+```
+
+### アロー関数にはargumentsがない
+
+アロー関数は自分の `arguments` を持ちません。可変長引数を受け取りたいなら、残余引数を使います。
+
+```js
+const sum = (...numbers) => {
+  return numbers.reduce((total, n) => total + n, 0);
+};
+```
+
+### デフォルト引数はnullには効かない
+
+```js
+function greet(name = 'ゲスト') {
+  return `こんにちは、${name}さん`;
+}
+
+greet(undefined); // "こんにちは、ゲストさん"
+greet(null); // "こんにちは、nullさん"
+```
+
+`null` も空文字も弾きたいなら、関数の中で明示的にバリデーションします。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>関数宣言は巻き上げられる。関数式とアロー関数は、変数の初期化前には使えない</Marker>
+- 主要な名前付き処理には関数宣言、短いコールバックにはアロー関数が向いている
+- デフォルト引数は `undefined` のときだけ効く。`null` や空文字の検証は別に書く
+- 可変長引数には `arguments` ではなく残余引数 `...args` を使う
+- 通常関数の `this` は呼び出し方で決まる。アロー関数は外側の `this` を使う
+- オブジェクトメソッドには通常関数、コールバックで外側の `this` を使いたいときはアロー関数
+- 不正な引数は関数の入口で弾き、早期リターンで正常系を読みやすくする
+
+---
 
 ## 参考リンク
 
@@ -13,3 +601,11 @@ draft: true
 - [MDN — アロー関数式](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Functions/Arrow_functions)
 - [MDN — デフォルト引数](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Functions/Default_parameters)
 - [MDN — 残余引数](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Functions/rest_parameters)
+
+次の章では、オブジェクトのプロパティアクセス、動的キー、`Object.keys()` など、関数と組み合わせて頻出するオブジェクト操作を扱います。
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>
