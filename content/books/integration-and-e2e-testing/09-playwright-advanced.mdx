@@ -1,0 +1,550 @@
+---
+title: 'Playwrightの実践テクニック — ページ操作・待機・認証・API連携'
+description: 'Playwrightのロケーター、自動待機の仕組み、認証状態の共有、APIリクエストのモック・インターセプト、スクリーンショット比較など実務で使うテクニックを整理します。'
+order: 9
+---
+
+[前章](/books/integration-and-e2e-testing/08-ci-and-maintenance) では、E2EテストをCIで運用し、Flaky Testを減らす考え方を整理しました。この章では、その前提になる **Playwrightの実務テクニック** を深掘りします。
+
+[Playwrightの導入と基本操作](/books/integration-and-e2e-testing/06-playwright-setup) ではインストール、基本的なテスト、UIモードを扱いました。ここでは一歩進んで、ロケーターの選び方、自動待機、認証状態の共有、APIモック、`baseURL` と `reuseExistingServer`、ビジュアルリグレッションまでをまとめます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Playwrightは動いたけど、実務のテストになると「どのロケーターを使う？」「どこで待つ？」で迷います。
+</SpeechBubble>
+
+<Marker>Playwrightの実践では、テストを「動かす」よりも、UI変更や通信タイミングに強い書き方へ寄せることが重要です。</Marker>
+
+---
+
+## ロケーター戦略の使い分け
+
+Playwrightでは、要素取得に `page.locator('css=...')` だけを使うのではなく、ユーザーから見える情報を基準にしたロケーターを優先します。
+
+### 優先順位
+
+| 優先度 | ロケーター | 使いどころ |
+|---:|---|---|
+| 1 | `getByRole()` | ボタン、リンク、見出し、チェックボックスなど、役割と名前で取れる要素 |
+| 2 | `getByLabel()` | 入力欄、セレクトボックス、チェックボックスなどフォーム部品 |
+| 3 | `getByText()` | 完了メッセージ、一覧の項目名など、非インタラクティブな表示 |
+| 4 | `getByTestId()` | 文言やアクセシビリティ名が変わりやすいUI、アイコンボタン、複雑な部品 |
+| 5 | `locator()` | CSSやXPathが必要な最終手段 |
+
+```ts
+import { test, expect } from '@playwright/test';
+
+test('商品をカートに追加できる', async ({ page }) => {
+  await page.goto('/products');
+
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'ワイヤレスキーボード' })
+    .getByRole('button', { name: 'カートに追加' })
+    .click();
+
+  await expect(page.getByText('カートに追加しました')).toBeVisible();
+});
+```
+
+### `getByRole()` の構文
+
+```ts
+page.getByRole(role, options?)
+```
+
+| 引数 | 型 | 説明 |
+|---|---|---|
+| `role` | string | `button`、`link`、`heading`、`textbox` などのアクセシビリティロール |
+| `options.name` | string または RegExp | 画面上の名前。ボタン文字、リンク文字、ラベルなど |
+| `options.exact` | boolean | 完全一致にするか |
+
+**戻り値:** `Locator`。`.click()`、`.fill()`、`.filter()`、`expect(locator)` などにつなげられます。
+
+### `getByLabel()` の構文
+
+```ts
+page.getByLabel(text, options?)
+```
+
+| 引数 | 型 | 説明 |
+|---|---|---|
+| `text` | string または RegExp | `<label>` や `aria-label` で関連付けられた名前 |
+| `options.exact` | boolean | 完全一致にするか |
+
+**戻り値:** `Locator`。入力欄なら `.fill()`、チェックボックスなら `.check()` などに使えます。
+
+### `getByText()` と `getByTestId()` の構文
+
+```ts
+page.getByText(text, options?)
+page.getByTestId(testId)
+```
+
+| メソッド | 主な引数 | 戻り値 | 使いどころ |
+|---|---|---|---|
+| `getByText()` | 表示テキスト、正規表現 | `Locator` | 通知、見出し、一覧項目などの表示確認 |
+| `getByTestId()` | `data-testid` の値 | `Locator` | 文言では安定して取れない部品 |
+
+```tsx
+// アプリ側
+<button data-testid="profile-menu-button" aria-label="プロフィールメニュー">
+  <IconUser />
+</button>
+```
+
+```ts
+// テスト側
+await page.getByTestId('profile-menu-button').click();
+```
+
+<Callout type="info">
+### test idは逃げではなく契約
+
+`data-testid` はユーザーから見えないため、最初から乱用するとテストがユーザー視点から離れます。一方で、アイコンだけのボタンやドラッグ対象など、表示テキストだけでは安定して取れないUIでは有効です。実務では「アクセシビリティで取れるものは `getByRole`、テスト専用の安定契約が必要なものは `getByTestId`」と分けます。
+</Callout>
+
+---
+
+## 自動待機（Auto-waiting）の仕組み
+
+Playwrightは、多くの操作で対象要素が操作可能になるまで自動で待ちます。たとえば `.click()` は、要素が表示され、安定し、クリックできる状態になるまで待ってから実行されます。
+
+```ts
+// 固定時間待ちは不要
+await page.getByRole('button', { name: '保存' }).click();
+
+// アサーションも一定時間リトライされる
+await expect(page.getByText('保存しました')).toBeVisible();
+```
+
+<Marker>`waitForTimeout()` で秒数を決め打ちするほど、テストは遅く不安定になります。待つ対象は「時間」ではなく「状態」にします。</Marker>
+
+### Playwrightが自動で待つもの
+
+| 操作 | 自動で待つ例 |
+|---|---|
+| `locator.click()` | 要素が表示され、安定し、有効で、クリックを受け取れる状態 |
+| `locator.fill()` | 入力可能な状態 |
+| `expect(locator).toBeVisible()` | 条件が満たされるまでのリトライ |
+| `expect(page).toHaveURL()` | URLが期待値になるまでのリトライ |
+
+### 自分で待つ必要があるもの
+
+| 待ちたいもの | 使うAPI | 例 |
+|---|---|---|
+| 特定のAPIレスポンス | `page.waitForResponse()` | 保存APIが200を返すまで待つ |
+| URL遷移 | `page.waitForURL()` または `expect(page).toHaveURL()` | OAuth後のリダイレクト |
+| DOM出現だけを待つ | `locator.waitFor()` | 表示以外の状態を明示したい場合 |
+
+`waitForSelector()` も使えますが、Playwrightでは `Locator` ベースの `locator.waitFor()` や `expect(locator)` を優先する方が、読みやすく保守しやすいです。
+
+### 待機APIの構文
+
+```ts
+await page.waitForResponse(urlOrPredicate, options?)
+await page.waitForURL(urlOrPredicate, options?)
+await locator.waitFor(options?)
+```
+
+| API | 主な引数 | 戻り値 | 使いどころ |
+|---|---|---|---|
+| `page.waitForResponse()` | URL文字列、正規表現、判定関数 | `Promise<Response>` | API完了を待ってからレスポンス内容を検証 |
+| `page.waitForURL()` | URL文字列、正規表現、判定関数 | `Promise<void>` | 別ページへの遷移完了を待つ |
+| `locator.waitFor()` | `{ state, timeout }` | `Promise<void>` | `attached`、`visible`、`hidden`、`detached` などを明示 |
+
+```ts
+test('注文を確定できる', async ({ page }) => {
+  await page.goto('/checkout');
+
+  const responsePromise = page.waitForResponse((response) => {
+    return response.url().includes('/api/orders') && response.status() === 201;
+  });
+
+  await page.getByRole('button', { name: '注文を確定' }).click();
+
+  const response = await responsePromise;
+  const order = await response.json();
+
+  expect(order.id).toMatch(/^order_/);
+  await expect(page).toHaveURL(/\/orders\/order_/);
+});
+```
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="チェックしながら作業する女性のイラスト" maxWidth="300px" />
+
+---
+
+## 認証状態の共有（storageState）
+
+ログインが必要なテストで、毎回ログインフォームを通ると実行時間が伸びます。Playwrightでは、ログイン後のCookieやlocalStorageなどを `storageState` として保存し、複数のテストで再利用できます。
+
+[テストシナリオ設計](/books/integration-and-e2e-testing/07-scenario-design) でも認証状態の共有に触れました。ここでは設定パターンをもう少し具体的に見ます。
+
+### 方式1: setupプロジェクトで保存する
+
+Playwright Testでは、認証用のセットアップテストを1つのプロジェクトとして定義し、通常のテストから依存させる方法が扱いやすいです。レポートにもセットアップ結果が残るため、ログイン失敗の原因を追いやすくなります。
+
+```ts
+// tests/auth.setup.ts
+import { test as setup, expect } from '@playwright/test';
+
+const authFile = 'playwright/.auth/user.json';
+
+setup('認証状態を保存する', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('メールアドレス').fill('alice@example.com');
+  await page.getByLabel('パスワード').fill(process.env.E2E_PASSWORD ?? '');
+  await page.getByRole('button', { name: 'ログイン' }).click();
+
+  await expect(page).toHaveURL('/dashboard');
+  await page.context().storageState({ path: authFile });
+});
+```
+
+```ts
+// playwright.config.ts
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  projects: [
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
+  ],
+});
+```
+
+### 方式2: globalSetupで保存する
+
+既存のテスト基盤で `globalSetup` を使っている場合は、Playwrightのブラウザを起動してログインし、`storageState` を保存できます。
+
+```ts
+// global-setup.ts
+import { chromium, type FullConfig } from '@playwright/test';
+
+async function globalSetup(config: FullConfig) {
+  const baseURL = config.projects[0].use.baseURL ?? 'http://localhost:3000';
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+
+  await page.goto(`${baseURL}/login`);
+  await page.getByLabel('メールアドレス').fill('alice@example.com');
+  await page.getByLabel('パスワード').fill(process.env.E2E_PASSWORD ?? '');
+  await page.getByRole('button', { name: 'ログイン' }).click();
+  await page.waitForURL('**/dashboard');
+
+  await page.context().storageState({ path: 'playwright/.auth/user.json' });
+  await browser.close();
+}
+
+export default globalSetup;
+```
+
+```ts
+// playwright.config.ts
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  globalSetup: './global-setup.ts',
+  use: {
+    baseURL: 'http://localhost:3000',
+    storageState: 'playwright/.auth/user.json',
+  },
+});
+```
+
+### `storageState()` の構文
+
+```ts
+await page.context().storageState(options?)
+```
+
+| 引数 | 型 | 説明 |
+|---|---|---|
+| `options.path` | string | CookieやlocalStorageを保存するJSONファイルのパス |
+
+**戻り値:** `Promise<StorageState>`。`path` を指定した場合はファイルにも保存されます。
+
+<Callout type="warning">
+### 認証ファイルはコミットしない
+
+`storageState` のJSONにはCookieやトークンが含まれることがあります。`playwright/.auth/` のような保存先を決め、`.gitignore` に追加してください。CIではテスト用アカウントを使い、個人アカウントの認証情報を使わないようにします。
+</Callout>
+
+---
+
+## APIリクエストのモック・インターセプト
+
+E2Eテストでは本物のバックエンドを通すのが基本ですが、外部APIや不安定なデータに依存するとテストが壊れやすくなります。Playwrightの `page.route()` を使うと、ブラウザから出るリクエストを横取りし、テスト用レスポンスに差し替えられます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「全部モックする」より、「外部依存や作りにくい状態だけ差し替える」と考えると実務で使いやすくなります。
+</SpeechBubble>
+
+### `page.route()` の構文
+
+```ts
+await page.route(url, handler, options?)
+```
+
+| 引数 | 型 | 説明 |
+|---|---|---|
+| `url` | string、RegExp、判定関数 | 横取りするリクエストURL |
+| `handler` | function | `route` と `request` を受け取り、`fulfill()`、`continue()`、`abort()` などを呼ぶ関数 |
+| `options.times` | number | 何回だけ適用するか |
+
+**戻り値:** `Promise<void>`。ルート登録が完了したら解決します。
+
+```ts
+test('在庫切れの商品を表示できる', async ({ page }) => {
+  await page.route('**/api/products/keyboard', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 'keyboard',
+        name: 'ワイヤレスキーボード',
+        stock: 0,
+      }),
+    });
+  });
+
+  await page.goto('/products/keyboard');
+
+  await expect(page.getByRole('heading', { name: 'ワイヤレスキーボード' })).toBeVisible();
+  await expect(page.getByText('在庫切れ')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'カートに追加' })).toBeDisabled();
+});
+```
+
+### 一部だけ上書きして本物のレスポンスを使う
+
+本物のAPIを呼びつつ、レスポンスの一部だけをテスト用に変えることもできます。
+
+```ts
+test('キャンペーン価格を表示できる', async ({ page }) => {
+  await page.route('**/api/products/*', async (route) => {
+    const response = await route.fetch();
+    const product = await response.json();
+
+    await route.fulfill({
+      response,
+      json: {
+        ...product,
+        campaignPrice: 3980,
+      },
+    });
+  });
+
+  await page.goto('/products/keyboard');
+
+  await expect(page.getByText('キャンペーン価格')).toBeVisible();
+  await expect(page.getByText('3,980円')).toBeVisible();
+});
+```
+
+<Callout type="note">
+### テストデータの注入パターン
+
+安定したE2Eテストでは、テスト開始時にAPIでテストデータを作る、`page.route()` で外部依存だけ差し替える、DBをテストごとにリセットする、という選択肢を組み合わせます。UI操作で毎回すべての前提データを作ると、テスト時間が長くなり、失敗箇所も増えます。
+</Callout>
+
+---
+
+## `baseURL` と `reuseExistingServer` の設定
+
+`baseURL` と `reuseExistingServer` は、Playwrightの環境構築系クエリでよく検索される設定です。どちらも `playwright.config.ts` に書きますが、役割が違います。
+
+| 設定 | 場所 | 役割 |
+|---|---|---|
+| `use.baseURL` | `use` | `page.goto('/')` や `expect(page).toHaveURL('/dashboard')` の基準URL |
+| `webServer.command` | `webServer` | テスト前に起動する開発サーバーのコマンド |
+| `webServer.url` | `webServer` | サーバーが起動したか確認するURL |
+| `webServer.reuseExistingServer` | `webServer` | すでに起動済みのサーバーを再利用するか |
+
+```ts
+// playwright.config.ts
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  use: {
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
+  },
+
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    timeout: 120 * 1000,
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
+
+### `baseURL` の構文
+
+```ts
+use: {
+  baseURL: 'http://localhost:3000'
+}
+```
+
+| 値 | 説明 |
+|---|---|
+| `http://localhost:3000` | ローカルのNext.js、Vite、Railsなどの開発サーバー |
+| `https://staging.example.com` | ステージング環境でE2Eを走らせる場合 |
+
+**戻り値:** 設定値なので戻り値はありません。テスト内では `page.goto('/')` のような相対URL解決に使われます。
+
+### `reuseExistingServer` の使い分け
+
+```ts
+webServer: {
+  command: 'npm run dev',
+  url: 'http://localhost:3000',
+  reuseExistingServer: !process.env.CI,
+}
+```
+
+| 値 | 向いている場面 | 注意点 |
+|---|---|---|
+| `true` | ローカル開発。手元で起動済みのサーバーを使って高速に回す | 古いコードのサーバーを使っていないか注意 |
+| `false` | CI。毎回クリーンに起動して再現性を高める | 既に同じポートで起動していると失敗する |
+| `!process.env.CI` | ローカルでは再利用、CIでは新規起動 | 多くのプロジェクトで扱いやすい設定 |
+
+<Marker>`baseURL` は「どこへアクセスするか」、`reuseExistingServer` は「既存サーバーを使うか」を決める設定です。役割を分けて理解すると迷いにくくなります。</Marker>
+
+---
+
+## スクリーンショットとビジュアルリグレッション
+
+通常のE2Eテストは「ボタンを押したらURLが変わる」「メッセージが表示される」のようなふるまいを検証します。一方、レイアウト崩れや見た目の差分は通常のアサーションだけでは拾いにくいです。
+
+Playwrightの `toHaveScreenshot()` を使うと、スクリーンショットを保存し、次回以降の実行で差分を検出できます。
+
+### `toHaveScreenshot()` の構文
+
+```ts
+await expect(page).toHaveScreenshot(name?, options?)
+await expect(locator).toHaveScreenshot(name?, options?)
+```
+
+| 引数 | 型 | 説明 |
+|---|---|---|
+| `name` | string または string[] | スナップショットファイル名 |
+| `options.maxDiffPixels` | number | 許容する差分ピクセル数 |
+| `options.animations` | `'disabled'` または `'allow'` | アニメーションの扱い |
+| `options.mask` | `Locator[]` | 動的に変わる領域をマスク |
+
+**戻り値:** `Promise<void>`。初回は期待画像を生成し、2回目以降は差分が許容範囲か検証します。
+
+```ts
+test('料金ページの主要レイアウトが崩れていない', async ({ page }) => {
+  await page.goto('/pricing');
+
+  await expect(page).toHaveScreenshot('pricing-page.png', {
+    fullPage: true,
+    animations: 'disabled',
+    mask: [page.getByTestId('current-time')],
+  });
+});
+```
+
+### 実務での注意点
+
+| 注意点 | 理由 |
+|---|---|
+| 動的な日時・広告・アバターはマスクする | 実装と関係ない差分で失敗するため |
+| OSやブラウザをCIで固定する | フォント描画差分が出るため |
+| すべての画面に使わない | 差分レビューのコストが高くなるため |
+| コンポーネント単位も検討する | ページ全体より原因を特定しやすい場合があるため |
+
+<Figure src="/images/search_woman_color.png" alt="虫眼鏡で確認する女性のイラスト" maxWidth="300px" />
+
+---
+
+## よくあるハマりどころ
+
+### タイムアウトを長くするだけで解決しようとする
+
+タイムアウトを長くすると、遅い環境で一時的に通ることはあります。しかし、API待ちなのか、URL遷移待ちなのか、要素表示待ちなのかが曖昧なままだと、Flaky Testは残ります。
+
+```ts
+// NG — 何を待っているのかわからない
+test.setTimeout(60_000);
+await page.waitForTimeout(10_000);
+
+// OK — 保存APIと完了メッセージを待つ
+const responsePromise = page.waitForResponse('**/api/profile');
+await page.getByRole('button', { name: '保存' }).click();
+await responsePromise;
+await expect(page.getByText('保存しました')).toBeVisible();
+```
+
+### `waitForResponse()` をクリック後に書いて取り逃がす
+
+通信が速いと、クリック後に `waitForResponse()` を登録してもレスポンスを取り逃がすことがあります。待機のPromiseは、トリガー操作の前に作ります。
+
+```ts
+// NG
+await page.getByRole('button', { name: '検索' }).click();
+await page.waitForResponse('**/api/search');
+
+// OK
+const responsePromise = page.waitForResponse('**/api/search');
+await page.getByRole('button', { name: '検索' }).click();
+await responsePromise;
+```
+
+### iframe内の要素を普通のlocatorで探してしまう
+
+iframeの中は別の文書です。`frameLocator()` でiframeを指定してから、その中の要素を探します。
+
+```ts
+await page
+  .frameLocator('iframe[title="決済フォーム"]')
+  .getByLabel('カード番号')
+  .fill('4242 4242 4242 4242');
+```
+
+### Shadow DOMをCSSやXPathで無理に取ろうとする
+
+Playwrightのロケーターは、通常のShadow DOM内も扱えます。ただしXPathはShadow DOMをまたげません。まずは `getByRole()` や `getByText()` で取れるかを確認します。
+
+```ts
+await page.getByRole('button', { name: '詳細を開く' }).click();
+await expect(page.getByText('追加情報')).toBeVisible();
+```
+
+### `getByText()` でボタンを押してしまう
+
+`getByText('送信')` は「送信」という文字を含む要素を探します。ボタンを押すなら、役割まで含めた `getByRole('button', { name: '送信' })` の方が意図が明確です。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>ロケーターは `getByRole` と `getByLabel` を優先し、CSSやXPathは最後にする</Marker>
+- 固定時間の `waitForTimeout()` ではなく、URL、レスポンス、要素状態を待つ
+- ログイン済み状態は `storageState` で共有し、認証JSONはコミットしない
+- 外部APIや作りにくい状態だけ `page.route()` で差し替える
+- `baseURL` と `webServer` は分けて考える。ローカルは `reuseExistingServer: true`、CIは `false` が基本
+- スクリーンショット比較は重要画面に絞り、動的領域をマスクする
+
+ここまでで、結合テストとE2Eテストの考え方、Playwrightの導入、シナリオ設計、CI運用、実務テクニックまでを一通り扱いました。必要な章に戻りながら、自分のプロジェクトに合うテスト戦略へ落とし込んでください。
+
+## 参考リンク
+
+- [Playwright: Locators](https://playwright.dev/docs/locators)
+- [Playwright: Auto-waiting](https://playwright.dev/docs/actionability)
+- [Playwright: Authentication](https://playwright.dev/docs/auth)
+- [Playwright: Web server](https://playwright.dev/docs/test-webserver)
