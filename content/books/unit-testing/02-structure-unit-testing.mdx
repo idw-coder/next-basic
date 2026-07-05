@@ -1,6 +1,6 @@
 ---
-title: '単体テストの構造'
-description: '単体テストの基本構造であるAAAパターン、テスト名、フィクスチャ、読みやすいテストコードの書き方を学ぶ'
+title: 'AAAパターン（Arrange-Act-Assert）で書く単体テストの構造'
+description: 'AAAパターンとは何か、Arrange・Act・Assertの書き方、テスト名、フィクスチャ、よくある失敗例を実践コードで学びます。'
 order: 2
 ---
 
@@ -13,6 +13,8 @@ order: 2
 テストコードは「仕様を読むためのコード」でもあります。失敗したときに原因をすぐ追えること、数ヶ月後に読んでも意図が分かること、実装を変えても必要以上に壊れないことが重要です。
 
 この章では、単体テストを読みやすく保つための基本構造を整理します。
+
+<Marker>AAAパターンとは、単体テストを「準備（Arrange）」「実行（Act）」「検証（Assert）」の3つに分けて書く構成ルールです。</Marker>
 
 <Figure src="/images/deskwork_check_woman_color.png" alt="テストコードをチェックしている人のイラスト" maxWidth="280px" />
 
@@ -74,6 +76,140 @@ AAAは「テストコードの目次」です。読む人が、準備・実行�
 
 ただし、テストに慣れていない段階や、複雑な準備が必要なテストではコメントを置く価値があります。コメントがないと3つの境界が分からないテストは、構造を見直すサインです。
 </Callout>
+
+## AAAパターンのメリット
+
+AAAパターンの良さは、テストコードを「どこを読めば何が分かるか」が明確な形にできることです。
+
+| メリット | どう効くか |
+| --- | --- |
+| 意図を読み取りやすい | 準備・実行・検証の順番で仕様を追える |
+| 失敗原因を探しやすい | Arrange、Act、Assertのどこが怪しいか切り分けやすい |
+| テストを分割しやすい | Actが複数あるテストに気づきやすい |
+| 保守しやすい | 前提条件と期待値が散らばりにくい |
+
+特に単体テストでは、1つのテストが小さいほど読みやすくなります。AAAで区切ると、テストが大きくなり始めたタイミングに気づきやすくなります。
+
+```typescript
+it('プレミアム会員の場合、送料を無料にする', () => {
+  // Arrange: 条件を作る
+  const user = { rank: 'premium' as const };
+
+  // Act: テスト対象を実行する
+  const shippingFee = calculateShippingFee(user);
+
+  // Assert: 期待する結果を確認する
+  expect(shippingFee).toBe(0);
+});
+```
+
+この形にしておくと、「どんな会員なら」「何を実行して」「何を期待しているか」が上から順に読めます。
+
+## Arrange / Act / Assert の書き方
+
+AAAは名前だけ覚えても、実際のテストで境界が曖昧になりがちです。各ステップでよく使う書き方を押さえておくと、迷いが減ります。
+
+### Arrangeでよく使う準備
+
+Arrangeでは、テスト対象を動かすために必要な前提を作ります。
+
+よく使う準備は次のようなものです。
+
+- テストデータを作る
+- `beforeEach` で毎回同じ初期状態を作る
+- ファクトリ関数でテストごとの差分だけ変える
+- 依存先の戻り値をスタブ化する
+- 外部呼び出しを検証するためのモックを用意する
+
+```typescript
+type User = {
+  id: string;
+  email: string;
+  rank: 'standard' | 'premium';
+};
+
+const createUser = (overrides: Partial<User> = {}) => ({
+  id: 'user-1',
+  email: 'alice@example.com',
+  rank: 'standard' as const,
+  ...overrides,
+});
+
+it('プレミアム会員の場合、割引率を20%にする', () => {
+  // Arrange
+  const user = createUser({ rank: 'premium' });
+
+  // Act
+  const rate = calculateDiscountRate(user);
+
+  // Assert
+  expect(rate).toBe(0.2);
+});
+```
+
+モックやスタブを使う場合も、基本的にはArrangeに置きます。`vi.fn()`、`mockResolvedValue`、`mockRejectedValue` のような設定は、テスト対象を実行する前提を作っているからです。モックとスタブの違いは [モックとは](/books/unit-testing/04-mock) で詳しく扱います。
+
+### Actはテスト対象の操作を1つに絞る
+
+Actには、そのテストで主役として検証したい操作を置きます。
+
+非同期処理をテストする場合は、Actで `await` まで含めて結果を受け取ります。
+
+```typescript
+it('ユーザーを取得できる', async () => {
+  // Arrange
+  const repository = {
+    findById: vi.fn().mockResolvedValue({ id: 'user-1', name: 'Alice' }),
+  };
+  const service = new UserService(repository);
+
+  // Act
+  const user = await service.getUser('user-1');
+
+  // Assert
+  expect(user).toEqual({ id: 'user-1', name: 'Alice' });
+});
+```
+
+例外やrejectを検証したいときも、Actを曖昧にしないようにします。
+
+```typescript
+it('ユーザーが存在しない場合、エラーになる', async () => {
+  // Arrange
+  const service = new UserService({
+    findById: vi.fn().mockRejectedValue(new Error('not found')),
+  });
+
+  // Act
+  const action = () => service.getUser('missing-user');
+
+  // Assert
+  await expect(action()).rejects.toThrow('not found');
+});
+```
+
+ここでは `action` がActにあたります。先に関数として取り出すことで、「何を実行したらエラーになるのか」が読みやすくなります。
+
+### Assertは期待する結果に合う matcher を選ぶ
+
+Assertでは、期待値の種類に合わせて matcher を選びます。
+
+| matcher | 向いている検証 |
+| --- | --- |
+| `toBe` | 数値・文字列・booleanなどのプリミティブ値 |
+| `toEqual` | オブジェクトや配列の中身 |
+| `toContain` | 配列や文字列に特定の値が含まれること |
+| `toHaveLength` | 配列や文字列の長さ |
+| `toHaveBeenCalledWith` | モック関数が指定した引数で呼ばれたこと |
+
+```typescript
+expect(total).toBe(1200);
+expect(user).toEqual({ id: 'user-1', name: 'Alice' });
+expect(errors).toContain('メールアドレスの形式が正しくありません');
+expect(items).toHaveLength(2);
+```
+
+`toBe` と `toEqual` の迷いどころは、値の種類で考えると整理できます。数値や文字列は `toBe`、オブジェクトや配列の中身を比べるときは `toEqual` を使います。戻り値・状態変化・モック呼び出しのどれを見るべきかは、[単体テストのメソッド](/books/unit-testing/05-unit-testing-methods) で扱います。
 
 ## 実践例: ユーザー登録のバリデーションをテストする
 
@@ -375,6 +511,58 @@ describe('User', () => {
 
 `beforeEach` で毎回新しいオブジェクトを作る、またはファクトリ関数でテストごとに生成する方が安全です。
 </Callout>
+
+## よくあるハマりどころ
+
+AAAパターンは単純なルールですが、テストが大きくなると少しずつ崩れます。次の形になっていたら、テストの分割や前提条件の整理を検討します。
+
+### Arrangeが長すぎて何を試しているか分からない
+
+Arrangeが長すぎるテストは、読む人が「結局どの条件が重要なのか」を見失いやすくなります。
+
+```typescript
+it('送料無料になる', () => {
+  const user = createUser({ rank: 'premium' });
+  const item = createItem({ price: 1200 });
+  const cart = createCart({ user, items: [item] });
+  const coupon = createCoupon({ type: 'shipping-free' });
+  const settings = createSettings({ campaignEnabled: true });
+
+  const fee = calculateShippingFee(cart, coupon, settings);
+
+  expect(fee).toBe(0);
+});
+```
+
+この場合は、テスト名やファクトリ関数で重要な条件を目立たせます。不要な前提は削り、必要ならテスト対象の設計も見直します。
+
+### ActとAssertが何度も出てくる
+
+ActとAssertが何度も出てくるテストは、複数の仕様をまとめて確認している可能性があります。
+
+```typescript
+cart.add(item);
+expect(cart.items).toHaveLength(1);
+
+cart.remove(item.id);
+expect(cart.items).toHaveLength(0);
+```
+
+このようなテストは、「追加できる」と「削除できる」に分けると失敗原因が明確になります。前提を作るために `cart.add(item)` が必要なら、それは削除テストのArrangeに置きます。
+
+### Assertで内部実装を見すぎている
+
+`toHaveBeenCalledWith` は便利ですが、内部の呼び出しを細かく検証しすぎると、実装を少し変えただけでテストが壊れます。
+
+外部への通知やメール送信のように「呼び出し自体が仕様」の場合はモック検証が有効です。一方で、戻り値や状態変化で確認できるなら、そちらを優先します。
+
+### AAAパターンが合わないケースもある
+
+AAAは単体テストの基本形として強力ですが、すべてのテストを無理に3行構成へ押し込む必要はありません。
+
+統合テストやE2Eテストでは、前提条件の作成、画面操作、APIレスポンス待ち、DB確認などが複数段階になることがあります。この場合は、AAAのコメントを機械的に置くよりも、ユーザー操作の流れやシナリオが読みやすい構造を優先します。
+
+ただし、その場合でも「準備」「実行」「検証」が混ざると読みにくくなる点は同じです。AAAは厳密なテンプレートというより、テストを整理するための判断基準として使うと実務に馴染みます。
 
 ## 読みやすい単体テストのチェックリスト
 
