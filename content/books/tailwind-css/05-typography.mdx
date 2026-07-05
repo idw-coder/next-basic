@@ -1,10 +1,12 @@
 ---
-title: 'Tailwind CSSの文字サイズ・フォント・行間 — text・font・leading・line-clampの使い方'
-description: 'Tailwind CSSで文字サイズ、font-weight、line-height、文字色、text-align、truncate、line-clamp、proseを使い、見出し・本文・カード文言を読みやすく整える方法を整理します。'
+title: 'text-lg・text-baseは何px？Tailwind CSS文字サイズ一覧'
+description: 'Tailwind CSSのtext-lg、text-base、text-smなどの文字サイズをpx・remで一覧化し、font-family、font-weight、leading、tracking、改行制御、レスポンシブ指定まで解説します。'
 order: 5
 ---
 
-テキストの大きさ・太さ・行間・色——読みやすさを左右する要素は、Tailwindでは `text-*` `font-*` `leading-*` といったユーティリティで指定します。
+Tailwind CSSの文字サイズは、`text-base` や `text-lg` のようなクラスで指定します。たとえば `text-base` は16px、`text-lg` は18pxです。
+
+テキストの大きさ・太さ・行間・色——読みやすさを左右する要素は、Tailwindでは `text-*` `font-*` `leading-*` `tracking-*` といったユーティリティで指定します。
 
 CSSプロパティとしての `font-size`、`line-height`、`white-space`、`overflow-wrap` を先に確認したい場合は、[テキスト・フォント・改行制御](/books/css-basics/07-typography)を参照してください。この章では、それらをTailwindのユーティリティとしてどう使うかに絞ります。
 
@@ -28,15 +30,44 @@ Tailwindの文字系クラスは単体で覚えるより、UIの用途ごとに�
 |---|---|---|
 | ページ見出し | `text-2xl font-bold leading-tight text-slate-900` | 大きく、太く、行間を締める |
 | セクション見出し | `text-lg font-semibold leading-snug text-slate-900` | 本文より目立たせる |
-| 本文 | `text-base leading-relaxed text-slate-700` | 読みやすい行間にする |
+| 本文 | `text-base leading-relaxed text-slate-700` | 16pxを基準に読みやすい行間にする |
 | 補足文 | `text-sm leading-6 text-slate-500` | 主文より弱く見せる |
 | ラベル | `text-xs font-semibold uppercase tracking-wide text-slate-500` | 小さくても識別しやすくする |
 | 1行省略 | `truncate` | 一覧のタイトル崩れを防ぐ |
 | 複数行省略 | `line-clamp-2` / `line-clamp-3` | カードの高さを揃える |
 
+```html
+<h1 class="text-2xl font-bold leading-tight text-slate-900">
+  Tailwind CSSの文字サイズ
+</h1>
+<p class="mt-3 text-base leading-relaxed text-slate-700">
+  本文は16pxを基準に、読みやすい行間を合わせます。
+</p>
+```
+
 ---
 
-## font-size
+## font-size: text-lg / text-base の実値一覧
+
+検索でよく調べられる `text-lg`、`text-base`、`text-sm` は、Tailwindのデフォルトテーマでは次の値です。
+
+| クラス | font-size | px換算 | デフォルトのline-height | 主な用途 |
+|---|---:|---:|---:|---|
+| `text-xs` | `0.75rem` | 12px | `1rem` / 16px | ラベル、注釈 |
+| `text-sm` | `0.875rem` | 14px | `1.25rem` / 20px | 補足文、小さめ本文 |
+| `text-base` | `1rem` | 16px | `1.5rem` / 24px | 本文の基本 |
+| `text-lg` | `1.125rem` | 18px | `1.75rem` / 28px | セクション見出し、強調本文 |
+| `text-xl` | `1.25rem` | 20px | `1.75rem` / 28px | 小さめ見出し |
+| `text-2xl` | `1.5rem` | 24px | `2rem` / 32px | 見出し |
+| `text-3xl` | `1.875rem` | 30px | `2.25rem` / 36px | 大きな見出し |
+| `text-4xl` | `2.25rem` | 36px | `2.5rem` / 40px | ヒーロー見出し |
+| `text-5xl` | `3rem` | 48px | `1` | 大きなタイトル |
+| `text-6xl` | `3.75rem` | 60px | `1` | かなり大きなタイトル |
+| `text-7xl` | `4.5rem` | 72px | `1` | ビジュアル重視のタイトル |
+| `text-8xl` | `6rem` | 96px | `1` | 特大表示 |
+| `text-9xl` | `8rem` | 128px | `1` | 最大級の表示 |
+
+<Marker>`text-base` は16px、`text-lg` は18px。本文は `text-base`、少し強めたい本文や小見出しは `text-lg` が使いやすい基準です。</Marker>
 
 ```html
 <p class="text-sm">14px（0.875rem）</p>
@@ -48,24 +79,85 @@ Tailwindの文字系クラスは単体で覚えるより、UIの用途ごとに�
 <p class="text-4xl">36px（2.25rem）</p>
 ```
 
-<TailwindPreview title="見出しと本文の基本セット">
-  <article className="max-w-xl">
-    <p className="text-xs font-bold uppercase tracking-wide text-blue-600">Typography</p>
-    <h2 className="mt-2 text-2xl font-bold leading-tight text-slate-900">
-      読みやすい本文はサイズ・太さ・行間で決まる
-    </h2>
-    <p className="mt-3 text-base leading-relaxed text-slate-600">
-      本文には text-base leading-relaxed、見出しには text-2xl font-bold leading-tight
-      のような組み合わせを使うと、まず安定した読み心地になります。
+<TailwindPreview title="text-sm / text-base / text-lg の見え方">
+  <div className="space-y-4">
+    <p className="text-sm leading-6 text-slate-600">
+      text-sm: 補足文やメタ情報に向いた小さめの文字です。
     </p>
-  </article>
+    <p className="text-base leading-relaxed text-slate-700">
+      text-base: 本文の基本サイズです。長めの説明文はこのサイズから考えると安定します。
+    </p>
+    <p className="text-lg font-semibold leading-7 text-slate-900">
+      text-lg: 本文より少し目立たせたい導入文や小見出しに使えます。
+    </p>
+  </div>
 </TailwindPreview>
 
 Tailwindのタイポグラフィは、単体のクラスより**組み合わせ**で覚えると実務で使いやすくなります。本文は `text-base leading-relaxed text-slate-600`、見出しは `text-2xl font-bold leading-tight text-slate-900` がよく使う出発点です。
 
 ---
 
+## レスポンシブ対応のテキストサイズ
+
+画面幅に応じて文字サイズを変えるときは、`sm:` `md:` `lg:` などのブレークポイントプレフィックスを付けます。詳しい考え方は [レスポンシブデザイン](/books/tailwind-css/07-responsive) で扱いますが、文字サイズでも書き方は同じです。
+
+```html
+<h1 class="text-2xl font-bold leading-tight md:text-4xl lg:text-5xl">
+  画面幅に合わせて大きくなる見出し
+</h1>
+
+<p class="mt-4 text-base leading-relaxed md:text-lg">
+  スマートフォンでは16px、md以上では18pxで表示します。
+</p>
+```
+
+<TailwindPreview title="レスポンシブな見出し">
+  <article className="max-w-xl">
+    <p className="text-xs font-bold uppercase tracking-wide text-blue-600">Responsive</p>
+    <p className="mt-2 text-2xl font-bold leading-tight text-slate-900 md:text-4xl">
+      小さい画面では控えめに、大きい画面ではしっかり見せる
+    </p>
+    <p className="mt-3 text-base leading-relaxed text-slate-600 md:text-lg">
+      `text-2xl md:text-4xl` のように書くと、画面幅が広いときだけ見出しを大きくできます。
+    </p>
+  </article>
+</TailwindPreview>
+
+Tailwindはモバイルファーストです。`text-2xl md:text-4xl` は「スマートフォンで `text-2xl`、768px以上で `text-4xl`」という意味になります。
+
+---
+
+## font-family
+
+フォントの種類は `font-sans`、`font-serif`、`font-mono` で指定します。
+
+| クラス | CSS上の意味 | 主な用途 |
+|---|---|---|
+| `font-sans` | sans-serif系 | 通常のUI、本文、見出し |
+| `font-serif` | serif系 | 記事タイトル、引用、少し文芸的な表現 |
+| `font-mono` | monospace系 | コード、数値、ログ、ID |
+
+```html
+<p class="font-sans">通常のUIテキスト</p>
+<p class="font-serif">少し雰囲気を変えたい見出し</p>
+<p class="font-mono">npm run dev</p>
+```
+
+<TailwindPreview title="font-family の違い">
+  <div className="space-y-3">
+    <p className="font-sans text-base text-slate-700">font-sans: 管理画面やアプリUIの本文に向いています。</p>
+    <p className="font-serif text-base text-slate-700">font-serif: 引用や読み物らしい見出しで使うことがあります。</p>
+    <p className="font-mono text-sm text-slate-700">font-mono: const size = "text-lg"</p>
+  </div>
+</TailwindPreview>
+
+実務では、多くのUIを `font-sans` で統一し、コードや数値だけ `font-mono` にするのが扱いやすいです。サイト全体のフォントを変えたい場合は、テーマ側で `font-sans` などの中身を設定します。
+
+---
+
 ## font-weight
+
+文字の太さは `font-*` で指定します。見出しは太く、本文は通常、ラベルは少し太くすると読みやすくなります。
 
 ```html
 <p class="font-normal">通常（400）</p>
@@ -74,9 +166,18 @@ Tailwindのタイポグラフィは、単体のクラスより**組み合わせ*
 <p class="font-bold">ボールド（700）</p>
 ```
 
+| クラス | 太さ | 主な用途 |
+|---|---:|---|
+| `font-normal` | 400 | 本文 |
+| `font-medium` | 500 | ボタン、控えめな強調 |
+| `font-semibold` | 600 | 小見出し、ラベル |
+| `font-bold` | 700 | 見出し、強い強調 |
+
 ---
 
 ## line-height
+
+行間は `leading-*` で指定します。本文は少しゆとりを持たせ、見出しは締めるとバランスが取りやすくなります。
 
 ```html
 <p class="leading-tight">行間狭い（1.25）— 見出し向け</p>
@@ -85,22 +186,108 @@ Tailwindのタイポグラフィは、単体のクラスより**組み合わせ*
 <p class="leading-loose">広め（2）</p>
 ```
 
+```html
+<h2 class="text-2xl font-bold leading-tight">
+  複数行になっても締まって見える見出し
+</h2>
+<p class="mt-3 text-base leading-relaxed">
+  長めの本文では行間を少し広げると、行を追いやすくなります。
+</p>
+```
+
+---
+
+## letter-spacing: tracking-*
+
+文字間隔は `tracking-*` で指定します。小さな英字ラベルや大きな見出しで使うことが多いです。
+
+| クラス | 変化 | 主な用途 |
+|---|---|---|
+| `tracking-tighter` | かなり詰める | 大きな英字見出し |
+| `tracking-tight` | 少し詰める | 見出し |
+| `tracking-normal` | 標準 | 本文 |
+| `tracking-wide` | 少し広げる | ラベル、バッジ |
+| `tracking-wider` | 広げる | 英字の見出し・ナビ |
+| `tracking-widest` | かなり広げる | 短い英字ラベル |
+
+```html
+<p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+  Typography
+</p>
+<h2 class="text-3xl font-bold tracking-tight">
+  読みやすい見出し
+</h2>
+```
+
+<TailwindPreview title="tracking-tight と tracking-wide">
+  <div className="space-y-3">
+    <p className="text-2xl font-bold tracking-tight text-slate-900">tracking-tight の見出し</p>
+    <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">tracking-wide label</p>
+  </div>
+</TailwindPreview>
+
+日本語の本文に `tracking-wide` を強く使うと読みにくくなることがあります。まずは英字ラベルや短い見出しに限定すると失敗しにくいです。
+
 ---
 
 ## text-align / text-color
+
+文字揃えは `text-left`、`text-center`、`text-right`、文字色は `text-slate-700` や `text-blue-600` のような色クラスで指定します。
 
 ```html
 <p class="text-center">中央揃え</p>
 <p class="text-right">右揃え</p>
 
-<p class="text-gray-600">グレーテキスト</p>
-<p class="text-blue-600">ブルーテキスト</p>
-<p class="text-red-500">エラーカラー</p>
+<p class="text-slate-600">落ち着いた本文色</p>
+<p class="text-blue-600">リンクや強調に使う青</p>
+<p class="text-red-500">エラーや警告の赤</p>
 ```
+
+本文色は真っ黒にせず、`text-slate-700` や `text-slate-600` から始めると、画面全体が少し柔らかく見えます。色の考え方は次章の [カラーシステム](/books/tailwind-css/06-colors) で詳しく扱います。
+
+---
+
+## whitespace / word-break
+
+改行や長い単語の折り返しは、`whitespace-*` と `break-*` で制御します。カードタイトル、URL、テーブルセルでよく使います。
+
+| クラス | 役割 | 主な用途 |
+|---|---|---|
+| `whitespace-normal` | 通常どおり折り返す | 本文 |
+| `whitespace-nowrap` | 折り返さない | ボタン、短いラベル |
+| `whitespace-pre-line` | 改行文字を反映し、空白は通常扱い | 入力された複数行テキスト |
+| `break-normal` | 通常の改行ルール | 基本 |
+| `break-words` | 必要なら長い単語を折り返す | URL、長い英単語 |
+| `break-all` | どこでも折り返す | 幅が厳しい表のセル |
+
+```html
+<!-- ボタン内の短いラベルを1行に保つ -->
+<button class="whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
+  今すぐ登録
+</button>
+
+<!-- 長いURLでカード幅が壊れないようにする -->
+<p class="break-words text-sm text-slate-600">
+  https://example.com/very/long/path/that/should/wrap
+</p>
+```
+
+<TailwindPreview title="長いテキストの折り返し">
+  <div className="max-w-sm rounded-md border border-slate-200 p-4">
+    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">break-words</p>
+    <p className="break-words text-sm leading-6 text-slate-700">
+      https://example.com/articles/tailwind-css-text-lg-text-base-font-size-reference
+    </p>
+  </div>
+</TailwindPreview>
+
+`whitespace-nowrap` は便利ですが、スマートフォンで横にはみ出しやすい指定です。短いラベルやボタンだけに使い、本文には基本的に使いません。
 
 ---
 
 ## テキスト省略
+
+1行で省略するなら `truncate`、複数行で省略するなら `line-clamp-*` を使います。カード一覧や検索結果のタイトルでよく使います。
 
 ```html
 <!-- 1行で省略 -->
@@ -128,6 +315,8 @@ Tailwindのタイポグラフィは、単体のクラスより**組み合わせ*
   </div>
 </TailwindPreview>
 
+`truncate` は `overflow: hidden`、`text-overflow: ellipsis`、`white-space: nowrap` をまとめて指定するクラスです。複数行では効かないので、2行や3行で止めたいときは `line-clamp-2` のように書きます。
+
 ---
 
 ## @tailwindcss/typography プラグイン
@@ -144,13 +333,78 @@ npm install @tailwindcss/typography
 </article>
 ```
 
+`prose` は記事本文全体に効くスタイルです。アプリのボタンやカードを作るためのものではなく、Markdownから出力される見出し・段落・リスト・コードなどを読みやすく整えるために使います。
+
+---
+
+## よくあるハマりどころ
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`leading-none` を使ったら見出しが詰まって見えるし、`prose` の中で色を変えたのに思った通りにならないことがあります…。
+</SpeechBubble>
+
+### `leading-none` で上下が窮屈になる
+
+`leading-none` は行間を1にするため、複数行の日本語見出しでは上下が窮屈に見えることがあります。大きな見出しでも、まずは `leading-tight` から試すのがおすすめです。
+
+```html
+<!-- 詰まりすぎることがある -->
+<h2 class="text-4xl font-bold leading-none">長い見出し</h2>
+
+<!-- まずはこちらから試す -->
+<h2 class="text-4xl font-bold leading-tight">長い見出し</h2>
+```
+
+### `prose` 内の見た目が上書きされる
+
+`prose` は `article` 内の `h2`、`p`、`a` などにまとめてスタイルを当てます。そのため、普通のUI部品を `prose` の中に入れると余白や文字サイズが想定と変わることがあります。
+
+```html
+<article class="prose max-w-none">
+  <h2>記事の見出し</h2>
+  <p>記事本文...</p>
+
+  <div class="not-prose">
+    <button class="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
+      proseの影響を受けないボタン
+    </button>
+  </div>
+</article>
+```
+
+`prose` の中にカードやボタンを置くときは、必要に応じて `not-prose` で囲みます。
+
+### `truncate` が効かない
+
+`truncate` は、要素に幅の制約がないと省略されません。親要素や本人に `max-w-*`、`w-*`、`min-w-0` などが必要です。
+
+```html
+<div class="flex min-w-0 gap-3">
+  <p class="truncate text-sm font-medium">
+    とても長いタイトルがここで省略されます
+  </p>
+</div>
+```
+
 ---
 
 ## ちゃんと使うためのポイント
 
-- <Marker>見出しには `text-2xl font-bold leading-tight`、本文には `text-base leading-relaxed` が基本形</Marker>
-- `line-clamp-*` でカードのテキスト溢れを防ぐ
+- <Marker>本文は `text-base leading-relaxed`、見出しは `text-2xl font-bold leading-tight` が基本形</Marker>
+- `text-base` は16px、`text-lg` は18px。迷ったら本文は `text-base` から始める
+- 画面幅で見出しを変えるなら `text-2xl md:text-4xl` のように書く
+- 小さなラベルは `text-xs font-semibold tracking-wide` にすると読みやすい
+- 長いURLや英単語で崩れるときは `break-words`、1行省略は `truncate`、複数行省略は `line-clamp-*`
 - 長文コンテンツには `@tailwindcss/typography` の `prose` が強力
+
+---
+
+## 参考リンク
+
+- [MDN — font-size](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/font-size) — 文字サイズ指定のCSSリファレンス
+- [MDN — font-family](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/font-family) — フォントファミリー指定のCSSリファレンス
+- [MDN — line-height](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/line-height) — 行間指定のCSSリファレンス
+- [MDN — white-space](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/white-space) — 空白・改行の扱いを制御するCSSリファレンス
 
 次の章では、**[カラーシステム](/books/tailwind-css/06-colors)**を学びます。
 
