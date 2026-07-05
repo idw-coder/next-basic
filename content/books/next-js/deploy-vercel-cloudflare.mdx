@@ -167,6 +167,113 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
+### standaloneとは何か
+
+`standalone` は、Next.jsアプリを **Node.jsサーバーとして本番実行するために必要なファイルだけをまとめる出力形式** です。
+
+通常のプロジェクトには、ソースコード、開発用パッケージ、ビルドツール、テスト関連ファイルなど、本番起動には不要なものも多く含まれています。Next.js公式の [`output` 設定](https://nextjs.org/docs/app/api-reference/config/next-config-js/output) でも説明されているように、`output: 'standalone'` を有効にすると、`next build` 時にNext.jsが各ページやRoute Handlerの依存関係を解析し、実行に必要なファイルだけを `.next/standalone` にコピーします。
+
+ビルド後のイメージは次のようになります。
+
+```txt
+.next/
+├── standalone/
+│   ├── server.js
+│   ├── package.json
+│   ├── .next/
+│   └── node_modules/   // 本番実行に必要な一部だけ
+└── static/
+```
+
+`server.js` はNext.jsが生成する最小限の起動ファイルです。通常の `next start` の代わりに、次のように起動できます。
+
+```bash
+node .next/standalone/server.js
+```
+
+本番環境でポートやホストを指定したい場合は、環境変数を使います。
+
+```bash
+PORT=8080 HOSTNAME=0.0.0.0 node .next/standalone/server.js
+```
+
+<Callout type="info" title="standaloneはstatic exportとは違う">
+`standalone` はNode.jsサーバーとして動かすための出力です。SSR、Route Handlers、Server Actionsなど、サーバー実行が必要な機能を使えます。一方、後述する `output: 'export'` はHTML/CSS/JSだけを書き出す静的サイト向けの出力で、サーバー機能は使えません。
+</Callout>
+
+### 設定ファイルで意識すること
+
+`output: 'standalone'` は `next.config.ts` または `next.config.js` に書きます。この設定は **ビルド時** に効くため、変更したら `npm run build` をやり直す必要があります。
+
+```ts
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  output: 'standalone',
+};
+
+export default nextConfig;
+```
+
+`standalone` は必要なファイルを自動で追跡しますが、`fs` で読み込む設定ファイル、テンプレート、証明書、外部バイナリなどは追跡から漏れることがあります。その場合は、`outputFileTracingIncludes` で明示的に含めます。
+
+```ts
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  output: 'standalone',
+  outputFileTracingIncludes: {
+    '/*': ['src/config/runtime/**/*.json'],
+  },
+};
+
+export default nextConfig;
+```
+
+反対に、不要な大きいファイルが含まれてしまう場合は `outputFileTracingExcludes` で除外できます。Dockerイメージが大きくなりすぎる場合は、まず `.next/standalone` の中身を確認すると原因を追いやすいです。
+
+また、`public` と `.next/static` は `.next/standalone` に自動コピーされません。CDNやリバースプロキシで配信するのが理想ですが、単体のNode.jsサーバーで配信したい場合は、ビルド後にコピーします。
+
+```bash
+cp -r public .next/standalone/
+cp -r .next/static .next/standalone/.next/
+```
+
+Dockerでは、ビルドステージで `npm run build` したあと、実行ステージに `.next/standalone`、`.next/static`、`public` をコピーする構成がよく使われます。
+
+```dockerfile
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+CMD ["node", "server.js"]
+```
+
+### 開発時との違い
+
+開発中の `npm run dev` は、`standalone` の仕組みを使いません。開発サーバーはソースコードを監視し、変更を即時反映するために動いています。
+
+一方、`standalone` は本番用に `next build` した後の成果物です。主な違いは次のとおりです。
+
+| 項目 | 開発時 | standalone本番 |
+| --- | --- | --- |
+| 起動コマンド | `npm run dev` | `node server.js` |
+| 入力 | ソースコード全体 | `.next/standalone` の成果物 |
+| 変更反映 | ファイル保存で即時反映 | 再ビルドと再デプロイが必要 |
+| 目的 | 開発・デバッグ | 小さい成果物で本番実行 |
+| `node_modules` | 開発依存も含めて存在 | 実行に必要な一部だけをコピー |
+
+ローカルで本番に近い確認をしたい場合は、次の順で確認します。
+
+```bash
+npm run build
+node .next/standalone/server.js
+```
+
+この確認は `npm run dev` とは別物です。`next.config.ts` の本番向け設定、環境変数、静的ファイルのコピー漏れ、Docker上での起動パスなどは、`standalone` の成果物で確認しないと気づきにくいことがあります。
+
 Node.jsサーバーやDockerは、Next.js機能の自由度が高い一方で、次の運用を自分で考える必要があります。
 
 - プロセス管理
