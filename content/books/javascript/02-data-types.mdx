@@ -1,14 +1,734 @@
 ---
-title: 'データ型と型変換 — プリミティブとオブジェクトの境界線'
-description: 'プリミティブ型とオブジェクト型の違い、typeof演算子、暗黙的・明示的な型変換のルールをまとめます。'
+title: 'JavaScriptのデータ型と型変換 — プリミティブ・typeof・オブジェクトの違い'
+description: 'JavaScriptのデータ型、7つのプリミティブ型、プリミティブとオブジェクトの違い、typeof演算子、暗黙的・明示的な型変換を実務で迷わない粒度で整理します。'
 order: 2
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+JavaScriptは「動的型付け」の言語です。変数に型が固定されるのではなく、値そのものが `string`、`number`、`boolean` などの型を持ちます。
+
+前章の[変数宣言とスコープ](/books/javascript/01-variables-and-scope)では、値に名前を付ける `const` / `let` / `var` を扱いました。この章では、その「値」にはどんな種類があり、比較や計算のときにどう変換されるのかを整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `typeof null` が `"object"` だったり、`"" == false` が `true` だったり、JavaScriptの型まわりは直感と違うことが多くて怖いです…。
+</SpeechBubble>
+
+先に結論を出しておくと、<Marker>JavaScriptの型でまず覚えるべき軸は「プリミティブ値」と「オブジェクト」の違い、そして暗黙的な型変換を避けるために `===` を使うこと</Marker>です。
+
+---
+
+## JavaScriptのデータ型の全体像
+
+JavaScriptの値は、大きく分けると**プリミティブ値**と**オブジェクト**に分かれます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    V["JavaScriptの値"] --> P["プリミティブ値"]
+    V --> O["オブジェクト"]
+    P --> S["string"]
+    P --> N["number"]
+    P --> BI["bigint"]
+    P --> BO["boolean"]
+    P --> U["undefined"]
+    P --> NU["null"]
+    P --> SY["symbol"]
+    O --> AR["Array"]
+    O --> FN["Function"]
+    O --> DA["Date"]
+    O --> OBJ["Object"]
+`}
+/>
+
+プリミティブ値は、言語の基本になる単純な値です。オブジェクトは、プロパティやメソッドを持てる複合的な値です。
+
+```js
+const name = 'Taro'; // string（プリミティブ）
+const age = 25; // number（プリミティブ）
+const user = { name: 'Taro', age: 25 }; // object（オブジェクト）
+const items = ['book', 'pen']; // object（配列もオブジェクト）
+```
+
+`typeof` で調べると、配列も関数も広い意味ではオブジェクトとして扱われることが分かります。
+
+```js
+typeof 'Taro'; // "string"
+typeof 25; // "number"
+typeof { name: 'Taro' }; // "object"
+typeof ['book', 'pen']; // "object"
+typeof function () {}; // "function"
+```
+
+<Figure src="/images/deta_man_color.png" alt="データの種類を整理しているイメージ" maxWidth="160px" />
+
+---
+
+## 7つのプリミティブ型
+
+プリミティブ型は、オブジェクトではない基本的な値です。JavaScriptには次の7種類があります。
+
+| 型 | 例 | 主な用途 |
+|---|---|---|
+| `string` | `'hello'`, `"JavaScript"` | 文字列、入力値、メッセージ |
+| `number` | `42`, `3.14`, `NaN`, `Infinity` | 数値計算、小数、特殊な数値 |
+| `bigint` | `9007199254740993n` | `number` で安全に扱えない大きな整数 |
+| `boolean` | `true`, `false` | 条件分岐、フラグ |
+| `undefined` | `undefined` | 値がまだ入っていない状態 |
+| `null` | `null` | 意図的に「値がない」と示す |
+| `symbol` | `Symbol('id')` | 一意なプロパティキー |
+
+### string
+
+`string` は文字列です。ユーザー名、メールアドレス、URL、画面に表示するメッセージなど、テキストを扱います。
+
+```js
+const message = 'こんにちは';
+const url = `https://example.com/users/${userId}`;
+```
+
+文字列操作の詳しいメソッドは、[文字列操作と正規表現](/books/javascript/08-string-methods)で扱います。
+
+### number
+
+`number` は整数も小数も扱う数値型です。JavaScriptには、一般的な意味での `int` や `float` という別々の型はありません。
+
+```js
+const count = 10;
+const rate = 0.08;
+const total = 1200 * (1 + rate);
+```
+
+`NaN` や `Infinity` も `number` 型です。この章の後半で詳しく扱います。
+
+### bigint
+
+`bigint` は、非常に大きな整数を安全に扱うための型です。末尾に `n` を付けて書きます。
+
+```js
+const id = 9007199254740993n;
+typeof id; // "bigint"
+```
+
+`bigint` と `number` は、そのまま混ぜて計算できません。
+
+```js
+1n + 1; // TypeError
+1n + BigInt(1); // 2n
+```
+
+### boolean
+
+`boolean` は `true` / `false` の2値です。条件分岐やフラグに使います。
+
+```js
+const isLoggedIn = true;
+
+if (isLoggedIn) {
+  console.log('マイページを表示');
+}
+```
+
+### undefined
+
+`undefined` は「値がまだ定義されていない」ことを表します。
+
+```js
+let name;
+console.log(name); // undefined
+
+const user = {};
+console.log(user.email); // undefined
+```
+
+何も `return` しない関数の戻り値も `undefined` です。
+
+```js
+function logMessage() {
+  console.log('hello');
+}
+
+const result = logMessage(); // undefined
+```
+
+### null
+
+`null` は、開発者が意図的に「値がない」と入れる値です。
+
+```js
+let selectedUser = null;
+
+// ユーザーを選択したらオブジェクトが入る
+selectedUser = { id: 1, name: 'Taro' };
+```
+
+`undefined` は「まだ入っていない」、`null` は「空であることを明示した」と考えると使い分けやすいです。
+
+### symbol
+
+`symbol` は一意な値を作るための型です。同じ説明文字列を渡しても、別々の値になります。
+
+```js
+const a = Symbol('id');
+const b = Symbol('id');
+
+console.log(a === b); // false
+```
+
+実務では、ライブラリ内部や特殊なプロパティキーで使われることが多く、初学者が頻繁に書く型ではありません。
+
+---
+
+## typeof演算子
+
+`typeof` は、値の型を文字列で返す演算子です。デバッグや条件分岐でよく使います。
+
+**構文:** `typeof value`
+
+| 要素 | 説明 |
+|---|---|
+| `value` | 型を調べたい値、変数、式 |
+
+**戻り値:** 型を表す文字列
+
+```js
+typeof 'hello'; // "string"
+typeof 123; // "number"
+typeof 123n; // "bigint"
+typeof true; // "boolean"
+typeof undefined; // "undefined"
+typeof Symbol('id'); // "symbol"
+typeof {}; // "object"
+typeof []; // "object"
+typeof function () {}; // "function"
+```
+
+### typeofの早見表
+
+| 値 | `typeof` の結果 |
+|---|---|
+| `'hello'` | `"string"` |
+| `123` | `"number"` |
+| `123n` | `"bigint"` |
+| `true` | `"boolean"` |
+| `undefined` | `"undefined"` |
+| `Symbol('id')` | `"symbol"` |
+| `{}` | `"object"` |
+| `[]` | `"object"` |
+| `null` | `"object"` |
+| `() => {}` | `"function"` |
+
+最重要の落とし穴は `null` です。
+
+```js
+typeof null; // "object"
+```
+
+これは歴史的な仕様上の挙動です。`null` を判定したいときは、`typeof` ではなく `value === null` を使います。
+
+```js
+const value = null;
+
+value === null; // true
+typeof value === 'object'; // true だが、null判定としては不適切
+```
+
+<Callout type="warning" title="typeof null === 'object' は暗記ポイント">
+  `typeof null` が `"object"` になるからといって、`null`
+  が普通のオブジェクトとして使えるわけではありません。`null.name` のようにプロパティへアクセスすると `TypeError`
+  になります。
+</Callout>
+
+配列かどうかを調べたい場合も `typeof` では不十分です。
+
+```js
+const list = [1, 2, 3];
+
+typeof list; // "object"
+Array.isArray(list); // true
+```
+
+配列の扱いは [配列メソッド完全ガイド](/books/javascript/07-arrays) で詳しく扱います。
+
+---
+
+## プリミティブとオブジェクトの違い
+
+プリミティブ値とオブジェクトの違いは、代入や比較の挙動に強く現れます。
+
+### プリミティブ値は値そのものを扱う
+
+プリミティブ値を別の変数に代入すると、値がコピーされたように振る舞います。
+
+```js
+let a = 1;
+let b = a;
+
+b = 2;
+
+console.log(a); // 1
+console.log(b); // 2
+```
+
+文字列も同じです。
+
+```js
+let x = 'hello';
+let y = x;
+
+y = 'bye';
+
+console.log(x); // "hello"
+console.log(y); // "bye"
+```
+
+### オブジェクトは参照先を共有する
+
+オブジェクトを別の変数に代入すると、同じオブジェクトを指す参照がコピーされます。
+
+```js
+const userA = { name: 'Taro' };
+const userB = userA;
+
+userB.name = 'Hanako';
+
+console.log(userA.name); // "Hanako"
+console.log(userB.name); // "Hanako"
+```
+
+`userA` と `userB` は別々の箱に見えますが、中身は同じオブジェクトを指しています。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `const` なのにオブジェクトの中身を変えられるのは、前章でも出てきた話ですね。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  そうです。`const` が固定するのは「変数がどの値を指すか」です。オブジェクトのプロパティ変更までは禁止しません。
+</SpeechBubble>
+
+### オブジェクト同士の比較は中身ではなく参照を見る
+
+オブジェクトは、中身が同じでも別々に作られたものなら `===` で一致しません。
+
+```js
+const a = { id: 1 };
+const b = { id: 1 };
+const c = a;
+
+console.log(a === b); // false
+console.log(a === c); // true
+```
+
+配列も同じです。
+
+```js
+[1, 2, 3] === [1, 2, 3]; // false
+```
+
+<Marker>JavaScriptは「オブジェクトの中身が同じか」ではなく、「同じオブジェクトを指しているか」で `===` を判定します。</Marker>
+
+---
+
+## 暗黙的型変換
+
+JavaScriptでは、演算や比較のときに自動で型が変換されることがあります。これを**暗黙的型変換**、または**型強制**と呼びます。
+
+```js
+'1' + 2; // "12"
+'5' - 2; // 3
+true + 1; // 2
+```
+
+便利に見える一方で、予想外の結果を生みやすい場所でもあります。
+
+### 文字列結合の `+`
+
+`+` は、数値の足し算にも文字列結合にも使われます。片方が文字列だと、もう片方も文字列に変換されやすくなります。
+
+```js
+1 + 2; // 3
+'1' + 2; // "12"
+2 + '1'; // "21"
+```
+
+フォーム入力やURLクエリから来た値は、見た目が数字でも文字列であることが多いです。
+
+```js
+const price = '1000';
+const tax = 100;
+
+price + tax; // "1000100"
+Number(price) + tax; // 1100
+```
+
+### `==` と `===`
+
+`==` は比較前に型変換します。`===` は型変換せず、型と値が同じときだけ `true` になります。
+
+```js
+1 == '1'; // true
+1 === '1'; // false
+
+'' == false; // true
+'' === false; // false
+
+null == undefined; // true
+null === undefined; // false
+```
+
+実務では、基本的に `===` を使います。`==` の詳しい比較ルールは次章の[演算子と式](/books/javascript/03-operators-and-expressions)でさらに掘り下げます。
+
+<Callout type="warning" title="== は知識として理解し、普段は使わない">
+  `"" == false` や `null == undefined` のような結果は、仕様としては説明できます。ただし、読む人に毎回その変換ルールを思い出させるコードは保守しづらいです。チーム開発では `===`
+  を標準にするのが安全です。
+</Callout>
+
+### falsy値一覧
+
+条件式では、真偽値でない値も `true` / `false` 相当として扱われます。
+
+`false` 相当として扱われる値を **falsy** と呼びます。
+
+| falsy値 | 説明 |
+|---|---|
+| `false` | booleanのfalse |
+| `0` | 数値の0 |
+| `-0` | 負の0 |
+| `0n` | bigintの0 |
+| `''` | 空文字列 |
+| `null` | 値がないことを明示 |
+| `undefined` | 値が定義されていない |
+| `NaN` | 数値として成立しない結果 |
+
+それ以外の値は基本的に truthy です。空配列 `[]` や空オブジェクト `{}` も truthy です。
+
+```js
+Boolean(''); // false
+Boolean('hello'); // true
+Boolean([]); // true
+Boolean({}); // true
+```
+
+<Figure src="/images/question_woman_04_color.png" alt="truthyとfalsyの判定で迷っているイメージ" maxWidth="180px" />
+
+---
+
+## 明示的型変換
+
+型変換が必要なときは、JavaScriptに任せるのではなく、自分で明示します。
+
+### Number
+
+`Number()` は値を数値に変換します。
+
+**構文:** `Number(value)`
+
+| 引数 | 説明 |
+|---|---|
+| `value` | 数値へ変換したい値 |
+
+**戻り値:** 変換後の `number`。変換できない場合は `NaN`
+
+```js
+Number('123'); // 123
+Number('3.14'); // 3.14
+Number(''); // 0
+Number('hello'); // NaN
+Number(true); // 1
+Number(false); // 0
+Number(null); // 0
+Number(undefined); // NaN
+```
+
+フォーム入力は文字列なので、計算する前に `Number()` で変換することが多いです。
+
+```js
+const input = '1200';
+const price = Number(input);
+
+if (Number.isNaN(price)) {
+  console.log('数値を入力してください');
+}
+```
+
+### String
+
+`String()` は値を文字列に変換します。
+
+**構文:** `String(value)`
+
+| 引数 | 説明 |
+|---|---|
+| `value` | 文字列へ変換したい値 |
+
+**戻り値:** 変換後の `string`
+
+```js
+String(123); // "123"
+String(true); // "true"
+String(false); // "false"
+String(null); // "null"
+String(undefined); // "undefined"
+```
+
+画面表示やログ出力のために、値を明示的に文字列化したいときに使います。
+
+### Boolean
+
+`Boolean()` は値を真偽値に変換します。
+
+**構文:** `Boolean(value)`
+
+| 引数 | 説明 |
+|---|---|
+| `value` | 真偽値へ変換したい値 |
+
+**戻り値:** 変換後の `boolean`
+
+```js
+Boolean('hello'); // true
+Boolean(''); // false
+Boolean(1); // true
+Boolean(0); // false
+Boolean(null); // false
+Boolean([]); // true
+```
+
+`Boolean()` は、値が truthy か falsy かを確認したいときに便利です。
+
+### parseInt
+
+`parseInt()` は文字列を整数として解析します。
+
+**構文:** `parseInt(string, radix?)`
+
+| 引数 | 説明 |
+|---|---|
+| `string` | 解析したい文字列。文字列でない値は文字列に変換される |
+| `radix`（省略可） | 何進数として読むか。通常は `10` を指定する |
+
+**戻り値:** 解析できた整数。先頭から数値として読めない場合は `NaN`
+
+```js
+parseInt('123', 10); // 123
+parseInt('123px', 10); // 123
+parseInt('3.14', 10); // 3
+parseInt('hello', 10); // NaN
+```
+
+CSSの `px` 値のように、先頭の整数部分だけ取りたいときに使います。
+
+### parseFloat
+
+`parseFloat()` は文字列を小数として解析します。
+
+**構文:** `parseFloat(string)`
+
+| 引数 | 説明 |
+|---|---|
+| `string` | 解析したい文字列。文字列でない値は文字列に変換される |
+
+**戻り値:** 解析できた数値。先頭から数値として読めない場合は `NaN`
+
+```js
+parseFloat('3.14'); // 3.14
+parseFloat('3.14px'); // 3.14
+parseFloat('hello'); // NaN
+```
+
+`Number()` は文字列全体が数値として解釈できる必要があります。一方、`parseInt()` / `parseFloat()` は先頭から読めるところまでを数値にします。
+
+```js
+Number('123px'); // NaN
+parseInt('123px', 10); // 123
+parseFloat('12.5px'); // 12.5
+```
+
+<Callout type="info" title="どれを使うべき？">
+  入力値全体が数値であるべきなら `Number()`、単位付き文字列の先頭だけを取りたいなら `parseInt()` / `parseFloat()`
+  が向いています。`parseInt()` には、意図を明確にするため第2引数 `10` を付ける癖をつけると安全です。
+</Callout>
+
+---
+
+## NaNとInfinity
+
+`NaN` と `Infinity` は、どちらも `number` 型の特殊な値です。
+
+```js
+typeof NaN; // "number"
+typeof Infinity; // "number"
+```
+
+### NaN
+
+`NaN` は `Not a Number` の略で、数値として成立しない計算結果を表します。
+
+```js
+Number('hello'); // NaN
+0 / 0; // NaN
+Math.sqrt(-1); // NaN
+```
+
+`NaN` 最大の特徴は、自分自身とも等しくないことです。
+
+```js
+NaN === NaN; // false
+```
+
+`NaN` かどうかを調べるときは `Number.isNaN()` を使います。
+
+**構文:** `Number.isNaN(value)`
+
+| 引数 | 説明 |
+|---|---|
+| `value` | `NaN` かどうか調べたい値 |
+
+**戻り値:** `value` が数値の `NaN` なら `true`、それ以外は `false`
+
+```js
+Number.isNaN(NaN); // true
+Number.isNaN(Number('hello')); // true
+Number.isNaN('hello'); // false
+```
+
+### Infinity
+
+`Infinity` は無限大を表す数値です。0で割ったり、表現できる範囲を超える計算をしたりすると登場します。
+
+```js
+1 / 0; // Infinity
+-1 / 0; // -Infinity
+Number.MAX_VALUE * 2; // Infinity
+```
+
+有限の数値かどうかは `Number.isFinite()` で確認できます。
+
+**構文:** `Number.isFinite(value)`
+
+| 引数 | 説明 |
+|---|---|
+| `value` | 有限の数値か調べたい値 |
+
+**戻り値:** `value` が有限の `number` なら `true`、`NaN` / `Infinity` / 数値以外なら `false`
+
+```js
+Number.isFinite(100); // true
+Number.isFinite(Infinity); // false
+Number.isFinite(NaN); // false
+Number.isFinite('100'); // false
+```
+
+数値の扱い、丸め、浮動小数点の誤差は [数値の扱いと計算](/books/javascript/21-numbers-and-math) で詳しく扱います。
+
+---
+
+## よくあるハマりどころ
+
+### `typeof null` は `"object"`
+
+```js
+typeof null; // "object"
+```
+
+`null` 判定には `value === null` を使います。
+
+### `"" == false` が `true`
+
+```js
+'' == false; // true
+```
+
+`==` が型変換を行い、どちらも `0` 相当として比較されるためです。実務では `===` を使い、必要なら自分で `Boolean(value)` や `Number(value)` を使って変換します。
+
+### `null == undefined` が `true`
+
+```js
+null == undefined; // true
+null === undefined; // false
+```
+
+`==` には、`null` と `undefined` を等しいとみなす特別ルールがあります。両方をまとめて「値がない」と扱いたい場合に `value == null` を使うコードもありますが、初学者のうちは明示的に書く方が安全です。
+
+```js
+value === null || value === undefined;
+```
+
+### 空配列と空オブジェクトはtruthy
+
+```js
+Boolean([]); // true
+Boolean({}); // true
+```
+
+「中身が空だからfalse」とはなりません。配列が空かどうかは `array.length === 0` で判断します。
+
+```js
+const items = [];
+
+if (items.length === 0) {
+  console.log('空です');
+}
+```
+
+### `Number('')` は `0`
+
+```js
+Number(''); // 0
+```
+
+フォーム入力で空文字を数値変換すると `0` になります。「未入力」と「0」を区別したい場合は、変換前に空文字を確認します。
+
+```js
+const input = '';
+
+if (input === '') {
+  console.log('未入力です');
+} else {
+  const value = Number(input);
+}
+```
+
+### オブジェクトを浅くコピーしたつもりでネストを共有する
+
+スプレッド構文でオブジェクトをコピーしても、ネストしたオブジェクトまでは深くコピーされません。
+
+```js
+const original = {
+  profile: { name: 'Taro' },
+};
+
+const copied = { ...original };
+copied.profile.name = 'Hanako';
+
+console.log(original.profile.name); // "Hanako"
+```
+
+深いコピーやJSON変換の注意点は、[JSONの基礎と実践](/books/javascript/23-json)で扱います。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>JavaScriptの値は「プリミティブ値」と「オブジェクト」に分けて考える</Marker>
+- プリミティブ型は `string` / `number` / `bigint` / `boolean` / `undefined` / `null` / `symbol` の7種類
+- `typeof null` は `"object"` になる。`null` 判定は `value === null`
+- オブジェクトや配列は `===` で中身比較されない。同じ参照かどうかを見ている
+- `==` は暗黙的型変換を行う。実務では基本的に `===` を使う
+- 数値変換は `Number()`、単位付き文字列の先頭だけ取りたいときは `parseInt()` / `parseFloat()`
+- `NaN` 判定は `Number.isNaN()`、有限数判定は `Number.isFinite()`
+
+---
 
 ## 参考リンク
 
 - [MDN — JavaScript のデータ型とデータ構造](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Data_structures)
 - [MDN — typeof](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/typeof)
-- [MDN — 型強制](https://developer.mozilla.org/ja/docs/Glossary/Type_coercion)
+- [MDN — Type coercion（型強制）](https://developer.mozilla.org/ja/docs/Glossary/Type_coercion)
+- [MDN — Number](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Number)
+
+次の章では、`==` と `===`、短絡評価、オプショナルチェーンなど、型変換とも関係が深い**[演算子と式](/books/javascript/03-operators-and-expressions)**を扱います。
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>
