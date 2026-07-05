@@ -142,6 +142,32 @@ GET /api/users?page=2&limit=20&sort=name
 
 GETにはリクエストボディを含めないのが慣例です。技術的には可能ですが、多くのHTTPクライアントやプロキシがGETのボディを無視するため、実務では避けます。
 
+**3. クエリパラメータはURLエンコードする**
+
+```
+// NG — 空白や日本語をそのまま入れている
+GET /api/articles?keyword=HTTP 入門&category=基礎&応用
+
+// OK — URLで安全に扱える文字に変換する
+GET /api/articles?keyword=HTTP%20%E5%85%A5%E9%96%80&category=%E5%9F%BA%E7%A4%8E%26%E5%BF%9C%E7%94%A8
+```
+
+URLでは、空白、日本語、`&`、`=`、`?` などの文字が特別な意味を持ったり、そのままでは安全に送れなかったりします。たとえば `category=基礎&応用` をそのまま送ると、`&` が「次のパラメータの区切り」と解釈され、サーバーが値を正しく読み取れません。
+
+JavaScriptでは `URLSearchParams` を使うと、値を自動でエンコードできます。
+
+```js
+const params = new URLSearchParams({
+  keyword: 'HTTP 入門',
+  category: '基礎&応用',
+});
+
+fetch(`/api/articles?${params.toString()}`);
+// /api/articles?keyword=HTTP+%E5%85%A5%E9%96%80&category=%E5%9F%BA%E7%A4%8E%26%E5%BF%9C%E7%94%A8
+```
+
+手動で1つの値だけ変換する場合は `encodeURIComponent()` を使います。URL全体ではなく、**パラメータの値ごと** にエンコードするのが基本です。
+
 <Callout type="warning">
 ### クエリ文字列に機密情報を入れない
 
@@ -290,7 +316,7 @@ const handleSubmit = async () => {
 
 - <Marker>HTTPメソッドは **CRUD操作** に対応する: GET=Read、POST=Create、PUT/PATCH=Update、DELETE=Delete</Marker>
 - **安全性** はサーバーの状態を変えないこと、**べき等性** は何回送っても同じ結果になること
-- GETは **データを変更しない・クエリ文字列に機密情報を入れない** が原則
+- GETは **データを変更しない・クエリパラメータをエンコードする・クエリ文字列に機密情報を入れない** が原則
 - POSTは **べき等ではない** ため、リトライには注意が必要
 - メソッドを正しく使い分けることで、API全体の可読性と信頼性が上がる
 
