@@ -25,6 +25,8 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Athena',
     'ECS',
     'CloudWatch',
+    'CloudFormation',
+    'CDK',
     'バケットポリシー',
   ],
 

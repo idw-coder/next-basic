@@ -160,7 +160,17 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
         },
       ],
     },
-    { slug: 'aws-cloudformation', label: 'CloudFormation（IaC）' },
+    {
+      slug: 'aws-cloudformation',
+      label: 'CloudFormation（IaC）',
+      bookLinks: [
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'infrastructure-as-code-and-operations',
+          title: 'Infrastructure as Codeと運用自動化 — CloudFormation・CDK・StackSets',
+        },
+      ],
+    },
     { slug: 'aws-cloudtrail', label: 'CloudTrail（監査）' },
     {
       slug: 'aws-elb',
