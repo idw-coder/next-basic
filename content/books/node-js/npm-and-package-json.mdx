@@ -1,8 +1,217 @@
 ---
 title: 'npmとpackage.jsonの読み方 — 依存管理・scripts・lockファイル'
-description: 'npmの基本、package.jsonの主要フィールド、依存関係、scripts、package-lock.jsonの役割を学びます。'
+description: 'npmの基本、package.jsonの主要フィールド、dependenciesとdevDependencies、scripts、package-lock.jsonの役割を学びます。'
 order: 3
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsのプロジェクトは、ほぼ必ず `package.json` を持っています。`npm install`、`npm run dev`、`npm run build` のようなコマンドも、裏側では `package.json` と npm の仕組みによって動いています。
+
+`package.json` が読めないと、「どのライブラリに依存しているのか」「開発サーバーはどのコマンドで起動するのか」「Node.jsのモジュール方式はどちらか」「なぜlockファイルをコミットするのか」が見えません。
+
+<Marker>`package.json` は、Node.jsプロジェクトの説明書であり、依存関係と実行コマンドの入口です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `npm install` はよく打ちます。でも `package.json` の中身は、正直あまり読んでいません。消したらまずそう、くらいの認識です。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  まずは全部覚えなくていいよ。`scripts`、`dependencies`、`devDependencies`、`type`、`engines` が読めるだけで、実務ではかなり困りにくくなる。
+</SpeechBubble>
+
+## npmとは
+
+npmは、Node.js向けのパッケージマネージャーです。外部ライブラリをインストールし、プロジェクトの依存関係を管理し、登録済みのスクリプトを実行します。
+
+| 用途 | コマンド例 |
+| ---- | ---------- |
+| パッケージを追加する | `npm install express` |
+| 開発用パッケージを追加する | `npm install -D vitest` |
+| 依存関係をインストールする | `npm install` |
+| scriptを実行する | `npm run build` |
+| パッケージを削除する | `npm uninstall express` |
+
+npm以外にも pnpm や Yarn がありますが、`package.json` の基本的な読み方は共通です。この章では npm を基準に説明します。
+
+## package.jsonの基本形
+
+最小限の `package.json` は、たとえば次のような形です。
+
+```json
+{
+  "name": "my-node-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
+```
+
+よく見るフィールドを整理します。
+
+| フィールド | 説明 |
+| ---------- | ---- |
+| `name` | パッケージ名。公開しないアプリでもプロジェクト識別に使う |
+| `version` | パッケージのバージョン |
+| `type` | `.js` ファイルをES Modulesとして扱うかCommonJSとして扱うかを決める |
+| `scripts` | `npm run ...` で実行できるコマンド集 |
+| `dependencies` | 本番実行に必要な依存パッケージ |
+| `devDependencies` | 開発・テスト・ビルドに必要な依存パッケージ |
+| `engines` | 想定するNode.jsやnpmのバージョン |
+
+<Callout type="note">
+`type` はモジュール方式に影響します。`"type": "module"` があると `.js` はES Modulesとして扱われ、ない場合はCommonJSとして扱われます。詳しくは次章で扱います。
+</Callout>
+
+## scripts — npm runで実行するコマンド
+
+`scripts` は、プロジェクトでよく使うコマンドに名前を付ける場所です。
+
+```json
+{
+  "scripts": {
+    "dev": "node src/server.js",
+    "test": "node --test",
+    "build": "tsc"
+  }
+}
+```
+
+実行するときは `npm run` を使います。
+
+```bash
+npm run dev
+npm run test
+```
+
+**構文：** `npm run <script-name> [-- <args>]`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `<script-name>` | `package.json` の `scripts` に定義した名前 |
+| `-- <args>`（省略可） | scriptに渡す追加引数。`--` 以降が実行コマンド側へ渡る |
+
+**戻り値：** シェルコマンドとしての終了コード。成功なら通常 `0`、失敗なら `0` 以外
+
+```bash
+npm run test -- --watch
+```
+
+`scripts` に入れておくと、チーム全員が同じコマンドで開発・テスト・ビルドできます。READMEに「この長いコマンドを打ってください」と書くより、`npm run dev` に寄せる方が運用しやすくなります。
+
+## dependenciesとdevDependencies
+
+依存関係には、大きく2種類あります。
+
+| フィールド | 入れるもの | 例 |
+| ---------- | ---------- | -- |
+| `dependencies` | アプリを本番で動かすために必要なもの | `express`, `mysql2`, `zod` |
+| `devDependencies` | 開発・テスト・ビルドでだけ必要なもの | `vitest`, `typescript`, `eslint` |
+
+たとえばExpressアプリを本番で動かすなら、Expressは `dependencies` です。一方、テストランナーやリンターは本番実行時には不要なので `devDependencies` に入れます。
+
+```bash
+npm install express
+npm install -D vitest
+```
+
+**構文：** `npm install [package-spec ...] [options]`
+
+| 引数・オプション | 説明 |
+| ---------------- | ---- |
+| `package-spec` | インストールするパッケージ名。例: `express`, `vitest@latest` |
+| `-D`, `--save-dev` | `devDependencies` に追加する |
+| 省略時 | パッケージ名を省略すると、`package.json` とlockファイルに基づいて依存関係をインストールする |
+
+**戻り値：** インストール結果を示す終了コード。成功なら通常 `0`
+
+<Marker>「本番でアプリが起動するために必要か」で `dependencies` と `devDependencies` を分けます。</Marker>
+
+## バージョン指定の読み方
+
+`dependencies` には、パッケージ名とバージョン範囲が書かれます。
+
+```json
+{
+  "dependencies": {
+    "express": "^5.1.0",
+    "zod": "~3.25.0"
+  }
+}
+```
+
+代表的な記号は次の通りです。
+
+| 書き方 | 意味 |
+| ------ | ---- |
+| `1.2.3` | ちょうど `1.2.3` |
+| `^1.2.3` | 互換性がある範囲で新しいバージョンを許可する。多くの場合 `1.x.x` の範囲 |
+| `~1.2.3` | パッチ更新を中心に許可する。多くの場合 `1.2.x` の範囲 |
+| `latest` | 最新版。アプリの依存として固定的に使うには避けたい |
+
+実際にインストールされた厳密なバージョンは、次の `package-lock.json` に記録されます。
+
+## package-lock.jsonの役割
+
+`package-lock.json` は、依存関係ツリーの**実際に解決されたバージョン**を記録するファイルです。
+
+`package.json` が「この範囲のバージョンを使ってよい」という宣言なら、`package-lock.json` は「今回はこの厳密なバージョンを使った」という記録です。
+
+| ファイル | 役割 |
+| -------- | ---- |
+| `package.json` | 人間が読む依存関係とコマンドの定義 |
+| `package-lock.json` | npmが解決した厳密な依存関係ツリー |
+| `node_modules/` | 実際にインストールされたパッケージ本体 |
+
+<Marker>アプリケーション開発では、`package-lock.json` は原則コミットします。</Marker>チームやCIで同じ依存バージョンを再現しやすくするためです。
+
+<Callout type="warning">
+`node_modules/` は通常コミットしません。サイズが大きく、環境ごとに再生成できるためです。代わりに `package.json` と `package-lock.json` をコミットし、必要な環境で `npm install` や `npm ci` を実行します。
+</Callout>
+
+## npm installとnpm ciの使い分け
+
+ローカル開発では `npm install` を使う場面が多いですが、CIでは `npm ci` がよく使われます。
+
+| コマンド | 用途 |
+| -------- | ---- |
+| `npm install` | 依存追加やローカル開発。lockファイルを更新することがある |
+| `npm ci` | CIや本番ビルド。lockファイルに厳密に従ってクリーンインストールする |
+
+`npm ci` は `package-lock.json` があることを前提に、より再現性の高いインストールを行います。CIで「手元では動くのにCIで依存が違う」を減らすためのコマンドです。
+
+## この章のまとめ
+
+`package.json` は、Node.jsプロジェクトの入口です。
+
+- npmはNode.jsのパッケージ管理とscript実行を担う
+- `scripts` はチーム共通の実行コマンドを定義する
+- `dependencies` は本番実行に必要な依存
+- `devDependencies` は開発・テスト・ビルド用の依存
+- `package-lock.json` は実際に解決された依存バージョンを固定する
+- CIでは `npm ci` がよく使われる
+
+次章では、`package.json` の `"type"` と深く関係する、CommonJSとES Modulesの違いを見ていきます。
+
+## 参考リンク
+
+- [npm Docs: package.json](https://docs.npmjs.com/cli/v10/configuring-npm/package-json/)
+- [npm Docs: npm install](https://docs.npmjs.com/cli/v10/commands/npm-install/)
+- [npm Docs: package-lock.json](https://docs.npmjs.com/cli/v10/configuring-npm/package-lock-json/)
+- [Node.js API: Packages（英語）](https://nodejs.org/api/packages.html)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

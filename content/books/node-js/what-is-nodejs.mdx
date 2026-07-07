@@ -1,8 +1,165 @@
 ---
 title: 'Node.jsとは何か — ブラウザのJavaScriptとの違いと動く仕組み'
-description: 'Node.jsとは何か、ブラウザ上のJavaScriptと何が違うのか、V8・libuv・イベントループを含めた実行の仕組みを学びます。'
+description: 'Node.jsとは何か、ブラウザのJavaScriptと何が違うのか、V8・イベントループ・標準モジュールを含めて実務目線で学びます。'
 order: 1
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsは、JavaScriptを**ブラウザの外で動かすための実行環境**です。JavaScriptそのものは言語ですが、Node.jsはそのJavaScriptをサーバー、CLI、バッチ処理、開発ツールなどで動かすための土台です。
+
+フロントエンドでJavaScriptを学んだ人がNode.jsで最初につまずくのは、「同じJavaScriptなのに、使えるものが違う」ことです。ブラウザには `document` や `window` がありますが、Node.jsにはありません。その代わり、Node.jsにはファイルを読む `fs`、パスを扱う `path`、HTTPサーバーを作る `http`、プロセス情報を扱う `process` があります。
+
+<Marker>Node.jsは「JavaScriptの文法」ではなく、「JavaScriptをサーバーサイドや開発環境で動かすための実行環境」です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  JavaScriptはブラウザで動くものだと思っていました。Node.jsになると、何が同じで何が変わるんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  文法は同じ。でも「周りに用意されているAPI」が違うんだ。ブラウザは画面操作が得意、Node.jsはファイル・通信・プロセス操作が得意、と考えると整理しやすいよ。
+</SpeechBubble>
+
+## Node.jsでできること
+
+Node.jsは、Web開発のいろいろな場所で使われています。
+
+| 用途 | 例 |
+| ---- | -- |
+| Webサーバー | APIサーバー、SSR、管理画面のバックエンド |
+| 開発ツール | Vite、Next.js、ESLint、Prettier、TypeScriptコンパイラ |
+| CLIツール | コマンドラインで動く変換・生成・自動化ツール |
+| バッチ処理 | 定期実行、ログ処理、データ変換 |
+| リアルタイム通信 | WebSocket、チャット、通知 |
+
+実務では、Node.jsを「本番サーバーとして直接書く」場面だけでなく、Next.jsやViteのような開発環境の裏側として毎日使っています。`npm install` や `npm run dev` が動くのも、Node.jsがあるからです。
+
+## ブラウザのJavaScriptとの違い
+
+JavaScriptの基本文法、配列、オブジェクト、関数、Promise、`async/await` などは、ブラウザでもNode.jsでも同じです。詳しい文法は[JavaScript入門](/books/javascript)の各章で扱っています。
+
+違うのは、実行環境が提供するAPIです。
+
+| 観点 | ブラウザ | Node.js |
+| ---- | -------- | ------- |
+| 主な目的 | 画面を操作する | サーバー・ファイル・プロセスを扱う |
+| 代表的なグローバル | `window`, `document`, `location` | `globalThis`, `process`, `Buffer` |
+| ファイル操作 | 原則できない | `fs` でできる |
+| HTTP | `fetch()` でリクエストする側が中心 | サーバーもクライアントも作れる |
+| モジュール | ESM中心 | ESMとCommonJSが共存 |
+| 実行場所 | ユーザーのブラウザ | サーバー、ローカルPC、CI環境 |
+
+```js
+// ブラウザでは使えるが、Node.jsでは基本的に存在しない
+console.log(document.title);
+```
+
+```js
+// Node.jsでは使えるが、ブラウザでは基本的に存在しない
+console.log(process.version);
+```
+
+<Callout type="warning">
+Node.jsで `document is not defined` や `window is not defined` が出るのは、ブラウザ専用APIをNode.js側で実行しているサインです。Next.jsなどのフレームワークでは、サーバー側で動くコードとブラウザ側で動くコードの境界を意識する必要があります。
+</Callout>
+
+## Node.jsの動く仕組み
+
+Node.jsの中では、大きく分けて次の要素が協力しています。
+
+| 要素 | 役割 |
+| ---- | ---- |
+| V8 | JavaScriptを実行するエンジン。Chromeにも使われている |
+| libuv | 非同期I/Oやイベントループを支えるライブラリ |
+| Node.js標準ライブラリ | `fs`, `path`, `http`, `stream`, `buffer` などのAPI群 |
+| npmエコシステム | 外部パッケージを配布・利用する仕組み |
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["あなたのJavaScriptコード"] --> B["Node.js標準API"]
+    A --> C["V8<br/>JavaScript実行"]
+    B --> D["libuv<br/>非同期I/O・イベントループ"]
+    D --> E["OS<br/>ファイル・ネットワーク・プロセス"]
+`}
+/>
+
+ブラウザでDOMを操作する代わりに、Node.jsではOSに近い処理を扱います。ファイルを読む、ポートを開いてHTTPリクエストを待つ、標準出力へログを出す、といった処理です。
+
+## なぜNode.jsは非同期I/Oが得意なのか
+
+Node.jsは「シングルスレッドなのに速い」と説明されることがあります。ただし、これは「CPUを使う重い計算が何でも速い」という意味ではありません。
+
+Node.jsが得意なのは、ファイル読み込み、データベースアクセス、HTTP通信のような**待ち時間の多いI/O処理**です。待っている間にプロセス全体を止めず、別のリクエストや処理を進められます。
+
+```js
+import { readFile } from 'node:fs/promises';
+
+const text = await readFile('message.txt', 'utf8');
+console.log(text);
+```
+
+このコードは一見「読み込みが終わるまで待っている」ように見えます。しかしNode.js全体が完全に停止しているわけではありません。ファイル読み込みの完了を待つ間、イベントループは他の処理を進められます。非同期処理の文法自体は[非同期処理の基本](/books/javascript/13-async-callback-promise)でも扱っています。
+
+<Marker>Node.jsはCPUを使い切る計算より、I/O待ちが多いサーバー処理で力を発揮します。</Marker>
+
+## nodeコマンドでJavaScriptを実行する
+
+Node.jsをインストールすると、`node` コマンドが使えるようになります。
+
+```bash
+node app.js
+```
+
+`app.js` に次のように書くと、ターミナルに出力されます。
+
+```js
+console.log('Hello from Node.js');
+console.log(process.version);
+```
+
+`process` は、現在動いているNode.jsプロセスの情報を持つグローバルオブジェクトです。ここでは `process.version` でNode.jsのバージョンを確認しています。
+
+| プロパティ | 説明 | 値の例 |
+| ---------- | ---- | ------ |
+| `process.version` | 実行中のNode.jsのバージョン | `'v22.13.1'` |
+| `process.platform` | OSの種類 | `'darwin'`, `'linux'`, `'win32'` |
+| `process.cwd()` | 現在の作業ディレクトリを返すメソッド | `'/Users/example/project'` |
+
+**構文：** `process.cwd()`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| なし | 引数は取りません |
+
+**戻り値：** 現在のNode.jsプロセスの作業ディレクトリを表す文字列
+
+```js
+console.log(process.cwd());
+```
+
+<Callout type="note">
+`process.cwd()` は「コマンドを実行した場所」を返します。ファイルが置かれている場所とは限りません。ファイルパスを扱う章では、この違いが重要になります。
+</Callout>
+
+## Node.jsを学ぶ順番
+
+Node.jsは範囲が広いので、最初から全部を覚えようとしない方がいいです。まずは次の順番で土台を作ると、Expressや本番運用までつながりやすくなります。
+
+1. Node.jsとブラウザの違いを理解する
+2. npmと `package.json` を読めるようにする
+3. CommonJSとES Modulesの違いを理解する
+4. 非同期処理とイベントループをNode.jsの文脈で理解する
+5. ファイル、Buffer、Stream、HTTPサーバーを触る
+
+この章では全体像を扱いました。次章では、Node.jsをインストールし、プロジェクトごとにバージョンを管理する方法を見ていきます。
+
+## 参考リンク
+
+- [Node.js Learn: Introduction to Node.js](https://nodejs.org/learn/getting-started/introduction-to-nodejs)
+- [Node.js API: Process（英語）](https://nodejs.org/api/process.html)
+- [Node.js API: Globals（英語）](https://nodejs.org/api/globals.html)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

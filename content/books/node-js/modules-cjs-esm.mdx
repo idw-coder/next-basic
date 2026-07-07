@@ -1,8 +1,261 @@
 ---
 title: 'CommonJSとES Modules — requireとimportの違いと使い分け'
-description: 'Node.jsにおけるCommonJSとES Modulesの違い、requireとimportの使い分け、package.jsonのtype指定を学びます。'
+description: 'Node.jsにおけるCommonJSとES Modulesの違い、requireとimport、module.exportsとexport、package.jsonのtype指定を学びます。'
 order: 4
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsのコードを読んでいると、同じ「別ファイルを読み込む」処理なのに、2種類の書き方が出てきます。
+
+```js
+const fs = require('node:fs');
+```
+
+```js
+import fs from 'node:fs';
+```
+
+前者は **CommonJS**、後者は **ES Modules** です。どちらもモジュールを読み込む仕組みですが、歴史、読み込みのタイミング、書ける場所、Node.jsでの判定方法が違います。
+
+<Marker>新しく書くNode.jsコードはES Modulesを基本にしつつ、既存コードや設定ファイルを読むためにCommonJSも理解する、というのが実務的な立ち位置です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `require` と `import` が混ざっているプロジェクトを見ると、どっちに合わせればいいのか不安になります。エラーも出やすい印象です。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  まず「そのファイルがCommonJSとして動いているのか、ES Modulesとして動いているのか」を見るのが先だね。Node.jsでは `package.json` の `type` と拡張子が判断材料になる。
+</SpeechBubble>
+
+## モジュールとは
+
+モジュールとは、独立したスコープを持つJavaScriptファイルです。外へ公開したい値だけをexportし、別ファイルからimportします。
+
+```js
+// math.js
+export function add(a, b) {
+  return a + b;
+}
+```
+
+```js
+// app.js
+import { add } from './math.js';
+
+console.log(add(2, 3)); // 5
+```
+
+ブラウザ向けのJavaScriptでもモジュールは使います。基本的な `import` / `export` の考え方は[モジュールシステム](/books/javascript/15-modules)の章でも扱っています。この章では、Node.js特有のCommonJSとの共存に絞って見ていきます。
+
+## ES Modules — import / export
+
+ES Modules（ESM）は、JavaScript標準のモジュール方式です。`import` と `export` を使います。
+
+### 名前付きexport
+
+```js
+// config.js
+export const port = 3000;
+
+export function getBaseUrl() {
+  return `http://localhost:${port}`;
+}
+```
+
+```js
+// server.js
+import { getBaseUrl, port } from './config.js';
+
+console.log(port);
+console.log(getBaseUrl());
+```
+
+**構文：** `import { name } from 'module-specifier'`
+
+| 要素 | 説明 |
+| ---- | ---- |
+| `name` | 読み込みたい名前付きexport |
+| `module-specifier` | 読み込み先。相対パス、絶対パス、パッケージ名、組み込みモジュール名など |
+
+**戻り値：** `import` 文そのものは値を返しません。指定したbindingが現在のモジュールスコープに作られます
+
+### default export
+
+```js
+// logger.js
+export default function logger(message) {
+  console.log(`[app] ${message}`);
+}
+```
+
+```js
+// app.js
+import logger from './logger.js';
+
+logger('started');
+```
+
+default exportは、読み込む側で好きな名前を付けられます。一方、名前付きexportは `{}` の中でexport元と同じ名前を指定します。
+
+<Callout type="note">
+Node.jsのESMでは、相対パスのimportに拡張子を書くのが基本です。`import './config.js'` のように `.js` を省略しない書き方に慣れておくと、Node.js単体で実行するときに詰まりにくくなります。
+</Callout>
+
+## CommonJS — require / module.exports
+
+CommonJS（CJS）は、Node.jsで古くから使われてきたモジュール方式です。`require()` で読み込み、`module.exports` で公開します。
+
+```js
+// config.cjs
+const port = 3000;
+
+function getBaseUrl() {
+  return `http://localhost:${port}`;
+}
+
+module.exports = { port, getBaseUrl };
+```
+
+```js
+// server.cjs
+const { getBaseUrl, port } = require('./config.cjs');
+
+console.log(port);
+console.log(getBaseUrl());
+```
+
+**構文：** `require(id)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `id` | 読み込むモジュール。相対パス、絶対パス、パッケージ名、組み込みモジュール名など |
+
+**戻り値：** 読み込んだモジュールの `module.exports`
+
+```js
+const path = require('node:path');
+console.log(path.join('src', 'app.js'));
+```
+
+CommonJSは今でも多くの既存プロジェクト、設定ファイル、古いnpmパッケージで見かけます。新規コードをESMで書くとしても、読める必要はあります。
+
+## Node.jsはどちらとして扱うのか
+
+Node.jsは、ファイルの拡張子と `package.json` の `"type"` を見て、`.js` ファイルをCommonJSとして扱うかES Modulesとして扱うかを決めます。
+
+| 条件 | 扱い |
+| ---- | ---- |
+| 拡張子が `.mjs` | ES Modules |
+| 拡張子が `.cjs` | CommonJS |
+| `.js` かつ最寄りの `package.json` に `"type": "module"` | ES Modules |
+| `.js` かつ最寄りの `package.json` に `"type": "commonjs"` または `type` なし | CommonJS |
+
+```json
+{
+  "type": "module"
+}
+```
+
+この設定があるプロジェクトでは、通常の `.js` はESMとして扱われます。
+
+<Marker>`Cannot use import statement outside a module` は、ESMの構文を書いたファイルがCommonJSとして扱われているときによく出るエラーです。</Marker>
+
+## ES ModulesとCommonJSの違い
+
+両者の違いを、実務で効く観点に絞って整理します。
+
+| 観点 | ES Modules | CommonJS |
+| ---- | ---------- | -------- |
+| 読み込み | `import` | `require()` |
+| 書き出し | `export` | `module.exports` |
+| 解析タイミング | 実行前に静的解析される | 実行時に読み込まれる |
+| 書ける場所 | 原則トップレベル | if文や関数内にも書ける |
+| 非同期 | 非同期読み込みを前提に設計 | 同期的に読み込む |
+| 新規コード | 基本はこちら | 既存コード・設定でよく見る |
+
+ESMの `import` は静的です。次のように条件分岐の中へ直接書けません。
+
+```js
+// これは構文エラー
+if (process.env.NODE_ENV === 'development') {
+  import { debug } from './debug.js';
+}
+```
+
+必要になってから読み込みたい場合は、動的importを使います。
+
+## import() — 必要なときに読み込む
+
+動的importは、関数のように `import()` と書きます。戻り値はPromiseです。
+
+**構文：** `import(moduleSpecifier)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `moduleSpecifier` | 読み込むモジュールを表す文字列。相対パスやパッケージ名など |
+
+**戻り値：** モジュール名前空間オブジェクトで解決される `Promise`
+
+```js
+if (process.env.NODE_ENV === 'development') {
+  const debugModule = await import('./debug.js');
+  debugModule.debug();
+}
+```
+
+戻り値がPromiseなので、[非同期処理の基本](/books/javascript/13-async-callback-promise)で学んだ `await` がそのまま使えます。
+
+## 組み込みモジュールはnode:プレフィックスを使う
+
+Node.jsの組み込みモジュールを読み込むときは、`node:` プレフィックスを付ける書き方が推奨されます。
+
+```js
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+```
+
+```js
+const { readFile } = require('node:fs/promises');
+const path = require('node:path');
+```
+
+`node:fs` と書くことで、「これはnpmパッケージではなくNode.js組み込みモジュールだ」と明確になります。
+
+## どちらを使えばよいか
+
+新しいNode.jsプロジェクトでは、基本的にES Modulesを選ぶのが自然です。ブラウザやフロントエンドツールとの整合性が高く、標準のJavaScriptとして学びやすいからです。
+
+ただし、次の場面ではCommonJSを読む・使うことがあります。
+
+- 既存プロジェクトがCommonJSで書かれている
+- 設定ファイルがCommonJSを要求している
+- 古いnpmパッケージやサンプルコードがCommonJSで書かれている
+- `.cjs` として明示したいファイルがある
+
+<Callout type="warning">
+同じファイルの中で `import` と `require` を雑に混ぜると、実行方式の違いでエラーになりやすくなります。まずプロジェクトの `"type"`、ファイル拡張子、使っているパッケージの対応方式を確認しましょう。
+</Callout>
+
+## この章のまとめ
+
+Node.jsには、ES ModulesとCommonJSという2つのモジュール方式があります。
+
+- ES Modulesは `import` / `export` を使う標準方式
+- CommonJSは `require()` / `module.exports` を使うNode.js由来の方式
+- `.mjs` はESM、`.cjs` はCommonJSとして扱われる
+- `.js` は `package.json` の `"type"` によって扱いが変わる
+- 新規コードはESMを基本にしつつ、既存コードを読むためにCommonJSも理解する
+
+次章では、Node.jsの非同期処理とイベントループを見ていきます。モジュールで読み込んだ `fs` や `http` のAPIも、実務では非同期処理とセットで使います。
+
+## 参考リンク
+
+- [Node.js API: ECMAScript modules（英語）](https://nodejs.org/api/esm.html)
+- [Node.js API: CommonJS modules（英語）](https://nodejs.org/api/modules.html)
+- [Node.js API: Packages（英語）](https://nodejs.org/api/packages.html)
+- [JavaScript本: モジュールシステム](/books/javascript/15-modules)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

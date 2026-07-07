@@ -1,8 +1,258 @@
 ---
 title: 'Node.jsの非同期処理とイベントループ — シングルスレッドで速い理由'
-description: 'Node.jsの非同期I/O、イベントループ、Promise、async/await、シングルスレッドで多くの処理を扱える理由を学びます。'
+description: 'Node.jsの非同期I/O、イベントループ、Promise、async/await、setTimeout、setImmediate、process.nextTickの違いを学びます。'
 order: 5
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsは「シングルスレッドなのに多くのリクエストをさばける」と説明されます。これは魔法ではありません。Node.jsが得意なのは、ファイル読み込み、HTTP通信、データベースアクセスのような**待ち時間の多い処理**を、非同期I/Oとイベントループで効率よく扱うことです。
+
+JavaScriptの `Promise` や `async/await` 自体は[非同期処理の基本](/books/javascript/13-async-callback-promise)で学んだ通りです。この章では、それがNode.jsの実行環境でどう動くのかを見ていきます。
+
+<Marker>Node.jsの非同期処理は、「時間のかかるI/Oを待っている間に、イベントループが次の仕事を進める」ための仕組みです。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `await` って書くと待っているように見えます。なのにNode.js全体は止まらない、というのがまだピンと来ていません。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  `await` で止まるのは、そのasync関数の続きだね。Node.jsプロセス全体が完全停止するわけではない。そこを分けて考えるとイベントループが見えてくるよ。
+</SpeechBubble>
+
+## 同期処理と非同期処理
+
+同期処理は、前の処理が終わるまで次に進みません。
+
+```js
+console.log('A');
+console.log('B');
+console.log('C');
+```
+
+一方、非同期処理は「時間のかかる処理を予約して、終わったら続きを実行する」形です。
+
+```js
+console.log('A');
+
+setTimeout(() => {
+  console.log('B');
+}, 0);
+
+console.log('C');
+```
+
+出力は `A`、`C`、`B` の順になります。`setTimeout(..., 0)` は「即座に割り込む」ではなく、「今の同期処理が終わったあと、タイマーの順番が来たら実行する」という意味です。
+
+## イベントループのざっくりした流れ
+
+イベントループは、完了した非同期処理のコールバックを順番に実行する仕組みです。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["同期コードを実行"] --> B["非同期I/Oを依頼"]
+    B --> C["処理完了を待つ間<br/>別の仕事へ"]
+    C --> D["完了したコールバックをキューへ"]
+    D --> E["イベントループが取り出して実行"]
+    E --> C
+`}
+/>
+
+たとえばHTTPサーバーでは、1つのリクエストがデータベース応答を待っている間に、別のリクエストの受付や処理を進められます。これがNode.jsがI/O中心のWebサーバーと相性がよい理由です。
+
+<Callout type="warning">
+Node.jsが得意なのはI/O待ちの多い処理です。巨大な画像変換や暗号計算のようにCPUを長時間使い続ける処理をメインスレッドで実行すると、イベントループが詰まり、他のリクエストも遅くなります。
+</Callout>
+
+## Promiseとasync/await
+
+Node.jsの標準APIには、Promiseベースのものが増えています。たとえば `node:fs/promises` の `readFile()` はPromiseを返します。
+
+```js
+import { readFile } from 'node:fs/promises';
+
+async function main() {
+  const text = await readFile('message.txt', 'utf8');
+  console.log(text);
+}
+
+main().catch((error) => {
+  console.error(error);
+});
+```
+
+`await` は、Promiseが解決されるまでそのasync関数の続きを一時停止します。失敗した場合は例外として扱えるため、`try/catch` と相性がよいです。
+
+```js
+import { readFile } from 'node:fs/promises';
+
+try {
+  const text = await readFile('message.txt', 'utf8');
+  console.log(text);
+} catch (error) {
+  console.error('読み込み失敗:', error);
+}
+```
+
+<Marker>`await` はNode.js全体を止めるものではなく、「そのasync関数の続きをPromiseの完了後に回す」ための構文です。</Marker>
+
+## setTimeout — 指定時間後に実行する
+
+`setTimeout()` は、指定した時間が経ったあとにコールバックを実行します。ブラウザにもありますが、Node.jsでもグローバルに使えます。
+
+**構文：** `setTimeout(callback, delay?, ...args)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `callback` | 時間が経ったあとに実行する関数 |
+| `delay`（省略可） | 待ち時間。ミリ秒で指定する。省略時は `1` 相当として扱われる |
+| `...args`（省略可） | `callback` に渡す追加引数 |
+
+**戻り値：** `Timeout` オブジェクト。`clearTimeout()` に渡すとキャンセルできる
+
+```js
+const timer = setTimeout((name) => {
+  console.log(`Hello, ${name}`);
+}, 1000, 'Node.js');
+
+// clearTimeout(timer); // キャンセルしたい場合
+```
+
+`delay` は正確な実行時刻を保証するものではありません。指定時間が経ったあと、イベントループが実行できる状態になってからコールバックが呼ばれます。
+
+## setImmediate — 現在の処理の後に回す
+
+`setImmediate()` は、現在の処理が終わったあと、イベントループの後続フェーズでコールバックを実行します。
+
+**構文：** `setImmediate(callback, ...args)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `callback` | 後で実行する関数 |
+| `...args`（省略可） | `callback` に渡す追加引数 |
+
+**戻り値：** `Immediate` オブジェクト。`clearImmediate()` に渡すとキャンセルできる
+
+```js
+setImmediate(() => {
+  console.log('immediate');
+});
+
+console.log('sync');
+```
+
+出力は通常 `sync`、`immediate` の順です。`setTimeout(..., 0)` と似ていますが、イベントループのフェーズが異なるため、I/Oコールバック内などでは順序の見え方が変わることがあります。
+
+<Callout type="note">
+`setTimeout(..., 0)` と `setImmediate()` の細かい順序に依存する設計は避けた方が安全です。「少し後で実行したい」意図を明確にし、テストしやすい形に保ちましょう。
+</Callout>
+
+## process.nextTick — 次のイベントループより前に実行する
+
+`process.nextTick()` は、現在の同期処理が終わった直後、イベントループが次のフェーズへ進む前にコールバックを実行します。
+
+**構文：** `process.nextTick(callback, ...args)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `callback` | 現在の処理の直後に実行する関数 |
+| `...args`（省略可） | `callback` に渡す追加引数 |
+
+**戻り値：** `undefined`
+
+```js
+process.nextTick(() => {
+  console.log('nextTick');
+});
+
+Promise.resolve().then(() => {
+  console.log('promise');
+});
+
+setTimeout(() => {
+  console.log('timeout');
+}, 0);
+
+console.log('sync');
+```
+
+`process.nextTick()` は非常に優先度が高いキューです。便利ですが、再帰的に大量の `nextTick` を積むとイベントループが次へ進めず、I/O処理を遅らせます。
+
+<Marker>`process.nextTick()` は強力ですが、通常のアプリケーションコードで多用するものではありません。</Marker>
+
+## queueMicrotask — マイクロタスクを予約する
+
+`queueMicrotask()` は、マイクロタスクキューにコールバックを追加します。Promiseの `then()` に近いタイミングで実行されます。
+
+**構文：** `queueMicrotask(callback)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `callback` | マイクロタスクとして実行する関数 |
+
+**戻り値：** `undefined`
+
+```js
+queueMicrotask(() => {
+  console.log('microtask');
+});
+
+console.log('sync');
+```
+
+出力は `sync`、`microtask` の順です。Node.jsでは `process.nextTick()` とマイクロタスクの関係もありますが、初学者の段階では「同期処理の後、タイマーなどより前に処理される小さな予約」と捉えるとよいです。
+
+## 実務で見る順序の考え方
+
+細かい仕様を暗記するより、まず次の優先順位で考えると実務では読みやすくなります。
+
+| 種類 | 例 | ざっくりした実行タイミング |
+| ---- | -- | -------------------------- |
+| 同期処理 | 通常の関数呼び出し、`console.log()` | 今すぐ |
+| nextTick | `process.nextTick()` | 同期処理の直後、イベントループの前 |
+| マイクロタスク | Promiseの `then()`、`queueMicrotask()` | 現在の処理の後、次のタスクより前 |
+| タイマー・I/Oなど | `setTimeout()`、ファイル読み込み完了 | イベントループの各フェーズで実行 |
+
+<Figure src="/images/plan_selection_man_color.png" alt="処理順を整理する人" maxWidth="150px" caption="非同期処理は「いつ予約され、どのキューで待つか」を見ると追いやすい" />
+
+## イベントループを詰まらせるコード
+
+Node.jsでは、長時間終わらない同期処理がイベントループを止めます。
+
+```js
+// 悪い例: 長時間CPUを占有する
+const start = Date.now();
+
+while (Date.now() - start < 5000) {
+  // 5秒間ループし続ける
+}
+
+console.log('done');
+```
+
+この5秒間、他のリクエストの処理やタイマーの実行も遅れます。CPUを多く使う処理は、処理を分割する、別プロセスへ逃がす、Worker Threadsを検討するなどの設計が必要です。
+
+## この章のまとめ
+
+Node.jsの非同期処理は、イベントループとI/O待ちの扱いを理解すると読みやすくなります。
+
+- Node.jsはI/O待ちの多い処理を非同期に扱うのが得意
+- `await` はasync関数の続きを待たせるが、Node.js全体を止めるわけではない
+- `setTimeout()` は指定時間後にコールバックを予約する
+- `setImmediate()` は現在の処理の後にコールバックを予約する
+- `process.nextTick()` はイベントループより前に実行されるため、多用に注意する
+- CPUを占有する同期処理はイベントループを詰まらせる
+
+次章では、非同期処理で失敗したときにどう扱うか、Node.jsのエラーハンドリングを見ていきます。
+
+## 参考リンク
+
+- [Node.js Learn: The Node.js Event Loop](https://nodejs.org/learn/asynchronous-work/event-loop-timers-and-nexttick)
+- [Node.js API: Timers（英語）](https://nodejs.org/api/timers.html)
+- [Node.js API: Process（英語）](https://nodejs.org/api/process.html)
+- [JavaScript本: 非同期処理の基本](/books/javascript/13-async-callback-promise)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>
