@@ -1,8 +1,379 @@
 ---
-title: 'Stream入門 — 大きなファイルを少しずつ処理する仕組み'
-description: 'Node.jsのStreamの考え方、Readable・Writable・Transform、pipeによる効率的なデータ処理を学びます。'
+title: 'StreamとBuffer入門 — 大きなデータとバイナリを少しずつ処理する仕組み'
+description: 'Node.jsのStreamとBufferの基本を、ファイル読み書き、バイナリデータ、pipe、pipeline、バックプレッシャーまで実務で使う粒度で学びます。'
 order: 9
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsでファイル、HTTP通信、画像、CSV、zip、ログのようなデータを扱っていると、**Stream** と **Buffer** という言葉に必ず出会います。
+
+どちらも「大きなデータ」や「文字列ではないデータ」を扱うための仕組みです。小さなJSONだけを扱っている間は意識しなくても済みますが、ファイルアップロード、画像処理、ログ出力、HTTPレスポンスの中身を扱い始めると避けて通れません。
+
+<Marker>Bufferはバイナリデータをメモリ上で扱う入れ物、Streamはデータを小分けに流して処理する仕組みです。</Marker>この2つを分けて理解すると、Node.jsのI/O処理がかなり読みやすくなります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `fs.readFile()` でファイルを読んだら、文字列じゃなくて `Buffer` って表示されました。Streamもよく見るし、どっちも「何かデータっぽいもの」くらいにしか理解できていません。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  まずは「Bufferはデータそのもの」「Streamはデータの流し方」と分けて考えるといいよ。ペットボトルの水がBuffer、蛇口やホースがStream、くらいのイメージだね。
+</SpeechBubble>
+
+## Bufferとは — バイナリデータを入れるメモリ領域
+
+JavaScriptの文字列はテキストを扱うための型です。一方で、コンピュータが実際に扱うファイルや通信データは、最終的には**バイト列**です。画像、PDF、zip、音声、暗号化されたデータなどは、そのままではJavaScriptの文字列として表せません。
+
+Node.jsの `Buffer` は、このようなバイト列を扱うためのオブジェクトです。
+
+```js
+const buffer = Buffer.from('Node.js', 'utf8');
+
+console.log(buffer);
+console.log(buffer.toString('utf8')); // Node.js
+```
+
+`console.log(buffer)` の出力は環境によって少し違いますが、`<Buffer 4e 6f 64 65 2e 6a 73>` のように16進数のバイト列として表示されます。`4e` や `6f` は、人間が読む文字ではなく、コンピュータが扱う1バイトごとの値です。
+
+<Figure src="/images/deta_man_color.png" alt="データを確認する人" maxWidth="150px" caption="文字列の裏側には、実際にはバイト列としてのデータがある" />
+
+### Buffer.from — 文字列や配列からBufferを作る
+
+`Buffer.from()` は、文字列、配列、ArrayBufferなどから新しいBufferを作ります。Node.jsでBufferを試すときに最もよく使う入口です。
+
+**構文：** `Buffer.from(value, encodingOrOffset?, length?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `value` | Bufferに変換する値。文字列、数値配列、ArrayBuffer、既存のBufferなど |
+| `encodingOrOffset`（省略可） | `value` が文字列なら文字エンコーディング。代表例は `'utf8'`、`'base64'`、`'hex'` |
+| `length`（省略可） | ArrayBufferから作る場合に、読み取るバイト数を指定する |
+
+**戻り値：** 新しい `Buffer` オブジェクト
+
+```js
+const textBuffer = Buffer.from('こんにちは', 'utf8');
+const byteBuffer = Buffer.from([0x4e, 0x6f, 0x64, 0x65]);
+
+console.log(textBuffer.length); // バイト数
+console.log(byteBuffer.toString('utf8')); // Node
+```
+
+ここで注意したいのは、`length` が**文字数ではなくバイト数**を表すことです。日本語のようなマルチバイト文字では、文字数とバイト数は一致しません。
+
+```js
+const buffer = Buffer.from('あ', 'utf8');
+
+console.log('あ'.length); // 1
+console.log(buffer.length); // 3
+```
+
+<Marker>Bufferのサイズを考えるときは、文字数ではなくバイト数で考えます。</Marker>アップロードサイズ制限、メモリ使用量、通信量を扱うときに重要な感覚です。
+
+### buf.toString — Bufferを文字列に戻す
+
+`buf.toString()` は、Bufferの中身を指定した文字エンコーディングで文字列に変換します。
+
+**構文：** `buf.toString(encoding?, start?, end?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `encoding`（省略可） | 文字列へ変換するときのエンコーディング。省略時は `'utf8'` |
+| `start`（省略可） | 変換を開始するバイト位置。省略時は `0` |
+| `end`（省略可） | 変換を終了するバイト位置。省略時はBufferの末尾 |
+
+**戻り値：** 変換された文字列
+
+```js
+const buffer = Buffer.from('Node.js入門', 'utf8');
+
+console.log(buffer.toString()); // Node.js入門
+console.log(buffer.toString('utf8', 0, 7)); // Node.js
+```
+
+`toString()` は便利ですが、「このBufferは本当にテキストなのか」を意識してください。画像やzipのBufferを `toString('utf8')` しても、人間が読める文字列にはなりません。
+
+<Callout type="warning">
+Bufferを文字列に変換するときは、エンコーディングを間違えると文字化けします。日本語テキストの多くは `utf8` で扱えますが、古いCSVや外部システム由来のファイルではShift_JISなど別の文字コードが使われていることがあります。
+</Callout>
+
+## Streamとは — データを少しずつ流す仕組み
+
+小さなファイルなら、丸ごとメモリに読み込んでも大きな問題にはなりません。
+
+```js
+import { readFile } from 'node:fs/promises';
+
+const data = await readFile('small.txt', 'utf8');
+console.log(data);
+```
+
+しかし、数GBのログファイルや動画ファイルを丸ごと読み込むと、処理が遅くなるだけでなく、メモリ不足でプロセスが落ちる可能性があります。そこで使うのがStreamです。
+
+Streamは、データを**小さな塊（chunk）**として順番に処理します。ファイル全体が読み終わるのを待たず、届いた分から処理できます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["大きなファイル"] --> B["chunk 1"]
+    A --> C["chunk 2"]
+    A --> D["chunk 3"]
+    B --> E["順番に処理"]
+    C --> E
+    D --> E
+`}
+/>
+
+<Marker>Streamの強みは、データ全体を一度にメモリへ載せず、届いた分から処理できることです。</Marker>
+
+## Streamの4種類
+
+Node.jsのStreamは、大きく4種類に分けられます。
+
+| 種類 | 役割 | 代表例 |
+| ---- | ---- | ------ |
+| Readable | 読み取れるStream | ファイル読み込み、HTTPリクエストの本文 |
+| Writable | 書き込めるStream | ファイル書き込み、HTTPレスポンス |
+| Duplex | 読み書きできるStream | TCPソケット |
+| Transform | 読みながら変換して書き出すStream | gzip圧縮、CSV変換、文字列変換 |
+
+最初は、**Readableから読んで、Writableへ書く**という流れを押さえれば十分です。
+
+```txt
+Readable Stream  ---- chunk ---->  Writable Stream
+```
+
+`Transform` は、その途中でデータを加工するStreamです。たとえば「読み込んだテキストを大文字にしてから別ファイルへ書く」「ログを1行ずつ加工する」「gzipで圧縮する」といった処理に使います。
+
+## fs.createReadStream — ファイルを少しずつ読む
+
+`fs.createReadStream()` は、ファイルをReadable Streamとして開くAPIです。大きなファイルを一気に読み込まず、chunk単位で処理できます。
+
+**構文：** `createReadStream(path, options?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `path` | 読み込むファイルのパス。文字列、Buffer、URLなどを指定できる |
+| `options`（省略可） | 読み込み設定。`encoding`、`start`、`end`、`highWaterMark` などを指定できる |
+
+**戻り値：** `fs.ReadStream`。Readable Streamの一種
+
+```js
+import { createReadStream } from 'node:fs';
+
+const stream = createReadStream('access.log', {
+  encoding: 'utf8',
+});
+
+stream.on('data', (chunk) => {
+  console.log('受け取ったchunk:', chunk.length);
+});
+
+stream.on('end', () => {
+  console.log('読み込み完了');
+});
+
+stream.on('error', (error) => {
+  console.error('読み込み失敗:', error);
+});
+```
+
+`encoding: 'utf8'` を指定すると、`data` イベントで受け取る `chunk` は文字列になります。指定しない場合、`chunk` はBufferです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  つまり、Streamで流れてくる `chunk` の正体がBufferになることが多いんですね。BufferとStreamがセットで出てくる理由が少し見えてきました。
+</SpeechBubble>
+
+その通りです。Streamは「流し方」、Bufferは「流れてくるデータの入れ物」です。テキストとして扱いたいときは `encoding` を指定するか、Bufferを `toString()` します。
+
+```js
+import { createReadStream } from 'node:fs';
+
+const stream = createReadStream('access.log');
+
+stream.on('data', (chunk) => {
+  // encodingを指定していないのでchunkはBuffer
+  const text = chunk.toString('utf8');
+  console.log(text);
+});
+```
+
+<Callout type="warning">
+Streamの `data` イベントで受け取るchunkは、必ずしも「1行」や「1レコード」ではありません。ファイルの途中で区切られることもあります。CSVやログを1行ずつ処理したい場合は、改行で分割する処理や `readline` などの仕組みを使います。
+</Callout>
+
+## pipe — 読み込みと書き込みをつなぐ
+
+Readable Streamから読み取ったデータを、そのままWritable Streamへ流すなら `pipe()` が使えます。
+
+```js
+import { createReadStream, createWriteStream } from 'node:fs';
+
+const reader = createReadStream('input.txt');
+const writer = createWriteStream('output.txt');
+
+reader.pipe(writer);
+```
+
+`pipe()` は、Readableから届いたchunkをWritableへ順番に渡します。コピー処理のように「読んで、そのまま書く」場面では非常に簡潔です。
+
+**構文：** `readable.pipe(destination, options?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `destination` | 書き込み先のWritable Stream |
+| `options`（省略可） | `end` を指定できる。`end: false` にすると、Readableが終わってもWritableを閉じない |
+
+**戻り値：** 渡した `destination`。複数の `pipe()` をつなぐために使える
+
+```js
+reader
+  .pipe(transformStream)
+  .pipe(writer);
+```
+
+ただし、実務では `pipe()` だけで済ませるより、次の `pipeline()` を使うことが多いです。理由はエラー処理です。
+
+## pipeline — Stream処理を安全につなぐ
+
+Stream処理では、読み込み元、変換処理、書き込み先のどこでもエラーが起こり得ます。`pipe()` だけでつなぐと、各Streamに個別に `error` ハンドラーを書く必要があり、漏れが起きやすくなります。
+
+`stream/promises` の `pipeline()` を使うと、複数のStreamをつなぎ、完了や失敗をPromiseとして扱えます。[非同期処理の基本](/books/javascript/13-async-callback-promise)で学んだ `try/catch` と相性がよい書き方です。
+
+**構文：** `pipeline(...streams)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `...streams` | つなぎたいStreamまたはIterable。読み込み元、必要ならTransform、最後に書き込み先を順に渡す |
+
+**戻り値：** すべてのStream処理が完了すると解決し、途中で失敗すると拒否される `Promise<void>`
+
+```js
+import { createReadStream, createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+
+try {
+  await pipeline(
+    createReadStream('input.txt'),
+    createWriteStream('output.txt'),
+  );
+
+  console.log('コピー完了');
+} catch (error) {
+  console.error('コピー失敗:', error);
+}
+```
+
+<Marker>新しくStream処理を書くなら、まず `pipeline()` を候補にします。</Marker>完了待ちとエラー処理をPromiseとして扱えるため、`async/await` ベースのコードに自然に組み込めます。
+
+## Transform Stream — 流れの途中で加工する
+
+Streamの途中でデータを加工したい場合は、Transform Streamを使います。ここでは `node:stream` の `Transform` を使って、入力を大文字に変換してみます。
+
+```js
+import { Transform } from 'node:stream';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+
+const upperCase = new Transform({
+  transform(chunk, encoding, callback) {
+    const text = chunk.toString('utf8').toUpperCase();
+    callback(null, text);
+  },
+});
+
+await pipeline(
+  createReadStream('input.txt'),
+  upperCase,
+  createWriteStream('output.txt'),
+);
+```
+
+`transform()` の `chunk` はBufferで届くことが多いため、ここでも `chunk.toString('utf8')` が登場します。
+
+**構文：** `new Transform(options)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `options` | Transform Streamの設定。代表的には `transform(chunk, encoding, callback)` メソッドを指定する |
+
+**戻り値：** 新しい `Transform` Stream
+
+`transform(chunk, encoding, callback)` の主な引数は次の通りです。
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `chunk` | 入力されたデータの塊。Bufferまたは文字列など |
+| `encoding` | `chunk` が文字列の場合のエンコーディング |
+| `callback` | 処理完了を知らせる関数。`callback(error, transformedChunk)` の形で呼ぶ |
+
+**戻り値：** `transform()` 自体は値を返しません。変換結果は `callback` の第2引数で渡します
+
+<Callout type="note">
+Transform Streamでは、chunkの境界がデータの意味上の境界と一致するとは限りません。たとえば「1行ずつ変換する」処理では、前のchunkの末尾と次のchunkの先頭をつなげてから改行で分割する必要があります。単純な `chunk.toString().split('\n')` だけで済ませると、行の途中で分割されたデータを壊すことがあります。
+</Callout>
+
+## バックプレッシャー — 書き込み先が追いつかない問題
+
+Streamが重要な理由は、メモリを節約できることだけではありません。もう1つ大事なのが**バックプレッシャー**です。
+
+読み込みが速すぎて、書き込み先の処理が追いつかないことがあります。たとえば、ディスクから高速に読めるけれど、ネットワークへの送信が遅い場合です。このとき、読み込んだデータを無制限にメモリへ積むと、プロセスが重くなったり落ちたりします。
+
+Streamの `pipe()` や `pipeline()` は、書き込み先の処理能力を見ながら読み込み側を調整します。これがバックプレッシャーです。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["Readable<br/>読む側"] --> B["Writable<br/>書く側"]
+    B -->|"まだ処理中"| A
+    A -->|"読む量を調整"| B
+`}
+/>
+
+<Marker>Streamを使う価値は「少しずつ処理する」だけでなく、「相手が受け取れる速度に合わせる」ことにもあります。</Marker>
+
+## readFileとStreamの使い分け
+
+すべてのファイル処理をStreamで書く必要はありません。小さな設定ファイルや短いJSONなら、`readFile()` の方が簡単で読みやすいです。
+
+| 場面 | 選び方 |
+| ---- | ------ |
+| 小さな設定ファイルを読む | `readFile()` でよい |
+| 小さなJSONを読み込んで一度に処理する | `readFile()` でよい |
+| 大きなログファイルを処理する | Streamを使う |
+| ファイルをコピーする | `pipeline(createReadStream(), createWriteStream())` が候補 |
+| HTTPレスポンスとして大きなファイルを返す | Streamを使う |
+| 画像やzipなどバイナリを扱う | Bufferとして扱う場面が多い |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  「全部Streamにすべき」ではないよ。小さいデータは丸ごと読んだ方が単純。大きいデータ、終わりが読めないデータ、少しずつ届くデータでStreamが効いてくる。
+</SpeechBubble>
+
+実務では、まず「データサイズ」と「処理の形」を見ます。丸ごとメモリに載せても問題ないならシンプルなAPIを選び、サイズが大きい・継続的に届く・途中で加工しながら渡したいならStreamを検討します。
+
+## この章のまとめ
+
+BufferとStreamは、Node.jsのI/O処理を支える基本です。
+
+- Bufferは、バイト列をメモリ上で扱うためのオブジェクト
+- `Buffer.from()` でBufferを作り、`buf.toString()` で文字列に戻せる
+- Streamは、データをchunk単位で少しずつ処理する仕組み
+- `fs.createReadStream()` でファイルをReadable Streamとして読める
+- `pipe()` はStream同士をつなぐ
+- 実務では、エラー処理まで含めて `pipeline()` が扱いやすい
+- 大きなデータやバイナリ処理では、BufferとStreamをセットで理解する
+
+Streamを読むときは、「何が流れているか」と「どこからどこへ流れているか」を分けて見てください。何が流れているかがBufferや文字列、どこからどこへ流れているかがReadableやWritableです。
+
+次章では、Node.jsでコマンドラインツールを作るために、`process.argv`、標準入力、標準出力、終了コードを見ていきます。
+
+## 参考リンク
+
+- [Node.js Learn: How to use streams](https://nodejs.org/learn/modules/how-to-use-streams)
+- [Node.js API: Buffer（英語）](https://nodejs.org/api/buffer.html)
+- [Node.js API: Stream（英語）](https://nodejs.org/api/stream.html)
+- [Node.js API: fs.createReadStream（英語）](https://nodejs.org/api/fs.html#fscreatereadstreampath-options)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

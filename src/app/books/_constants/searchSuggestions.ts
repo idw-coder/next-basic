@@ -80,6 +80,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'ES Modules',
     'EventEmitter',
     'イベントループ',
+    'Buffer',
     'Stream',
     'fs',
     'process',
