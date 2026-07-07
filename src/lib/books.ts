@@ -13,6 +13,7 @@ const categoryToBookMap: Record<string, string> = {
   nextjs: 'next-js',
   'react-basic': 'react-learning',
   'javascript-basic': 'javascript',
+  'nodejs-basic': 'node-js',
   'ts-general': 'typescript',
   'unit-testing': 'unit-testing',
   'git-basic': 'git-basic',
@@ -31,6 +32,7 @@ export const BOOK_ORDER = [
   'integration-and-e2e-testing',
   'system-design',
   'javascript',
+  'node-js',
   'typescript',
   'react-learning',
   'css-basics',
@@ -43,6 +45,7 @@ export const BOOK_ORDER = [
 
 /** NEW バッジを付ける書籍 */
 export const NEW_BOOK_SLUGS = new Set<string>([
+  'node-js',
   'sql-basics',
   'aws-saa-c03',
   'system-design',

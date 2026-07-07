@@ -486,9 +486,70 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
   ],
   'javascript-basic': [
     {
-      slug: 'arrow-function',
-      label: 'アロー関数',
+      slug: 'js-variables-scope',
+      label: '変数とスコープ',
       bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '01-variables-and-scope',
+          title: '変数とスコープ — let・const・varとスコープの基本',
+        },
+      ],
+    },
+    {
+      slug: 'js-data-types',
+      label: 'データ型と型変換',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '02-data-types',
+          title: 'データ型 — プリミティブ型・参照型・型変換',
+        },
+      ],
+    },
+    {
+      slug: 'js-operators',
+      label: '演算子',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '03-operators-and-expressions',
+          title: '演算子と式 — 比較・論理・短絡評価を理解する',
+        },
+      ],
+    },
+    {
+      slug: 'js-control-flow',
+      label: '制御構文',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '04-control-flow',
+          title: '制御構文 — if・switch・ループ・早期return',
+        },
+      ],
+    },
+    {
+      slug: 'js-functions',
+      label: '関数',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '05-functions',
+          title: '関数 — 宣言・引数・戻り値・コールバック',
+        },
+      ],
+    },
+    {
+      slug: 'js-this-arrow',
+      label: 'アロー関数とthis',
+      aliases: ['arrow-function', 'js-this', 'this'],
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '11-this-keyword',
+          title: 'thisの正体 — 呼び出しパターンごとの挙動を整理する',
+        },
         {
           bookSlug: 'javascript',
           chapterSlug: '05-functions',
@@ -497,25 +558,14 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'js-this',
-      label: 'this',
-      aliases: ['this'],
+      slug: 'js-closures',
+      label: 'クロージャ',
+      aliases: ['js-closure', 'closure'],
       bookLinks: [
         {
           bookSlug: 'javascript',
-          chapterSlug: '11-this-keyword',
-          title: 'thisの正体 — 呼び出しパターンごとの挙動を整理する',
-        },
-      ],
-    },
-    {
-      slug: 'js-objects',
-      label: 'オブジェクト',
-      bookLinks: [
-        {
-          bookSlug: 'javascript',
-          chapterSlug: '06-objects',
-          title: 'オブジェクト — プロパティ・メソッド・参照の基本',
+          chapterSlug: '12-closures',
+          title: 'クロージャ — スコープチェーンとデータの隠蔽',
         },
       ],
     },
@@ -531,8 +581,80 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'js-prototype-class',
-      label: 'prototype・class',
+      slug: 'js-strings',
+      label: '文字列',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '08-string-methods',
+          title: '文字列 — テンプレートリテラルと文字列メソッド',
+        },
+      ],
+    },
+    {
+      slug: 'js-objects',
+      label: 'オブジェクト',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '06-objects',
+          title: 'オブジェクト — プロパティ・メソッド・参照の基本',
+        },
+      ],
+    },
+    {
+      slug: 'js-destructuring-spread',
+      label: '分割代入・スプレッド',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '09-destructuring-and-spread',
+          title: '分割代入とスプレッド構文 — 配列・オブジェクトを扱いやすくする',
+        },
+      ],
+    },
+    {
+      slug: 'js-map-set',
+      label: 'Map・Set',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '17-map-set-weakref',
+          title: 'Map・Set — オブジェクト以外のコレクションを使う',
+        },
+      ],
+    },
+    {
+      slug: 'js-json',
+      label: 'JSON',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '23-json',
+          title: 'JSON — parse・stringifyとAPIデータの扱い',
+        },
+      ],
+    },
+    {
+      slug: 'js-date-math',
+      label: '日付と数値',
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '21-numbers-and-math',
+          title: '数値とMath — 計算・丸め・乱数の基本',
+        },
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '22-date',
+          title: 'Date — 日付と時刻を扱う',
+        },
+      ],
+    },
+    {
+      slug: 'js-class-prototype',
+      label: 'クラスとプロトタイプ',
+      aliases: ['js-prototype-class'],
       bookLinks: [
         {
           bookSlug: 'javascript',
@@ -542,45 +664,8 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'js-closure',
-      label: 'クロージャ',
-      aliases: ['closure'],
-      bookLinks: [
-        {
-          bookSlug: 'javascript',
-          chapterSlug: '12-closures',
-          title: 'クロージャ — スコープチェーンとデータの隠蔽',
-        },
-      ],
-    },
-    {
-      slug: 'js-promise',
-      label: 'Promise',
-      aliases: ['promise', 'pending', 'fulfilled'],
-      bookLinks: [
-        {
-          bookSlug: 'javascript',
-          chapterSlug: '13-async-callback-promise',
-          title: '非同期処理の基本 — コールバック・Promise・async/await',
-        },
-      ],
-    },
-    {
-      slug: 'js-async-await',
-      label: 'async/await',
-      aliases: ['async', 'async-await', 'asynchronous'],
-      bookLinks: [
-        {
-          bookSlug: 'javascript',
-          chapterSlug: '13-async-callback-promise',
-          title: '非同期処理の基本 — コールバック・Promise・async/await',
-        },
-      ],
-    },
-    { slug: 'js-event-loop', label: 'イベントループ', aliases: ['event-loop', 'microtask'] },
-    {
       slug: 'js-modules',
-      label: 'ES Modules',
+      label: 'モジュール',
       aliases: ['es-modules'],
       bookLinks: [
         {
@@ -591,8 +676,22 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'js-dom',
-      label: 'DOM操作',
+      slug: 'js-async',
+      label: '非同期処理',
+      aliases: ['js-promise', 'js-async-await', 'promise', 'async-await', 'pending', 'fulfilled'],
+      bookLinks: [
+        {
+          bookSlug: 'javascript',
+          chapterSlug: '13-async-callback-promise',
+          title: '非同期処理の基本 — コールバック・Promise・async/await',
+        },
+      ],
+    },
+    { slug: 'js-event-loop', label: 'イベントループ', aliases: ['event-loop', 'microtask'] },
+    {
+      slug: 'js-dom-events',
+      label: 'DOM操作・イベント',
+      aliases: ['js-dom'],
       bookLinks: [
         {
           bookSlug: 'javascript',
@@ -602,9 +701,9 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
       ],
     },
     {
-      slug: 'js-web-apis',
-      label: 'Web APIs',
-      aliases: ['web-apis'],
+      slug: 'js-web-api',
+      label: 'Web API',
+      aliases: ['js-web-apis', 'web-apis'],
       bookLinks: [
         {
           bookSlug: 'javascript',
@@ -623,6 +722,15 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
           title: 'エラー処理 — try/catchと例外設計',
         },
       ],
+    },
+    {
+      slug: 'js-regexp',
+      label: '正規表現',
+    },
+    {
+      slug: 'js-tooling',
+      label: 'テスト・開発ツール',
+      aliases: ['eslint', 'vitest', 'unit-test'],
     },
   ],
   'vue-basic': [

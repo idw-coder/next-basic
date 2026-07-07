@@ -48,6 +48,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-amber-700',
     iconName: 'Braces',
   },
+  'node-js': {
+    cardBg: 'bg-sky-50',
+    iconBg: 'bg-sky-100',
+    iconText: 'text-sky-600',
+    accent: 'text-sky-600',
+    accentHover: 'group-hover:text-sky-700',
+    accentBg: 'bg-sky-500',
+    badgeBg: 'bg-sky-50',
+    badgeText: 'text-sky-700',
+    iconName: 'Server',
+  },
   typescript: {
     cardBg: 'bg-indigo-50',
     iconBg: 'bg-indigo-100',

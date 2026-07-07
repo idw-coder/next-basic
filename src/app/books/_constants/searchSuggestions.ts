@@ -73,6 +73,23 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'flatMap',
   ],
 
+  'node-js': [
+    'npm',
+    'package.json',
+    'CommonJS',
+    'ES Modules',
+    'EventEmitter',
+    'イベントループ',
+    'Stream',
+    'fs',
+    'process',
+    'Express',
+    '環境変数',
+    'CORS',
+    'node:test',
+    'Docker',
+  ],
+
   typescript: ['ユニオン型', 'ジェネリクス', '型ガード', 'Utility Types', 'tsconfig'],
 
   'react-learning': ['useState', 'useEffect', 'useMemo', 'useCallback', '依存配列'],

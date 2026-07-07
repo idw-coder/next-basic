@@ -1,0 +1,3 @@
+title: 'Node.js入門 — サーバーサイドJavaScriptの基礎'
+description: 'Node.jsの動く仕組み、npm、モジュール、非同期処理、ファイル操作、Stream、HTTPサーバー、Express、テスト、本番運用まで、Web開発で必要なNode.jsの基礎を実務目線で学ぶ入門書です。'
+coverImage: '/images/books/nodejs.png'
