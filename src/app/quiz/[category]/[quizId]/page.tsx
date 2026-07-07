@@ -3,6 +3,7 @@ import { ArrowLeft, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getCategoryTheme } from '@/lib/categoryTheme';
+import { extractBookChapterLinks } from '@/lib/quiz-book-links';
 import QuizInteraction from './QuizInteraction';
 
 interface Choice {
@@ -176,7 +177,13 @@ export default async function QuizDetailPage({
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
           {/* インタラクション部分をClient Componentに委譲 */}
-          <QuizInteraction quiz={quiz} categorySlug={category} />
+          <QuizInteraction
+            quiz={quiz}
+            categorySlug={category}
+            relatedChapters={
+              quiz.explanation ? extractBookChapterLinks(quiz.explanation) : []
+            }
+          />
 
           {/*
           クローラー対策

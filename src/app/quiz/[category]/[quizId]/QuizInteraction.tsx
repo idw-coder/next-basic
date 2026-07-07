@@ -21,8 +21,10 @@ import {
   type RandomQuizSession,
 } from '@/lib/randomQuizSession';
 import { cn } from '@/lib/utils';
+import type { RelatedChapterLink } from '@/lib/quiz-book-links';
 import { ArrowLeft, ArrowRight, Bookmark, Check, Pencil, Plus, Tags, Trophy, X } from 'lucide-react';
 import { useQuizBookmarks } from '@/hooks/useQuizBookmarks';
+import BookChapterCard from './BookChapterCard';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -54,6 +56,8 @@ interface QuizDetail {
 interface QuizInteractionProps {
   quiz: QuizDetail;
   categorySlug: string;
+  /** 解説内の教科書リンクをカード化したもの（Server Component側で解決済み） */
+  relatedChapters?: (Omit<RelatedChapterLink, 'matched'> & { matched: string[] })[];
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -65,7 +69,11 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionProps) {
+export default function QuizInteraction({
+  quiz,
+  categorySlug,
+  relatedChapters = [],
+}: QuizInteractionProps) {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [randomSession, setRandomSession] = useState<RandomQuizSession | null>(null);
@@ -425,7 +433,13 @@ export default function QuizInteraction({ quiz, categorySlug }: QuizInteractionP
           {quiz.explanation && (
             <div className="rounded-md border border-black/5 bg-white dark:bg-gray-900 shadow-sm p-3 sm:p-5">
               <div className="font-bold text-center mb-3 text-foreground">解説</div>
-              <ExplanationView explanation={quiz.explanation} />
+              <ExplanationView
+                explanation={quiz.explanation}
+                stripUrls={relatedChapters.flatMap((c) => c.matched)}
+              />
+              {relatedChapters.map((chapter) => (
+                <BookChapterCard key={chapter.href} link={chapter} />
+              ))}
             </div>
           )}
 

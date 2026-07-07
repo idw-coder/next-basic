@@ -362,7 +362,10 @@ console.log(canEdit); // true
 
 ### 短絡評価する
 
-`some` は `true` を返す要素を見つけた時点で残りの要素を処理せずに終了します。大きな配列でもパフォーマンス上の問題になりにくいです。
+`some` は `true` を返す要素を<Marker>見つけた時点で残りの要素を処理せずに終了</Marker>します。大きな配列でもパフォーマンス上の問題になりにくいです。
+
+> 配列の要素のいずれかで callbackFn が真値を返した場合は、直ちに true を返します。それ以外の場合は false です。
+> [MDN - Array.prototype.some](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/some)
 
 <a id="every"></a>
 
@@ -553,7 +556,9 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 
 ## ちゃんと使うためのポイント
 
-- <Marker>配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している</Marker>
+- <Marker>
+    配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している
+  </Marker>
 - `map` は変換、`filter` は絞り込み、`reduce` は集約——目的に応じて使い分ける
 - `find` は最初の1つ、`some` は1つでもあるか、`every` は全部かを判定する
 - `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快

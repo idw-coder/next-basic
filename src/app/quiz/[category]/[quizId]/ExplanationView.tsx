@@ -5,6 +5,42 @@ import StarterKit from "@tiptap/starter-kit";
 
 interface ExplanationViewProps {
   explanation: string;
+  /** 本文から取り除くURL（教科書リンクはカード表示に置き換えるため） */
+  stripUrls?: string[];
+}
+
+// プレーンテキストからURLを取り除き、残った空行を整理する
+function stripUrlsFromText(text: string, urls: string[]): string {
+  let result = text;
+  for (const url of urls) {
+    result = result.split(url).join('');
+  }
+  return result.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// tiptap JSONからURLだけのテキストノードを取り除く。
+// URLを含む長文ノードは部分削除し、空になった段落ごと落とす。
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripUrlsFromTiptap(node: any, urls: string[]): any | null {
+  if (!node || typeof node !== 'object') return node;
+  if (node.type === 'text' && typeof node.text === 'string') {
+    let text = node.text;
+    for (const url of urls) {
+      text = text.split(url).join('');
+    }
+    if (text.trim() === '') return null;
+    return { ...node, text };
+  }
+  if (Array.isArray(node.content)) {
+    const content = node.content
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((child: any) => stripUrlsFromTiptap(child, urls))
+      .filter(Boolean);
+    // テキストが全て消えた段落は段落ごと削除（docは残す）
+    if (content.length === 0 && node.type === 'paragraph') return null;
+    return { ...node, content };
+  }
+  return node;
 }
 
 // tiptap形式のJSONかどうかをチェック→trueならTiptapExplanationコンポーネントを返す
@@ -55,10 +91,20 @@ function isBlockNoteJSON(explanation: string): boolean {
 }
 
 // tiptap形式のJSONを解析して表示
-function TiptapExplanation({ explanation }: { explanation: string }) {
+function TiptapExplanation({
+  explanation,
+  stripUrls,
+}: {
+  explanation: string;
+  stripUrls?: string[];
+}) {
+  const content =
+    stripUrls && stripUrls.length > 0
+      ? stripUrlsFromTiptap(JSON.parse(explanation), stripUrls)
+      : JSON.parse(explanation);
   const editor = useEditor({
     extensions: [StarterKit],
-    content: JSON.parse(explanation),
+    content,
     editable: false,
     immediatelyRender: false,
   });
@@ -70,23 +116,23 @@ function TiptapExplanation({ explanation }: { explanation: string }) {
   );
 }
 
-export default function ExplanationView({ explanation }: ExplanationViewProps) {
+export default function ExplanationView({ explanation, stripUrls }: ExplanationViewProps) {
   if (isTiptapJSON(explanation)) {
-    return <TiptapExplanation explanation={explanation} />;
+    return <TiptapExplanation explanation={explanation} stripUrls={stripUrls} />;
   }
 
   // BlockNote形式の旧データはプレーンテキストに変換して表示
   if (isBlockNoteJSON(explanation)) {
     return (
       <p className="text-foreground/90 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
-        {extractTextFromBlockNote(explanation)}
+        {stripUrlsFromText(extractTextFromBlockNote(explanation), stripUrls ?? [])}
       </p>
     );
   }
 
   return (
     <p className="text-foreground/90 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
-      {explanation}
+      {stripUrlsFromText(explanation, stripUrls ?? [])}
     </p>
   );
 }
