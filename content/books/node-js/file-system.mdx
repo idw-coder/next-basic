@@ -2,7 +2,235 @@
 title: 'fsモジュールでファイル操作 — 読み書き・非同期API・パス処理'
 description: 'Node.jsのfsモジュールとpathモジュールを使い、ファイルの読み書き、非同期API、パス処理の基本を学びます。'
 order: 8
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+ブラウザのJavaScriptにはできなくて、Node.jsにはできることの代表が**ファイル操作**です。設定ファイルの読み込み、ログの書き出し、CSVの変換、ビルドツールによるファイル生成——Node.jsが開発ツールの土台として使われるのは、この能力があるからです。
+
+ファイル操作を担当するのが標準モジュールの `fs`（File System）、ファイルの「場所」の計算を担当するのが `path` です。この章ではこの2つのモジュールの基本を学びます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  fsのサンプルコードを検索すると、`readFile`、`readFileSync`、コールバック版…と同じ処理なのに書き方が何種類もあって混乱します。どれを使えばいいんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  歴史的な事情で、fsには3世代のAPIが共存しているんだ。結論を先に言うと、**新しく書くコードはPromise版（`node:fs/promises`）**でOK。ただし他の2つも読めないと、既存コードや記事が理解できないから、まず3種類の見分け方から整理しよう。
+</SpeechBubble>
+
+## fsの3種類のAPIを見分ける
+
+同じ「ファイルを読む」でも、fsには3つの書き方があります。
+
+| 種類 | 読み込み元 | 例 | 特徴 |
+| ---- | ---------- | -- | ---- |
+| Promise版（推奨） | `node:fs/promises` | `await readFile(...)` | async/awaitで書ける。新規コードはこれ |
+| コールバック版 | `node:fs` | `fs.readFile(path, cb)` | error-firstコールバック。古いコードで頻出 |
+| 同期版 | `node:fs` | `fs.readFileSync(...)` | 末尾に**Sync**。完了までプロセス全体を止める |
+
+```js
+// 同じ「ファイルを読む」の3世代
+const { readFile } = require('node:fs/promises'); // ① Promise版
+const fs = require('node:fs'); // ②③ コールバック版と同期版
+
+const data1 = await readFile('a.txt', 'utf8'); // ① 推奨
+fs.readFile('a.txt', 'utf8', (err, data2) => {}); // ② 既存コードで読めればOK
+const data3 = fs.readFileSync('a.txt', 'utf8'); // ③ 用途限定（後述）
+```
+
+<Marker>迷ったらPromise版（`node:fs/promises`）——`await` で待てて、`try...catch` でエラーを捕まえられる、現在の標準的な書き方です。</Marker>
+
+同期版（`Sync` 付き）は「動いている間、他の処理をすべて止める」ため、リクエストをさばくサーバーで使うと[イベントループを詰まらせます](/books/node-js/async-and-event-loop)。使ってよいのは、**起動時の設定読み込みやCLIツールなど、「止まっても誰も困らない」場面**に限られます。
+
+<Callout type="note">
+`require('node:fs')` の `node:` プレフィックスは「Node.jsの標準モジュールである」ことを明示する書き方です。`require('fs')` でも動きますが、npmパッケージと取り違えないよう、現在は `node:` 付きが推奨されています。
+</Callout>
+
+## ファイルを読む — readFile
+
+**構文：** `readFile(path, options?)`（`node:fs/promises`）
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `path`（第1引数） | 文字列 / URL / Buffer | 読み込むファイルのパス |
+| `options`（第2引数、省略可） | 文字列 / オブジェクト | エンコーディング指定。`'utf8'` または `{ encoding: 'utf8' }` |
+
+**戻り値：** ファイル内容で解決されるPromise。エンコーディング指定ありなら文字列、**省略するとBuffer**（生のバイト列）
+
+```js
+const { readFile } = require('node:fs/promises');
+
+const text = await readFile('memo.txt', 'utf8');
+console.log(text); // → 'こんにちは'（文字列）
+
+const buf = await readFile('memo.txt'); // エンコーディング省略
+console.log(buf); // → <Buffer e3 81 93 ...>（Buffer）
+```
+
+「読んだ結果が文字化けならぬ `<Buffer ...>` 表示になった」は初心者が必ず一度は踏むポイントで、原因は `'utf8'` の指定漏れです。テキストとして読むなら常にエンコーディングを指定しましょう（Bufferそのものは次章の[StreamとBuffer](/books/node-js/streams)で詳しく扱います）。
+
+## ファイルに書く — writeFile と appendFile
+
+**構文：** `writeFile(path, data, options?)` / `appendFile(path, data, options?)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `path`（第1引数） | 文字列 / URL | 書き込み先のファイルパス |
+| `data`（第2引数） | 文字列 / Buffer など | 書き込む内容 |
+| `options`（第3引数、省略可） | 文字列 / オブジェクト | エンコーディングなど |
+
+**戻り値：** 完了時に `undefined` で解決されるPromise
+
+2つの違いは書き込みモードです。
+
+- `writeFile` — **全上書き**。ファイルが無ければ作成、あれば元の内容は消える
+- `appendFile` — **末尾に追記**。ファイルが無ければ作成
+
+```js
+const { writeFile, appendFile } = require('node:fs/promises');
+
+await writeFile('result.json', JSON.stringify(result, null, 2));
+await appendFile('app.log', `${new Date().toISOString()} 処理完了\n`);
+```
+
+<Callout type="warning">
+`writeFile` は「上書き」であることに注意してください。既存ファイルに1行足すつもりで `writeFile` を使うと、**元の内容がすべて消えます**。追記は `appendFile` です。
+</Callout>
+
+## ディレクトリを扱う — mkdir と readdir
+
+**構文：** `mkdir(path, options?)` — ディレクトリを作成する
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `path`（第1引数） | 文字列 / URL | 作成するディレクトリのパス |
+| `options`（第2引数、省略可） | オブジェクト | `{ recursive: true }` で親ごとまとめて作成。既存でもエラーにならない |
+
+**戻り値：** 完了時に解決されるPromise（`recursive: true` の場合、最初に作成したパスの文字列）
+
+**構文：** `readdir(path, options?)` — ディレクトリの中身を一覧する
+
+**戻り値：** ファイル名（文字列）の配列で解決されるPromise。`{ withFileTypes: true }` を渡すと、ファイルかディレクトリかを判定できる `Dirent` オブジェクトの配列になる
+
+```js
+const { mkdir, readdir } = require('node:fs/promises');
+
+// 深い階層も一発で作る（実務ではほぼrecursive付きで使う）
+await mkdir('output/2026/07', { recursive: true });
+
+// 一覧して、ディレクトリだけを取り出す
+const entries = await readdir('src', { withFileTypes: true });
+const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+```
+
+## 存在確認・情報取得・削除
+
+| メソッド | 引数 | 戻り値 | 用途 |
+| -------- | ---- | ------ | ---- |
+| `stat(path)` | パス | `Stats` オブジェクトのPromise | サイズ（`.size`）、更新日時（`.mtime`）、種別（`.isFile()`）の取得 |
+| `rm(path, options?)` | パス、`{ recursive: true, force: true }` など | Promise | ファイル・ディレクトリの削除 |
+| `rename(oldPath, newPath)` | 旧パス、新パス | Promise | 移動・リネーム |
+| `copyFile(src, dest)` | コピー元、コピー先 | Promise | ファイルコピー |
+
+「ファイルが存在するか」の確認は、専用メソッドを探すより、**操作してみてエラーで判定する**のがNode.js流です。
+
+```js
+// ⭕ 読んでみて、ENOENT（存在しない）なら既定値を使う
+try {
+  return JSON.parse(await readFile('cache.json', 'utf8'));
+} catch (err) {
+  if (err.code === 'ENOENT') return null; // 想定内: まだ作られていないだけ
+  throw err; // 権限エラーなどは隠さず上へ
+}
+```
+
+事前に存在確認をしてから読む方式は、「確認した直後・読む直前」に他のプロセスがファイルを消す隙間があるため、確実ではありません。`err.code` で分岐するこの形は、[エラーハンドリングの章](/books/node-js/error-handling)で学んだ「予期するエラーはコードで判定して回復する」の実践です。
+
+<Figure src="/images/readingbook_woman_color.png" alt="本を読む女性" maxWidth="150px" caption="fsの読み書きは「パス・内容・オプション」の3点セットで考えると整理しやすい" />
+
+## パスの扱い — pathモジュール
+
+ファイル操作とセットで必要になるのが、パス文字列の計算です。パスを `+` で連結する書き方は、OSの違い（Windowsは `\`、macOS/Linuxは `/`）や区切りの重複でバグの温床になるため、`path` モジュールに任せます。
+
+| メソッド | 引数 | 戻り値 | 例 |
+| -------- | ---- | ------ | -- |
+| `path.join(...paths)` | パス片を任意個 | 連結・正規化されたパス文字列 | `join('src', 'app.js')` → `'src/app.js'` |
+| `path.resolve(...paths)` | パス片を任意個 | **絶対パス**の文字列 | `resolve('src')` → `'/Users/you/project/src'` |
+| `path.basename(p, ext?)` | パス、拡張子（省略可） | ファイル名部分 | `basename('/a/b.txt')` → `'b.txt'` |
+| `path.extname(p)` | パス | 拡張子（ドット付き） | `extname('b.txt')` → `'.txt'` |
+| `path.dirname(p)` | パス | ディレクトリ部分 | `dirname('/a/b.txt')` → `'/a'` |
+
+```js
+const path = require('node:path');
+
+// ❌ 文字列連結: OSによって壊れる・区切りが重複する
+const bad = dir + '/' + name + '.json';
+
+// ⭕ path.join: 区切り文字をOSに合わせて正しく処理する
+const good = path.join(dir, `${name}.json`);
+```
+
+### 「今のファイルの場所」を基準にする — __dirname
+
+fsのパスを相対パス（`./data.txt`）で書くと、**「スクリプトファイルの場所」ではなく「コマンドを実行したディレクトリ」基準**で解決されます。プロジェクトのルートで実行すれば動くのに、別の場所から実行すると `ENOENT` になる——という不安定さの原因です。
+
+確実なのは、スクリプト自身の場所を表す `__dirname` を基準に組み立てる方法です。
+
+```js
+// CommonJSの場合: __dirnameが使える
+const configPath = path.join(__dirname, 'config.json');
+
+// ES Modulesの場合: __dirnameが無いので import.meta.dirname を使う
+const configPath2 = path.join(import.meta.dirname, 'config.json');
+```
+
+<Marker>fsに渡す相対パスは「実行時のカレントディレクトリ」基準——スクリプトの隣のファイルを読むなら、`__dirname`（ESMでは `import.meta.dirname`）から組み立てます。</Marker>
+
+CommonJSとES Modulesでの書き分けについては、[CommonJSとES Modulesの章](/books/node-js/modules-cjs-esm)を参照してください。
+
+## 大きなファイルはStreamで
+
+`readFile` は**ファイル全体をメモリに載せる**APIです。数GBのログファイルを `readFile` すると、その分のメモリを一気に消費し、最悪プロセスが落ちます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  どのくらいのサイズから危ないんですか？目安が知りたいです。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  「設定ファイルやJSONのように数MBまでならreadFile、ログ処理・変換のように数百MB以上になり得るならStream」がざっくりした目安。ポイントはファイルの現在のサイズじゃなくて、**将来大きくなり得るか**で選ぶことだよ。
+</SpeechBubble>
+
+少しずつ読み・少しずつ書くには `createReadStream` / `createWriteStream` を使います。詳しくは次章の[StreamとBuffer](/books/node-js/streams)で解説します。
+
+## よくあるハマりどころ
+
+- **`utf8` 指定漏れでBufferが返ってくる** — テキストを読むときは常にエンコーディングを指定する
+- **`writeFile` で追記のつもりが全消去** — 追記は `appendFile`
+- **相対パスがカレントディレクトリ基準で `ENOENT`** — `__dirname` / `import.meta.dirname` から組み立てる
+- **サーバーのリクエスト処理で `readFileSync`** — 全リクエストが止まる。Syncは起動時とCLIだけ
+- **ループ内で1件ずつ `await readFile`** — 独立した複数ファイルなら `Promise.all` で並行に読むと速い
+
+```js
+// ⭕ 複数ファイルの並行読み込み
+const contents = await Promise.all(files.map((f) => readFile(f, 'utf8')));
+```
+
+## この章のまとめ
+
+- fsのAPIは3世代。<Marker>新規コードはPromise版（`node:fs/promises`）+ async/awaitが基本</Marker>
+- `readFile` / `writeFile` / `appendFile` / `mkdir` / `readdir` / `stat` / `rm` で日常のファイル操作はほぼ足りる
+- 存在確認は事前チェックではなく、`err.code === 'ENOENT'` の事後判定で
+- パスの計算は `path.join` に任せ、基準点は `__dirname`（ESMは `import.meta.dirname`）
+- 大きくなり得るファイルはreadFileではなくStreamで扱う
+
+次章では、fsと同じくNode.jsの中核である、少しずつデータを流す仕組み——[StreamとBuffer](/books/node-js/streams)を学びます。
+
+## 参考リンク
+
+- [Node.js API: File system（英語）](https://nodejs.org/api/fs.html) — fsモジュール全メソッドの公式リファレンス
+- [Node.js API: Path（英語）](https://nodejs.org/api/path.html) — pathモジュールの公式リファレンス
+- [Node.js Learn: Reading files with Node.js（英語）](https://nodejs.org/en/learn/manipulating-files/reading-files-with-nodejs) — 公式チュートリアルのファイル読み込み編
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

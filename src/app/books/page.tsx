@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import Link from 'next/link';
-import { ArrowRight, BookOpenCheck, CheckCircle2, Layers3 } from 'lucide-react';
+import { BookOpenCheck, CheckCircle2, Layers3 } from 'lucide-react';
 import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
 import BookCard from '@/app/books/_components/BookCard';
 import { SectionHeading } from '@/components/SectionHeading';
-import { Button } from '@/components/ui/button';
 
 import { SITE_URL } from '@/lib/site';
 
@@ -41,110 +39,71 @@ export default function BooksPage() {
   };
 
   return (
-    <div className="bg-[#fbf2e9] text-[#2f302f]">
+    <div className="bg-[linear-gradient(180deg,#fff7ef_0%,#ffffff_42%,#fff7ef_100%)] text-[#232323]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       {/* ヒーロー */}
-      <section className="relative overflow-hidden px-4 pt-8 pb-10 md:pt-16 md:pb-16">
-        <Image
-          src="/images/creative_color.png"
-          alt=""
-          width={738}
-          height={452}
-          priority
-          className="pointer-events-none absolute left-1/2 top-4 hidden w-[52rem] max-w-none -translate-x-1/2 rotate-[15deg] opacity-[0.06] blur-[2px] saturate-75 lg:block"
-        />
-        <div className="relative mx-auto grid max-w-6xl gap-6 md:gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-          <div className="relative z-10 text-center lg:text-left">
-            <p className="mb-3 inline-flex rounded-full border border-[#2f86c9]/30 bg-white/70 px-3 py-1 text-[11px] font-bold text-[#2f86c9] sm:text-xs">
-              短い章で、基礎から順番に
-            </p>
-            <h1 className="text-3xl font-black leading-tight tracking-normal text-[#242424] sm:text-5xl md:text-6xl">
-              <span className="block text-[#df796b]">教科書で</span>
-              <span className="block">理解を整える</span>
-            </h1>
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#56514c] sm:mt-5 sm:text-base sm:leading-8 lg:mx-0">
-              クイズで曖昧だったところを、章ごとの読み物で確認できます。手を動かす前の地図として使える技術書コンテンツです。
-            </p>
-            <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs font-semibold text-[#2f302f] sm:text-sm lg:justify-start">
+      <section className="relative overflow-hidden pb-8 md:pb-12">
+        <div className="mx-auto">
+          <h1 className="sr-only">教科書一覧</h1>
+          <div className="relative overflow-hidden border-b border-white/85 bg-[#f7ede1] shadow-[0_28px_80px_rgba(47,48,47,0.12)]">
+            <Image
+              src="/images/books-hero-editorial2.png"
+              alt="理解を、整える。ウェブエンジニア問題集の教科書機能キービジュアル"
+              width={1200}
+              height={630}
+              priority
+              className="h-auto w-full"
+            />
+          </div>
+
+          <div className="mx-auto mt-4 flex max-w-6xl flex-wrap gap-2 px-4 md:mt-5">
+            <div className="flex flex-wrap gap-2 text-xs font-black text-[#232323] sm:text-sm">
               {[
-                { icon: BookOpenCheck, text: '基礎から順番に', color: 'text-[#2f86c9]' },
-                { icon: Layers3, text: '章ごとに整理', color: 'text-[#df796b]' },
+                { icon: BookOpenCheck, text: '基礎から順番に', color: 'text-[#0967c9]' },
+                { icon: Layers3, text: '章ごとに整理', color: 'text-[#ff624d]' },
                 { icon: CheckCircle2, text: 'クイズ前後の復習', color: 'text-emerald-600' },
               ].map((item) => (
                 <div
                   key={item.text}
-                  className="flex items-center gap-1.5 rounded-full border border-[#2f302f]/15 bg-white/80 px-3 py-1.5 shadow-sm"
+                  className="flex items-center gap-1.5 rounded-full border border-[#232323]/10 bg-[#fffaf1] px-3 py-1.5 shadow-[6px_6px_0_rgba(215,255,56,0.3)]"
                 >
                   <item.icon className={`size-4 shrink-0 ${item.color}`} />
                   {item.text}
                 </div>
               ))}
             </div>
-            <div className="mt-6">
-              <Button className="rounded-full bg-[#2f86c9] px-7 font-bold hover:bg-[#2476b4]" asChild>
-                <Link href="#book-list" className="inline-flex items-center gap-2">
-                  教科書を選ぶ
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          <div className="relative mx-auto h-44 w-full max-w-sm sm:h-64 sm:max-w-xl md:h-80">
-            <div className="absolute right-0 top-4 h-[68%] w-[72%] rounded-[2.25rem] border-2 border-[#2f302f]/70 bg-[#f3c875] sm:top-0 sm:rounded-[2.75rem]">
-              <Image
-                src="/images/stepup_suit_man_color-1.png"
-                alt="段階的に学習を進める人のイラスト"
-                width={690}
-                height={763}
-                priority
-                className="absolute -bottom-2 left-1/2 h-[116%] w-auto -translate-x-1/2 object-contain sm:-bottom-4 sm:h-[122%]"
-              />
-            </div>
-            <div className="absolute bottom-6 left-0 h-[48%] w-[48%] rounded-[1.5rem] border-2 border-[#2f302f]/70 bg-[#bde9ec] sm:bottom-8 sm:rounded-[2rem]">
-              <Image
-                src="/images/readingbook_woman_color.png"
-                alt="教科書を読む人のイラスト"
-                width={400}
-                height={400}
-                priority
-                className="absolute -bottom-3 left-1/2 h-[118%] w-auto -translate-x-1/2 object-contain sm:-bottom-5"
-              />
-            </div>
           </div>
         </div>
       </section>
 
-      <div id="book-list" className="mx-auto max-w-6xl px-4 pt-6 pb-10 md:pt-8 md:pb-14">
-        <section className="rounded-[2rem] bg-white px-5 py-8 md:px-10 md:py-12">
-          <SectionHeading className="mb-7" subtitle={`${books.length}冊の教科書から選べます`}>
-            教科書一覧
-          </SectionHeading>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
-            {books.map((book) => {
-              const chapters = getChaptersByBook(book.bookSlug);
-              return (
-                <BookCard
-                  key={book.bookSlug}
-                  bookSlug={book.bookSlug}
-                  title={book.title}
-                  description={book.description}
-                  coverImage={book.coverImage}
-                  chapterCount={chapters.length}
-                  chapters={chapters.map((c) => ({
-                    title: c.title,
-                    order: c.order,
-                    chapterSlug: c.chapterSlug,
-                  }))}
-                  isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
-                />
-              );
-            })}
-          </div>
-        </section>
+      <div id="book-list" className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:pt-4 md:pb-14">
+        <SectionHeading className="mb-7" subtitle={`${books.length}冊の教科書から選べます`}>
+          教科書一覧
+        </SectionHeading>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+          {books.map((book) => {
+            const chapters = getChaptersByBook(book.bookSlug);
+            return (
+              <BookCard
+                key={book.bookSlug}
+                bookSlug={book.bookSlug}
+                title={book.title}
+                description={book.description}
+                coverImage={book.coverImage}
+                chapterCount={chapters.length}
+                chapters={chapters.map((c) => ({
+                  title: c.title,
+                  order: c.order,
+                  chapterSlug: c.chapterSlug,
+                }))}
+                isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );

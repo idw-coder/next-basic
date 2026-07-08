@@ -2,7 +2,263 @@
 title: 'Node.jsのエラーハンドリング — 非同期エラー・プロセスクラッシュ対策'
 description: 'Node.jsで起きる同期エラー、非同期エラー、Promiseの失敗、プロセス終了につながるエラーの扱い方を学びます。'
 order: 6
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+ブラウザのJavaScriptでエラー処理をサボっても、被害はそのタブの中で収まります。しかしNode.jsでは事情が違います。**捕まえられなかったエラーは、プロセスそのものを終了させます**。サーバーであれば、そのとき処理中だった全ユーザーのリクエストが巻き添えになります。
+
+だからNode.jsのエラーハンドリングは、「エラーメッセージを表示する」ためではなく、**プロセスを守るため**の技術です。この章では、Node.jsで起きるエラーの種類と、それぞれの正しい捕まえ方を学びます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `try...catch` で囲んだはずなのに、サーバーが落ちたんです。catchって信用できないんですか…？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  catchは信用できるよ。ただし**捕まえられる範囲**が決まっているんだ。Node.jsのエラーは発生のしかたが4種類あって、種類ごとに捕まえ方が違う。「try...catchで全部捕まる」と思っていると、非同期のエラーがすり抜けていく。
+</SpeechBubble>
+
+## Node.jsのエラーは4種類ある
+
+まず全体像です。エラーの「発生のしかた」によって、受け止め方が変わります。
+
+| 種類 | 例 | 捕まえ方 |
+| ---- | -- | -------- |
+| 同期エラー | `JSON.parse` の失敗、`throw` | `try...catch` |
+| error-firstコールバック | `fs.readFile(path, cb)` の失敗 | コールバックの第1引数 `err` を確認 |
+| Promiseの拒否（rejection） | `await fetch()` の失敗 | `try...catch` + `await`、または `.catch()` |
+| `error` イベント | サーバーやストリームの異常 | `.on('error', handler)` で購読 |
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["エラー発生"] --> B["同期処理?"]
+    B -->|はい| C["try...catch"]
+    B -->|いいえ| D["Promise?"]
+    D -->|はい| E["await + try...catch"]
+    D -->|いいえ| F["コールバックのerr / errorイベント"]
+`}
+/>
+
+順番に見ていきます。
+
+## 同期エラー — try...catchで捕まえる
+
+同期的に投げられたエラーは、素直に `try...catch` で捕まります。代表例が `JSON.parse` です。
+
+```js
+try {
+  const config = JSON.parse(rawText); // 不正なJSONだとSyntaxErrorをthrowする
+  console.log(config.port);
+} catch (err) {
+  console.error('設定ファイルが壊れています:', err.message);
+}
+```
+
+自分でエラーを発生させるときは `throw` を使います。このとき、<Marker>throwするのは必ず `Error` オブジェクト（またはそのサブクラス）にします。`throw '失敗しました'` のような文字列のthrowは、スタックトレースが付かず原因調査を困難にします。</Marker>
+
+```js
+// ⭕ Errorオブジェクトをthrowする（どこで起きたかスタックトレースが残る）
+throw new Error('在庫が不足しています');
+
+// ❌ 文字列のthrow（スタックトレースなし。捕まえる側の扱いも困る）
+throw '在庫が不足しています';
+```
+
+## error-firstコールバック — 第1引数を必ず見る
+
+Node.jsの古くからの非同期APIは、**コールバックの第1引数にエラーを渡す**という規約（error-firstコールバック）で統一されています。
+
+```js
+const fs = require('node:fs');
+
+fs.readFile('data.txt', 'utf8', (err, data) => {
+  if (err) {
+    // 失敗時: errにErrorオブジェクトが入り、dataはundefined
+    console.error('読み込み失敗:', err.message);
+    return; // ここでreturnしないと、下の処理が失敗時にも実行されてしまう
+  }
+  // 成功時: errはnull
+  console.log(data);
+});
+```
+
+重要なのは、**コールバック内のエラーは外側のtry...catchでは捕まらない**ことです。コールバックが実行されるのは、tryブロックの実行がとっくに終わった後だからです（この仕組みは[非同期処理とイベントループ](/books/node-js/async-and-event-loop)で学んだとおりです）。
+
+```js
+// ❌ この書き方に意味はない: readFileのエラーはcatchに届かない
+try {
+  fs.readFile('data.txt', 'utf8', (err, data) => {
+    // エラーはこの err に来る。外のcatchには来ない
+  });
+} catch (err) {
+  // ファイルが存在しなくても、ここには到達しない
+}
+```
+
+<Callout type="note">
+現在のNode.jsでは、fsを含む主要モジュールにPromise版のAPI（`node:fs/promises` など）が用意されているため、新しく書くコードでerror-firstコールバックを使う場面は減っています。ただし既存コードや古い教材では大量に登場するので、「第1引数がエラー」の規約は読めるようにしておく必要があります。
+</Callout>
+
+## Promiseのエラー — awaitとtry...catchの組み合わせ
+
+Promiseベースの非同期処理では、失敗は「Promiseの拒否（rejection）」として表現されます。`await` と組み合わせると、同期コードと同じ見た目の `try...catch` で捕まえられます。
+
+```js
+const { readFile } = require('node:fs/promises');
+
+async function loadConfig() {
+  try {
+    const raw = await readFile('config.json', 'utf8');
+    return JSON.parse(raw); // 同期エラー（JSON.parse）も同じcatchで捕まる
+  } catch (err) {
+    console.error('設定の読み込みに失敗:', err.message);
+    return defaultConfig; // フォールバック値を返して回復する
+  }
+}
+```
+
+`await` + `try...catch` の便利な点は、**非同期エラーと同期エラーを同じcatchで受けられる**ことです。上の例では `readFile` の失敗（非同期）も `JSON.parse` の失敗（同期）も同じcatchに届きます。
+
+### 最重要のハマりどころ — awaitを忘れると捕まらない
+
+```js
+// ❌ awaitがないため、失敗はこのtry...catchをすり抜ける
+try {
+  saveLog(message); // Promiseを返す関数だが、待っていない
+} catch (err) {
+  // saveLogの失敗はここに来ない
+}
+
+// ⭕ awaitすればcatchに届く
+try {
+  await saveLog(message);
+} catch (err) {
+  console.error('ログ保存失敗:', err.message);
+}
+```
+
+<Marker>`try...catch` がPromiseのエラーを捕まえられるのは、`await` している場合だけ——「awaitのつけ忘れ」はNode.jsのエラーすり抜けの最頻出原因です。</Marker>
+
+## プロセスを落とすエラー — 最後の防波堤
+
+ここまでの手段で捕まえ損ねたエラーは、どうなるのでしょうか。
+
+- 同期エラーを誰も捕まえなかった場合 → **uncaught exception** としてプロセスが終了する
+- Promiseの拒否を誰も処理しなかった場合 → **unhandled rejection** として、現在のNode.jsでは同様に**プロセスが終了する**
+
+<Figure src="/images/harry_man_color.png" alt="慌てて走る人" maxWidth="150px" caption="捕まえ損ねたエラー1つで、プロセス全体が終了する" />
+
+`process` オブジェクトのイベントで、この「最後の瞬間」を捕捉できます。
+
+**構文：** `process.on(event, listener)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `event`（第1引数） | 文字列 | イベント名。`'uncaughtException'` / `'unhandledRejection'` など |
+| `listener`（第2引数） | 関数 | イベント発生時に呼ばれる関数。エラーオブジェクトが渡される |
+
+**戻り値：** `process` 自身（メソッドチェーンできる）
+
+```js
+process.on('uncaughtException', (err) => {
+  // 最後のログを書き出してから、プロセスを終了させる
+  console.error('致命的なエラー:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('未処理のPromise拒否:', reason);
+  process.exit(1);
+});
+```
+
+ここで重要な設計判断があります。
+
+<Marker>`uncaughtException` を捕まえて「処理を継続する」のはNGです。ログを記録して、プロセスを終了させるのが正しい使い方です。</Marker>
+
+理由は、uncaught exceptionが起きた時点で**アプリケーションの内部状態が壊れている可能性がある**からです。書き込み途中のファイル、中途半端なDBトランザクション、解放されないリソース——この状態で動き続けると、クラッシュより厄介な「静かにデータを壊すサーバー」になります。Node.js公式ドキュメントも「クラッシュ前の同期的なクリーンアップ用であり、通常運転への復帰用ではない」と明言しています。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  でも本番サーバーが落ちたままだと大問題ですよね？終了させて、その後はどうするんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  いい質問。答えは「**外側の仕組みに再起動させる**」だよ。PM2のようなプロセスマネージャやDocker、Kubernetesには、プロセスが終了したら自動で再起動する機能がある。「壊れたら綺麗な状態で再スタート」の方が、壊れたまま動き続けるより安全なんだ。この運用は本番運用の章で詳しく扱うよ。
+</SpeechBubble>
+
+## 予期するエラーと予期しないエラーを区別する
+
+エラーの捕まえ方が分かったら、次は「捕まえた後どうするか」です。判断の軸は、そのエラーが**予期できる運用上のエラー**（operational error）か、**バグ**（programmer error）かの区別です。
+
+| 分類 | 例 | 対応 |
+| ---- | -- | ---- |
+| 予期するエラー | ファイルが存在しない、接続タイムアウト、不正な入力値 | その場で処理する（リトライ、フォールバック、利用者にエラーを返す） |
+| バグ | `undefined` のプロパティ参照、型の間違い、ロジックの矛盾 | 捕まえて隠さない。ログを残してクラッシュさせ、コードを直す |
+
+「ファイルがないかもしれない」は正常な運用の一部なので、コードで回復方法を用意します。一方「バグ」をcatchで握りつぶすと、不具合が隠れたまま蓄積します。<Marker>すべてのエラーを一律にcatchして無視するのは、エラーハンドリングではなく証拠隠滅です。</Marker>
+
+```js
+// ⭕ 予期するエラーだけを選んで回復し、それ以外は投げ直す
+try {
+  const raw = await readFile('cache.json', 'utf8');
+  return JSON.parse(raw);
+} catch (err) {
+  if (err.code === 'ENOENT') {
+    return null; // 「キャッシュファイルがまだ無い」は想定内。nullで正常続行
+  }
+  throw err; // それ以外（権限エラーやバグ）は隠さず上位へ
+}
+```
+
+Node.jsのシステムエラーには `err.code` に `'ENOENT'`（ファイルが存在しない）、`'EACCES'`（権限がない）、`'ECONNREFUSED'`（接続拒否）のような機械判定できるコードが入っています。メッセージ文字列ではなく、このコードで分岐するのが定石です。
+
+## よくあるハマりどころ
+
+### 空のcatchでエラーを握りつぶす
+
+```js
+// ❌ エラーが起きた事実ごと消える
+try {
+  await saveUserData(user);
+} catch (err) {}
+```
+
+「とりあえず落ちないように」の空catchは、障害を**静かに**進行させます。最低でもログには残し、対処できないエラーは投げ直します。
+
+### errorイベントの購読漏れ
+
+HTTPサーバーやストリームなどのイベントベースのオブジェクトは、異常を `error` **イベント**として通知します。このイベントは、リスナーが1つも登録されていないと**エラーがthrowされてプロセスが終了する**という特別なルールを持っています。長時間動くオブジェクトには `.on('error', handler)` を必ず付けます（イベントの仕組み自体は、EventEmitterの章で詳しく扱う予定です）。
+
+```js
+const server = require('node:http').createServer(handler);
+
+// ⭕ これが無いと、ポート使用中(EADDRINUSE)などでプロセスごと落ちる
+server.on('error', (err) => {
+  console.error('サーバーエラー:', err.message);
+});
+```
+
+### catchした後、returnし忘れて処理が続行する
+
+error-firstコールバックの例で見たとおり、「エラー処理をしたのに、その下の成功時の処理も実行されてしまう」のは典型的なバグです。エラー処理の最後に `return` があるか、成功パスと失敗パスが確実に分岐しているかを確認しましょう。
+
+## この章のまとめ
+
+- <Marker>Node.jsでは捕まえ損ねたエラー1つでプロセス全体が終了する</Marker>——エラーハンドリングはプロセスを守る技術
+- エラーの発生元は4種類：同期（try...catch）、error-firstコールバック（第1引数）、Promise拒否（await + try...catch）、errorイベント（.on('error')）
+- Promiseのエラーは `await` していないと捕まらない——「awaitのつけ忘れ」に最大限の注意を
+- `uncaughtException` / `unhandledRejection` はログを残して終了するための最後の防波堤。処理継続には使わない
+- 「予期するエラー」は `err.code` で判別してその場で回復、「バグ」は隠さずクラッシュさせて直す
+
+次章では、この章でも登場した `error` イベントの土台である、Node.jsのイベント駆動の仕組み——EventEmitterを学びます。
+
+## 参考リンク
+
+- [Node.js API: Errors（英語）](https://nodejs.org/api/errors.html) — エラークラスと `err.code` 一覧の公式リファレンス
+- [Node.js API: Process（英語）](https://nodejs.org/api/process.html) — `uncaughtException` / `unhandledRejection` イベントの仕様
+- [try...catch - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/try...catch) — 例外捕捉の基本構文リファレンス
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>
