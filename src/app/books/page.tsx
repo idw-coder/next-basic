@@ -7,6 +7,8 @@ import { SectionHeading } from '@/components/SectionHeading';
 
 import { SITE_URL } from '@/lib/site';
 
+const BOOKS_OG_IMAGE = `${SITE_URL}/images/books-hero-editorial2.png`;
+
 export const metadata: Metadata = {
   title: '教科書一覧 | ウェブエンジニア問題集',
   description:
@@ -18,6 +20,20 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'ja_JP',
     url: `${SITE_URL}/books`,
+    images: [
+      {
+        url: BOOKS_OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: '理解を、整える。ウェブエンジニア問題集の教科書機能キービジュアル',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '教科書一覧 | ウェブエンジニア問題集',
+    description: 'ウェブ開発の基礎を体系的に学べる無料の技術書コンテンツ',
+    images: [BOOKS_OG_IMAGE],
   },
 };
 
