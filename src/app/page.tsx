@@ -401,10 +401,12 @@ export default async function Home() {
               <span className="block">問題集</span>
             </h1>
             <p className="mt-3 w-fit -rotate-1 bg-[#ff624d] px-3 py-1.5 text-base font-black leading-tight text-white shadow-[8px_8px_0_#d7ff38] sm:mt-4 sm:px-4 sm:text-xl">
-              解ける。戻れる。身につく。
+              解ける。気づく。身につく。
             </p>
-            <p className="mt-4 max-w-xl text-sm font-medium leading-7 text-[#4e4b46] sm:text-base sm:leading-8">
-              HTML、CSS、JavaScript、React、Next.jsまで。クイズで手早く確認し、教科書で体系的に戻れる無料学習サイトです。
+            <p className="mt-4 max-w-xl text-sm font-medium leading-7 text-[#3a3632] [&]:decoration-clone sm:text-base sm:leading-8">
+              <span className="[background:linear-gradient(to_top,rgba(255,255,255,0.75)_40%,transparent_40%)] [box-decoration-break:clone]">
+                HTML、CSS、JavaScript、React、Next.jsまで。クイズで苦手に気づき、教科書ですぐ学び直せる無料学習サイトです。
+              </span>
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-5 sm:gap-3">
               <Button
@@ -427,25 +429,25 @@ export default async function Home() {
               </Button>
             </div>
             <div className="mt-4 grid max-w-sm grid-cols-3 rounded-[1.25rem] border border-white/80 bg-white/90 px-3 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:mt-5">
-              <div>
-                <p className="text-3xl font-black leading-none text-[#ff624d]">16</p>
-                <p className="mt-1 text-[10px] font-black tracking-[0.16em] text-[#4f4942]">
-                  CATEGORY
+              <div className="text-center">
+                <p className="text-2xl font-black leading-none text-[#ff624d] sm:text-3xl">16</p>
+                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-[#5c5650]">
+                  カテゴリ
                 </p>
               </div>
-              <div className="border-x border-[#232323]/12 px-4">
-                <p className="text-3xl font-black leading-none text-[#232323]">
+              <div className="border-x border-[#232323]/10 text-center">
+                <p className="text-2xl font-black leading-none text-[#232323] sm:text-3xl">
                   {totalCount > 0 ? totalCount : 500}
-                  <span className="text-xs font-bold text-[#6d6760]">+</span>
+                  <span className="text-sm font-bold text-[#6d6760]">+</span>
                 </p>
-                <p className="mt-1 text-[10px] font-black tracking-[0.16em] text-[#4f4942]">
-                  QUESTIONS
+                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-[#5c5650]">
+                  問
                 </p>
               </div>
-              <div className="pl-4">
-                <p className="text-3xl font-black leading-none text-[#0967c9]">0円</p>
-                <p className="mt-1 text-[10px] font-black tracking-[0.16em] text-[#4f4942]">
-                  START
+              <div className="text-center">
+                <p className="text-2xl font-black leading-none text-[#0967c9] sm:text-3xl">0円</p>
+                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-[#5c5650]">
+                  すべて無料
                 </p>
               </div>
             </div>
