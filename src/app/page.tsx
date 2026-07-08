@@ -369,34 +369,47 @@ export default async function Home() {
   const totalCount = Object.values(counts).reduce((sum, c) => sum + c, 0);
   const bookList = getAllBooks();
   return (
-    <div className="bg-[#fbf2e9] text-[#2f302f]">
+    <div className="bg-[#fff7ef] text-[#2f302f]">
       {/* ヒーロー */}
-      <section className="relative overflow-hidden px-4 pt-5 pb-5 md:pt-16 md:pb-20">
+      <section className="relative min-h-[calc(100svh-8.5rem)] overflow-hidden bg-[#fdf8f0] px-4 py-4 md:min-h-[calc(100svh-9rem)] md:px-6 md:py-6">
         <Image
-          src="/images/creative_color.png"
+          src="/images/top-hero-editorial.png"
           alt=""
-          width={738}
-          height={452}
+          fill
           priority
-          className="pointer-events-none absolute left-1/2 top-4 hidden w-[52rem] max-w-none -translate-x-1/2 rotate-[15deg] opacity-[0.06] blur-[2px] saturate-75 lg:block"
+          sizes="100vw"
+          className="absolute inset-0 h-full w-full object-cover object-[78%_center] md:object-[62%_28%]"
         />
-        <div className="relative mx-auto grid max-w-6xl gap-5 md:gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div className="relative z-10 text-center lg:text-left">
-            <p className="mb-2 inline-flex rounded-full border border-[#df796b]/30 bg-white/70 px-3 py-0.5 text-[10px] font-bold text-[#df796b] sm:mb-3 sm:py-1 sm:text-xs">
-              1問30秒から始める基礎練習
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,250,241,0.98)_0%,rgba(255,250,241,0.9)_46%,rgba(255,250,241,0.52)_72%,rgba(255,250,241,0.12)_100%)] md:bg-[linear-gradient(90deg,rgba(255,250,241,0.98)_0%,rgba(255,250,241,0.92)_28%,rgba(255,250,241,0.46)_54%,rgba(255,250,241,0.1)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#fff7ef] to-transparent" />
+        <div className="pointer-events-none absolute -left-7 top-[18%] hidden rotate-[-8deg] text-[7rem] font-black leading-none text-[#2f86c9]/10 md:block">
+          QUIZ
+        </div>
+        <div className="pointer-events-none absolute bottom-20 right-4 hidden rotate-90 text-4xl font-black tracking-[0.28em] text-white/70 [text-shadow:0_1px_20px_rgba(47,48,47,0.25)] lg:block">
+          BOOK / CODE
+        </div>
+
+        <div className="relative mx-auto flex min-h-[calc(100svh-11rem)] max-w-6xl items-center md:min-h-[calc(100svh-13rem)]">
+          <div className="w-full max-w-[34rem] pt-2">
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#ff624d]/25 bg-white/80 px-3 py-1 text-[10px] font-extrabold tracking-[0.14em] text-[#e65345] shadow-[0_10px_30px_rgba(47,48,47,0.08)] sm:text-xs">
+              <span className="size-2 rounded-full bg-[#d7ff38]" />
+              1問30秒から、理解を更新する
             </p>
-            <h1 className="text-2xl font-black leading-tight tracking-normal text-[#242424] sm:text-5xl md:text-6xl">
-              <span className="block text-[#df796b]">良い理解を</span>
-              <span className="block">積み上げる</span>
+            <h1 className="max-w-[11em] text-[2.35rem] font-black leading-[0.94] tracking-normal text-[#232323] sm:text-5xl md:text-[4.15rem]">
+              ウェブ
+              <span className="block text-[#0967c9]">エンジニア</span>
+              <span className="block">問題集</span>
             </h1>
-            <p className="mx-auto mt-2 max-w-xl text-xs leading-6 text-[#56514c] sm:mt-5 sm:text-base sm:leading-8 lg:mx-0">
-              HTML、CSS、JavaScript、React、Next.js
-              まで。クイズで手早く確認し、教科書で体系的に戻れる学習サイトです。
+            <p className="mt-3 w-fit -rotate-1 bg-[#ff624d] px-3 py-1.5 text-base font-black leading-tight text-white shadow-[8px_8px_0_#d7ff38] sm:mt-4 sm:px-4 sm:text-xl">
+              解ける。戻れる。身につく。
             </p>
-            <div className="mt-3 flex flex-row items-center justify-center gap-2 sm:mt-5 sm:gap-3 lg:justify-start">
+            <p className="mt-4 max-w-xl text-sm font-medium leading-7 text-[#4e4b46] sm:text-base sm:leading-8">
+              HTML、CSS、JavaScript、React、Next.jsまで。クイズで手早く確認し、教科書で体系的に戻れる無料学習サイトです。
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-5 sm:gap-3">
               <Button
                 size="default"
-                className="h-9 rounded-full bg-[#2f86c9] px-4 text-xs font-bold hover:bg-[#2476b4] sm:h-12 sm:px-8 sm:text-base"
+                className="h-11 rounded-full bg-[#0967c9] px-5 text-sm font-black shadow-[0_12px_28px_rgba(9,103,201,0.24)] hover:bg-[#075ab0] sm:h-11 sm:px-7 sm:text-base"
                 asChild
               >
                 <Link href="#categories" className="inline-flex items-center gap-1.5 sm:gap-2">
@@ -407,85 +420,50 @@ export default async function Home() {
               <Button
                 variant="outline"
                 size="default"
-                className="h-9 rounded-full border-[#56514c]/25 bg-white/75 px-4 text-xs font-bold text-[#2f302f] hover:bg-white sm:h-12 sm:px-8 sm:text-base"
+                className="h-11 rounded-full border-[#232323]/20 bg-white/85 px-5 text-sm font-black text-[#232323] shadow-[0_12px_28px_rgba(47,48,47,0.08)] hover:bg-white sm:h-11 sm:px-7 sm:text-base"
                 asChild
               >
                 <Link href="/books">教科書を読む</Link>
               </Button>
             </div>
-            <div className="mt-3 flex justify-center sm:mt-5 lg:justify-start">
-              <div className="inline-flex items-center gap-3 rounded-[20px] border-2 border-[#2f302f]/70 bg-white px-3 py-1.5 shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:gap-5 sm:rounded-[24px] sm:px-5 sm:py-3">
-                <div className="text-center">
-                  <p className="text-base font-black leading-none text-[#df796b] sm:text-2xl">16</p>
-                  <p className="mt-0.5 text-[9px] text-[#6d6760] sm:mt-1 sm:text-[10px]">
-                    カテゴリ
-                  </p>
-                </div>
-                <div className="h-6 w-px bg-[#2f302f]/15 sm:h-8" />
-                <div className="text-center">
-                  <p className="text-base font-black leading-none text-[#2f302f] sm:text-2xl">
-                    {totalCount > 0 ? totalCount : 500}
-                    <span className="text-[10px] font-normal text-[#6d6760] sm:text-xs">+</span>
-                  </p>
-                  <p className="mt-0.5 text-[9px] text-[#6d6760] sm:mt-1 sm:text-[10px]">問題数</p>
-                </div>
-                <div className="h-6 w-px bg-[#2f302f]/15 sm:h-8" />
-                <div className="text-center">
-                  <p className="text-xs font-black leading-none text-[#2f86c9] sm:text-sm">無料</p>
-                  <p className="mt-0.5 text-[9px] text-[#6d6760] sm:mt-1 sm:text-[10px]">
-                    すぐ開始
-                  </p>
-                </div>
+            <div className="mt-4 grid max-w-sm grid-cols-3 rounded-[1.25rem] border border-white/80 bg-white/90 px-3 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:mt-5">
+              <div>
+                <p className="text-3xl font-black leading-none text-[#ff624d]">16</p>
+                <p className="mt-1 text-[10px] font-black tracking-[0.16em] text-[#4f4942]">
+                  CATEGORY
+                </p>
               </div>
-            </div>
-          </div>
-          <div className="relative mx-auto mt-1 h-20 w-full max-w-[200px] sm:hidden">
-            <div className="absolute inset-x-2 bottom-0 h-16 rounded-[1.25rem] border-2 border-[#2f302f]/70 bg-[#bde9ec]" />
-            <Image
-              src="/images/pc-work-woman01.png"
-              alt="パソコンで学習する人のイラスト"
-              width={260}
-              height={260}
-              priority
-              className="absolute bottom-0 left-1/2 h-24 w-auto -translate-x-1/2 object-contain"
-            />
-          </div>
-          <div className="relative mx-auto hidden h-40 w-full max-w-sm sm:block sm:h-64 sm:max-w-xl md:h-80">
-            <div className="absolute right-0 top-0 h-[74%] w-[68%] rounded-[2.25rem] border-2 border-[#2f302f]/70 bg-[#a7d66f] sm:rounded-[2.75rem]">
-              <Image
-                src="/images/running_man_color-1.png"
-                alt="気分転換しながら学習を続ける人のイラスト"
-                width={500}
-                height={533}
-                priority
-                className="absolute -bottom-5 left-1/2 h-[110%] w-auto -translate-x-1/2 object-contain sm:-bottom-9 sm:h-[118%]"
-              />
-            </div>
-            <div className="absolute bottom-5 left-0 h-[50%] w-[48%] rounded-[1.5rem] border-2 border-[#2f302f]/70 bg-[#bde9ec] sm:bottom-8 sm:rounded-[2rem]">
-              <Image
-                src="/images/pc-work-woman01.png"
-                alt="パソコンで学習する人のイラスト"
-                width={260}
-                height={260}
-                priority
-                className="absolute -bottom-3 left-1/2 h-[118%] w-auto -translate-x-1/2 object-contain sm:-bottom-5"
-              />
+              <div className="border-x border-[#232323]/12 px-4">
+                <p className="text-3xl font-black leading-none text-[#232323]">
+                  {totalCount > 0 ? totalCount : 500}
+                  <span className="text-xs font-bold text-[#6d6760]">+</span>
+                </p>
+                <p className="mt-1 text-[10px] font-black tracking-[0.16em] text-[#4f4942]">
+                  QUESTIONS
+                </p>
+              </div>
+              <div className="pl-4">
+                <p className="text-3xl font-black leading-none text-[#0967c9]">0円</p>
+                <p className="mt-1 text-[10px] font-black tracking-[0.16em] text-[#4f4942]">
+                  START
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="bg-white">
+      <div className="bg-[linear-gradient(180deg,#fff7ef_0%,#ffffff_36%,#fff7ef_100%)]">
         <div className="mx-auto max-w-6xl px-4 pt-4 pb-8 md:pt-8 md:pb-14">
           {/* 特徴 */}
-          <section className="mb-8 rounded-[1.5rem] bg-[#fbf2e9]/55 px-4 py-5 sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
+          <section className="mb-8 rounded-[1.5rem] border border-white/80 bg-white/85 px-4 py-5 shadow-[0_24px_70px_rgba(47,48,47,0.08)] backdrop-blur sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
             <SectionHeading
               className="mb-4 sm:mb-7"
               icon={<Sparkles className="size-5 text-[#df796b]" />}
             >
               このサイトの特徴
             </SectionHeading>
-            <div className="grid grid-cols-2 gap-2 sm:gap-x-8 sm:gap-y-5 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-x-5 sm:gap-y-5 md:grid-cols-4">
               {[
                 {
                   icon: BadgeCheck,
@@ -514,7 +492,7 @@ export default async function Home() {
               ].map((f) => (
                 <div
                   key={f.title}
-                  className="flex items-start gap-2 rounded-xl bg-white p-2.5 sm:gap-3 sm:rounded-2xl sm:p-4"
+                  className="flex items-start gap-2 rounded-xl border border-[#232323]/10 bg-[#fffaf1] p-2.5 shadow-[8px_8px_0_rgba(215,255,56,0.28)] sm:gap-3 sm:p-4"
                 >
                   <f.icon className={`mt-0.5 size-4 ${f.color} shrink-0 sm:size-5`} />
                   <div>
@@ -531,12 +509,12 @@ export default async function Home() {
           {/* 学習カテゴリ */}
           <section
             id="categories"
-            className="relative mb-8 overflow-hidden rounded-[1.5rem] bg-white px-3 py-5 sm:rounded-[2rem] md:mb-16 md:px-10 md:py-12"
+            className="relative mb-8 overflow-hidden rounded-[1.5rem] border border-[#232323]/10 bg-white/92 px-3 py-5 shadow-[0_24px_70px_rgba(47,48,47,0.08)] sm:rounded-[2rem] md:mb-16 md:px-10 md:py-12"
           >
             <div className="mb-4 flex justify-center">
-              <div className="relative inline-block rounded-full bg-[#2f86c9] px-5 py-1.5 text-xs font-bold text-white sm:text-sm">
+              <div className="relative inline-block rounded-full bg-[#0967c9] px-5 py-1.5 text-xs font-bold text-white shadow-[8px_8px_0_#d7ff38] sm:text-sm">
                 どのカテゴリから始める？
-                <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rotate-45 bg-[#2f86c9]" />
+                <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rotate-45 bg-[#0967c9]" />
               </div>
             </div>
             <SectionHeading
@@ -555,7 +533,7 @@ export default async function Home() {
                   <Link
                     key={cat.slug}
                     href={`/quiz/${cat.slug}`}
-                    className={`group relative flex items-start gap-3 overflow-hidden rounded-xl ${cat.bgColor} px-3 py-3 transition hover:-translate-y-0.5 hover:shadow-md sm:gap-4 sm:px-4 sm:py-3.5`}
+                    className={`group relative flex items-start gap-3 overflow-hidden rounded-xl border border-white/75 ${cat.bgColor} px-3 py-3 shadow-[0_10px_28px_rgba(47,48,47,0.04)] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-4 sm:px-4 sm:py-3.5`}
                   >
                     {/* 背景アイコン */}
                     <CatIcon
@@ -600,7 +578,7 @@ export default async function Home() {
           {/* 教科書 */}
           <section
             id="books"
-            className="mb-8 rounded-[1.5rem] bg-white px-3 py-5 sm:rounded-[2rem] md:mb-16 md:px-10 md:py-12"
+            className="mb-8 rounded-[1.5rem] border border-[#0967c9]/10 bg-[#f5fbff]/90 px-3 py-5 shadow-[0_24px_70px_rgba(9,103,201,0.07)] sm:rounded-[2rem] md:mb-16 md:px-10 md:py-12"
           >
             <div className="mb-4 sm:mb-8 grid gap-2 sm:gap-4 md:grid-cols-[0.8fr_1fr] md:items-end">
               <SectionHeading center={false} subtitle="基礎から体系的に学べる技術書コンテンツ">
@@ -634,7 +612,7 @@ export default async function Home() {
             <div className="mt-6 text-center">
               <Button
                 variant="outline"
-                className="rounded-full border-[#2f302f]/25 bg-white px-6"
+                className="rounded-full border-[#0967c9]/25 bg-white px-6 font-bold text-[#0967c9] shadow-[0_10px_24px_rgba(9,103,201,0.08)]"
                 size="sm"
                 asChild
               >
@@ -650,9 +628,9 @@ export default async function Home() {
           </section>
 
           {/* 会員登録CTA */}
-          <section className="mb-8 rounded-[1.5rem] border-2 border-[#2f302f]/60 bg-white px-4 py-5 sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
+          <section className="mb-8 rounded-[1.5rem] border border-[#232323]/15 bg-white/92 px-4 py-5 shadow-[0_24px_70px_rgba(47,48,47,0.08)] sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
             <div className="mb-3 flex justify-center">
-              <span className="inline-block rounded-full bg-[#e8f6eb] px-3 py-1 text-xs font-bold tracking-wide text-green-700">
+              <span className="inline-block rounded-full bg-[#d7ff38] px-3 py-1 text-xs font-black tracking-[0.14em] text-[#232323]">
                 FREE
               </span>
             </div>
@@ -698,7 +676,7 @@ export default async function Home() {
             </div>
             <div className="text-center">
               <Button
-                className="rounded-full bg-[#df796b] px-6 hover:bg-[#cf685a] sm:px-8"
+                className="rounded-full bg-[#ff624d] px-6 font-black shadow-[8px_8px_0_#d7ff38] hover:bg-[#e65345] sm:px-8"
                 size="default"
                 asChild
               >
@@ -716,7 +694,7 @@ export default async function Home() {
           {/* ランダムクイズ & キーワード検索 CTA */}
           <section className="mb-8 grid grid-cols-2 gap-2 sm:gap-4 md:mb-16">
             <Link href="/quiz/random" className="group block">
-              <div className="flex h-full flex-col rounded-xl border-2 border-[#2f302f]/60 bg-[#e9f6f8] p-3 text-center transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:rounded-[2rem] sm:p-8">
+              <div className="flex h-full flex-col rounded-xl border border-[#0967c9]/20 bg-[#e9f6ff] p-3 text-center shadow-[0_18px_45px_rgba(9,103,201,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(9,103,201,0.16)] sm:rounded-[2rem] sm:p-8">
                 <h2 className="mb-0.5 text-xs font-extrabold text-[#2f302f] sm:mb-1.5 sm:text-lg">
                   ランダムクイズ
                 </h2>
@@ -725,7 +703,7 @@ export default async function Home() {
                   <br className="sm:hidden" />
                   <span className="hidden sm:inline">、</span>サクッと力試し
                 </p>
-                <span className="mx-auto inline-flex items-center justify-center gap-1 rounded-full bg-[#2f86c9] px-3.5 py-1 text-[10px] font-bold text-white transition-colors group-hover:bg-[#2476b4] sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
+                <span className="mx-auto inline-flex items-center justify-center gap-1 rounded-full bg-[#0967c9] px-3.5 py-1 text-[10px] font-bold text-white transition-colors group-hover:bg-[#075ab0] sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
                   挑戦する
                   <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform sm:size-4" />
                 </span>
@@ -742,7 +720,7 @@ export default async function Home() {
             </Link>
 
             <Link href="/search" className="group block">
-              <div className="flex h-full flex-col rounded-xl border-2 border-[#2f302f]/60 bg-[#fff3dc] p-3 text-center transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(47,48,47,0.08)] sm:rounded-[2rem] sm:p-8">
+              <div className="flex h-full flex-col rounded-xl border border-[#ff624d]/20 bg-[#fff1e9] p-3 text-center shadow-[0_18px_45px_rgba(255,98,77,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(255,98,77,0.16)] sm:rounded-[2rem] sm:p-8">
                 <h2 className="mb-0.5 text-xs font-extrabold text-[#2f302f] sm:mb-1.5 sm:text-lg">
                   キーワード検索
                 </h2>
@@ -751,7 +729,7 @@ export default async function Home() {
                   <br className="sm:hidden" />
                   <span className="hidden sm:inline">、</span>横断検索
                 </p>
-                <span className="mx-auto inline-flex items-center justify-center gap-1 rounded-full bg-[#df796b] px-3.5 py-1 text-[10px] font-bold text-white transition-colors group-hover:bg-[#cf685a] sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
+                <span className="mx-auto inline-flex items-center justify-center gap-1 rounded-full bg-[#ff624d] px-3.5 py-1 text-[10px] font-bold text-white transition-colors group-hover:bg-[#e65345] sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
                   検索する
                   <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform sm:size-4" />
                 </span>
@@ -769,11 +747,11 @@ export default async function Home() {
           </section>
 
           {/* 学習のすすめ方 */}
-          <section className="mb-8 rounded-[1.5rem] bg-white/65 px-4 py-5 sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
+          <section className="mb-8 rounded-[1.5rem] border border-white/80 bg-white/86 px-4 py-5 shadow-[0_24px_70px_rgba(47,48,47,0.08)] sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
             <div className="mb-3 flex justify-center">
-              <div className="relative inline-block rounded-full bg-[#df796b] px-4 py-1.5 text-xs font-bold text-white sm:text-sm">
+              <div className="relative inline-block rounded-full bg-[#ff624d] px-4 py-1.5 text-xs font-bold text-white shadow-[8px_8px_0_#d7ff38] sm:text-sm">
                 5ステップで効率的に！
-                <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rotate-45 bg-[#df796b]" />
+                <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rotate-45 bg-[#ff624d]" />
               </div>
             </div>
             <SectionHeading className="mb-6">学習のすすめ方</SectionHeading>
@@ -809,11 +787,11 @@ export default async function Home() {
                 <>
                   {/* Desktop: timeline */}
                   <div className="hidden sm:block relative">
-                    <div className="absolute left-[10%] right-[10%] top-5 h-0.5 bg-[#2f302f]/20" />
+                    <div className="absolute left-[10%] right-[10%] top-5 h-0.5 bg-[#232323]/20" />
                     <div className="grid grid-cols-5 gap-4">
                       {steps.map((s) => (
                         <div key={s.step} className="flex flex-col items-center text-center">
-                          <div className="relative z-10 mb-3 flex size-10 items-center justify-center rounded-full bg-[#2f86c9] text-sm font-bold text-white ring-4 ring-white/80">
+                          <div className="relative z-10 mb-3 flex size-10 items-center justify-center rounded-full bg-[#0967c9] text-sm font-bold text-white ring-4 ring-white/80">
                             {String(s.step).padStart(2, '0')}
                           </div>
                           <p className="mb-0.5 text-sm font-bold text-[#2f302f]">{s.title}</p>
@@ -826,7 +804,7 @@ export default async function Home() {
                   <div className="sm:hidden space-y-3">
                     {steps.map((s) => (
                       <div key={s.step} className="flex items-start gap-3">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#2f86c9] text-xs font-bold text-white">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#0967c9] text-xs font-bold text-white">
                           {String(s.step).padStart(2, '0')}
                         </div>
                         <div>
@@ -844,7 +822,7 @@ export default async function Home() {
           {/* お知らせ */}
           <section id="news" className="mb-8">
             <SectionHeading className="mb-6">お知らせ</SectionHeading>
-            <div className="mx-auto max-w-2xl rounded-[2rem] bg-white px-5 py-4">
+            <div className="mx-auto max-w-2xl rounded-[2rem] border border-[#232323]/10 bg-white/92 px-5 py-4 shadow-[0_24px_70px_rgba(47,48,47,0.08)]">
               <NewsList items={NEWS} />
               <div className="space-y-1 border-t border-[#2f302f]/10 py-3">
                 <span className="text-xs text-[#6d6760]">今後の予定</span>

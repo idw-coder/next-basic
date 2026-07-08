@@ -21,11 +21,11 @@ export function SectionHeading({
   className,
 }: SectionHeadingProps) {
   const lg = size === "lg";
-  const dotSize = lg ? "w-5 h-1.5" : "w-4 h-1";
+  const dotSize = lg ? "w-6 h-1.5" : "w-4 h-1";
 
   const headingClass = [
-    lg ? "text-xl font-extrabold md:text-2xl" : "text-lg font-bold",
-    "text-foreground",
+    lg ? "text-xl font-black md:text-2xl" : "text-lg font-black",
+    "text-[#232323]",
     icon && "flex items-center gap-2",
     icon && center && "justify-center",
   ]
@@ -51,9 +51,9 @@ export function SectionHeading({
           .filter(Boolean)
           .join(" ")}
       >
-        <span className={`${dotSize} rounded-full bg-[#df796b]`} />
-        <span className={`${dotSize} rounded-full bg-[#2f86c9]`} />
-        <span className={`${dotSize} rounded-full bg-[#f3c875]`} />
+        <span className={`${dotSize} rounded-full bg-[#ff624d]`} />
+        <span className={`${dotSize} rounded-full bg-[#0967c9]`} />
+        <span className={`${dotSize} rounded-full bg-[#d7ff38] ring-1 ring-[#232323]/10`} />
       </div>
       {subtitle && (
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>

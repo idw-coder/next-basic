@@ -130,6 +130,18 @@
   }
 }
 
+.app-font {
+  font-family:
+    "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN",
+    "Noto Sans JP",
+    "Yu Gothic",
+    YuGothic,
+    Meiryo,
+    system-ui,
+    sans-serif;
+}
+
 /* rehype-pretty-code (shiki) */
 [data-rehype-pretty-code-figure] pre {
   overflow-x: auto;
