@@ -4,13 +4,7 @@ description: '関数の型付けパターンを整理します。オプショナ
 order: 6
 ---
 
-<Callout type="column">
-### この章は拡充予定です
-
-現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
-</Callout>
-
-この章では、関数に関する型付けパターンを整理します。02章で触れた基本に加え、実務で頻出するパターンを扱います。
+この章では、関数に関する型付けパターンを整理します。[02章で触れた基本](/books/typescript/02-basic-types)に加え、実務で頻出するパターンを扱います。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 関数の引数と戻り値、どこまで型を書けばいいんだろう？全部書くべき？それとも省略できる？
@@ -18,60 +12,261 @@ order: 6
 
 ---
 
-## 扱うトピック
+## 関数の型の書き方（基本）
 
-### オプショナル引数とデフォルト値
+関数の型は「引数」と「戻り値」の2箇所に付けます。
+
+```tsx
+function add(a: number, b: number): number {
+  return a + b;
+}
+```
+
+このうち**引数の型は必須**です。書かないと `any` と推論され、`strict` モードでは `Parameter 'a' implicitly has an 'any' type` というエラーになります。
+
+一方、**戻り値の型は `return` 文から推論される**ため省略できます。それでも明示をおすすめするのは、次の2つの理由からです。
+
+- 実装を間違えたとき、**関数の内側でエラーが出る**（省略すると間違った型が呼び出し側へ伝播し、離れた場所でエラーになる）
+- 関数のシグネチャだけで「何を受け取り何を返すか」が読める、ドキュメントとして機能する
+
+アロー関数でも書き方は同じです。
+
+```tsx
+const multiply = (a: number, b: number): number => a * b;
+```
+
+### 関数の型そのものを定義する
+
+「関数を受け取る・返す」場面では、関数の型そのものを書く必要があります。
+
+**構文：** `(引数名: 型) => 戻り値の型`
+
+```tsx
+// 型エイリアスで関数の型に名前を付ける
+type Comparator<T> = (a: T, b: T) => number;
+
+const byAge: Comparator<{ age: number }> = (a, b) => a.age - b.age;
+```
+
+<Marker>変数側に関数の型が付いていれば、実装側の引数の型は省略できます（文脈から推論される）。</Marker>上の `byAge` で `a` と `b` に型を書いていないのはこのためです。なお、型定義側の引数名（`a`, `b`）は説明用のラベルにすぎず、実装側と一致している必要はありません。
+
+## オプショナル引数とデフォルト値
+
+「省略できる引数」の書き方は2種類あります。
+
+**構文：** `function fn(必須: 型, 任意?: 型, 既定値あり: 型 = 値)`
+
+まず `?` を付けるオプショナル引数です。
 
 ```tsx
 function greet(name: string, greeting?: string): string {
+  // greeting の型は string | undefined になる
   return `${greeting ?? 'こんにちは'}、${name}さん`;
 }
 
+greet('田中'); // "こんにちは、田中さん" — 省略できる
+greet('田中', 'おはよう'); // "おはよう、田中さん"
+```
+
+`?` を付けた引数は、関数の内部では `string | undefined` として扱われます。そのまま使うとエラーになるため、`??` や `if` で `undefined` の処理が必要です。
+
+次にデフォルト値付き引数です。
+
+```tsx
 function greetWithDefault(name: string, greeting: string = 'こんにちは'): string {
+  // greeting の型は string（undefined の可能性が消えている）
   return `${greeting}、${name}さん`;
 }
 ```
 
-`?` を付けたオプショナル引数とデフォルト値付き引数の違い、使い分けを解説予定です。
+省略された場合はデフォルト値で埋められるため、**関数の内部では `undefined` を考えなくてよくなります**。2つの使い分けは次の通りです。
 
-### レストパラメータ
+| 書き方                       | 関数内部での型         | 使いどころ                                                       |
+| ---------------------------- | ---------------------- | ---------------------------------------------------------------- |
+| `greeting?: string`          | `string \| undefined`  | 「渡されなかった」こと自体をロジックで区別したい                 |
+| `greeting: string = '既定値'` | `string`               | 省略時の値が決まっている。内部の分岐が減るので、迷ったらこちら   |
+
+<Callout type="warning">
+### オプショナル引数は必須引数より後ろに置く
+
+省略可能な引数を必須引数より前に書くことはできません。呼び出し時にどの引数を省略したのか判別できなくなるためです。
+
+```tsx
+function bad(greeting?: string, name: string) {}
+// ❌ エラー：A required parameter cannot follow an optional parameter.
+```
+
+</Callout>
+
+<Callout type="note">
+### `greeting?: string` と `greeting: string | undefined` は別物
+
+型だけ見るとどちらも `string | undefined` ですが、`?` なしのユニオン型は**引数の省略を許しません**。
+
+```tsx
+function greet2(name: string, greeting: string | undefined): string {
+  return `${greeting ?? 'こんにちは'}、${name}さん`;
+}
+
+greet2('田中'); // ❌ エラー：引数が足りない
+greet2('田中', undefined); // ✅ undefined を明示的に渡す必要がある
+```
+
+「省略してよい」ことを表すのは `?` の役割です。
+
+</Callout>
+
+## レストパラメータ
+
+個数が決まっていない引数は、レストパラメータでまとめて受け取ります。
+
+**構文：** `function fn(...引数名: 型[])`
 
 ```tsx
 function sum(...numbers: number[]): number {
   return numbers.reduce((a, b) => a + b, 0);
 }
+
+sum(1, 2, 3); // 6
+sum(); // 0 — 0個でもOK
 ```
 
-### コールバック関数の型
+ルールは2つだけです。**引数リストの最後に1つだけ**書けること、型は**配列型（またはタプル型）**にすることです。通常の引数との組み合わせもできます。
+
+```tsx
+function joinWith(separator: string, ...parts: string[]): string {
+  return parts.join(separator);
+}
+
+joinWith('-', '2026', '07', '09'); // "2026-07-09"
+```
+
+タプル型と組み合わせると、「最低1個は必要」のような制約も型で表現できます。
+
+```tsx
+function first(...items: [string, ...string[]]): string {
+  return items[0]; // 少なくとも1個あることが型で保証されている
+}
+
+first('a', 'b'); // ✅
+// first();      // ❌ エラー：引数が足りない
+```
+
+## コールバック関数の型
+
+関数を引数として受け取る場合、その引数の型には前述の関数型（`(引数) => 戻り値`）を使います。
 
 ```tsx
 type ClickHandler = (event: MouseEvent) => void;
 
 function registerHandler(handler: ClickHandler): void {
-  // ...
+  document.addEventListener('click', handler);
 }
+
+// 呼び出し側は引数の型を書かなくてよい（event は MouseEvent と推論される）
+registerHandler((event) => {
+  console.log(event.clientX);
+});
 ```
 
-Reactのイベントハンドラやpropsで渡すコールバックの型付けパターンを解説予定です。
+### コールバックは「引数が少ない実装」でもよい
 
-### 関数オーバーロード
+TypeScriptには「型定義より少ない引数で実装した関数は代入できる」というルールがあります。配列メソッドでいつも体験している挙動です。
 
 ```tsx
-function format(value: string): string;
-function format(value: number): string;
-function format(value: string | number): string {
-  // 実装
-}
+const numbers = [1, 2, 3];
+
+// forEach のコールバック型は (value, index, array) => void だが…
+numbers.forEach((value) => console.log(value)); // ✅ 使わない引数は省略できる
 ```
 
-オーバーロードの書き方と、ユニオン型で代替できるケースとの使い分けを解説予定です。
+<Marker>コールバックの実装側は、型定義にある引数を後ろから自由に省略できます。</Marker>JavaScriptでは関数に余分な引数を渡しても単に無視されるだけなので、それを型システムでも許容している、という理屈です。
 
-### 関数の型定義
+Reactのpropsでコールバックを渡すときも、書き方は同じです。
 
 ```tsx
-// 型エイリアスで関数の型を定義
-type Comparator<T> = (a: T, b: T) => number;
+type ButtonProps = {
+  label: string;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+};
 ```
+
+`React.MouseEvent` などReact固有のイベント型は[13章のReactとTypeScript](/books/typescript/13-react-and-typescript)で扱います。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+コールバック関数の型を書くとき、`Function` 型を使っちゃダメなの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`Function` 型は `any` と同じくらい危険。引数も戻り値も何でも受け入れてしまう。`(arg: string) => void` のように具体的に書くのが鉄則だよ。
+</SpeechBubble>
+
+```tsx
+// ❌ Function 型は引数のチェックが一切効かない
+const handler: Function = (a: number) => a * 2;
+handler('文字列', true, []); // エラーにならず、実行時に壊れる
+```
+
+## 関数オーバーロード
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+「引数の型によって戻り値の型が変わる関数」って、ユニオン型じゃ書けないの…？
+</SpeechBubble>
+
+ユニオン型でも書けますが、**戻り値の型の対応関係が失われます**。
+
+```tsx
+// ユニオン型で書くと…
+function double(value: string | number): string | number {
+  return typeof value === 'string' ? value + value : value * 2;
+}
+
+const result = double(5);
+// result の型は string | number — number を渡したのに絞り込まれない
+```
+
+`number` を渡したら戻り値も `number` のはずですが、呼び出し側ではそれが分かりません。この「引数と戻り値の対応」を表現できるのが関数オーバーロードです。
+
+**構文：** シグネチャ（型だけの宣言）を複数並べ、最後に実装を1つ書く
+
+```tsx
+// オーバーロードシグネチャ（呼び出し側から見える型）
+function double(value: string): string;
+function double(value: number): number;
+// 実装シグネチャ（すべてのパターンを受けられる型で書く。外からは見えない）
+function double(value: string | number): string | number {
+  return typeof value === 'string' ? value + value : value * 2;
+}
+
+const s = double('abc'); // string 型 — "abcabc"
+const n = double(5); // number 型 — 10
+```
+
+<Callout type="warning">
+### 実装シグネチャは呼び出しに使えない
+
+呼び出し側から見えるのは**オーバーロードシグネチャだけ**です。実装シグネチャが `string | number` を受けるからといって、ユニオン型の値をそのまま渡すことはできません。
+
+```tsx
+const value: string | number = Math.random() > 0.5 ? 'abc' : 5;
+
+double(value);
+// ❌ エラー：string | number はどのオーバーロードにも一致しない
+```
+
+このような値を渡したい場合は、先に型ガードで `string` か `number` に絞り込んでから呼び出します。
+
+</Callout>
+
+とはいえ、オーバーロードは「読み手が複数のシグネチャを突き合わせる」コストがかかります。<Marker>TypeScript公式ドキュメントも「可能ならオーバーロードではなくユニオン型の引数を使う」ことを推奨しています。</Marker>使い分けの目安は次の通りです。
+
+| 状況                                             | 選ぶ手段                                                    |
+| ------------------------------------------------ | ----------------------------------------------------------- |
+| 引数の型が違うだけで、戻り値の型は変わらない     | ユニオン型で十分                                             |
+| 引数の型と戻り値の型が連動する（`T` を受けて `T` を返す等） | [ジェネリクス](/books/typescript/07-generics)が第一候補 |
+| 引数の型ごとに戻り値の型が別々に決まる／引数の個数で意味が変わる | オーバーロード                                       |
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="関数の型付けのステップアップ" caption="ユニオン型 → ジェネリクス → オーバーロードの順に検討する" maxWidth="240px" />
 
 ---
 
@@ -178,22 +373,17 @@ flowchart TD
 `}
 />
 
-<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-コールバック関数の型を書くとき、`Function` 型を使っちゃダメなの？
-</SpeechBubble>
-
-<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-`Function` 型は `any` と同じくらい危険。引数も戻り値も何でも受け入れてしまう。`(arg: string) => void` のように具体的に書くのが鉄則だよ。
-</SpeechBubble>
-
 <Figure src="/images/walking_woman_color.png" alt="関数の型付け" caption="関数の型を正確に書くことで、呼び出し側の型安全性も保証される" maxWidth="240px" />
 
 ## ちゃんと使うためのポイント
 
 - <Marker>引数と戻り値の型は明示的に書く。型推論に任せるのは `return` が単純な場合だけ</Marker>
+- `?` は「渡されなかったこと」を区別したいとき、デフォルト値は省略時の値が決まっているとき
+- コールバックの実装は型定義より少ない引数で書いてよい。`Function` 型は使わず、引数と戻り値を具体的に書く
 - `void` は「戻り値を使わない」、`never` は「絶対に戻らない」、`undefined` は「undefinedを返す」
 - オーバーロードよりユニオン型やジェネリクスで表現できないか先に検討する
-- `Function` 型は使わない。引数と戻り値を具体的に書く
+
+この章で登場した `Comparator<T>` や `assertDefined<T>` の `<T>` の正体が、次章のテーマである[ジェネリクス](/books/typescript/07-generics)です。「どんな型でも受けられて、かつ型の対応関係は保つ」仕組みを学びます。
 
 ## 参考リンク
 

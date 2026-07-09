@@ -1,17 +1,10 @@
 ---
-title: '型アサーションと型ガード'
-description: 'asによる型アサーション、ユーザー定義型ガード（is）、非nullアサーション（!）の使い方と注意点を整理します。'
+title: '型アサーションと型ガード — as・is・as constの使い分け'
+description: 'asによる型アサーション、ユーザー定義型ガード（is）、非nullアサーション（!）、constアサーション（as const）の使い方と注意点を整理します。'
 order: 8
 ---
 
-<Callout type="column">
-### この章は拡充予定です
-
-現在、章の構成と主要トピックを掲載しています。詳細な解説とコード例は順次追加していきます。
-
-</Callout>
-
-05章で学んだNarrowingは、TypeScriptが制御フローから自動的に型を絞り込む仕組みでした。この章では、開発者が**明示的に型を指定する**手法を扱います。
+[05章で学んだNarrowing](/books/typescript/05-narrowing)は、TypeScriptが制御フローから自動的に型を絞り込む仕組みでした。この章では、開発者が**明示的に型を指定する**手法を扱います。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 コンパイラが「型が違う」って怒るとき、とりあえず `as` で黙らせちゃダメなの…？
@@ -23,6 +16,25 @@ order: 8
 
 型アサーションは、TypeScriptの型推論結果を開発者が上書きする手段です。
 
+**構文：** `値 as 型`
+
+```tsx
+// getElementById の戻り値は HTMLElement | null
+const input = document.getElementById('my-input') as HTMLInputElement;
+
+// HTMLInputElement として扱えるので、input 固有のプロパティが使える
+console.log(input.value);
+```
+
+`as` を書いた瞬間、コンパイラは推論をやめて「開発者の申告」を信じます。データそのものは何も変わらず、**型の見え方だけが変わる**点がポイントです。
+
+<Callout type="note">
+### もう1つの記法 `<型>値`
+
+`const input = <HTMLInputElement>document.getElementById('my-input');` のような山かっこ記法もあります。ただしJSX（Reactのタグ記法）と構文が衝突するため `.tsx` ファイルでは使えず、現在は `as` を使うのが一般的です。
+
+</Callout>
+
 ### どういう時に使用するか
 
 具体的な使用シーンは主に以下の3つです。
@@ -32,6 +44,25 @@ order: 8
 | DOM要素を取得する時                           | `document.getElementById('my-input')` などで要素を取得すると、TypeScriptはそれを単なる「一般的なHTML要素」としか認識しません。`HTMLInputElement` など具体型に断言することで、`.value` など要素固有のプロパティがエラーにならずに使えます。 |
 | 外部データ（APIのレスポンスなど）を受け取る時 | `JSON.parse()` の結果など、外部から来たデータは中身がわからないため `any` や `unknown` 型になります。「このデータは `User` 型だ」と断言して、プログラム内で扱いやすくします。                                                              |
 | イベントハンドラの引数を使う時                | クリック時などの `event.target` は抽象的な型になっているため、ボタンやリンクなど具体的なHTML要素の型に断言して操作します。                                                                                                                 |
+
+コードで書くと次のようになります。
+
+```tsx
+// ① DOM要素を取得する時
+const input = document.getElementById('email') as HTMLInputElement;
+input.value = 'test@example.com';
+
+// ② 外部データ（APIのレスポンスなど）を受け取る時
+type User = { id: number; name: string };
+const user = JSON.parse(jsonText) as User;
+console.log(user.name);
+
+// ③ イベントハンドラの引数を使う時
+document.querySelector('button')?.addEventListener('click', (event) => {
+  const target = event.target as HTMLButtonElement;
+  target.disabled = true;
+});
+```
 
 型アサーションは「コンパイラの安全装置をオフにして無理やり通す」行為です。そのため、本当にその型である確証がある時だけ使う（乱用しない）のが鉄則です。
 
@@ -68,7 +99,19 @@ flowchart TD
 
 どちらも型を指定する役割を持ちますが、使われる目的やタイミングに違いがあります。
 
-## 型アサーションと型キャストの違い
+```tsx
+// 型アノテーション：定義時に「この型が入る」と宣言する
+// 中身が User と合っていなければ、その場でコンパイルエラーになる
+const user1: User = { id: 1, name: 'Tanaka' };
+
+// 型アサーション：推論結果を「この型として扱え」と上書きする
+// 中身が本当に User かどうかはチェックされない
+const user2 = JSON.parse(jsonText) as User;
+```
+
+<Marker>アノテーションはコンパイラのチェックを受ける「宣言」、アサーションはチェックを迂回する「断言」です。</Marker>
+
+### 型アサーションと型キャストの違い
 
 **型キャスト** は別の型に変換する手段です。
 
@@ -81,7 +124,7 @@ const n = 123; // nは数値（Number）
 const s = String(n); // sは文字列（String）の "123" に変換される
 ```
 
-### 非nullアサーション（!）
+## 非nullアサーション（!）
 
 非nullアサーションは、変数の後ろに `!` を付けることで「この値は `null` や `undefined` ではない」とコンパイラに断言する記法です。
 
@@ -168,17 +211,100 @@ function printValue(value: string | number) {
 }
 ```
 
+`typeof` のほか、`instanceof` や `in` を使った基本の絞り込みは[05章の型の絞り込み（Narrowing）](/books/typescript/05-narrowing)で扱いました。ここでは、その絞り込みロジックを**再利用可能な関数**として切り出す方法を見ていきます。
+
 ### ユーザー定義型ガード（is）
 
+同じ判定ロジックをあちこちの `if` 文に書くのは冗長です。そこで判定処理を関数に切り出し、**戻り値の型の位置に「型述語（type predicate）」を書く**ことで、呼び出し元でも型の絞り込みが効くようにしたものが、ユーザー定義型ガードです。
+
+**構文：** `function 関数名(引数名: 型): 引数名 is 絞り込み後の型`
+
+| 部分                     | 説明                                                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `引数名: 型`             | チェックしたい値。外部データの検証では `unknown` で受けることが多い                                          |
+| `引数名 is 絞り込み後の型` | 戻り値の型の位置に書く型述語。この関数が `true` を返した場合、呼び出し元でその引数が指定した型に絞り込まれる |
+
+**戻り値：** `boolean`（`true` = その型である / `false` = 違う）
+
+典型例は、APIレスポンスのような `unknown` なデータを検証してから使うパターンです。
+
 ```tsx
+type User = {
+  id: number;
+  name: string;
+};
+
 function isUser(value: unknown): value is User {
-  return typeof value === 'object' && value !== null && 'name' in value;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    typeof value.id === 'number' &&
+    'name' in value &&
+    typeof value.name === 'string'
+  );
 }
 ```
 
-`is` キーワードを使って、関数の戻り値で型を絞り込む手法。APIレスポンスのバリデーションなどで活用するパターンを解説予定です。
+この `isUser` を通すと、`if` ブロックの中では `unknown` が `User` として扱えます。
 
-### ダブルアサーション（as unknown as T）の罠
+```tsx
+async function fetchUser(): Promise<User | null> {
+  const res = await fetch('/api/user');
+  const data: unknown = await res.json();
+
+  if (isUser(data)) {
+    return data; // ✅ このブロック内では data は User 型
+  }
+  return null; // 検証に失敗したデータは通さない
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+結局「これは User だ」って自分で申告してるんだから、`as User` と同じじゃないの…？
+</SpeechBubble>
+
+決定的な違いは、**実行時チェックの有無**です。`as` は中身を一切確認せずに型だけを上書きしますが、`is` を使った型ガードは「実行時に中身を検査し、合格したものだけを通す」仕組みです。<Marker>`as` は「ノーチェックの自己申告」、`is` は「実行時検査に合格したことをコンパイラに伝える契約」です。</Marker>
+
+<Figure src="/images/search_woman_color.png" alt="型ガードのイメージ" caption="型ガードは中身を検査してから通す門番。asは顔パス" maxWidth="240px" />
+
+<Callout type="warning">
+### 「嘘をつく型ガード」に注意
+
+コンパイラは `is` の**中身の検査ロジックが正しいかどうかまでは検証しません**。実装が間違っていても、コンパイラは型述語を信じてしまいます。
+
+```tsx
+// ❌ id も name も確認していないのに User だと申告している
+function isUser(value: unknown): value is User {
+  return typeof value === 'object' && value !== null;
+}
+```
+
+検査漏れがあると、結局 `as` と同じ危険を抱え込みます。プロパティ数が多い型の検証は手書きだと漏れやすいため、実務ではZodなどのバリデーションライブラリに任せるのが定番です。
+
+</Callout>
+
+型述語は、配列の `filter` で「絞り込んだ結果の配列」を得たいときにも使えます。
+
+```tsx
+const values = ['a', null, 'b', null]; // (string | null)[]
+
+// 型述語をアロー関数の戻り値に書くと、結果が string[] になる
+const strings = values.filter((v): v is string => v !== null);
+```
+
+<Callout type="column">
+### TypeScript 5.5からは「型述語の推論」が効く
+
+2024年6月リリースのTypeScript 5.5で、**単純な関数なら `is` を書かなくても型述語が自動推論される**ようになりました。上の `filter((v) => v !== null)` も、5.5以降は `is` なしで `string[]` と正しく推論されます。
+
+ただし推論が効くのは「戻り値の型注釈がない・実装が単純」な場合だけです。`isUser` のように「`object` かどうかのチェック結果を `User` という特定の型に対応づけたい」場合は、今でも明示的に `is User` を書く必要があります。
+
+</Callout>
+
+なお、`true` / `false` を返す代わりに「不正なら `throw` する」形で切り出すアサーション関数（`asserts`）もあります。こちらは[05章のアサーション関数パターン](/books/typescript/05-narrowing)で扱いました。
+
+## ダブルアサーション（as unknown as T）の罠
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 `as any` がダメなら `as unknown as` にすれば安全ですよね？ AIに「anyを使わないで」って指示したら、こっちに書き換えてくれたんですけど……
@@ -223,7 +349,34 @@ AIに「`any` を使わないで」と指示すると、`as any` を機械的に
 
 ---
 
-### constアサーション
+## constアサーション（as const）
+
+`as const` は名前こそ「アサーション」ですが、これまでの `as T` とは性格が正反対です。型を偽るのではなく、**推論される型をできるだけ狭く・固定的にする**ための機能で、安全に使えます。
+
+まず、`as const` なしの推論結果を見てみます。
+
+```tsx
+const config = {
+  endpoint: '/api/users',
+  method: 'GET',
+};
+// 推論結果: { endpoint: string; method: string }
+```
+
+`method` の値は `'GET'` と書いたのに、型は `string` に**広げられて（widening）**推論されます。オブジェクトのプロパティは後から書き換えられるため、TypeScriptは安全側に倒して広い型を付けるのです。これが困る場面があります。
+
+```tsx
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+
+function request(url: string, method: HttpMethod) {
+  /* ... */
+}
+
+request(config.endpoint, config.method);
+// ❌ エラー：string は HttpMethod に代入できない
+```
+
+`as const` を付けると、推論結果がリテラル型のまま固定されます。
 
 ```tsx
 const config = {
@@ -231,11 +384,48 @@ const config = {
   method: 'GET',
 } as const;
 // { readonly endpoint: "/api/users"; readonly method: "GET" }
+
+request(config.endpoint, config.method); // ✅ "GET" は HttpMethod に代入できる
 ```
 
-オブジェクトや配列をリテラル型として固定する `as const` の使い方を解説予定です。
+`as const` の効果は次の3つです。
 
-### 型アサーション vs 型ガード — どちらを使うべきか
+| 効果                     | 説明                                                                     |
+| ------------------------ | ------------------------------------------------------------------------ |
+| リテラル型に固定         | `'GET'` が `string` に広げられず、`"GET"` 型のまま保たれる               |
+| すべて `readonly` になる | プロパティへの再代入がコンパイルエラーになる（ネストしたオブジェクトも） |
+| 配列が読み取り専用タプルになる | `[10, 20]` が `number[]` ではなく `readonly [10, 20]` になる             |
+
+### 配列からユニオン型を導出する定番パターン
+
+`as const` の実務での代表的な使いどころが、「選択肢の配列」と「その要素のユニオン型」を1つの定義から導出するパターンです。
+
+```tsx
+const CATEGORIES = ['tech', 'design', 'business'] as const;
+// 型: readonly ["tech", "design", "business"]
+
+type Category = (typeof CATEGORIES)[number];
+// 型: "tech" | "design" | "business"
+
+// 実行時は配列として使える
+CATEGORIES.map((c) => console.log(c));
+
+// 型の世界ではユニオン型として使える
+function setCategory(category: Category) {
+  /* ... */
+}
+```
+
+<Marker>配列（実行時の値）とユニオン型（型の世界）を1つの定義から導出できるため、選択肢を追加するときの修正が1箇所で済みます。</Marker>
+
+<Callout type="note">
+### as constは「安全なアサーション」
+
+`as T` はコンパイラのチェックを迂回しますが、`as const` は型を狭くする方向にしか働かないため、実行時エラーのリスクを増やしません。むしろ `readonly` によって意図しない書き換えを防げるので、**定数定義には積極的に使ってよい**機能です。
+
+</Callout>
+
+## 型アサーション vs 型ガード — どちらを使うべきか
 
 | 手法 | 安全性 | 使う場面 |
 |---|---|---|
@@ -252,12 +442,16 @@ const config = {
 - <Marker>型ガードはランタイムで検証するので安全。型アサーションは自己申告なので危険</Marker>
 - `as any` も `as unknown as T` も型安全性を放棄している点は同じ
 - `as const` はアサーションではなくリテラル型への固定。安全に使える
-- ユーザー定義型ガード（`is`）はAPIレスポンスのバリデーションで特に有用
+- ユーザー定義型ガード（`is`）はAPIレスポンスのバリデーションで特に有用。ただし検査ロジックの正しさは自分で保証する
+- TypeScript 5.5以降、単純な関数の型述語は自動推論される（特定の型へ絞る場合は明示的に `is` を書く）
+
+次の章では、`Partial` や `Pick` など、既存の型から新しい型を作り出す[ユーティリティ型](/books/typescript/09-utility-types)を学びます。この章の表に登場した「モックには `Partial<T>` を使う」の正体も、そこで分かります。
 
 ## 参考リンク
 
 - [TypeScript Handbook — Everyday Types（英語）](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html) — Type Assertions の節に公式の説明がある
 - [TypeScript Handbook — Narrowing（英語）](https://www.typescriptlang.org/docs/handbook/2/narrowing.html) — Using type predicates の節にユーザー定義型ガードの公式説明がある
+- [TypeScript 3.4 リリースノート（英語）](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-4.html) — const assertions が導入されたバージョンの公式解説
 
 <QuizLink
   href="/quiz/ts-general"

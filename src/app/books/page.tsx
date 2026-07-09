@@ -39,6 +39,11 @@ export const metadata: Metadata = {
 
 export default function BooksPage() {
   const books = getAllBooks();
+  const heroFeatures = [
+    { icon: BookOpenCheck, text: '基礎から順番に', color: 'text-[#0967c9]' },
+    { icon: Layers3, text: '章ごとに整理', color: 'text-[#ff624d]' },
+    { icon: CheckCircle2, text: 'クイズ前後の復習', color: 'text-emerald-600' },
+  ];
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -63,28 +68,45 @@ export default function BooksPage() {
       {/* ヒーロー */}
       <section className="relative overflow-hidden pb-8 md:pb-12">
         <div className="mx-auto">
-          <h1 className="sr-only">教科書一覧</h1>
-          <div className="relative overflow-hidden border-b border-white/85 bg-[#f7ede1] shadow-[0_28px_80px_rgba(47,48,47,0.12)]">
+          <div className="relative min-h-[460px] overflow-hidden border-b border-white/85 bg-[#f7ede1] shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:min-h-[540px] lg:min-h-[580px] xl:min-h-[600px]">
             <Image
-              src="/images/books-hero-editorial2.png"
-              alt="理解を、整える。ウェブエンジニア問題集の教科書機能キービジュアル"
+              src="/images/books-hero-editorial-bg.png"
+              alt="青い本を読む人物を中心にした教科書機能のキービジュアル"
               width={1200}
               height={630}
               priority
-              className="h-auto w-full"
+              className="absolute top-0 bottom-0 left-0 h-full w-full object-cover object-[76%_44%] sm:-translate-x-[3%] sm:scale-[1.04] sm:object-[50%_46%] lg:-translate-x-[5%] lg:scale-[1.08] xl:-translate-x-[4%] xl:scale-[1.06]"
             />
-          </div>
-
-          <div className="mx-auto mt-4 flex max-w-6xl flex-wrap gap-2 px-4 md:mt-5">
-            <div className="flex flex-wrap gap-2 text-xs font-black text-[#232323] sm:text-sm">
-              {[
-                { icon: BookOpenCheck, text: '基礎から順番に', color: 'text-[#0967c9]' },
-                { icon: Layers3, text: '章ごとに整理', color: 'text-[#ff624d]' },
-                { icon: CheckCircle2, text: 'クイズ前後の復習', color: 'text-emerald-600' },
-              ].map((item) => (
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,247,239,0.96)_0%,rgba(255,247,239,0.9)_62%,rgba(255,247,239,0.26)_100%)] sm:bg-[linear-gradient(90deg,rgba(255,247,239,0.95)_0%,rgba(255,247,239,0.86)_32%,rgba(255,247,239,0.18)_60%,rgba(255,247,239,0)_100%)]" />
+            <div className="absolute left-6 top-6 flex max-w-[92vw] flex-col items-start sm:left-14 sm:top-10 md:left-24 lg:left-28 xl:left-32">
+              <div className="flex items-start gap-3 sm:gap-5">
+                <p className="mt-2 hidden text-lg font-black leading-none text-[#232323] [writing-mode:vertical-rl] sm:block">
+                  地図になる。
+                </p>
+                <div>
+                  <p className="mb-3 max-w-[18rem] text-[0.68rem] font-black uppercase leading-relaxed tracking-normal text-[#232323]/75 sm:max-w-none sm:text-xs">
+                    Textbooks for web engineers - {books.length} books
+                  </p>
+                  <h1 className="flex flex-col text-[4rem] font-black leading-[0.88] tracking-normal text-[#151515] sm:text-[5.5rem] md:text-[7rem] lg:text-[8.5rem]">
+                    <span className="text-[#ff624d]">理解を、</span>
+                    <span>整える。</span>
+                  </h1>
+                </div>
+              </div>
+              <p className="mt-6 max-w-[18rem] text-lg font-black leading-relaxed tracking-normal text-[#232323] sm:max-w-md sm:text-2xl">
+                ウェブ開発の基礎を、章ごとに順番に学べる教科書。
+              </p>
+              <div className="mt-8 flex items-center gap-2">
+                <span className="h-2 w-10 rounded-full bg-[#ff624d]" />
+                <span className="h-2 w-10 rounded-full bg-[#0967c9]" />
+                <span className="h-2 w-10 rounded-full bg-[#f7b523]" />
+              </div>
+            </div>
+            <div className="absolute bottom-5 left-6 flex max-w-[calc(100%-3rem)] flex-wrap gap-2 text-xs font-black text-[#232323] sm:bottom-8 sm:left-14 sm:text-sm md:left-24 lg:left-28 xl:left-32">
+              {heroFeatures.map((item) => (
                 <div
                   key={item.text}
-                  className="flex items-center gap-1.5 rounded-full border border-[#232323]/10 bg-[#fffaf1] px-3 py-1.5 shadow-[6px_6px_0_rgba(215,255,56,0.3)]"
+                  className="flex items-center gap-1.5 rounded-full border border-white/75 bg-[#fffaf1]/82 px-3 py-1.5 shadow-[0_12px_28px_rgba(47,48,47,0.08)] backdrop-blur-sm"
                 >
                   <item.icon className={`size-4 shrink-0 ${item.color}`} />
                   {item.text}

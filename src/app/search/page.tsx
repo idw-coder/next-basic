@@ -16,12 +16,14 @@ interface Category {
   id: number;
   slug: string;
   category_name: string;
+  quiz_count?: number;
 }
 
 interface Tag {
   id: number;
   slug: string;
   name: string;
+  quiz_count?: number;
 }
 
 const EXCLUDED_SUGGESTED_TAG_SLUGS = new Set([
@@ -34,6 +36,7 @@ const EXCLUDED_SUGGESTED_TAG_SLUGS = new Set([
 function buildSuggestedKeywords(tags: Tag[]): string[] {
   return tags
     .filter((tag) => !EXCLUDED_SUGGESTED_TAG_SLUGS.has(tag.slug))
+    .sort((a, b) => (b.quiz_count ?? 0) - (a.quiz_count ?? 0))
     .map((tag) => tag.name);
 }
 

@@ -6,11 +6,15 @@ import Link from 'next/link';
 import {
   Search,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   CircleCheck,
   CircleX,
   Loader2,
   X,
   BookOpen,
+  ListChecks,
+  Tags,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +29,7 @@ interface Category {
   id: number;
   slug: string;
   category_name: string;
+  quiz_count?: number;
 }
 
 interface BookSummary {
@@ -42,6 +47,19 @@ interface SearchClientProps {
 }
 
 type ContentFilter = 'all' | 'quiz' | 'book';
+
+const VISIBLE_TAG_COUNT = 20;
+
+const TAG_COLORS = [
+  'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30 dark:hover:bg-violet-500/20',
+  'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/30 dark:hover:bg-sky-500/20',
+  'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30 dark:hover:bg-amber-500/20',
+  'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30 dark:hover:bg-emerald-500/20',
+  'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30 dark:hover:bg-rose-500/20',
+  'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/30 dark:hover:bg-indigo-500/20',
+  'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/30 dark:hover:bg-teal-500/20',
+  'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/30 dark:hover:bg-orange-500/20',
+];
 
 const CATEGORY_COLORS: Record<string, { badge: string; text: string }> = {
   'html-basic': {
@@ -150,6 +168,7 @@ export default function SearchClient({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [inputValue, setInputValue] = useState(currentQuery);
+  const [showAllTags, setShowAllTags] = useState(false);
   const hasSearched = !!currentQuery;
 
   const categoryCounts = initialQuizResults.reduce<Record<string, number>>((acc, quiz) => {
@@ -243,39 +262,6 @@ export default function SearchClient({
           )}
         </div>
       </div>
-
-      {!hasSearched && suggestedKeywords.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-muted-foreground">人気のタグから探す</p>
-          <div className="flex flex-wrap gap-2">
-            {suggestedKeywords.map((keyword, i) => {
-              const colors = [
-                'bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30 dark:hover:bg-violet-500/20',
-                'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/30 dark:hover:bg-sky-500/20',
-                'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30 dark:hover:bg-amber-500/20',
-                'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30 dark:hover:bg-emerald-500/20',
-                'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/30 dark:hover:bg-rose-500/20',
-                'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/30 dark:hover:bg-indigo-500/20',
-                'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/30 dark:hover:bg-teal-500/20',
-                'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/30 dark:hover:bg-orange-500/20',
-              ];
-              return (
-                <button
-                  key={keyword}
-                  onClick={() => handleKeywordClick(keyword)}
-                  className={cn(
-                    'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer hover:scale-105 hover:shadow-sm active:scale-100',
-                    colors[i % colors.length],
-                  )}
-                >
-                  <Search className="size-3 mr-1.5 opacity-60" />
-                  {keyword}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {hasSearched && (
         <div
@@ -498,7 +484,15 @@ export default function SearchClient({
       {!hasSearched && (
         <div className="space-y-8">
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-3">カテゴリから探す</p>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-3">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <ListChecks className="size-4 text-violet-500" />
+                クイズをカテゴリから探す
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                全{categories.length}カテゴリ・4択クイズ
+              </p>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
               {categories.map((cat) => {
                 const color = getCategoryColor(cat.slug);
@@ -506,13 +500,21 @@ export default function SearchClient({
                   <Link
                     key={cat.id}
                     href={`/quiz/${cat.slug}`}
-                    className={cn(
-                      'flex items-center gap-2 rounded-md border px-3 py-2.5 text-sm font-medium transition-colors hover:bg-muted/50',
-                      color.text,
-                    )}
+                    className="flex items-start gap-2 rounded-md border px-3 py-2.5 transition-colors hover:bg-muted/50"
                   >
-                    <span className={cn('size-2 rounded-full shrink-0', color.badge)} />
-                    {cat.category_name}
+                    <span
+                      className={cn('size-2 rounded-full shrink-0 mt-1.5', color.badge)}
+                    />
+                    <span className="min-w-0">
+                      <span className={cn('block text-sm font-medium', color.text)}>
+                        {cat.category_name}
+                      </span>
+                      {cat.quiz_count != null && cat.quiz_count > 0 && (
+                        <span className="block text-xs text-muted-foreground mt-0.5">
+                          {cat.quiz_count}問
+                        </span>
+                      )}
+                    </span>
                   </Link>
                 );
               })}
@@ -520,7 +522,13 @@ export default function SearchClient({
           </div>
 
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-3">教科書から探す</p>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-3">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <BookOpen className="size-4 text-emerald-600 dark:text-emerald-400" />
+                教科書から探す
+              </h2>
+              <p className="text-xs text-muted-foreground">全{books.length}冊・読んで学ぶ</p>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {books.map((book) => (
                 <Link
@@ -534,6 +542,58 @@ export default function SearchClient({
               ))}
             </div>
           </div>
+
+          {suggestedKeywords.length > 0 && (
+            <div>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-3">
+                <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                  <Tags className="size-4 text-muted-foreground" />
+                  人気のタグから探す
+                </h2>
+                {!showAllTags && suggestedKeywords.length > VISIBLE_TAG_COUNT && (
+                  <p className="text-xs text-muted-foreground">
+                    上位{VISIBLE_TAG_COUNT}件を表示中
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(showAllTags
+                  ? suggestedKeywords
+                  : suggestedKeywords.slice(0, VISIBLE_TAG_COUNT)
+                ).map((keyword, i) => (
+                  <button
+                    key={keyword}
+                    onClick={() => handleKeywordClick(keyword)}
+                    className={cn(
+                      'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer hover:scale-105 hover:shadow-sm active:scale-100',
+                      TAG_COLORS[i % TAG_COLORS.length],
+                    )}
+                  >
+                    <Search className="size-3 mr-1.5 opacity-60" />
+                    {keyword}
+                  </button>
+                ))}
+                {suggestedKeywords.length > VISIBLE_TAG_COUNT && (
+                  <button
+                    onClick={() => setShowAllTags((v) => !v)}
+                    className="inline-flex items-center rounded-full border border-dashed px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors cursor-pointer hover:bg-muted/50 hover:text-foreground"
+                  >
+                    {showAllTags ? (
+                      <>
+                        <ChevronUp className="size-3.5 mr-1.5" />
+                        閉じる
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="size-3.5 mr-1.5" />
+                        すべてのタグを見る（{suggestedKeywords.length}）
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
