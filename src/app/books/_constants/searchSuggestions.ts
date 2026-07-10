@@ -15,6 +15,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'EventBridge',
     'KMS',
     'WAF',
+    'Secrets Manager',
     'Auto Scaling',
     'NAT Gateway',
     'VPC Endpoint',
