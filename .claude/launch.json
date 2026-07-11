@@ -3,8 +3,11 @@
   "configurations": [
     {
       "name": "next-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": [
+        "-c",
+        "export PATH=\"$HOME/.nvm/versions/node/v24.13.1/bin:$PATH\" && npm run dev"
+      ],
       "port": 3000,
       "autoPort": true
     }

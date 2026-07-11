@@ -1,5 +1,7 @@
 import { type ReactNode } from "react";
 
+import { TriBar } from "@/components/TriBar";
+
 interface SectionHeadingProps {
   children: ReactNode;
   subtitle?: string;
@@ -21,11 +23,10 @@ export function SectionHeading({
   className,
 }: SectionHeadingProps) {
   const lg = size === "lg";
-  const dotSize = lg ? "w-6 h-1.5" : "w-4 h-1";
 
   const headingClass = [
     lg ? "text-xl font-black md:text-2xl" : "text-lg font-black",
-    "text-[#232323]",
+    "text-ink",
     icon && "flex items-center gap-2",
     icon && center && "justify-center",
   ]
@@ -42,19 +43,12 @@ export function SectionHeading({
         {icon}
         {children}
       </Tag>
-      <div
-        className={[
-          "flex gap-1",
-          lg ? "mt-2.5" : "mt-1.5",
-          center && "justify-center",
-        ]
+      <TriBar
+        size={lg ? "md" : "sm"}
+        className={[lg ? "mt-2.5" : "mt-1.5", center && "justify-center"]
           .filter(Boolean)
           .join(" ")}
-      >
-        <span className={`${dotSize} rounded-full bg-[#ff624d]`} />
-        <span className={`${dotSize} rounded-full bg-[#0967c9]`} />
-        <span className={`${dotSize} rounded-full bg-[#d7ff38] ring-1 ring-[#232323]/10`} />
-      </div>
+      />
       {subtitle && (
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       )}

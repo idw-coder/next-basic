@@ -108,13 +108,13 @@ export default function HeaderNav({ books }: HeaderNavProps) {
 
   const linkClass = (active = false) =>
     cn(
-      "relative flex items-center gap-2.5 px-4 py-3 text-sm font-bold transition-colors hover:text-[#0967c9] sm:px-3 sm:py-2",
-      "after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:bg-[#0967c9] after:transition-transform",
+      "relative flex items-center gap-2.5 px-4 py-3 text-sm font-bold transition-colors hover:text-brand-blue sm:px-3 sm:py-2",
+      "after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:bg-brand-blue after:transition-transform",
       active
-        ? "text-[#0967c9] after:scale-x-100"
-        : "text-[#232323] sm:text-[#5b554d]",
+        ? "text-brand-blue after:scale-x-100"
+        : "text-ink sm:text-ink-body",
     );
-  const iconClass = "size-4 text-[#7c746a] shrink-0";
+  const iconClass = "size-4 text-ink-muted shrink-0";
   const closeMenu = () => {
     setOpen(false);
     setBooksMenuOpen(false);
@@ -125,7 +125,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="rounded-none text-[#232323] hover:bg-transparent hover:text-[#0967c9] sm:hidden"
+        className="rounded-none text-ink hover:bg-transparent hover:text-brand-blue sm:hidden"
         aria-label="メニュー"
         onClick={() => setOpen((v) => !v)}
       >
@@ -134,8 +134,8 @@ export default function HeaderNav({ books }: HeaderNavProps) {
 
       <nav
         className={`
-          fixed inset-x-0 top-14 z-50 border-b border-[#eadccb] bg-[#f7ede1]/96 shadow-[0_18px_40px_rgba(35,35,35,0.08)] backdrop-blur-xl
-          sm:static sm:flex sm:items-center sm:gap-1 sm:border-0 sm:bg-transparent
+          fixed inset-x-0 top-14 z-50 border-b border-cream-line bg-cream-deep/96 shadow-[0_18px_40px_rgba(35,35,35,0.08)] backdrop-blur-xl
+          sm:static sm:flex sm:items-center sm:gap-1 sm:border-0 sm:bg-transparent sm:shadow-none sm:backdrop-blur-none
           ${open ? "block" : "hidden sm:flex"}
         `}
       >
@@ -179,21 +179,21 @@ export default function HeaderNav({ books }: HeaderNavProps) {
             )}
             role="menu"
           >
-            <div className="overflow-hidden rounded-[18px] border border-[#eadccb] bg-[#fffaf3] shadow-[0_24px_60px_rgba(35,35,35,0.14)]">
+            <div className="overflow-hidden rounded-[18px] border border-cream-line bg-cream-soft shadow-[0_24px_60px_rgba(35,35,35,0.14)]">
               <div className="p-1.5">
                 <Link
                   href="/#categories"
                   role="menuitem"
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-[#4f4942] transition-colors hover:bg-[#f7ede1] hover:text-[#0967c9]"
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-ink-body transition-colors hover:bg-cream-deep hover:text-brand-blue"
                   onClick={closeMenu}
                 >
-                  <BookOpen className="size-4 text-[#0967c9]" />
+                  <BookOpen className="size-4 text-brand-blue" />
                   クイズ一覧
                 </Link>
                 <Link
                   href="/quiz/bookmarks"
                   role="menuitem"
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-[#4f4942] transition-colors hover:bg-[#fff2cd] hover:text-[#b06f00]"
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-ink-body transition-colors hover:bg-[#fff2cd] hover:text-[#b06f00]"
                   onClick={closeMenu}
                 >
                   <Bookmark className="size-4 text-[#f3bf55]" />
@@ -202,10 +202,10 @@ export default function HeaderNav({ books }: HeaderNavProps) {
                 <Link
                   href="/search"
                   role="menuitem"
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-[#4f4942] transition-colors hover:bg-[#f7ede1] hover:text-[#0967c9]"
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-ink-body transition-colors hover:bg-cream-deep hover:text-brand-blue"
                   onClick={closeMenu}
                 >
-                  <Search className="size-4 text-[#ff624d]" />
+                  <Search className="size-4 text-brand-red" />
                   問題を検索
                 </Link>
               </div>
@@ -253,15 +253,15 @@ export default function HeaderNav({ books }: HeaderNavProps) {
               )}
               role="menu"
             >
-              <div className="overflow-hidden rounded-[22px] border border-[#eadccb] bg-[#fffaf3] shadow-[0_24px_60px_rgba(35,35,35,0.14)]">
-                <div className="flex items-center justify-between border-b border-[#eadccb] bg-[#f7ede1]/55 px-4 py-3">
+              <div className="overflow-hidden rounded-[22px] border border-cream-line bg-cream-soft shadow-[0_24px_60px_rgba(35,35,35,0.14)]">
+                <div className="flex items-center justify-between border-b border-cream-line bg-cream-deep/55 px-4 py-3">
                   <div>
-                    <p className="text-sm font-black text-[#232323]">教科書へ直接移動</p>
-                    <p className="mt-0.5 text-xs font-bold text-[#6b6258]">読みたい分野を選べます</p>
+                    <p className="text-sm font-black text-ink">教科書へ直接移動</p>
+                    <p className="mt-0.5 text-xs font-bold text-ink-muted">読みたい分野を選べます</p>
                   </div>
                   <Link
                     href="/books"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#0967c9] px-3 py-1.5 text-xs font-black text-white shadow-[3px_3px_0_#d7ff38] transition-transform hover:-translate-y-0.5"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-blue px-3 py-1.5 text-xs font-black text-white shadow-[3px_3px_0_var(--color-brand-lime)] transition-transform hover:-translate-y-0.5"
                     onClick={closeMenu}
                   >
                     一覧
@@ -279,12 +279,12 @@ export default function HeaderNav({ books }: HeaderNavProps) {
                         key={book.bookSlug}
                         href={`/books/${book.bookSlug}`}
                         role="menuitem"
-                        className="flex min-w-0 items-center gap-3 rounded-2xl px-2.5 py-2 text-[#232323] transition-colors hover:bg-[#f7ede1] hover:text-[#0967c9] focus:bg-[#f7ede1] focus:outline-none"
+                        className="flex min-w-0 items-center gap-3 rounded-2xl px-2.5 py-2 text-ink transition-colors hover:bg-cream-deep hover:text-brand-blue focus:bg-cream-deep focus:outline-none"
                         onClick={closeMenu}
                       >
                         <span
                           className={cn(
-                            "relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#232323]/10 bg-white",
+                            "relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-ink/10 bg-white",
                             theme.iconBg,
                           )}
                         >
@@ -304,7 +304,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
                           <span className="block truncate text-sm font-semibold text-inherit">
                             {book.title}
                           </span>
-                          <span className="mt-0.5 block line-clamp-1 text-xs font-medium text-[#6b6258]">
+                          <span className="mt-0.5 block line-clamp-1 text-xs font-medium text-ink-muted">
                             {book.description}
                           </span>
                         </span>
@@ -383,7 +383,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
             <Button
               variant="outline"
               size="sm"
-              className="ml-2 hidden rounded-none border-0 border-b-2 border-[#232323] bg-transparent px-1 font-black text-[#232323] shadow-none transition-colors hover:bg-transparent hover:text-[#0967c9] sm:inline-flex"
+              className="ml-2 hidden rounded-none border-0 border-b-2 border-ink bg-transparent px-1 font-black text-ink shadow-none transition-colors hover:bg-transparent hover:text-brand-blue sm:inline-flex"
               asChild
             >
               <Link href="/login" onClick={closeMenu}>
