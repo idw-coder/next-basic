@@ -235,10 +235,9 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     { slug: 'aws-terraform', label: 'Terraform（IaC）' },
     { slug: 'aws-ivs', label: 'IVS（ライブ配信）' },
     { slug: 'aws-service-quotas', label: 'Service Quotas（制限）' },
-    // SAA-C03 模擬試験（試験ガイドの4ドメインに対応）
     {
       slug: 'aws-saa-secure',
-      label: 'SAA模擬試験 ドメイン1: セキュアな設計',
+      label: 'SAA模擬試験 — セキュアな設計',
       bookLinks: [
         {
           bookSlug: 'aws-saa-c03',
@@ -259,7 +258,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     },
     {
       slug: 'aws-saa-resilient',
-      label: 'SAA模擬試験 ドメイン2: 回復性のある設計',
+      label: 'SAA模擬試験 — 回復性のある設計',
       bookLinks: [
         {
           bookSlug: 'aws-saa-c03',
@@ -280,7 +279,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     },
     {
       slug: 'aws-saa-performance',
-      label: 'SAA模擬試験 ドメイン3: 高性能な設計',
+      label: 'SAA模擬試験 — 高性能な設計',
       bookLinks: [
         {
           bookSlug: 'aws-saa-c03',
@@ -301,7 +300,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     },
     {
       slug: 'aws-saa-cost',
-      label: 'SAA模擬試験 ドメイン4: コスト最適化',
+      label: 'SAA模擬試験 — コスト最適化',
       bookLinks: [
         {
           bookSlug: 'aws-saa-c03',
