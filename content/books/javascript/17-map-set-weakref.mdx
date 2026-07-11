@@ -28,8 +28,12 @@ ES2015で追加されたMapとSetは、「任意の値をキーにできる」�
 ## Map — あらゆる型をキーにできる連想配列
 
 Mapは **キーと値のペアを格納する** コレクションです。
-一見するとオブジェクト（`{}`）と同じに思えますが、決定的な違いがあります。
+
+一見すると[オブジェクト（`{}`）](/books/javascript/06-objects)と同じに思えますが、決定的な違いがあります。
+
 オブジェクトのキーは文字列（またはSymbol）に限定されるのに対し、Mapは **オブジェクト・関数・数値など、あらゆる型をキーにできます**。
+
+他に個人的にポイントとなる特徴は、[便利なメソッド（`get`、`set`、`has`、`delete`、`clear`、`forEach`）](/books/javascript/17-map-set-weakref#Mapの主要メソッド)があることです。
 
 ### 基本の使い方
 
@@ -83,9 +87,14 @@ metadata.get(btn).clickCount++;
   alt="キーの同値判定を確認するイメージ"
   maxWidth="120px"
 />
-
 MapのキーもSetと同じく **SameValueZero** アルゴリズムで比較されます。
-ほぼ `===` と同じですが、`NaN` 同士は同一とみなされます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  SameValueZero って何ですか？
+</SpeechBubble>
+
+実際に押さえておくべき点は一つだけ——**`NaN` 同士は同一とみなされる**、これだけです。
+
 
 ```js
 const m = new Map();
@@ -113,7 +122,7 @@ m.set(key, 'Alice');
 console.log(m.get(key)); // "Alice"
 ```
 
-### 主要メソッド
+### Mapの主要メソッド
 
 **構文：** `new Map()` または `new Map(iterable)`
 
@@ -125,6 +134,22 @@ console.log(m.get(key)); // "Alice"
 | `delete(key)`     | キーと値のペアを削除           | 削除できたら `true` |
 | `clear()`         | 全要素を削除                   | `undefined`         |
 | `forEach(fn)`     | 各ペアに対してコールバック実行 | `undefined`         |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `forEach` って `(値, キー)` の順番なんですか？直感と逆な感じがして…
+</SpeechBubble>
+
+そうなんです、混乱しやすいポイントです。配列の `forEach` が `(要素, インデックス)` という順なので、それに揃えて「まず中身、次に識別子」という設計になっています。Map もその流れで `(値, キー)` の順になりました。
+
+```js
+const m = new Map([['name', 'Alice'], ['age', 25]]);
+
+m.forEach((value, key) => {
+  console.log(`${key}: ${value}`);
+});
+// "name: Alice"
+// "age: 25"
+```
 
 `set` はMap自身を返すので、メソッドチェーンが可能です。
 
@@ -141,7 +166,7 @@ const m = new Map().set('a', 1).set('b', 2).set('c', 3);
 
 <Figure src="/images/planning_suit_man_color.png" alt="Mapの反復処理" maxWidth="120px" />
 
-Mapは `for...of` で回せます。各要素は `[key, value]` の配列として取り出せます。
+Mapは `for...of` で回せます（このような性質を「イテラブル」と呼びます。詳しい仕組みは[次章のイテレータとジェネレータ](/books/javascript/18-iterators-and-generators)で解説します）。各要素は `[key, value]` の配列として取り出せます。
 挿入順が保持されるのはSetと同じです。
 
 ```js
@@ -165,6 +190,28 @@ for (const [key, value] of m) {
 console.log([...m.keys()]); // ["name", "age", "city"]
 console.log([...m.values()]); // ["Alice", 25, "Tokyo"]
 console.log([...m.entries()]); // [["name", "Alice"], ["age", 25], ["city", "Tokyo"]]
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Map って `.map()` や `.filter()` は使えないんですか？
+</SpeechBubble>
+
+Mapは配列ではないので、そのままでは使えません。ただし、スプレッド構文や `Array.from` で配列に変換すれば使えます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  あ、そっか…Map って配列じゃないんですね。ずっと配列みたいなものだと思ってました！
+</SpeechBubble>
+
+```js
+const m = new Map([['a', 1], ['b', 2], ['c', 3]]);
+
+// values() を配列に変換してから filter
+const big = [...m.values()].filter(v => v > 1);
+console.log(big); // [2, 3]
+
+// entries() を配列に変換してから map
+const labels = [...m.entries()].map(([k, v]) => `${k}=${v}`);
+console.log(labels); // ["a=1", "b=2", "c=3"]
 ```
 
 ### Object との使い分け
@@ -402,7 +449,7 @@ const unique = [...new Set(ids)]; // [1, 3, 5, 7]
 
 ### Setはイテラブル
 
-`for...of` やスプレッド構文で回せます。挿入順が保持されます。
+SetもMapと同じく[イテラブル](/books/javascript/18-iterators-and-generators)なので、`for...of` やスプレッド構文で回せます。挿入順が保持されます。
 
 ```js
 const s = new Set(['a', 'b', 'c']);
