@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import mermaid from 'mermaid';
 
 interface MermaidDiagramProps {
@@ -11,11 +11,14 @@ interface MermaidDiagramProps {
 
 export default function MermaidDiagram({
   chart,
-  id = 'mermaid-diagram',
+  id,
   maxWidth,
 }: MermaidDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>('');
+  const generatedId = useId();
+  const diagramId =
+    id ?? `mermaid-${generatedId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
@@ -63,7 +66,7 @@ export default function MermaidDiagram({
 
     const render = async () => {
       try {
-        const { svg: renderedSvg } = await mermaid.render(id, chart);
+        const { svg: renderedSvg } = await mermaid.render(diagramId, chart);
         setSvg(renderedSvg);
       } catch {
         setSvg('');
@@ -71,12 +74,12 @@ export default function MermaidDiagram({
     };
 
     render();
-  }, [chart, id]);
+  }, [chart, diagramId]);
 
   return (
     <div
       ref={containerRef}
-      className="w-full overflow-x-auto rounded-md border border-border bg-white p-4 dark:bg-slate-900/50 md:p-6"
+      className="mermaid-diagram my-6 w-full overflow-x-auto rounded-md border border-border bg-white p-4 dark:bg-slate-900/50 md:p-6"
       dangerouslySetInnerHTML={{ __html: svg }}
       style={maxWidth ? { maxWidth } : undefined}
     />

@@ -4,32 +4,38 @@ description: 'AWS WAF、AWS Shield、Amazon Cognito、Secrets Manager、Systems 
 order: 5
 ---
 
-<Figure src="/images/search_woman_color.png" alt="セキュリティ上の問題を探す人のイラスト" maxWidth="320px" />
+<Figure
+  src="/images/search_woman_color.png"
+  alt="セキュリティ上の問題を探す人のイラスト"
+  maxWidth="320px"
+/>
 
 <SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
-Security Groupで通信を絞っていれば、WAFやShieldまでは不要ではないですか？
+  Security Groupで通信を絞っていれば、WAFやShieldまでは不要ではないですか？
 </SpeechBubble>
 
 Security GroupやNACLは、IPアドレス、ポート、プロトコルを中心に通信を制御します。しかしWebアプリケーションには、HTTPリクエストの中身を悪用する攻撃、DDoS、認証情報漏洩、不正ログイン、証明書管理、脅威検知など、ネットワーク制御だけでは防げないリスクが残ります。
 
 SAA-C03では、問題文の「守りたい対象」と「脅威の種類」から、AWS WAF、AWS Shield、Amazon Cognito、Secrets Manager、ACM、GuardDuty、Macieなどを選ぶ力が問われます。
 
-<Marker>アプリケーション保護は、通信の入口、ユーザー認証、シークレット管理、証明書、脅威検知を分けて考えると整理しやすいです。</Marker>
+<Marker>
+  アプリケーション保護は、通信の入口、ユーザー認証、シークレット管理、証明書、脅威検知を分けて考えると整理しやすいです。
+</Marker>
 
 ---
 
 ## よく出るセキュリティサービス
 
-| サービス | 主な用途 | 問題文のキーワード |
-|---|---|---|
-| AWS WAF | HTTP/HTTPSリクエストをルールで検査し、SQLインジェクションやXSSを防ぐ | Web攻撃、SQL injection、XSS、レート制限、IPブロック |
-| AWS Shield | DDoS対策。Standardは自動、Advancedは追加保護 | DDoS、可用性、CloudFront、Route 53、Global Accelerator |
-| Amazon Cognito | Web/Mobileアプリのユーザー認証と一時AWS認証情報の発行 | ユーザー登録、ログイン、SNSログイン、アプリ利用者 |
-| AWS Secrets Manager | DBパスワードやAPIキーなどのシークレット管理と自動ローテーション | 認証情報、APIキー、自動ローテーション |
-| Systems Manager Parameter Store | 設定値や軽量なシークレット管理 | 設定値、環境別パラメータ、低コスト |
-| AWS Certificate Manager | TLS証明書の発行・管理・更新 | HTTPS、SSL/TLS証明書、CloudFront、ALB |
-| Amazon GuardDuty | AWS環境の脅威検知 | 不審なAPI、侵害された認証情報、マルウェア、脅威検出 |
-| Amazon Macie | S3内の機密データ検出 | 個人情報、PII、S3の機密データ |
+| サービス                        | 主な用途                                                             | 問題文のキーワード                                     |
+| ------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------ |
+| AWS WAF                         | HTTP/HTTPSリクエストをルールで検査し、SQLインジェクションやXSSを防ぐ | Web攻撃、SQL injection、XSS、レート制限、IPブロック    |
+| AWS Shield                      | DDoS対策。Standardは自動、Advancedは追加保護                         | DDoS、可用性、CloudFront、Route 53、Global Accelerator |
+| Amazon Cognito                  | Web/Mobileアプリのユーザー認証と一時AWS認証情報の発行                | ユーザー登録、ログイン、SNSログイン、アプリ利用者      |
+| AWS Secrets Manager             | DBパスワードやAPIキーなどのシークレット管理と自動ローテーション      | 認証情報、APIキー、自動ローテーション                  |
+| Systems Manager Parameter Store | 設定値や軽量なシークレット管理                                       | 設定値、環境別パラメータ、低コスト                     |
+| AWS Certificate Manager         | TLS証明書の発行・管理・更新                                          | HTTPS、SSL/TLS証明書、CloudFront、ALB                  |
+| Amazon GuardDuty                | AWS環境の脅威検知                                                    | 不審なAPI、侵害された認証情報、マルウェア、脅威検出    |
+| Amazon Macie                    | S3内の機密データ検出                                                 | 個人情報、PII、S3の機密データ                          |
 
 試験では、「セキュリティサービス」とひとまとめにせず、**入口で止めるのか、認証するのか、秘密値を守るのか、検知するのか**を切り分けます。
 
@@ -46,12 +52,14 @@ flowchart LR
     CF --> WAF["AWS WAF Web ACL"]
     WAF --> ALB["Application Load Balancer"]
     ALB --> APP["EC2 / ECS / Lambda"]
-    CF -. "DDoS mitigation" .-> SH["AWS Shield"]
-    ALB -. "Security Group" .-> SG["Security Group"]
-`}/>
+    CF -.->|DDoS mitigation| SH["AWS Shield"]
+    ALB -.->|Security Group| SG["Security Group"]
+`}
+/>
 
 <SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
-Security Groupは「通信を通すか」、WAFは「HTTPリクエストの中身を許可するか」、Shieldは「大量攻撃に耐えるか」を担当します。
+  Security
+  Groupは「通信を通すか」、WAFは「HTTPリクエストの中身を許可するか」、Shieldは「大量攻撃に耐えるか」を担当します。
 </SpeechBubble>
 
 ---
@@ -70,13 +78,13 @@ WAFが候補になる要件:
 
 ### WAFの基本構成
 
-| 用語 | 説明 |
-|---|---|
-| Web ACL | WAFルールをまとめた保護設定。CloudFrontやALBなどに関連付ける |
-| Rule | リクエストを許可、ブロック、カウント、CAPTCHAなどに振り分ける条件 |
-| Managed Rule | AWSやAWS Marketplaceベンダーが提供する定義済みルール |
-| Rate-based rule | 一定時間内のリクエスト数を数え、過剰な送信元を制限するルール |
-| IP set | 許可・拒否したいIPアドレス範囲のリスト |
+| 用語            | 説明                                                              |
+| --------------- | ----------------------------------------------------------------- |
+| Web ACL         | WAFルールをまとめた保護設定。CloudFrontやALBなどに関連付ける      |
+| Rule            | リクエストを許可、ブロック、カウント、CAPTCHAなどに振り分ける条件 |
+| Managed Rule    | AWSやAWS Marketplaceベンダーが提供する定義済みルール              |
+| Rate-based rule | 一定時間内のリクエスト数を数え、過剰な送信元を制限するルール      |
+| IP set          | 許可・拒否したいIPアドレス範囲のリスト                            |
 
 <Callout type="note">
 ### 最初はCountで様子を見る
@@ -87,12 +95,12 @@ WAFのルールをいきなりBlockにすると、正常なユーザーまで止
 
 ### Security GroupとWAFの違い
 
-| 比較 | Security Group | AWS WAF |
-|---|---|---|
-| 見るレイヤー | L3/L4中心 | L7、HTTP/HTTPS |
-| 主な条件 | IP、ポート、プロトコル | URI、ヘッダー、クエリ、Body、IP、Rate |
-| 主な用途 | EC2、ALB、RDSなどへの通信制御 | Web攻撃やBot的アクセスの制御 |
-| 代表例 | 443番だけ許可 | SQLインジェクション文字列をブロック |
+| 比較         | Security Group                | AWS WAF                               |
+| ------------ | ----------------------------- | ------------------------------------- |
+| 見るレイヤー | L3/L4中心                     | L7、HTTP/HTTPS                        |
+| 主な条件     | IP、ポート、プロトコル        | URI、ヘッダー、クエリ、Body、IP、Rate |
+| 主な用途     | EC2、ALB、RDSなどへの通信制御 | Web攻撃やBot的アクセスの制御          |
+| 代表例       | 443番だけ許可                 | SQLインジェクション文字列をブロック   |
 
 <Callout type="warning">
 ### WAFはアプリの脆弱性修正の代わりではない
@@ -107,24 +115,24 @@ WAFは攻撃を減らす防御層ですが、入力検証、認可チェック�
 
 AWS ShieldはDDoS攻撃に対するマネージド保護サービスです。DDoSは、攻撃者が大量の通信や大量のリクエストを送り、正規ユーザーがサービスを使えない状態にする攻撃です。
 
-| 種類 | 位置づけ | 使う場面 |
-|---|---|---|
-| Shield Standard | すべてのAWS利用者に自動適用、追加料金なし | 一般的なネットワーク・トランスポート層DDoS対策 |
-| Shield Advanced | 追加契約の高度なDDoS保護 | 重要システム、DDoSコスト保護、専門家支援、詳細な攻撃可視化が必要 |
+| 種類            | 位置づけ                                  | 使う場面                                                         |
+| --------------- | ----------------------------------------- | ---------------------------------------------------------------- |
+| Shield Standard | すべてのAWS利用者に自動適用、追加料金なし | 一般的なネットワーク・トランスポート層DDoS対策                   |
+| Shield Advanced | 追加契約の高度なDDoS保護                  | 重要システム、DDoSコスト保護、専門家支援、詳細な攻撃可視化が必要 |
 
 Shield Standardは自動で有効です。試験で「DDoSからより高度に保護したい」「DDoS Response Teamの支援」「コスト保護」「重要な公開サービス」といった文脈が出たら、Shield Advancedを検討します。
 
 ### Shield、WAF、CloudFrontの組み合わせ
 
-| 要件 | 選択肢 |
-|---|---|
-| 静的・動的コンテンツをエッジで配信し、オリジン負荷を下げたい | CloudFront |
-| L3/L4のDDoS攻撃に備えたい | Shield Standard / Advanced |
-| HTTPリクエスト洪水やWeb攻撃を制御したい | AWS WAF |
-| グローバルなWebアプリを総合的に守りたい | CloudFront + WAF + Shield |
+| 要件                                                         | 選択肢                     |
+| ------------------------------------------------------------ | -------------------------- |
+| 静的・動的コンテンツをエッジで配信し、オリジン負荷を下げたい | CloudFront                 |
+| L3/L4のDDoS攻撃に備えたい                                    | Shield Standard / Advanced |
+| HTTPリクエスト洪水やWeb攻撃を制御したい                      | AWS WAF                    |
+| グローバルなWebアプリを総合的に守りたい                      | CloudFront + WAF + Shield  |
 
 <SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
-DDoSならいつもWAFですか？
+  DDoSならいつもWAFですか？
 </SpeechBubble>
 
 必ずしもそうではありません。ネットワークやトランスポート層のDDoSにはShield、HTTPリクエストの条件で制御したい場合はWAFを使います。CloudFrontを前段に置くと、エッジでトラフィックを受け、オリジンへの直接負荷も減らせます。
@@ -135,22 +143,22 @@ DDoSならいつもWAFですか？
 
 Amazon Cognitoは、アプリケーションのエンドユーザー認証に使います。社員がAWSマネジメントコンソールへログインする仕組みではありません。従業員のAWSアクセス管理ならIAM Identity CenterやIAMを検討します。
 
-| 要件 | 選択肢 |
-|---|---|
-| Web/Mobileアプリのユーザー登録・ログイン | Cognito User Pools |
-| メールアドレス、電話番号、MFAなどでユーザー認証したい | Cognito User Pools |
+| 要件                                                        | 選択肢                                |
+| ----------------------------------------------------------- | ------------------------------------- |
+| Web/Mobileアプリのユーザー登録・ログイン                    | Cognito User Pools                    |
+| メールアドレス、電話番号、MFAなどでユーザー認証したい       | Cognito User Pools                    |
 | Google、Apple、Facebookなどのソーシャルログインと連携したい | Cognito User Pools + フェデレーション |
-| 認証済みユーザーにS3やDynamoDBへ直接アクセスさせたい | Cognito Identity Pools |
-| 一時的なAWS認証情報を払い出したい | Cognito Identity Pools |
+| 認証済みユーザーにS3やDynamoDBへ直接アクセスさせたい        | Cognito Identity Pools                |
+| 一時的なAWS認証情報を払い出したい                           | Cognito Identity Pools                |
 
 ### User PoolsとIdentity Pools
 
-| 比較 | User Pools | Identity Pools |
-|---|---|---|
-| 主な役割 | アプリ利用者の認証 | AWSリソースへアクセスする一時認証情報の発行 |
-| 扱うもの | ユーザーディレクトリ、JWT、MFA、ログイン画面 | IAM Role、STS一時認証情報 |
-| 典型例 | ログインしてIDトークンを受け取る | ログイン後にS3へ画像をアップロードする |
-| 試験のキーワード | ユーザー登録、ログイン、MFA、SNSログイン | 一時的なAWS credentials、S3/DynamoDBへの直接アクセス |
+| 比較             | User Pools                                   | Identity Pools                                       |
+| ---------------- | -------------------------------------------- | ---------------------------------------------------- |
+| 主な役割         | アプリ利用者の認証                           | AWSリソースへアクセスする一時認証情報の発行          |
+| 扱うもの         | ユーザーディレクトリ、JWT、MFA、ログイン画面 | IAM Role、STS一時認証情報                            |
+| 典型例           | ログインしてIDトークンを受け取る             | ログイン後にS3へ画像をアップロードする               |
+| 試験のキーワード | ユーザー登録、ログイン、MFA、SNSログイン     | 一時的なAWS credentials、S3/DynamoDBへの直接アクセス |
 
 <MermaidDiagram
   chart={`
@@ -165,6 +173,7 @@ sequenceDiagram
     App->>IP: Exchange token
     IP-->>App: Temporary AWS credentials
     App->>AWS: Access with scoped IAM role
+
 `}/>
 
 <Callout type="note">
@@ -178,25 +187,50 @@ Cognitoはアプリの利用者向けです。社員や開発者がAWSアカウ�
 
 ## シークレット管理
 
-DBパスワードやAPIキーをEC2の環境変数、AMI、コンテナイメージ、ソースコード、GitHubリポジトリに直接置くのは避けます。AWSでは主にSecrets ManagerとSystems Manager Parameter Storeを使います。
+DBパスワードやAPIキーをEC2の環境変数、AMI、コンテナイメージ、ソースコード、GitHubリポジトリに直接置くのは避けます。AWSでは**Secrets Manager**と**Systems Manager Parameter Store**の2つで管理するのが基本です。
 
-| 要件 | 選択肢 |
-|---|---|
-| DB認証情報を安全に保存し、自動ローテーションしたい | Secrets Manager |
-| APIキーやOAuthトークンなどの秘密値を一元管理したい | Secrets Manager |
-| 設定値や低コストなパラメータ管理をしたい | Systems Manager Parameter Store |
-| 暗号化された軽量な設定値を保存したい | Parameter Store SecureString |
-| LambdaやECSからシークレットを取得したい | IAM RoleでSecrets Manager / Parameter Storeへアクセス |
+### Secrets Manager
 
-### Secrets ManagerとParameter Store
+認証情報のライフサイクル全体（保存・取得・ローテーション）を管理するサービスです。
 
-| 比較 | Secrets Manager | Parameter Store |
-|---|---|---|
-| 主な用途 | シークレットのライフサイクル管理 | 設定値・パラメータ管理 |
-| 自動ローテーション | 得意。RDSなどと組み合わせやすい | 基本は自前設計 |
-| データ例 | DBパスワード、APIキー、OAuthトークン | 環境名、エンドポイント、AMI ID、軽量なSecureString |
-| コスト感 | シークレット単位で課金 | Standard parameterは低コストに使いやすい |
-| 試験の見分け方 | 「認証情報」「自動ローテーション」 | 「設定値」「階層管理」「低コスト」 |
+典型的な用途は**RDSのマスターパスワード管理**です。
+
+アプリ（LambdaやECSなど）はコードにパスワードを書かず、起動時にSecrets ManagerへAPIリクエストを送り、`{ "username": "admin", "password": "..." }` のようなJSON形式で認証情報を受け取ってDBに接続します。
+
+<Callout type="note">
+### 実務でもそのまま使うパターン
+
+本番環境のECSタスクやLambdaでは、環境変数にパスワードを直書きする代わりに、起動時にSecrets ManagerのAPIを呼んで認証情報を取得するコードを書くのが一般的です。
+AWS SDKを使えば数行で実装でき、取得した値をそのままDBクライアントの接続設定に渡します。
+GitHubにパスワードが混入するリスクがなくなり、ローテーションも自動化できるため、セキュリティ要件が厳しい現場ではほぼ必須の構成です。
+
+</Callout>
+
+RDS・Redshift・DocumentDBなどのマネージドDBとネイティブに連携し、**自動ローテーション**を設定できます。ローテーション時はLambda関数が裏で動いてDBのパスワードを変更・同期するため、アプリ側の設定変更なしに常に最新の認証情報を使い続けられます。
+
+- 保存例：DBパスワード、APIキー、OAuthトークン、SSHキー
+- 課金：シークレット1件あたりの月額 ＋ APIコール数
+- 試験キーワード：「認証情報」「自動ローテーション」「RDSパスワードを定期更新」
+
+### Systems Manager Parameter Store
+
+設定値やパラメータを階層的なパス（`/prod/db/endpoint` のような形式）で一元管理するサービスです。
+Standard Tierは追加コストなしで利用でき、高頻度な設定値の参照に向いています。
+
+機密性が必要な値は**SecureString**タイプとしてKMSで暗号化して保存できます。
+
+- 保存例：環境名、エンドポイントURL、AMI ID、機能フラグ、軽量なSecureString
+- 課金：Standard parameterは低コスト。Advanced Tierはパラメータ数に応じて課金
+- 試験キーワード：「設定値」「階層管理」「低コスト」「SecureString」
+
+### 使い分けの目安
+
+| 要件                                       | 選択肢                          |
+| ------------------------------------------ | ------------------------------- |
+| DB認証情報を保存し自動ローテーションしたい | Secrets Manager                 |
+| APIキーやトークンなどの秘密値を管理したい  | Secrets Manager                 |
+| 設定値や環境変数を低コストで管理したい     | Parameter Store（Standard）     |
+| 設定値を暗号化して保存したい               | Parameter Store（SecureString） |
 
 <Callout type="warning">
 ### 取得権限はIAMロールで絞る
@@ -207,9 +241,11 @@ Secrets Managerに保存しても、アプリケーションに広すぎるIAM�
 
 ### ECSやLambdaでの典型パターン
 
+アプリ起動時にSecrets Managerからシークレットを取得し、DBへ接続するのが典型的な構成です。
+
 ```text
 アプリケーション起動
-  -> IAM RoleでSecrets Managerへアクセス
+  -> IAMロールでSecrets Managerへアクセス
   -> DB認証情報を取得
   -> RDSへ接続
 ```
@@ -222,12 +258,12 @@ Private Subnet内のLambdaやECSタスクからSecrets Managerへ閉域アクセ
 
 AWS Certificate Manager（ACM）は、AWS上で利用するTLS証明書の発行、インポート、管理、更新を担います。HTTPS化の要件では、ALB、CloudFront、API Gatewayなどと組み合わせて出題されます。
 
-| 要件 | 選択肢 |
-|---|---|
-| ALBでHTTPSを終端したい | ACM証明書 + ALB Listener |
-| CloudFrontでHTTPS配信したい | ACM証明書 + CloudFront |
-| API GatewayのカスタムドメインをHTTPS化したい | ACM証明書 + API Gateway |
-| プライベートな社内証明書基盤を使いたい | AWS Private CA |
+| 要件                                         | 選択肢                   |
+| -------------------------------------------- | ------------------------ |
+| ALBでHTTPSを終端したい                       | ACM証明書 + ALB Listener |
+| CloudFrontでHTTPS配信したい                  | ACM証明書 + CloudFront   |
+| API GatewayのカスタムドメインをHTTPS化したい | ACM証明書 + API Gateway  |
+| プライベートな社内証明書基盤を使いたい       | AWS Private CA           |
 
 <Callout type="note">
 ### CloudFront用のACM証明書は us-east-1
@@ -242,15 +278,15 @@ CloudFrontに関連付けるACM証明書は、米国東部（バージニア北�
 
 WAFやShieldは入口で攻撃を減らすサービスです。一方で、GuardDutyやMacieは「すでに起きているかもしれない問題」を検知するサービスです。
 
-| サービス | 何を検知するか | 代表例 |
-|---|---|---|
-| GuardDuty | AWSアカウントやワークロード上の脅威 | 侵害された認証情報、不審なAPI、暗号資産マイニング、マルウェア、S3/RDS/EKS/ECS/Lambda関連の脅威 |
-| Macie | S3内の機密データ | 個人情報、認証情報、PII、機密データの分類 |
-| Security Hub | 複数サービスの検出結果を集約し、セキュリティ標準に照らして評価 | GuardDuty、Macie、Inspectorなどの集約 |
-| Detective | 検出結果の調査と原因分析 | 関連するAPI、IP、ユーザー、リソースの関係分析 |
+| サービス     | 何を検知するか                                                 | 代表例                                                                                         |
+| ------------ | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| GuardDuty    | AWSアカウントやワークロード上の脅威                            | 侵害された認証情報、不審なAPI、暗号資産マイニング、マルウェア、S3/RDS/EKS/ECS/Lambda関連の脅威 |
+| Macie        | S3内の機密データ                                               | 個人情報、認証情報、PII、機密データの分類                                                      |
+| Security Hub | 複数サービスの検出結果を集約し、セキュリティ標準に照らして評価 | GuardDuty、Macie、Inspectorなどの集約                                                          |
+| Detective    | 検出結果の調査と原因分析                                       | 関連するAPI、IP、ユーザー、リソースの関係分析                                                  |
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-GuardDutyとMacieはどちらもセキュリティ検知ですよね。どう見分けますか？
+  GuardDutyとMacieはどちらもセキュリティ検知ですよね。どう見分けますか？
 </SpeechBubble>
 
 「不審な動き」ならGuardDuty、「S3の中に個人情報や機密情報があるか」ならMacieです。MacieはS3のデータ分類、GuardDutyはAWS環境の脅威検知と覚えると判断しやすいです。
@@ -272,36 +308,37 @@ flowchart TB
     APP --> SM["Secrets Manager"]
     APP --> RDS["RDS / Aurora"]
     CF -.-> SH["Shield"]
-    ALB -. "TLS certificate" .-> ACM["ACM"]
-    APP -. "Findings" .-> GD["GuardDuty"]
-    S3["S3"] -. "Sensitive data discovery" .-> MACIE["Macie"]
-`}/>
+    ALB -.->|TLS certificate| ACM["ACM"]
+    APP -.->|Findings| GD["GuardDuty"]
+    S3["S3"] -.->|Sensitive data discovery| MACIE["Macie"]
+`}
+/>
 
-| 層 | 主なサービス | 設計の観点 |
-|---|---|---|
-| DNS・エッジ | Route 53、CloudFront、Shield | 可用性、DDoS耐性、オリジン保護 |
-| Web入口 | WAF、ALB、API Gateway | HTTP攻撃対策、レート制限、TLS終端 |
-| 認証 | Cognito | アプリ利用者のログイン、MFA、フェデレーション |
-| 秘密値 | Secrets Manager、Parameter Store | DBパスワード、APIキー、設定値 |
-| 検知 | GuardDuty、Macie、Security Hub | 脅威検知、S3機密データ検出、検出結果の集約 |
+| 層          | 主なサービス                     | 設計の観点                                    |
+| ----------- | -------------------------------- | --------------------------------------------- |
+| DNS・エッジ | Route 53、CloudFront、Shield     | 可用性、DDoS耐性、オリジン保護                |
+| Web入口     | WAF、ALB、API Gateway            | HTTP攻撃対策、レート制限、TLS終端             |
+| 認証        | Cognito                          | アプリ利用者のログイン、MFA、フェデレーション |
+| 秘密値      | Secrets Manager、Parameter Store | DBパスワード、APIキー、設定値                 |
+| 検知        | GuardDuty、Macie、Security Hub   | 脅威検知、S3機密データ検出、検出結果の集約    |
 
 ---
 
 ## 試験での見分け方
 
-| 問題文 | 選ぶサービス |
-|---|---|
-| WebアプリへのSQLインジェクションやXSSを防ぎたい | AWS WAF |
-| ログインAPIへの大量リクエストを制限したい | AWS WAF rate-based rule |
-| DDoSから公開サービスを守りたい | AWS Shield、CloudFront |
-| 重要な公開アプリに高度なDDoS保護と専門家支援が必要 | Shield Advanced |
-| Webアプリのユーザー登録・ログイン・MFAを実装したい | Cognito User Pools |
-| ログイン済みユーザーにS3へ直接アップロードさせたい | Cognito Identity Pools |
-| DBパスワードを保存し、自動ローテーションしたい | Secrets Manager |
-| 環境別の設定値を階層的に管理したい | Parameter Store |
-| ALBやCloudFrontでHTTPSを使いたい | ACM |
-| 侵害された認証情報や不審なAPI呼び出しを検知したい | GuardDuty |
-| S3に個人情報が含まれていないか検出したい | Macie |
+| 問題文                                             | 選ぶサービス            |
+| -------------------------------------------------- | ----------------------- |
+| WebアプリへのSQLインジェクションやXSSを防ぎたい    | AWS WAF                 |
+| ログインAPIへの大量リクエストを制限したい          | AWS WAF rate-based rule |
+| DDoSから公開サービスを守りたい                     | AWS Shield、CloudFront  |
+| 重要な公開アプリに高度なDDoS保護と専門家支援が必要 | Shield Advanced         |
+| Webアプリのユーザー登録・ログイン・MFAを実装したい | Cognito User Pools      |
+| ログイン済みユーザーにS3へ直接アップロードさせたい | Cognito Identity Pools  |
+| DBパスワードを保存し、自動ローテーションしたい     | Secrets Manager         |
+| 環境別の設定値を階層的に管理したい                 | Parameter Store         |
+| ALBやCloudFrontでHTTPSを使いたい                   | ACM                     |
+| 侵害された認証情報や不審なAPI呼び出しを検知したい  | GuardDuty               |
+| S3に個人情報が含まれていないか検出したい           | Macie                   |
 
 <Callout type="note">
 ### 「防ぐ」と「検知する」を分ける

@@ -235,6 +235,91 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
     { slug: 'aws-terraform', label: 'Terraform（IaC）' },
     { slug: 'aws-ivs', label: 'IVS（ライブ配信）' },
     { slug: 'aws-service-quotas', label: 'Service Quotas（制限）' },
+    // SAA-C03 模擬試験（試験ガイドの4ドメインに対応）
+    {
+      slug: 'aws-saa-secure',
+      label: 'SAA模擬試験 ドメイン1: セキュアな設計',
+      bookLinks: [
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'iam-and-least-privilege',
+          title: 'IAMと最小権限 — ユーザー・グループ・ロール・ポリシー',
+        },
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'data-security',
+          title: 'データ保護 — KMS・暗号化・バックアップ・レプリケーション',
+        },
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'application-security',
+          title: 'アプリケーション保護 — WAF・Shield・Cognito・Secrets Manager',
+        },
+      ],
+    },
+    {
+      slug: 'aws-saa-resilient',
+      label: 'SAA模擬試験 ドメイン2: 回復性のある設計',
+      bookLinks: [
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'scalability-and-ha',
+          title: 'スケーラビリティと高可用性 — ELB・Auto Scaling・Multi-AZ',
+        },
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'decoupled-architecture',
+          title: '疎結合アーキテクチャ — SQS・SNS・EventBridge・Step Functions',
+        },
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'disaster-recovery',
+          title: '災害対策と復旧設計 — RTO・RPO・Backup・Multi-Region',
+        },
+      ],
+    },
+    {
+      slug: 'aws-saa-performance',
+      label: 'SAA模擬試験 ドメイン3: 高性能な設計',
+      bookLinks: [
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'storage-selection',
+          title: 'ストレージ選択 — S3・EBS・EFS・FSxを使い分ける',
+        },
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'database-selection',
+          title: 'データベース選択 — RDS・Aurora・DynamoDB・ElastiCache・Redshift',
+        },
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'network-performance',
+          title: 'ネットワーク性能 — CloudFront・Route 53・Global Accelerator・VPC Endpoint',
+        },
+      ],
+    },
+    {
+      slug: 'aws-saa-cost',
+      label: 'SAA模擬試験 ドメイン4: コスト最適化',
+      bookLinks: [
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'cost-optimized-compute',
+          title: 'コンピューティングのコスト最適化 — Savings Plans・Spot・Fargate',
+        },
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'cost-optimized-storage',
+          title: 'ストレージのコスト最適化 — S3 Lifecycle・Glacier・EBS gp3',
+        },
+        {
+          bookSlug: 'aws-saa-c03',
+          chapterSlug: 'cost-optimized-database',
+          title: 'データベースのコスト最適化 — RDS・Aurora・DynamoDB・ElastiCache',
+        },
+      ],
+    },
   ],
   'react-basic': [
     {
