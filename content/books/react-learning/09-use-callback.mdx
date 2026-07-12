@@ -1,64 +1,99 @@
 ---
 title: 'useCallback — 関数のメモ化と子コンポーネント最適化'
-description: 'useCallbackがuseMemoの特殊ケースであること、React.memoとの組み合わせで初めて効くパターン、依存配列内の関数の安定化を解説します。'
+description: 'useCallbackで関数の参照を安定させる理由、React.memoとの組み合わせ、useEffectとexhaustive-depsの警告への向き合い方を解説します。'
 order: 9
 ---
 
-`useCallback` は、**依存配列の値が変わらない限り同じ関数オブジェクトを使い回す**フックです。
-前章の `useMemo` と仕組みは同じで、メモ化する対象が「計算結果の値」ではなく「関数」に特化しています。
+## 30秒解説 — useCallbackとは
+
+結論から言うと、`useCallback` は **依存配列の値が変わらない限り、同じ関数を使い回す** フックです。
+
+使う理由は、関数の再生成を防ぎ、不要な再レンダーや `useEffect` の不要な再実行を避けるためです。
+
+ただし、`useCallback` で包んだ関数の中身が速くなるわけではありません。変わるのは「毎回新しい関数として扱われるか」「前回と同じ関数として扱われるか」です。
+
+`useCallback` は2つの引数を受け取ります。
+
+```tsx
+const handleClick = useCallback(
+  () => {
+    doSomething();
+  }, // 第1引数: メモ化したい関数
+  [deps], // 第2引数: 関数を作り直す条件を並べた依存配列
+);
+```
+
+- **第1引数** は、メモ化したい関数そのものです。
+- **第2引数** は、その関数を作り直す条件になる依存配列です。
+
+依存配列の中身が前回と同じなら、`useCallback` は前回と同じ関数を返します。依存配列の中身が変わったら、新しい関数を返します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`useMemo` と `useCallback`、何が違うの…？どっちも「メモ化」だよね？
+  関数を毎回作るだけでそんなに問題になるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  関数を作るコスト自体は小さいよ。問題になるのは、その関数を `useEffect` の依存配列に入れたり、メモ化された子コンポーネントに渡したりするときだね。
 </SpeechBubble>
 
 ---
 
-## useCallbackはuseMemoの特殊ケース
+## 詳細解説 — 関数の参照を安定させるとは
 
-`useCallback` は「関数を返す `useMemo`」と全く同じ動きをします。
-
-```tsx
-// この2つは同じ意味
-const handleClick = useCallback(() => {
-  console.log('clicked');
-}, [deps]);
-
-const handleClick = useMemo(
-  () => () => {
-    console.log('clicked');
-  },
-  [deps],
-);
-```
-
-`useCallback` は「関数をメモ化する」という意図が読み取りやすいので、関数をメモ化したいときはこちらを使います。
-
----
-
-## なぜ関数のメモ化が必要になるのか
-
-コンポーネント関数が再実行されると、関数内で定義したすべての関数オブジェクトが新しく生成されます。
+コンポーネントが再レンダーされると、コンポーネント関数の中のコードはもう一度実行されます。
+そのため、コンポーネント内で定義した関数も毎回新しく作られます。
 
 ```tsx
 function Parent() {
   const [count, setCount] = useState(0);
 
-  // 再レンダーのたびに、新しい関数オブジェクトが生まれる
   const handleClick = () => {
     console.log('clicked');
   };
 
-  return <Child onClick={handleClick} />;
+  return (
+    <div>
+      <button onClick={() => setCount((c) => c + 1)}>+1</button>
+      <button onClick={handleClick}>実行</button>
+    </div>
+  );
 }
 ```
 
-関数オブジェクトの生成コスト自体はごく小さいので、これだけならパフォーマンスに影響しません。問題は、**渡した先で参照の同一性が重要になる場合**です。
+`count` が変わると `Parent` は再レンダーされます。そのとき `handleClick` も新しい関数として作られます。
+
+ここで大事なのは、**関数を作り直すこと自体が悪いわけではない**という点です。普通のボタンクリック処理なら、毎回新しい関数が作られてもほとんど問題になりません。
+
+問題になるのは、その関数を渡した先や依存配列が「前回と同じ関数かどうか」を見ている場合です。
+
+`useCallback` を使うと、依存配列が変わらない限り前回と同じ関数を返せます。
+
+```tsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  const handleClick = useCallback(() => {
+    console.log('clicked');
+  }, []);
+
+  return (
+    <div>
+      <button onClick={() => setCount((c) => c + 1)}>+1</button>
+      <button onClick={handleClick}>実行</button>
+    </div>
+  );
+}
+```
+
+この例では `handleClick` が何にも依存していないので、依存配列は空配列 `[]` です。`count` が変わって `Parent` が再レンダーされても、`handleClick` は前回と同じ関数として扱われます。
+
+この「前回と同じ関数として扱われる」ことを活かす代表例が、`React.memo` された子コンポーネントに渡す場合と、`useEffect` の依存配列に含める場合です。
 
 ---
 
-## React.memoとの組み合わせ
+## React.memoに関数を渡す場合
 
-`useCallback` が最も効果を発揮するのは、`React.memo` でラップされた子コンポーネントにコールバックを渡すパターンです。
+まず典型例として、`React.memo` でラップされた子コンポーネントにコールバックを渡すパターンがあります。
 
 ### React.memoとは
 
@@ -141,17 +176,122 @@ flowchart LR
 
 ---
 
-## useCallbackが単体では意味がない理由
+## useEffectの依存配列に関数を含める場合
+
+もう一つの実務的な使いどころが、`useEffect` の中で関数を使っている場合です。
+
+たとえば検索結果を取得するコンポーネントを考えます。
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  const fetchResults = () => {
+    return fetch(`/api/search?q=${query}`);
+  };
+
+  useEffect(() => {
+    fetchResults().then(/* ... */);
+  }, []);
+}
+```
+
+このコードは一見動きそうですが、`useEffect` の中で `fetchResults` を使っているのに、依存配列に `fetchResults` が入っていません。
+
+`react-hooks/exhaustive-deps` が有効な環境では、次のような警告が出ます。
+
+```txt
+React Hook useEffect has a missing dependency: 'fetchResults'. Either include it or remove the dependency array.
+```
+
+日本語にすると、「`useEffect` の中で `fetchResults` を使っているので、依存配列に入れてください」という意味です。
+
+では言われた通りに `fetchResults` を依存配列へ入れるとどうなるでしょうか。
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  const fetchResults = () => {
+    return fetch(`/api/search?q=${query}`);
+  };
+
+  useEffect(() => {
+    fetchResults().then(/* ... */);
+  }, [fetchResults]);
+}
+```
+
+これで依存漏れはなくなりました。ただし、別の問題があります。
+
+`fetchResults` はコンポーネント内で普通に定義している関数です。レンダーのたびに新しい関数として作られるので、依存配列に入れると毎レンダーで「変わった」と判定されやすくなります。その結果、`useEffect` が不要に再実行される原因になります。
+
+このときは、次のような警告が出ることもあります。行番号はファイルによって変わります。
+
+```txt
+The 'fetchResults' function makes the dependencies of useEffect Hook (at line 10) change on every render. Move it inside the useEffect callback. Alternatively, wrap the definition of 'fetchResults' in its own useCallback() Hook.
+```
+
+警告が言っていることは、かなり実用的です。
+
+「その関数は毎レンダーで新しくなるので、依存配列が毎回変わります。`useEffect` の中に移動するか、`useCallback` で包んでください」という意味です。
+
+### エフェクト内でしか使わないなら中に入れる
+
+まず考えるべきなのは、`useCallback` ではありません。
+
+その関数を `useEffect` の中でしか使っていないなら、関数ごと `useEffect` の中に入れるのが一番シンプルです。
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  useEffect(() => {
+    const fetchResults = () => {
+      return fetch(`/api/search?q=${query}`);
+    };
+
+    fetchResults().then(/* ... */);
+  }, [query]);
+}
+```
+
+これなら依存配列に必要なのは `query` だけです。`fetchResults` という外側の関数に依存しないので、関数の参照安定化を考える必要もありません。
+
+### 外でも使うならuseCallbackで安定させる
+
+一方で、同じ関数を `useEffect` の外でも使いたいことがあります。
+
+たとえば、初回表示時にも検索し、ボタンを押したときにも同じ検索処理を使いたい場合です。
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  const fetchResults = useCallback(() => {
+    return fetch(`/api/search?q=${query}`);
+  }, [query]);
+
+  useEffect(() => {
+    fetchResults().then(/* ... */);
+  }, [fetchResults]);
+
+  return <button onClick={() => fetchResults()}>再検索</button>;
+}
+```
+
+この場合、`fetchResults` は `query` が変わったときだけ新しい関数になります。
+
+`useEffect` の依存配列にも安全に含められます。`query` が同じなら `fetchResults` の参照も同じなので、`useEffect` は不要に再実行されません。
+
+ここでの `useCallback` の役割は、「ESLintの警告を黙らせること」ではありません。`useEffect` が実際に依存している関数を依存配列に入れつつ、その関数が毎レンダーで変わらないようにすることです。
+
+---
+
+## useCallbackだけで速くなるわけではない
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-とりあえず関数は全部 `useCallback` で包んでおけば速くなるんだよね？
+  とりあえず関数は全部 `useCallback` で包んでおけば速くなるんだよね？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-それが落とし穴。`useCallback` は**受け取る側が参照の安定を活かせる時だけ**効く。単体だとむしろ無駄なんだ。
+  それが落とし穴。`useCallback`
+  は**受け取る側が参照の安定を活かせる時だけ**効く。単体だとむしろ無駄なんだ。
 </SpeechBubble>
 
-重要なポイントとして、**useCallback単体ではパフォーマンスに影響しません**。
+重要なポイントとして、**`useCallback` 単体ではパフォーマンス改善になりません**。
 
 ```tsx
 function Parent() {
@@ -167,52 +307,17 @@ function Parent() {
 
 `Child` が `React.memo` で包まれていない場合、親の再レンダーに伴って `Child` も常に再レンダーされます。`handleClick` の参照が安定していても意味がありません。
 
-つまり `useCallback` は「参照の安定性を**受け取る側が活用できる**場合」にのみ効果があります。`React.memo` された子コンポーネント、`useEffect` の依存配列、`useMemo` の依存配列がその「受け取る側」です。
+つまり `useCallback` は「参照が同じであることを、どこかが見ている」場合にだけ意味があります。
 
----
-
-## useEffectの依存配列に関数を含める場合
-
-<Figure src="/images/gats_suit_man_color.png" alt="コールバックの参照安定化を理解するイメージ" maxWidth="120px" />
-
-07章で触れたケースの続きです。`useEffect` の依存配列に関数を入れるとき、その関数が毎回新しく生成されるとエフェクトが毎回再実行されます。
-
-```tsx
-function SearchResults({ query }: { query: string }) {
-  // useCallbackなし → fetchResultsは毎レンダーで新しい関数
-  const fetchResults = () => {
-    return fetch(`/api/search?q=${query}`);
-  };
-
-  // fetchResultsが毎回変わる → エフェクトも毎回再実行される
-  useEffect(() => {
-    fetchResults().then(/* ... */);
-  }, [fetchResults]);
-}
-```
-
-`useCallback` で関数の参照を安定させることで、エフェクトは `query` が変わったときだけ再実行されるようになります。
-
-```tsx
-function SearchResults({ query }: { query: string }) {
-  const fetchResults = useCallback(() => {
-    return fetch(`/api/search?q=${query}`);
-  }, [query]); // queryが変わったときだけ新しい関数
-
-  useEffect(() => {
-    fetchResults().then(/* ... */);
-  }, [fetchResults]); // queryが変わったときだけエフェクト再実行
-}
-```
-
-ただし07章で述べたように、エフェクト内でしか使わない関数ならエフェクト内で定義する方がシンプルです。`useCallback` を使うのは、関数をエフェクト以外の場所でも使う場合に限ります。
+その代表例が、`React.memo` された子コンポーネント、`useEffect` の依存配列、`useMemo` の依存配列です。
 
 ---
 
 ## 依存配列にstateを含めるuseCallback
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-`useCallback` の依存配列にstateを入れたら、stateが変わるたびに関数が再生成されちゃう…。それってメモ化の意味なくない？
+  `useCallback`
+  の依存配列にstateを入れたら、stateが変わるたびに関数が再生成されちゃう…。それってメモ化の意味なくない？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
@@ -249,15 +354,41 @@ const handleDelete = useCallback((id: string) => {
 
 `setTodos` に関数を渡すことで、Reactが最新の `todos` を引数として渡してくれます。`todos` をクロージャ経由で参照する必要がなくなるので、依存配列から外せます。
 
+これは「依存配列をズルして減らす」テクニックではありません。関数が本当に `todos` を直接参照しない形に変えているので、依存から外せるという話です。
+
+---
+
+## useCallbackはuseMemoの特殊ケース
+
+仕組みだけを見ると、`useCallback` は「関数を返す `useMemo`」と同じです。
+
+```tsx
+// この2つは同じ意味
+const handleClick = useCallback(() => {
+  console.log('clicked');
+}, [deps]);
+
+const handleClick = useMemo(
+  () => () => {
+    console.log('clicked');
+  },
+  [deps],
+);
+```
+
+ただ、実際のコードでは関数をメモ化したい意図がはっきり出るので、関数には `useCallback` を使う方が読みやすいです。
+
 ---
 
 ## 使うべきか迷ったときの判断基準
 
 ### 使う場面
 
-`React.memo` された子コンポーネントにコールバックpropsとして渡す関数。これが最も典型的なケースです。
+`useEffect` の中でも外でも使う関数で、依存配列に安全に含めたい場合。
 
-`useEffect` や `useMemo` の依存配列に含まれる関数で、参照の安定化が必要な場合。
+`React.memo` された子コンポーネントにコールバックpropsとして渡す関数。
+
+`useMemo` やカスタムフックの依存配列に含める関数で、参照の安定化が必要な場合。
 
 ### 使わなくてよい場面
 
@@ -276,13 +407,15 @@ JSXに直接書くインラインのイベントハンドラ。
 
 ## まとめ
 
-`useCallback` は `useMemo` の関数版で、依存配列が変わらない限り同じ関数オブジェクトを返します。
+`useCallback` は、依存配列が変わらない限り同じ関数を返すフックです。
 
-<Marker>`useCallback` は単体ではパフォーマンスに影響しません。</Marker>`React.memo` された子コンポーネントにpropsとして渡す場合や、`useEffect` の依存配列に関数を含める場合に、参照の安定性が活きます。
+<Marker>
+  目的は、関数の再生成を防ぎ、不要な再レンダーや `useEffect` の不要な再実行を避けることです。
+</Marker>
 
-依存配列にstateを含めると、そのstateの変化で関数が再生成されます。updater functionを使えば依存を減らせるケースが多いです。
+特に実務では、`react-hooks/exhaustive-deps` の警告に従って関数を依存配列へ入れたい場面があります。その関数が毎レンダーで作られるとエフェクトも毎回動きやすくなるため、`useCallback` で参照を安定させます。
 
-「このコールバックを受け取る側が、参照の同一性を活用するかどうか」が使うかどうかの判断基準です。
+ただし、エフェクト内でしか使わない関数はエフェクト内に移す方がシンプルです。`useCallback` を使うかどうかは、「その関数の参照が同じであることを、依存配列や `React.memo` が利用しているか」で判断してください。
 
 <QuizLink
   href="/quiz/react-basic"
