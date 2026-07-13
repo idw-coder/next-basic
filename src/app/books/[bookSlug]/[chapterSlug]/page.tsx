@@ -138,7 +138,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         </div>
         {chapter.toc.length >= 3 && (
           <aside className="hidden xl:block w-52 shrink-0">
-            <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pb-8">
+            <div className="sticky top-[7.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto pb-8">
               <ChapterTocDesktop items={chapter.toc} />
             </div>
           </aside>

@@ -310,7 +310,7 @@ function SidebarContent({
 export function BookSidebarDesktop(props: BookSidebarProps) {
   return (
     <aside className="hidden lg:block w-64 shrink-0">
-      <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-4 pb-8">
+      <div className="sticky top-[7.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto pr-4 pb-8">
         <SidebarContent {...props} />
       </div>
     </aside>
