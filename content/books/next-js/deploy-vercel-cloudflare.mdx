@@ -287,6 +287,72 @@ Node.jsサーバーやDockerは、Next.js機能の自由度が高い一方で、
 
 ---
 
+<a id="docker-build-strategy"></a>
+
+### DockerビルドはコンテナでやるべきかCIでやるべきか
+
+Next.jsのDockerイメージを作るとき、「コンテナ内で `npm run build` する（multi-stage build）」のか「CIで先にビルドして成果物だけコピーする」のか、迷うことがあります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+CI側でビルドしてDockerにはCOPYだけ、のほうがシンプルに思えるけど、どっちが正解なの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+どちらも動くけど、**公式が推奨しているのはコンテナ内でビルドするmulti-stage build**だよ。Docker公式・Next.js公式ともにこの構成で案内している。理由は「誰がどこでビルドしても同じ結果になる」再現性の高さだね。
+</SpeechBubble>
+
+| 観点 | コンテナ内ビルド（multi-stage） | CIでビルド → COPYのみ |
+| --- | --- | --- |
+| 公式推奨 | Yes（Docker公式・Next.js公式ともに） | No（公式ドキュメントに記載なし） |
+| 再現性 | 高い — 環境差異がない | CIとDockerの環境差で壊れうる |
+| ビルド速度 | Dockerレイヤキャッシュに依存 | CIキャッシュが効きやすく速い場合がある |
+| Dockerfile | multi-stage（deps → build → runner の3段階） | 単純な `COPY` のみ |
+| デバッグ | Dockerfileの中で完結する | CI設定とDockerfileの両方を見る必要がある |
+
+#### multi-stage buildの構成例
+
+Next.js公式の [Docker Example](https://github.com/vercel/next.js/tree/canary/examples/with-docker) で紹介されている構成は、大まかに次の3段階です。
+
+```dockerfile
+# 1. deps — 依存だけインストール
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# 2. builder — ソースをコピーしてビルド
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+# 3. runner — 実行に必要なファイルだけ持ってくる
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+CMD ["node", "server.js"]
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+3段階に分ける理由は何？全部1つのステージでやったらダメなの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+最終イメージに開発用の `node_modules` やソースコードが残らないようにするためだよ。runnerステージにはビルド済みの成果物しか入らないから、イメージサイズが小さくなるし、本番に不要なファイルが漏れるリスクも減る。
+</SpeechBubble>
+
+<Callout type="info" title="CIビルドが選ばれるケース">
+モノレポで複数サービスのビルドキャッシュを一元管理している場合や、CI上でLint・テスト・ビルドを一気に通してからイメージを作りたい場合は、CIでビルドしてCOPYする構成も実務では使われます。ただし、CIのNode.jsバージョンとDockerベースイメージのバージョンがずれると「CIでは通るのにコンテナで動かない」問題が起きるため、揃える仕組みが必要です。
+</Callout>
+
+---
+
 <a id="static-export"></a>
 
 ## static exportで静的サイトとして配信する場合

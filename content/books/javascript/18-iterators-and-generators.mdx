@@ -1,11 +1,620 @@
 ---
 title: 'イテレータとジェネレータ — for...ofの裏側を知る'
-description: 'Symbol.iterator・イテレータプロトコル・ジェネレータ関数・for...ofの仕組みを解説します。'
+description: 'Symbol.iteratorとイテレータプロトコル、ジェネレータ関数（function*）の仕組み、for...ofやスプレッド構文が動く理由を解説します。'
 order: 18
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+`for...of` で配列をループしたり、スプレッド構文 `[...arr]` でコピーしたりする操作は、日常的に使っています。これらが動くのは、配列が**イテラブル（反復可能）**だからです。
+
+この章では、`for...of` の裏側にある**イテレータプロトコル**と、イテレータを簡単に作れる**ジェネレータ関数**を整理します。仕組みを知ると、自分で作ったオブジェクトを `for...of` で回せるようになります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`for...of` って配列用のループだと思ってた。裏側に仕組みがあるって、どういうこと？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+配列だけじゃなくて、Map・Set・文字列・NodeListも `for...of` で回せるよね。それは全部「イテラブル」という共通のルールに従っているから。このルールを理解すると、自作オブジェクトでも同じことができるようになるんだ。
+</SpeechBubble>
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="for...ofの裏側の仕組みを学ぶイメージ" maxWidth="120px" />
+
+---
+
+<a id="iterable-and-iterator"></a>
+
+## イテラブルとイテレータ — 2つの役割
+
+まず用語を整理します。似た名前ですが、役割が違います。
+
+| 用語 | 役割 | 持っているもの |
+| --- | --- | --- |
+| **イテラブル（iterable）** | 「反復できるオブジェクト」 | `Symbol.iterator` メソッド |
+| **イテレータ（iterator）** | 「次の値を1つずつ返す係」 | `next()` メソッド |
+
+イテラブルは「反復できますよ」という宣言をしているオブジェクトで、イテレータは実際に値を1つずつ取り出す仕組みです。
+
+<MermaidDiagram chart={`
+flowchart LR
+    classDef iterable fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef iterator fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef value fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["イテラブル\n（配列・Map・Setなど）"] -->|"[Symbol.iterator]()\nを呼ぶ"| B["イテレータ"]
+    B -->|"next()"| C["{value, done}"]
+    B -->|"next()"| D["{value, done}"]
+    B -->|"next()"| E["{done: true}"]
+
+    class A iterable
+    class B iterator
+    class C,D,E value
+`} />
+
+`for...of` は、この流れを自動的にやってくれる構文です。
+
+---
+
+<a id="iterator-protocol"></a>
+
+## イテレータプロトコル — next()が返すもの
+
+イテレータは `next()` メソッドを持つオブジェクトです。`next()` を呼ぶたびに、次の形のオブジェクトを返します。
+
+```js
+{ value: 値, done: false }   // まだ値がある
+{ value: undefined, done: true }  // もう終わり
+```
+
+配列のイテレータを手動で使ってみましょう。
+
+```js
+const arr = ['a', 'b', 'c'];
+
+// 配列はイテラブルなので、Symbol.iteratorメソッドを持っている
+const iterator = arr[Symbol.iterator]();
+
+console.log(iterator.next()); // { value: 'a', done: false }
+console.log(iterator.next()); // { value: 'b', done: false }
+console.log(iterator.next()); // { value: 'c', done: false }
+console.log(iterator.next()); // { value: undefined, done: true }
+```
+
+`for...of` は、内部でこれと同じことをやっています。`done: true` になったらループを終了します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+じゃあ `for...of` を使わずに `while` と `next()` で同じことができるってこと？
+</SpeechBubble>
+
+その通りです。`for...of` を展開すると、だいたい次のような処理になります。
+
+```js
+const arr = ['a', 'b', 'c'];
+const iterator = arr[Symbol.iterator]();
+
+let result = iterator.next();
+while (!result.done) {
+  console.log(result.value); // 'a', 'b', 'c'
+  result = iterator.next();
+}
+```
+
+普段は `for...of` を使えば十分ですが、イテレータの仕組みを知っていると、自分でイテラブルなオブジェクトを作れるようになります。
+
+---
+
+<a id="builtin-iterables"></a>
+
+## 標準で備わっているイテラブル
+
+JavaScriptに最初からイテラブルとして用意されているものは、意外と多いです。
+
+| イテラブル | `for...of` で回した結果 |
+| --- | --- |
+| `Array` | 各要素 |
+| `String` | 各文字（サロゲートペアも正しく扱う） |
+| `Map` | `[key, value]` のペア |
+| `Set` | 各要素 |
+| `TypedArray` | 各要素 |
+| `arguments` | 各引数 |
+| `NodeList` | 各DOMノード |
+
+```js
+// 文字列もイテラブル
+for (const char of 'Hello') {
+  console.log(char); // 'H', 'e', 'l', 'l', 'o'
+}
+
+// Mapもイテラブル — 分割代入と組み合わせると読みやすい
+const map = new Map([['name', 'Alice'], ['age', 25]]);
+for (const [key, value] of map) {
+  console.log(`${key}: ${value}`);
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+前章で扱った[Map・Set](/books/javascript/17-map-set-weakref)が `for...of` で回せるのも、イテラブルだからなんだ。全部同じ仕組みの上に乗っている。
+</SpeechBubble>
+
+### スプレッド構文・分割代入もイテレータを使っている
+
+イテラブルを消費するのは `for...of` だけではありません。
+
+```js
+const set = new Set([1, 2, 3]);
+
+// スプレッド構文 — イテレータから全要素を取り出して配列に
+const arr = [...set]; // [1, 2, 3]
+
+// 分割代入 — イテレータから順に取り出す
+const [first, second] = set; // first=1, second=2
+
+// Array.from — イテラブルから配列を作る
+const arr2 = Array.from(set); // [1, 2, 3]
+```
+
+つまり「イテラブルであること」は、`for...of` だけでなく、JavaScriptの多くの構文で活用される共通インターフェースです。
+
+---
+
+<a id="custom-iterable"></a>
+
+## 自作のイテラブルを作る
+
+自分のオブジェクトに `[Symbol.iterator]()` メソッドを実装すると、`for...of` で回せるようになります。
+
+たとえば、指定した範囲の整数を順に返す `range` オブジェクトを作ってみましょう。
+
+```js
+const range = {
+  from: 1,
+  to: 5,
+
+  [Symbol.iterator]() {
+    let current = this.from;
+    const last = this.to;
+
+    return {
+      next() {
+        if (current <= last) {
+          return { value: current++, done: false };
+        }
+        return { value: undefined, done: true };
+      },
+    };
+  },
+};
+
+for (const num of range) {
+  console.log(num); // 1, 2, 3, 4, 5
+}
+
+console.log([...range]); // [1, 2, 3, 4, 5]
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`Symbol.iterator` って見慣れない書き方だけど、結局は「`next()` を返すメソッドを決まった名前で用意する」ってことだよね？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+その理解で合ってるよ。`Symbol.iterator` という名前を使うのは、既存のプロパティ名と衝突しないようにするため。やっていることは「`next()` メソッドを持つオブジェクトを返す」だけだね。
+</SpeechBubble>
+
+### イテレータプロトコルのルールまとめ
+
+自作するときに守るべきルールを整理しておきます。
+
+1. オブジェクトが `[Symbol.iterator]()` メソッドを持つ → **イテラブル**
+2. そのメソッドが `next()` を持つオブジェクトを返す → **イテレータ**
+3. `next()` は `{ value, done }` 形式のオブジェクトを返す
+4. `done: true` になったらそれ以降の `value` は無視される
+
+---
+
+<a id="generators"></a>
+
+## ジェネレータ関数 — イテレータを簡単に作る
+
+ここまでのイテレータの手動実装は、`current` の管理や `done` の判定を自分で書く必要があり、やや面倒です。
+
+**ジェネレータ関数（`function*`）**を使うと、同じことをずっと簡潔に書けます。
+
+```js
+function* range(from, to) {
+  for (let i = from; i <= to; i++) {
+    yield i;
+  }
+}
+
+for (const num of range(1, 5)) {
+  console.log(num); // 1, 2, 3, 4, 5
+}
+```
+
+<Figure src="/images/idea_drawing_woman.png" alt="ジェネレータで簡潔にイテレータを作るイメージ" maxWidth="120px" />
+
+### function* と yield の仕組み
+
+ジェネレータ関数は、呼び出すと**ジェネレータオブジェクト**を返します。このオブジェクトはイテレータであり、同時にイテラブルでもあります。
+
+関数の実行は `yield` のところで**一時停止**します。`next()` が呼ばれると、停止していた位置から再開し、次の `yield` まで進みます。
+
+```js
+function* counter() {
+  console.log('start');
+  yield 1;
+  console.log('resumed');
+  yield 2;
+  console.log('almost done');
+  yield 3;
+  console.log('end');
+}
+
+const gen = counter();
+
+console.log(gen.next()); // "start" → { value: 1, done: false }
+console.log(gen.next()); // "resumed" → { value: 2, done: false }
+console.log(gen.next()); // "almost done" → { value: 3, done: false }
+console.log(gen.next()); // "end" → { value: undefined, done: true }
+```
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant C as 呼び出し側
+    participant G as ジェネレータ
+
+    C->>G: next()
+    G-->>C: { value: 1, done: false }
+    Note over G: yield 1 で一時停止
+
+    C->>G: next()
+    G-->>C: { value: 2, done: false }
+    Note over G: yield 2 で一時停止
+
+    C->>G: next()
+    G-->>C: { value: 3, done: false }
+    Note over G: yield 3 で一時停止
+
+    C->>G: next()
+    G-->>C: { value: undefined, done: true }
+    Note over G: 関数終了
+`} />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`yield` って `return` みたいに値を返すけど、関数が終わらないんだね。次に `next()` を呼んだら続きから動くって、不思議…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そこがジェネレータの核心。普通の関数は「呼ばれたら最後まで走りきる」けど、ジェネレータは「途中で止まって、頼まれたら続きを走る」。この性質のおかげで、必要なときに1つずつ値を生成できるんだ。
+</SpeechBubble>
+
+### ジェネレータと手動イテレータの比較
+
+先ほど手動で作った `range` をジェネレータで書き直してみます。
+
+```js
+// 手動イテレータ — 状態管理を自分で書く
+const rangeManual = {
+  from: 1,
+  to: 5,
+  [Symbol.iterator]() {
+    let current = this.from;
+    const last = this.to;
+    return {
+      next() {
+        if (current <= last) {
+          return { value: current++, done: false };
+        }
+        return { value: undefined, done: true };
+      },
+    };
+  },
+};
+
+// ジェネレータ — yieldで値を返すだけ
+function* rangeGen(from, to) {
+  for (let i = from; i <= to; i++) {
+    yield i;
+  }
+}
+```
+
+ジェネレータを使うと、`current` の管理も `done` の判定も不要になります。`for` ループの制御フローがそのまま使えるので、直感的です。
+
+---
+
+<a id="yield-star"></a>
+
+## yield* — 別のイテラブルに委譲する
+
+`yield*` を使うと、別のイテラブルの要素を1つずつ委譲できます。
+
+```js
+function* concat(a, b) {
+  yield* a;
+  yield* b;
+}
+
+const result = [...concat([1, 2], [3, 4])];
+console.log(result); // [1, 2, 3, 4]
+```
+
+これは次のコードと同じ意味です。
+
+```js
+function* concat(a, b) {
+  for (const v of a) yield v;
+  for (const v of b) yield v;
+}
+```
+
+`yield*` はジェネレータ同士を組み合わせるときに特に便利です。
+
+```js
+function* letters() {
+  yield 'a';
+  yield 'b';
+}
+
+function* numbers() {
+  yield 1;
+  yield 2;
+}
+
+function* combined() {
+  yield* letters();
+  yield* numbers();
+}
+
+console.log([...combined()]); // ['a', 'b', 1, 2]
+```
+
+---
+
+<a id="lazy-evaluation"></a>
+
+## ジェネレータの実用 — 遅延評価
+
+ジェネレータの大きな利点は、**値を必要になった時点で生成する（遅延評価）** ことです。配列のように全要素を一度にメモリに載せる必要がありません。
+
+### 無限シーケンス
+
+ジェネレータは `done: true` を返さない限り終わらないので、無限のシーケンスを表現できます。
+
+```js
+function* naturals() {
+  let n = 1;
+  while (true) {
+    yield n++;
+  }
+}
+
+// 最初の5つだけ取り出す
+const first5 = [];
+for (const n of naturals()) {
+  if (n > 5) break;
+  first5.push(n);
+}
+console.log(first5); // [1, 2, 3, 4, 5]
+```
+
+配列で「全自然数」を作ることはできませんが、ジェネレータなら `next()` を呼んだ分だけ値を生成するので問題ありません。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+無限ループなのに大丈夫なの？メモリ溢れたりしない？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+`yield` で止まるから大丈夫。全要素をメモリに溜め込む配列と違って、ジェネレータは1個生成したら止まって待つ。`break` すればそこで終わり。使う側が「いくつ欲しいか」を制御できるのが強みだね。
+</SpeechBubble>
+
+### 大量データの逐次処理
+
+実務では、大きなファイルやAPIのページネーション結果を1件ずつ処理する場面で、ジェネレータの考え方が活きます。
+
+```js
+function* paginate(fetchPage) {
+  let page = 1;
+  while (true) {
+    const data = fetchPage(page);
+    if (data.length === 0) return;
+    yield* data;
+    page++;
+  }
+}
+```
+
+すべてのページを配列に溜めてから処理するのではなく、1ページ分のデータを取得しては消費する、という流れを自然に書けます。
+
+---
+
+<a id="generator-advanced"></a>
+
+## ジェネレータの追加機能
+
+### next()に値を渡す
+
+`next()` に引数を渡すと、ジェネレータ内の `yield` 式の戻り値としてその値を受け取れます。
+
+```js
+function* conversation() {
+  const name = yield 'お名前は？';
+  const age = yield `${name}さん、年齢は？`;
+  return `${name}さん（${age}歳）`;
+}
+
+const gen = conversation();
+console.log(gen.next());         // { value: 'お名前は？', done: false }
+console.log(gen.next('Alice'));  // { value: 'Aliceさん、年齢は？', done: false }
+console.log(gen.next(25));       // { value: 'Aliceさん（25歳）', done: true }
+```
+
+最初の `next()` はジェネレータを起動するだけなので、引数は無視されます。2回目以降の `next()` の引数が、直前の `yield` 式の結果になります。
+
+### return()とthrow()
+
+ジェネレータオブジェクトには `next()` の他に `return()` と `throw()` メソッドがあります。
+
+```js
+function* nums() {
+  yield 1;
+  yield 2;
+  yield 3;
+}
+
+const gen = nums();
+console.log(gen.next());     // { value: 1, done: false }
+console.log(gen.return(99)); // { value: 99, done: true } — 強制終了
+console.log(gen.next());     // { value: undefined, done: true }
+```
+
+- `return(value)` — ジェネレータを即座に終了させ、`{ value, done: true }` を返す
+- `throw(error)` — ジェネレータ内で例外を投げる。`try...catch` で捕捉可能
+
+実務で直接使う場面は多くありませんが、`for...of` の `break` は内部的に `return()` を呼んでいます。
+
+---
+
+<a id="for-of-vs-for-in"></a>
+
+## for...of と for...in の違い
+
+`for...of` と `for...in` は名前が似ていますが、別物です。
+
+| 構文 | 回すもの | 対象 |
+| --- | --- | --- |
+| `for...of` | **値（value）** | イテラブル（配列・Map・Set・文字列など） |
+| `for...in` | **キー（key）** | オブジェクトの列挙可能プロパティ |
+
+```js
+const arr = ['a', 'b', 'c'];
+
+// for...of — 値を取り出す
+for (const value of arr) {
+  console.log(value); // 'a', 'b', 'c'
+}
+
+// for...in — インデックス（キー）を取り出す
+for (const index in arr) {
+  console.log(index); // '0', '1', '2'（文字列！）
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+配列に `for...in` を使うと、インデックスが文字列で返る上に、プロトタイプチェーン上のプロパティまで拾うことがある。配列のループには `for...of` か `forEach` を使おう。
+</SpeechBubble>
+
+普通のオブジェクト（`{}`）はイテラブルではないので、`for...of` では回せません。
+
+```js
+const obj = { name: 'Alice', age: 25 };
+
+// エラー: obj is not iterable
+// for (const v of obj) { ... }
+
+// オブジェクトのキーと値を回したいなら Object.entries()
+for (const [key, value] of Object.entries(obj)) {
+  console.log(`${key}: ${value}`);
+}
+```
+
+---
+
+<a id="async-iterator"></a>
+
+## 非同期イテレータ — for await...of
+
+[非同期処理](/books/javascript/13-async-callback-promise)と組み合わせて、`for await...of` で非同期にデータを1つずつ受け取ることもできます。
+
+```js
+async function* fetchPages(url) {
+  let page = 1;
+  while (true) {
+    const res = await fetch(`${url}?page=${page}`);
+    const data = await res.json();
+    if (data.items.length === 0) return;
+    yield data.items;
+    page++;
+  }
+}
+
+async function processAll() {
+  for await (const items of fetchPages('/api/users')) {
+    for (const item of items) {
+      console.log(item.name);
+    }
+  }
+}
+```
+
+非同期ジェネレータは `async function*` で宣言し、中で `await` と `yield` の両方を使えます。`for await...of` がイテレータの各 `next()` の結果を `await` してくれるので、Promiseの解決を手動で待つ必要がありません。
+
+非同期イテレータは `Symbol.asyncIterator` メソッドを持ちます。通常の `Symbol.iterator` との対応は次の通りです。
+
+| 同期 | 非同期 |
+| --- | --- |
+| `Symbol.iterator` | `Symbol.asyncIterator` |
+| `function*` | `async function*` |
+| `for...of` | `for await...of` |
+| `next()` が `{ value, done }` を返す | `next()` が `Promise<{ value, done }>` を返す |
+
+---
+
+<a id="when-to-use"></a>
+
+## 使いどころの判断基準
+
+イテレータとジェネレータは強力ですが、すべての場面で使うべきというわけではありません。
+
+### ジェネレータが向いている場面
+
+- **大量データや無限シーケンス** — 全件をメモリに載せたくないとき
+- **ページネーションやストリーム処理** — 1件ずつ取得して逐次処理するとき
+- **複雑な状態遷移** — `yield` で自然に状態を表現できるとき
+- **カスタムイテラブル** — 自作データ構造を `for...of` やスプレッド構文で使いたいとき
+
+### 配列で十分な場面
+
+- データが数百件以下で、全件メモリに載っても問題ない
+- `.map()` / `.filter()` / `.reduce()` のチェーンで十分に読みやすい
+- 同じデータを複数回参照する（ジェネレータは一度消費すると再利用できない）
+
+```js
+// ジェネレータは一度しか消費できない
+function* nums() {
+  yield 1;
+  yield 2;
+  yield 3;
+}
+
+const gen = nums();
+console.log([...gen]); // [1, 2, 3]
+console.log([...gen]); // [] — 2回目は空になる
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+普段のコードでジェネレータを書く機会ってあるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+自分でジェネレータを書く機会は正直そこまで多くはない。でも、ライブラリやフレームワークの中では使われているし、`for...of` やスプレッド構文がなぜ動くかを理解するのが大事なんだ。「仕組みを知っていて選ばない」と「知らないから使えない」は全然違う。
+</SpeechBubble>
+
+---
+
+<a id="summary"></a>
+
+## まとめ
+
+- **イテラブル** は `[Symbol.iterator]()` メソッドを持つオブジェクト。`for...of`、スプレッド構文、分割代入などで使える
+- **イテレータ** は `next()` メソッドで `{ value, done }` を順に返すオブジェクト
+- 配列・文字列・Map・Set・NodeListなどは標準でイテラブル
+- **ジェネレータ関数（`function*`）** を使うと、`yield` で値を1つずつ返すイテレータを簡潔に書ける
+- ジェネレータは遅延評価されるため、無限シーケンスや大量データの逐次処理に向いている
+- `for...of` は値を回し、`for...in` はキーを回す——配列には `for...of` を使う
+- 非同期イテレータ（`async function*` + `for await...of`）で、非同期データの逐次処理もできる
+
+<Marker>
+普段の開発ではイテレータを直接書く機会は少なくても、`for...of` やスプレッド構文の裏側にあるプロトコルを知っておくと、ライブラリの動作理解やデバッグに役立ちます。
+</Marker>
 
 ## 参考リンク
 
@@ -13,3 +622,10 @@ draft: true
 - [MDN — Symbol.iterator](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Symbol/iterator)
 - [MDN — function*](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/function*)
 - [MDN — Generator](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Generator)
+- [MDN — for await...of](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/for-await...of)
+
+<QuizLink
+  href="/quiz/javascript"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>

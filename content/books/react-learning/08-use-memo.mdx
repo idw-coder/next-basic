@@ -183,12 +183,20 @@ const sorted = useMemo(() => sortUsers(users), [users]);
 07章で触れた「オブジェクトが依存配列に入るとエフェクトが毎回走る」問題を、`useMemo` で解決できます。
 
 ```tsx
+// useMemoなし → レンダーのたびに新しいオブジェクト
+// → useEffectの依存配列が毎回「変わった」と判定される
 function Dashboard({ filters }: { filters: { status: string } }) {
-  // useMemoなし → レンダーのたびに新しいオブジェクト
-  // → useEffectの依存配列が毎回「変わった」と判定される
   const params = { status: filters.status, limit: 10 };
 
-  // useMemoあり → filters.statusが変わったときだけ新しいオブジェクト
+  useEffect(() => {
+    fetchData(params).then(setData);
+  }, [params]); // paramsが毎回新しいのでエフェクトも毎回走る
+}
+```
+
+```tsx
+// useMemoあり → filters.statusが変わったときだけ新しいオブジェクト
+function Dashboard({ filters }: { filters: { status: string } }) {
   const params = useMemo(() => ({ status: filters.status, limit: 10 }), [filters.status]);
 
   useEffect(() => {
