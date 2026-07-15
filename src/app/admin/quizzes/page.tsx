@@ -122,7 +122,9 @@ export default function QuizListPage() {
   const filteredQuizzes = useMemo(() => {
     let q = quizzes;
     if (selectedCategoryId) {
-      q = q.filter((quiz) => quiz.category_id === selectedCategoryId);
+      q = q.filter(
+        (quiz) => String(quiz.category_id) === String(selectedCategoryId)
+      );
     }
     if (selectedTagSlug) {
       q = q.filter((quiz) =>

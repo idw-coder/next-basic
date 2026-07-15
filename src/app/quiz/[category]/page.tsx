@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { Metadata } from 'next';
 import {
   ArrowLeft,
+  ArrowRight,
   BookOpen,
   BookOpenCheck,
   ChevronRight,
@@ -19,6 +20,7 @@ import CategoryRandomStartCard from './CategoryRandomStartCard';
 import { getCategorySeoContent, type CategorySeoContent } from './categoryContent';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getBookTheme } from '@/lib/book-theme';
+import { getCategoryTheme } from '@/lib/categoryTheme';
 import { getSectionTags } from './sectionTagMap';
 
 const API_BASE_URL =
@@ -238,9 +240,19 @@ export default async function CategoryQuizPage({
   const seoContent = getCategorySeoContent(categorySlug);
   const jsonLdList = buildJsonLd(category, quizzes, categorySlug, seoContent);
   const sectionTags = getSectionTags(categorySlug);
+  const theme = getCategoryTheme(categorySlug);
+  const relatedBook = getBookForCategory(categorySlug);
+  const relatedBookChapterCount = relatedBook
+    ? getChaptersByBook(relatedBook.bookSlug).length
+    : 0;
+  const relatedBookTheme = relatedBook ? getBookTheme(relatedBook.bookSlug) : null;
+  const heroTitleMain = category.category_name.replace(/基礎・実践$/, '');
+  const heroTitleSub = category.category_name.endsWith('基礎・実践')
+    ? '基礎・実践 問題集'
+    : '問題集';
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
+    <div className="mx-auto max-w-5xl overflow-x-hidden px-4 py-8 text-ink md:py-12">
       {/* 構造化データ */}
       {jsonLdList.map((jsonLd, i) => (
         <script
@@ -265,120 +277,151 @@ export default async function CategoryQuizPage({
         </ol>
       </nav>
 
-      {/* ヘッダー */}
-      <section className="relative mb-5 overflow-hidden sm:mb-10">
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none select-none"
+      {/* ファーストビュー */}
+      <section className="relative mb-6 min-h-[520px] overflow-hidden border border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:mb-8 sm:min-h-[560px]">
+        <Image
+          src="/images/top-hero-editorial.png"
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 1024px) 100vw, 1024px"
+          className="absolute inset-0 h-full w-full object-cover object-[77%_center] sm:object-[68%_32%]"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,250,244,0.99)_0%,rgba(255,250,244,0.94)_48%,rgba(255,250,244,0.56)_74%,rgba(255,250,244,0.18)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-cream to-transparent" />
+        <div
+          className="pointer-events-none absolute -left-9 top-[22%] hidden rotate-[-8deg] text-[7rem] font-black leading-none text-brand-blue/10 md:block"
           aria-hidden="true"
-          viewBox="0 0 400 300"
-          preserveAspectRatio="none"
-          fill="none"
         >
-          <path
-            d="M -10 285 C 120 278 280 180 410 15 L 410 55 C 280 220 120 295 -10 300 Z"
-            fill="#e5e7eb"
-            opacity="0.4"
-          />
-        </svg>
+          QUIZ
+        </div>
         <div
-          className="absolute top-1 right-6 sm:right-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 pointer-events-none"
+          className="pointer-events-none absolute bottom-16 right-4 hidden rotate-90 text-4xl font-black tracking-[0.28em] text-white/70 [text-shadow:0_1px_20px_rgba(47,48,47,0.25)] lg:block"
           aria-hidden="true"
-        />
-        <div
-          className="absolute top-1/2 right-1 sm:right-3 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-primary/8 pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute bottom-3 right-1/4 w-5 h-5 rounded-full bg-amber-200/30 pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute top-0 left-1/4 w-4 h-4 rounded-full bg-gray-300/40 pointer-events-none"
-          aria-hidden="true"
-        />
-        <div
-          className="absolute bottom-1/3 left-1 sm:left-5 w-6 h-6 rounded-full bg-primary/8 pointer-events-none"
-          aria-hidden="true"
-        />
-        <div className="relative flex items-center gap-3 sm:flex-row sm:gap-6">
-          <div className="relative z-10 min-w-0 flex-1">
-            <h1 className="mb-2 flex items-center gap-1.5 text-lg font-extrabold tracking-tight text-foreground sm:gap-2 sm:text-2xl md:text-3xl">
-              <BookOpenCheck className="size-5 shrink-0 text-primary sm:size-6" />
-              {category.category_name} 問題集
+        >
+          CATEGORY
+        </div>
+        <div className="relative z-10 flex min-h-[520px] items-center px-5 py-8 sm:min-h-[560px] sm:px-10">
+          <div className="w-full max-w-[36rem]">
+            <p className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-brand-red/25 bg-white/82 px-3 py-1 text-[10px] font-extrabold tracking-[0.14em] text-brand-red-deep shadow-[0_10px_30px_rgba(47,48,47,0.08)] sm:text-xs">
+              <span className="size-2 rounded-full bg-brand-lime" />
+              {theme.label} / {quizzes.length} QUESTIONS
+            </p>
+            <h1 className="max-w-[9.5em] font-black leading-[0.92] tracking-normal text-ink">
+              <span className="block text-[3.05rem] sm:text-[4.8rem] lg:text-[5.7rem]">
+                {heroTitleMain}
+              </span>
+              <span className={`block text-[2.1rem] sm:text-[3.6rem] lg:text-[4.1rem] ${theme.accentClass}`}>
+                {heroTitleSub}
+              </span>
             </h1>
+            <p className="mt-3 w-fit -rotate-1 bg-brand-red px-3 py-1.5 text-base font-black leading-tight text-white shadow-[8px_8px_0_var(--color-brand-lime)] sm:mt-4 sm:px-4 sm:text-xl">
+              解いて、戻って、身につける。
+            </p>
             {category.description && (
-              <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-                {category.description}
+              <p className="mt-4 max-w-xl text-sm font-black leading-7 text-ink-body sm:text-base sm:leading-8">
+                <span className="[background:linear-gradient(to_top,rgba(255,255,255,0.78)_40%,transparent_40%)] [box-decoration-break:clone]">
+                  {category.description}
+                </span>
               </p>
             )}
-            <p className="text-sm text-muted-foreground mt-2">
-              全 <span className="font-semibold text-foreground">{quizzes.length}</span> 問
-              {tags.length > 0 && ` ・ ${tags.length} タグ`}
-            </p>
-          </div>
-          <div className="relative z-10 flex w-[58px] shrink-0 justify-end sm:w-auto sm:justify-start">
-            <Image
-              src="/inpiration_man_color.png"
-              alt=""
-              width={588}
-              height={761}
-              className="h-auto w-[58px] -scale-x-100 sm:w-full sm:max-w-[120px] md:max-w-[160px]"
-            />
+            <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
+              <Button
+                size="default"
+                className="h-11 rounded-full bg-brand-blue px-5 text-sm font-black shadow-[0_12px_28px_rgba(9,103,201,0.24)] hover:bg-brand-blue-deep sm:h-11 sm:px-7 sm:text-base"
+                asChild
+              >
+                <Link href="#quiz-list" className="inline-flex items-center gap-1.5 sm:gap-2">
+                  問題を解く
+                  <ArrowRight className="size-3.5 sm:size-4" />
+                </Link>
+              </Button>
+              {relatedBook && (
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="h-11 rounded-full border-ink/20 bg-white/86 px-5 text-sm font-black text-ink shadow-[0_12px_28px_rgba(47,48,47,0.08)] hover:bg-white sm:h-11 sm:px-7 sm:text-base"
+                  asChild
+                >
+                  <Link href={`/books/${relatedBook.bookSlug}`}>教科書で復習</Link>
+                </Button>
+              )}
+            </div>
+            <div className="mt-5 grid max-w-md grid-cols-3 rounded-[1.25rem] border border-white/80 bg-white/90 px-3 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur">
+              <div className="text-center">
+                <p className="text-2xl font-black leading-none text-brand-red sm:text-3xl">
+                  {quizzes.length}
+                </p>
+                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
+                  問題
+                </p>
+              </div>
+              <div className="border-x border-ink/10 text-center">
+                <p className="text-2xl font-black leading-none text-ink sm:text-3xl">
+                  {tags.length}
+                </p>
+                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
+                  タグ
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">
+                  0円
+                </p>
+                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
+                  無料
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* 学習導線 */}
-      {(() => {
-        const relatedBook = getBookForCategory(categorySlug);
-        const hasBook = !!relatedBook;
-        return (
-          <section className={`mb-4 grid min-w-0 gap-2 ${hasBook ? 'grid-cols-2' : 'max-w-[220px] sm:max-w-[260px]'}`}>
-            {relatedBook && (() => {
-              const chapterCount = getChaptersByBook(relatedBook.bookSlug).length;
-              const bookTheme = getBookTheme(relatedBook.bookSlug);
-              return (
-                <Link href={`/books/${relatedBook.bookSlug}`} className="group block h-full min-w-0">
-                  <div
-                    className={`relative flex h-full overflow-hidden rounded-lg border border-black/10 ${bookTheme.cardBg} px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5`}
+      <section
+        className={`mb-4 grid w-[min(calc(100vw-2rem),358px)] min-w-0 max-w-full gap-2 sm:w-full ${relatedBook ? 'sm:grid-cols-2' : 'max-w-[220px] sm:max-w-[260px]'}`}
+      >
+        {relatedBook && relatedBookTheme && (
+          <Link href={`/books/${relatedBook.bookSlug}`} className="group block h-full min-w-0">
+            <div
+              className={`relative flex h-full overflow-hidden rounded-lg border border-black/10 ${relatedBookTheme.cardBg} px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5`}
+            >
+              <BookOpen
+                className={`pointer-events-none absolute right-1/4 top-1/2 size-14 -translate-y-1/2 -rotate-12 ${relatedBookTheme.iconText} opacity-[0.05] sm:size-16`}
+                aria-hidden="true"
+              />
+              <div className="relative z-10 min-w-0 flex-1">
+                <div className="mb-0.5 flex items-center gap-1.5">
+                  <span
+                    className={`rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none ${relatedBookTheme.badgeText} sm:text-[10px]`}
                   >
-                    <BookOpen
-                      className={`pointer-events-none absolute right-1/4 top-1/2 size-14 -translate-y-1/2 -rotate-12 ${bookTheme.iconText} opacity-[0.05] sm:size-16`}
-                      aria-hidden="true"
-                    />
-                    <div className="relative z-10 min-w-0 flex-1">
-                      <div className="mb-0.5 flex items-center gap-1.5">
-                        <span
-                          className={`rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none ${bookTheme.badgeText} sm:text-[10px]`}
-                        >
-                          教科書
-                        </span>
-                        <span className="text-[9px] font-medium text-muted-foreground sm:text-[10px]">全{chapterCount}章</span>
-                      </div>
-                      <p className="line-clamp-1 text-[11px] font-bold leading-snug text-foreground sm:text-[13px]">
-                        {relatedBook.title}
-                      </p>
-                      <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
-                        解説で理解を深める
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })()}
+                    教科書
+                  </span>
+                  <span className="text-[9px] font-medium text-muted-foreground sm:text-[10px]">
+                    全{relatedBookChapterCount}章
+                  </span>
+                </div>
+                <p className="line-clamp-1 text-[11px] font-bold leading-snug text-foreground sm:text-[13px]">
+                  {relatedBook.title}
+                </p>
+                <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+                  解説で理解を深める
+                </p>
+              </div>
+            </div>
+          </Link>
+        )}
 
-            <CategoryRandomStartCard
-              categoryId={category.id}
-              categorySlug={category.slug}
-              categoryName={category.category_name}
-              tags={tags}
-            />
-          </section>
-        );
-      })()}
+        <CategoryRandomStartCard
+          categoryId={category.id}
+          categorySlug={category.slug}
+          categoryName={category.category_name}
+          tags={tags}
+        />
+      </section>
 
       {/* 問題一覧 */}
-      <section className="mb-10">
+      <section id="quiz-list" className="mb-10 scroll-mt-28">
         <h2 className="sr-only">{category.category_name}の問題一覧</h2>
         <QuizListClient
           initialQuizzes={quizzes}
