@@ -10,8 +10,89 @@ draft: true
 > **この章で扱う範囲**：プロパティアクセス（ドット記法・ブラケット記法）、動的キー、プロパティの存在確認（`in` / `hasOwn`）、`Object.keys` / `Object.values` / `Object.entries` / `Object.assign` / `Object.freeze` などの静的メソッド。
 > なお **分割代入・スプレッド構文** は[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)（第9章）にまとめて扱います。
 
+<a id="section-1"></a>
+
+## プロパティアクセス — ドット記法とブラケット記法
+
+オブジェクトのプロパティにアクセスする方法は、大きく分けて **ドット記法** と **ブラケット記法** の2つです。
+
+```js
+const user = {
+  name: '太郎',
+  age: 25,
+};
+
+console.log(user.name); // "太郎"
+console.log(user['name']); // "太郎"
+```
+
+ふつうの固定名なら `user.name` のようなドット記法が読みやすいです。一方で、プロパティ名を変数や式で組み立てたい場合は、`obj[key]` のように **ブラケット記法** を使います。
+
+```js
+const user = {
+  name: '太郎',
+  age: 25,
+};
+
+const key = 'name';
+
+console.log(user[key]); // "太郎"
+console.log(user.key); // undefined（"key" という名前のプロパティを探してしまう）
+```
+
+<Marker>変数に入っている値をプロパティ名として使いたいときは、ドット記法ではなくブラケット記法を使います。</Marker>
+
+<a id="section-2"></a>
+
+## 動的キー — テンプレートリテラルをキーにする
+
+オブジェクトを作るときも、キー名を変数やテンプレートリテラルで組み立てられます。この場合は、オブジェクトリテラル内で **`[式]`** を使います。これは **算出プロパティ名** と呼ばれる書き方です。
+
+```js
+const id = 10;
+
+const scores = {
+  [`user_${id}`]: 80,
+};
+
+console.log(scores.user_10); // 80
+console.log(scores[`user_${id}`]); // 80
+```
+
+`user_${id}` のようなテンプレートリテラルは文字列を作る式です。その式を「キー名」として評価してほしいので、`[` と `]` で囲みます。
+
+```js
+const id = 10;
+
+const bad = {
+  `user_${id}`: 80, // ❌ 構文エラー
+};
+
+const good = {
+  [`user_${id}`]: 80, // ⭕ "user_10" というキーになる
+};
+```
+
+読み出すときも同じです。キーを式で組み立てるなら `obj[式]`、固定名で書けるなら `obj.key` を使います。
+
+```js
+const userId = 10;
+const scores = {
+  user_10: 80,
+  user_11: 95,
+};
+
+console.log(scores[`user_${userId}`]); // 80
+```
+
+<Callout type="info" title="JSONでは使えない">
+  算出プロパティ名はJavaScriptのオブジェクトリテラルの構文です。JSONではキーを式で組み立てられず、キー名は文字列として直接書く必要があります。
+</Callout>
+
 ## 参考リンク
 
+- [MDN — プロパティアクセサー](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Property_accessors)
+- [MDN — オブジェクト初期化子](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Object_initializer)
 - [MDN — Object.keys](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/keys)
 - [MDN — Object.entries](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/entries)
 - [MDN — Object.assign](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)

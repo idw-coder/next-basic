@@ -250,9 +250,10 @@ export default async function CategoryQuizPage({
   const heroTitleSub = category.category_name.endsWith('基礎・実践')
     ? '基礎・実践 問題集'
     : '問題集';
+  const contentShell = 'mx-auto max-w-6xl px-4 sm:px-6';
 
   return (
-    <div className="mx-auto max-w-5xl overflow-x-hidden px-4 py-8 text-ink md:py-12">
+    <div className="overflow-x-hidden py-8 text-ink md:py-12">
       {/* 構造化データ */}
       {jsonLdList.map((jsonLd, i) => (
         <script
@@ -263,7 +264,7 @@ export default async function CategoryQuizPage({
       ))}
 
       {/* パンくずリスト */}
-      <nav aria-label="パンくずリスト" className="mb-4 text-sm sm:mb-6">
+      <nav aria-label="パンくずリスト" className={`${contentShell} mb-4 text-sm sm:mb-6`}>
         <ol className="flex items-center gap-1 text-muted-foreground">
           <li>
             <Link href="/" className="hover:text-foreground transition-colors">
@@ -278,7 +279,7 @@ export default async function CategoryQuizPage({
       </nav>
 
       {/* ファーストビュー */}
-      <section className="relative mb-6 min-h-[520px] overflow-hidden border border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:mb-8 sm:min-h-[560px]">
+      <section className="relative left-1/2 mb-6 min-h-[520px] w-screen -translate-x-1/2 overflow-hidden border-y border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:mb-8 sm:min-h-[560px]">
         <Image
           src="/images/top-hero-editorial.png"
           alt=""
@@ -301,17 +302,17 @@ export default async function CategoryQuizPage({
         >
           CATEGORY
         </div>
-        <div className="relative z-10 flex min-h-[520px] items-center px-5 py-8 sm:min-h-[560px] sm:px-10">
-          <div className="w-full max-w-[36rem]">
+        <div className={`${contentShell} relative z-10 flex min-h-[520px] items-center py-8 sm:min-h-[560px]`}>
+          <div className="min-w-0 w-full max-w-[36rem]">
             <p className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-brand-red/25 bg-white/82 px-3 py-1 text-[10px] font-extrabold tracking-[0.14em] text-brand-red-deep shadow-[0_10px_30px_rgba(47,48,47,0.08)] sm:text-xs">
               <span className="size-2 rounded-full bg-brand-lime" />
               {theme.label} / {quizzes.length} QUESTIONS
             </p>
-            <h1 className="max-w-[9.5em] font-black leading-[0.92] tracking-normal text-ink">
-              <span className="block text-[3.05rem] sm:text-[4.8rem] lg:text-[5.7rem]">
+            <h1 className="w-full max-w-full font-black leading-[0.92] tracking-normal text-ink">
+              <span className="block text-[2.42rem] sm:text-[4.8rem] lg:text-[5.7rem]">
                 {heroTitleMain}
               </span>
-              <span className={`block text-[2.1rem] sm:text-[3.6rem] lg:text-[4.1rem] ${theme.accentClass}`}>
+              <span className={`block text-[1.68rem] sm:text-[3.6rem] lg:text-[4.1rem] ${theme.accentClass}`}>
                 {heroTitleSub}
               </span>
             </h1>
@@ -319,7 +320,7 @@ export default async function CategoryQuizPage({
               解いて、戻って、身につける。
             </p>
             {category.description && (
-              <p className="mt-4 max-w-xl text-sm font-black leading-7 text-ink-body sm:text-base sm:leading-8">
+              <p className="mt-4 max-w-[320px] text-sm font-black leading-7 text-ink-body [overflow-wrap:anywhere] sm:max-w-xl sm:text-base sm:leading-8">
                 <span className="[background:linear-gradient(to_top,rgba(255,255,255,0.78)_40%,transparent_40%)] [box-decoration-break:clone]">
                   {category.description}
                 </span>
@@ -347,8 +348,8 @@ export default async function CategoryQuizPage({
                 </Button>
               )}
             </div>
-            <div className="mt-5 grid max-w-md grid-cols-3 rounded-[1.25rem] border border-white/80 bg-white/90 px-3 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur">
-              <div className="text-center">
+            <div className="mt-5 grid w-full max-w-[340px] min-w-0 grid-cols-3 overflow-hidden rounded-[1.25rem] border border-white/80 bg-white/90 px-2 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:max-w-md sm:px-3">
+              <div className="min-w-0 text-center">
                 <p className="text-2xl font-black leading-none text-brand-red sm:text-3xl">
                   {quizzes.length}
                 </p>
@@ -356,7 +357,7 @@ export default async function CategoryQuizPage({
                   問題
                 </p>
               </div>
-              <div className="border-x border-ink/10 text-center">
+              <div className="min-w-0 border-x border-ink/10 text-center">
                 <p className="text-2xl font-black leading-none text-ink sm:text-3xl">
                   {tags.length}
                 </p>
@@ -364,7 +365,7 @@ export default async function CategoryQuizPage({
                   タグ
                 </p>
               </div>
-              <div className="text-center">
+              <div className="min-w-0 text-center">
                 <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">
                   0円
                 </p>
@@ -379,7 +380,7 @@ export default async function CategoryQuizPage({
 
       {/* 学習導線 */}
       <section
-        className={`mb-4 grid w-[min(calc(100vw-2rem),358px)] min-w-0 max-w-full gap-2 sm:w-full ${relatedBook ? 'sm:grid-cols-2' : 'max-w-[220px] sm:max-w-[260px]'}`}
+        className={`${contentShell} mb-4 grid min-w-0 gap-2 ${relatedBook ? 'sm:grid-cols-2' : 'max-w-[220px] sm:max-w-[260px]'}`}
       >
         {relatedBook && relatedBookTheme && (
           <Link href={`/books/${relatedBook.bookSlug}`} className="group block h-full min-w-0">
@@ -421,7 +422,7 @@ export default async function CategoryQuizPage({
       </section>
 
       {/* 問題一覧 */}
-      <section id="quiz-list" className="mb-10 scroll-mt-28">
+      <section id="quiz-list" className={`${contentShell} mb-10 scroll-mt-28`}>
         <h2 className="sr-only">{category.category_name}の問題一覧</h2>
         <QuizListClient
           initialQuizzes={quizzes}
@@ -436,7 +437,7 @@ export default async function CategoryQuizPage({
 
       {/* カテゴリ概要（SEOコンテンツ） */}
       {seoContent && (
-        <section className="mb-10">
+        <section className={`${contentShell} mb-10`}>
           <Card className="border-primary/10 bg-gradient-to-br from-primary/[0.03] to-transparent">
             <CardContent className="pt-6 space-y-4">
               <div className="flex items-start gap-3">
@@ -468,7 +469,7 @@ export default async function CategoryQuizPage({
 
       {/* 出題トピック */}
       {seoContent && (
-        <section className="mb-10">
+        <section className={`${contentShell} mb-10`}>
           <SectionHeading
             size="sm"
             center={false}
@@ -505,7 +506,7 @@ export default async function CategoryQuizPage({
 
       {/* 対象者 */}
       {seoContent && (
-        <section className="mb-10">
+        <section className={`${contentShell} mb-10`}>
           <SectionHeading
             size="sm"
             center={false}
@@ -542,7 +543,7 @@ export default async function CategoryQuizPage({
 
       {/* よくある質問（FAQ） */}
       {seoContent && seoContent.faqs.length > 0 && (
-        <section className="mb-10">
+        <section className={`${contentShell} mb-10`}>
           <SectionHeading
             size="sm"
             center={false}
@@ -572,7 +573,7 @@ export default async function CategoryQuizPage({
 
       {/* 関連カテゴリ */}
       {seoContent && seoContent.relatedCategories.length > 0 && (
-        <section className="mb-4">
+        <section className={`${contentShell} mb-4`}>
           <SectionHeading size="sm" center={false} className="mb-4">
             関連する問題集
           </SectionHeading>
