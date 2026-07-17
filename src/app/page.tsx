@@ -302,15 +302,21 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/07/16',
+    text: '復習機能を強化しました。苦手な問題をまとめて解き直せる復習ページとヘッダーからの復習リンクを追加しています',
+    isNew: true,
+    link: '/quiz/review',
+  },
+  {
     date: '2026/06/29',
     text: 'クイズのブックマーク機能を追加しました。気になる問題を保存して復習できます',
-    isNew: true,
+    isNew: false,
     link: '/quiz/bookmarks',
   },
   {
     date: '2026/06/26',
     text: '教科書コンテンツを全面リニューアルしました。図解や解説をより分かりやすく改善しています',
-    isNew: true,
+    isNew: false,
     link: '/books',
   },
   {
@@ -441,9 +447,7 @@ export default async function Home() {
                   {totalCount > 0 ? totalCount : 500}
                   <span className="text-sm font-bold text-ink-muted">+</span>
                 </p>
-                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
-                  問
-                </p>
+                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">問</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">0円</p>
@@ -832,9 +836,7 @@ export default async function Home() {
               <NewsList items={NEWS} />
               <div className="space-y-1 border-t border-ink/10 py-3">
                 <span className="text-xs text-ink-muted">今後の予定</span>
-                <p className="text-sm text-ink">
-                  間違っているコード2択クイズなどを順次追加予定
-                </p>
+                <p className="text-sm text-ink">間違っているコード2択クイズなどを順次追加予定</p>
               </div>
             </div>
           </section>
