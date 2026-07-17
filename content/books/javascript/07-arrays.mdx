@@ -1,6 +1,6 @@
 ---
 title: '配列メソッド完全ガイド — map・filter・reduceから実務頻出パターンまで'
-description: 'map・filter・reduce・find・some・everyなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。'
+description: 'map・filter・reduce・find・some・every・concatなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。'
 order: 7
 ---
 
@@ -405,6 +405,86 @@ console.log(isFormValid); // false（passwordが invalid）
 
 空配列の可能性がある場合は、事前に `length` をチェックしてください。
 
+<a id="concat"></a>
+
+## concat — 配列を結合して新しい配列を作る
+
+`concat` は2つ以上の配列を結合し、**新しい配列**を返します。元の配列は変更されません。
+
+```js
+const front = ['HTML', 'CSS'];
+const back = ['Node.js', 'SQL'];
+
+const all = front.concat(back);
+
+console.log(all);   // ["HTML", "CSS", "Node.js", "SQL"]
+console.log(front); // ["HTML", "CSS"]（元の配列はそのまま）
+```
+
+### 複数の配列を一度に結合する
+
+`concat` は引数を複数取れるので、3つ以上の配列もまとめて結合できます。
+
+```js
+const a = [1, 2];
+const b = [3, 4];
+const c = [5, 6];
+
+const merged = a.concat(b, c);
+// [1, 2, 3, 4, 5, 6]
+```
+
+### 配列でない値も追加できる
+
+引数が配列でなければ、その値がそのまま末尾に追加されます。
+
+```js
+const arr = [1, 2, 3];
+
+arr.concat(4, 5);        // [1, 2, 3, 4, 5]
+arr.concat([4, 5], 6);   // [1, 2, 3, 4, 5, 6]
+```
+
+ただし、ネストした配列は**1段階しか展開されません**。
+
+```js
+[1].concat([[2, 3]]);
+// [1, [2, 3]]  ← 内側の配列はそのまま
+```
+
+### スプレッド構文との比較
+
+ES2015以降は、スプレッド構文 `...` でも配列を結合できます。
+
+```js
+// concat
+const merged1 = a.concat(b);
+
+// スプレッド構文
+const merged2 = [...a, ...b];
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `concat` とスプレッド構文、どっちを使えばいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  どちらでも結果は同じだから、プロジェクトのスタイルに合わせればOK。スプレッド構文の方が短く書けるから現在のコードベースではよく使われるけど、`concat` は「結合している」という意図が名前から明確に伝わる利点があるよ。
+</SpeechBubble>
+
+### 実務パターン: 条件付きで要素を追加
+
+`concat` は非破壊なので、条件に応じて要素を追加したい場面で安全に使えます。
+
+```js
+const baseMenu = ['ホーム', 'プロフィール'];
+
+const menu = baseMenu.concat(
+  isAdmin ? ['管理画面'] : [],
+  isLoggedIn ? ['ログアウト'] : ['ログイン'],
+);
+```
+
 <a id="flatmap"></a>
 
 ## flatMap — 変換と平坦化を同時に行う
@@ -501,6 +581,7 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 | 条件に合う最初のインデックス | `findIndex` | 数値 or `-1`        |
 | 1つでも条件を満たすか        | `some`      | `boolean`           |
 | すべて条件を満たすか         | `every`     | `boolean`           |
+| 配列を結合する               | `concat`    | 新しい配列          |
 | 変換 + 1段階の平坦化         | `flatMap`   | 新しい配列          |
 
 <a id="common-pitfalls"></a>
@@ -559,7 +640,7 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 - <Marker>
     配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している
   </Marker>
-- `map` は変換、`filter` は絞り込み、`reduce` は集約——目的に応じて使い分ける
+- `map` は変換、`filter` は絞り込み、`reduce` は集約、`concat` は結合——目的に応じて使い分ける
 - `find` は最初の1つ、`some` は1つでもあるか、`every` は全部かを判定する
 - `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快
 - 破壊的メソッド（`sort` / `reverse` / `splice`）と非破壊メソッドの区別を意識する
@@ -572,6 +653,7 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 - [MDN — Array.prototype.filter](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
 - [MDN — Array.prototype.reduce](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)
 - [MDN — Array.prototype.find](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/find)
+- [MDN — Array.prototype.concat](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/concat)
 
 <QuizLink
   href="/quiz/javascript-basic"
