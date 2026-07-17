@@ -84,10 +84,7 @@ export default function RootLayout({
                 ウェブエンジニア問題集
               </span>
             </Link>
-            <HeaderSearch
-              books={headerBooks}
-              className="mx-4 hidden max-w-xs flex-1 md:flex lg:max-w-sm"
-            />
+            <HeaderSearch className="mx-4 hidden max-w-xs flex-1 md:flex lg:max-w-sm" />
             <Suspense>
               <HeaderNav books={headerBooks} />
             </Suspense>
