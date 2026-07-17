@@ -9,6 +9,7 @@ import {
   X,
   BookOpen,
   Bookmark,
+  RotateCcw,
   Bell,
   User as UserIcon,
   LogIn,
@@ -198,6 +199,15 @@ export default function HeaderNav({ books }: HeaderNavProps) {
                 >
                   <Bookmark className="size-4 text-[#f3bf55]" />
                   ブックマーク
+                </Link>
+                <Link
+                  href="/quiz/review"
+                  role="menuitem"
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold text-ink-body transition-colors hover:bg-rose-50 hover:text-rose-600"
+                  onClick={closeMenu}
+                >
+                  <RotateCcw className="size-4 text-rose-500" />
+                  復習
                 </Link>
                 <Link
                   href="/search"

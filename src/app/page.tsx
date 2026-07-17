@@ -1,4 +1,5 @@
 import BookCard from '@/app/books/_components/BookCard';
+import ReviewPromptCard from '@/components/ReviewPromptCard';
 import { SectionHeading } from '@/components/SectionHeading';
 import { NewsList } from '@/components/news-list';
 import { Button } from '@/components/ui/button';
@@ -507,6 +508,9 @@ export default async function Home() {
               ))}
             </div>
           </section>
+
+          {/* 苦手がある人だけに出る復習導線 */}
+          <ReviewPromptCard />
 
           {/* 学習カテゴリ */}
           <section

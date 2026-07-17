@@ -158,7 +158,9 @@ export default function QuizInteraction({
     const nextIndex = randomSession.currentIndex + 1;
 
     if (nextIndex >= randomSession.quizzes.length) {
-      router.push('/quiz/random?completed=1');
+      router.push(
+        randomSession.mode === 'review' ? '/quiz/review?completed=1' : '/quiz/random?completed=1',
+      );
     } else {
       const updated = { ...randomSession, currentIndex: nextIndex };
       saveRandomSession(updated);
@@ -298,7 +300,7 @@ export default function QuizInteraction({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              ランダムクイズ{' '}
+              {randomSession.mode === 'review' ? '解き直し' : 'ランダムクイズ'}{' '}
               <span className="font-bold text-foreground text-lg">
                 {randomSession.currentIndex + 1}
               </span>
@@ -425,6 +427,15 @@ export default function QuizInteraction({
             </AlertTitle>
             {!isCorrect && correctChoice && (
               <AlertDescription>正解: {correctChoice.choice_text}</AlertDescription>
+            )}
+            {!isCorrect && randomSession?.mode !== 'review' && (
+              <AlertDescription className="mt-1">
+                この問題は
+                <Link href="/quiz/review" className="font-bold underline underline-offset-2 mx-0.5">
+                  復習リスト
+                </Link>
+                に入りました。正解するまでいつでも解き直せます
+              </AlertDescription>
             )}
           </Alert>
 

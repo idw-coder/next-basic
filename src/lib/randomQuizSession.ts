@@ -6,6 +6,8 @@ export interface RandomQuizSession {
     categoryId: number | "all";
     count: number;
   };
+  /** 省略時は 'random'（復習モードは完了時の遷移先と進捗ラベルが変わる） */
+  mode?: "random" | "review";
 }
 
 const SESSION_KEY = "random_quiz_session";

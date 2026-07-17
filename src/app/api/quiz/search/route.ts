@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const q = searchParams.get('q') || undefined;
     const categoryId = searchParams.get('categoryId') || undefined;
     const tagSlug = searchParams.get('tagSlug') || undefined;
+    const ids = searchParams.get('ids') || undefined;
 
     const ds = await getDataSource();
     const quizRepo = ds.getRepository(Quiz);
@@ -20,6 +21,14 @@ export async function GET(request: NextRequest) {
       .createQueryBuilder('quiz')
       .leftJoinAndSelect('quiz.category', 'category')
       .orderBy('quiz.id', 'ASC');
+
+    if (ids) {
+      const idList = ids.split(',').map((v) => Number(v.trim()));
+      if (idList.length === 0 || idList.some((v) => !Number.isFinite(v))) {
+        return NextResponse.json({ error: 'Invalid ids' }, { status: 400 });
+      }
+      qb = qb.andWhere('quiz.id IN (:...idList)', { idList });
+    }
 
     if (categoryId) {
       const cid = Number(categoryId);
