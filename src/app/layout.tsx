@@ -2,12 +2,11 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
-import { Search } from 'lucide-react';
 import './globals.css';
 
 import GoogleAdSense, { HideAdsForEntry } from '@/components/GoogleAdSense';
 import HeaderNav from '@/components/HeaderNav';
-import { TriBar } from '@/components/TriBar';
+import HeaderSearch from '@/components/HeaderSearch';
 import { getAllBooks } from '@/lib/books';
 import { SITE_URL } from '@/lib/site';
 
@@ -84,7 +83,6 @@ export default function RootLayout({
               <span className="text-[17px] font-black leading-none tracking-normal md:text-xl">
                 ウェブエンジニア問題集
               </span>
-              <TriBar size="sm" />
             </Link>
             <Suspense>
               <HeaderNav books={headerBooks} />
@@ -93,13 +91,7 @@ export default function RootLayout({
         </header>
         <div className="sticky top-14 z-40 border-b border-cream-line bg-cream-deep/95 backdrop-blur-xl md:top-16">
           <div className="mx-auto max-w-7xl px-4 py-2 md:px-6">
-            <Link
-              href="/search"
-              className="flex items-center gap-2 rounded-lg border border-cream-line bg-white/60 px-3 py-1.5 text-sm text-ink-muted transition-colors hover:border-brand-blue/40 hover:text-brand-blue"
-            >
-              <Search className="size-4 shrink-0" />
-              <span>問題・教科書を検索...</span>
-            </Link>
+            <HeaderSearch books={headerBooks} />
           </div>
         </div>
         <main className="min-h-screen">{children}</main>

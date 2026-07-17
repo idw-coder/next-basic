@@ -14,7 +14,6 @@ import {
 import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
 import BookCard from '@/app/books/_components/BookCard';
 import { SectionHeading } from '@/components/SectionHeading';
-import { TriBar } from '@/components/TriBar';
 
 import { SITE_URL } from '@/lib/site';
 
@@ -197,7 +196,6 @@ export default function BooksPage() {
               <p className="mt-6 max-w-[18rem] text-lg font-black leading-relaxed tracking-normal text-ink sm:max-w-md sm:text-2xl">
                 ウェブ開発の基礎を、章ごとに順番に学べる教科書。
               </p>
-              <TriBar size="lg" className="mt-8" />
             </div>
             <div className="absolute bottom-5 left-6 flex max-w-[calc(100%-3rem)] flex-wrap gap-2 text-xs font-black text-ink sm:bottom-8 sm:left-14 sm:text-sm md:left-24 lg:left-28 xl:left-32">
               {heroFeatures.map((item) => (

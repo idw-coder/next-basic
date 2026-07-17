@@ -8,6 +8,7 @@ import {
   Play,
   RotateCcw,
   Home,
+  ArrowLeft,
   Trophy,
   CircleCheck,
   CircleX,
@@ -272,9 +273,16 @@ export default function RandomQuizClient({
   };
 
   const handleChangeSettings = () => {
+    // 選択中のカテゴリを維持したまま設定画面に戻す（「すべて」にリセットしない）
+    const categorySlugForQuery =
+      selectedCategoryId !== 'all'
+        ? categories.find((c) => c.id === selectedCategoryId)?.slug
+        : undefined;
     clearRandomSession();
     setCompletedSession(null);
-    router.replace('/quiz/random');
+    router.replace(
+      categorySlugForQuery ? `/quiz/random?category=${categorySlugForQuery}` : '/quiz/random',
+    );
   };
 
   if (isCompleted && completedSession) {
@@ -416,6 +424,13 @@ function ResultView({
   const totalCount = session.answers.length;
   const scorePercent = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
 
+  // カテゴリ指定で開始した場合（カテゴリページの「連続演習」経由）は、
+  // トップではなく元のカテゴリページに戻す
+  const categorySlug =
+    session.settings.categoryId !== 'all' ? session.quizzes[0]?.categorySlug : undefined;
+  const backHref = categorySlug ? `/quiz/${categorySlug}` : '/';
+  const backLabel = categorySlug ? 'カテゴリに戻る' : 'トップへ';
+
   const handleRetry = async () => {
     setIsRetrying(true);
     await onRetry();
@@ -488,9 +503,13 @@ function ResultView({
                 設定を変更
               </Button>
               <Button asChild variant="outline" size="lg" className="flex-1">
-                <Link href="/" className="inline-flex items-center justify-center gap-2">
-                  <Home className="size-4" />
-                  トップへ
+                <Link href={backHref} className="inline-flex items-center justify-center gap-2">
+                  {categorySlug ? (
+                    <ArrowLeft className="size-4" />
+                  ) : (
+                    <Home className="size-4" />
+                  )}
+                  {backLabel}
                 </Link>
               </Button>
             </div>

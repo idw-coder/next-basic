@@ -1,7 +1,5 @@
 import { type ReactNode } from "react";
 
-import { TriBar } from "@/components/TriBar";
-
 interface SectionHeadingProps {
   children: ReactNode;
   subtitle?: string;
@@ -43,12 +41,6 @@ export function SectionHeading({
         {icon}
         {children}
       </Tag>
-      <TriBar
-        size={lg ? "md" : "sm"}
-        className={[lg ? "mt-2.5" : "mt-1.5", center && "justify-center"]
-          .filter(Boolean)
-          .join(" ")}
-      />
       {subtitle && (
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       )}
