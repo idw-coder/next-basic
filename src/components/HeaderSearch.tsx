@@ -9,7 +9,6 @@ import {
   FileText,
   Hash,
   Layers3,
-  Loader2,
   Search,
   X,
 } from "lucide-react";
@@ -68,6 +67,7 @@ interface SearchResponse {
 
 interface HeaderSearchProps {
   books: HeaderSearchBook[];
+  className?: string;
 }
 
 const FALLBACK_KEYWORDS = [
@@ -120,7 +120,7 @@ function candidateIcon(type: SearchCandidate["icon"]) {
   return <BookOpen className="size-4" />;
 }
 
-export default function HeaderSearch({ books }: HeaderSearchProps) {
+export default function HeaderSearch({ books, className }: HeaderSearchProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -131,7 +131,6 @@ export default function HeaderSearch({ books }: HeaderSearchProps) {
     bookResults: [],
     quizResults: [],
   });
-  const [isSearching, setIsSearching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
   const displayBooks = bootstrap?.books?.length ? bootstrap.books : books;
@@ -224,14 +223,12 @@ export default function HeaderSearch({ books }: HeaderSearchProps) {
     if (!open) return;
     if (!trimmedQuery) {
       setSearchResults({ bookResults: [], quizResults: [] });
-      setIsSearching(false);
       setActiveIndex(0);
       return;
     }
 
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      setIsSearching(true);
       fetch(`/api/site-search?q=${encodeURIComponent(trimmedQuery)}`, {
         signal: controller.signal,
       })
@@ -248,8 +245,7 @@ export default function HeaderSearch({ books }: HeaderSearchProps) {
         .catch((error) => {
           if (error instanceof DOMException && error.name === "AbortError") return;
           setSearchResults({ bookResults: [], quizResults: [] });
-        })
-        .finally(() => setIsSearching(false));
+        });
     }, 220);
 
     return () => {
@@ -288,24 +284,27 @@ export default function HeaderSearch({ books }: HeaderSearchProps) {
       <button
         type="button"
         onClick={openSearch}
-        className="flex w-full items-center gap-2 rounded-lg border border-cream-line bg-white/70 px-3 py-1.5 text-left text-sm text-ink-muted transition-colors hover:border-brand-blue/40 hover:bg-white hover:text-brand-blue"
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg border border-ink/10 bg-white/75 px-3 py-2 text-left text-sm text-ink-muted shadow-sm transition-colors hover:border-brand-blue/35 hover:bg-white hover:text-brand-blue",
+          className,
+        )}
         aria-label="問題・教科書を検索"
       >
         <Search className="size-4 shrink-0" />
         <span className="min-w-0 flex-1 truncate">問題・教科書を検索</span>
-        <kbd className="hidden rounded border border-ink/10 bg-cream-soft px-1.5 py-0.5 text-[10px] font-bold text-ink-muted sm:inline-block">
+        <kbd className="hidden rounded border border-ink/10 bg-cream-soft px-1.5 py-0.5 text-[10px] font-bold text-ink-muted lg:inline-block">
           {shortcutLabel}
         </kbd>
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 z-[100] bg-ink/35 px-3 py-16 backdrop-blur-sm sm:px-4"
+          className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-ink/35 px-3 py-4 pt-16 backdrop-blur-sm sm:px-4 sm:pt-20"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) closeSearch();
           }}
         >
-          <div className="mx-auto flex max-h-[min(720px,calc(100svh-7rem))] max-w-2xl flex-col overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-[0_28px_90px_rgba(35,35,35,0.24)]">
+          <div className="flex max-h-[calc(100dvh-5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-[0_28px_90px_rgba(35,35,35,0.24)] sm:max-h-[calc(100dvh-6rem)]">
             <div className="flex items-center gap-3 border-b border-cream-line px-4 py-3">
               <Search className="size-5 shrink-0 text-ink-muted" />
               <input
@@ -316,7 +315,6 @@ export default function HeaderSearch({ books }: HeaderSearchProps) {
                 placeholder="問題・教科書を検索"
                 className="h-10 min-w-0 flex-1 bg-transparent text-base font-medium text-ink outline-none placeholder:text-ink-muted"
               />
-              {isSearching && <Loader2 className="size-4 animate-spin text-ink-muted" />}
               <button
                 type="button"
                 onClick={closeSearch}
@@ -406,12 +404,6 @@ export default function HeaderSearch({ books }: HeaderSearchProps) {
                           {keyword}
                         </button>
                       ))}
-                      {loadingBootstrap && (
-                        <span className="inline-flex items-center gap-2 text-xs text-ink-muted">
-                          <Loader2 className="size-3.5 animate-spin" />
-                          読み込み中
-                        </span>
-                      )}
                     </div>
                   </section>
 

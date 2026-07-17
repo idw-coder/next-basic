@@ -479,19 +479,11 @@ export default async function CategoryQuizPage({
             出題トピック
           </SectionHeading>
           <div className="grid gap-3 sm:grid-cols-2">
-            {seoContent.topics.map((topic, i) => {
-              const borderColors = [
-                'border-l-red-400',
-                'border-l-blue-400',
-                'border-l-amber-400',
-                'border-l-green-400',
-                'border-l-purple-400',
-                'border-l-cyan-400',
-              ];
+            {seoContent.topics.map((topic) => {
               return (
                 <div
                   key={topic.title}
-                  className={`rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm border-l-[5px] ${borderColors[i % borderColors.length]} p-4`}
+                  className="rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm p-4"
                 >
                   <h3 className="text-sm font-bold text-foreground mb-1">{topic.title}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
@@ -578,24 +570,17 @@ export default async function CategoryQuizPage({
             関連する問題集
           </SectionHeading>
           <div className="grid gap-3 sm:grid-cols-3">
-            {seoContent.relatedCategories.map((related, i) => {
-              const colors = [
-                { border: 'border-l-red-400', arrow: 'bg-red-400' },
-                { border: 'border-l-blue-400', arrow: 'bg-blue-400' },
-                { border: 'border-l-amber-400', arrow: 'bg-amber-400' },
-                { border: 'border-l-green-400', arrow: 'bg-green-400' },
-              ];
-              const c = colors[i % colors.length];
+            {seoContent.relatedCategories.map((related) => {
               return (
                 <Link key={related.slug} href={`/quiz/${related.slug}`} className="group">
                   <div
-                    className={`flex items-center rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm pr-3 border-l-[5px] ${c.border} group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200`}
+                    className="flex items-center rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm pr-3 group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200"
                   >
                     <span className="flex-1 font-bold text-sm text-foreground py-3 pl-4 truncate">
                       {related.name}
                     </span>
                     <div
-                      className={`flex size-7 shrink-0 items-center justify-center rounded-full ${c.arrow} group-hover:scale-110 transition-transform duration-200`}
+                      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary group-hover:scale-110 transition-transform duration-200"
                     >
                       <ChevronRight className="size-4 text-white" />
                     </div>

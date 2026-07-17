@@ -340,19 +340,11 @@ export default async function BookPage({ params }: BookPageProps) {
             学習トピック
           </SectionHeading>
           <div className="grid gap-3 sm:grid-cols-2">
-            {seoContent.topics.map((topic, i) => {
-              const borderColors = [
-                'border-l-red-400',
-                'border-l-blue-400',
-                'border-l-amber-400',
-                'border-l-green-400',
-                'border-l-purple-400',
-                'border-l-cyan-400',
-              ];
+            {seoContent.topics.map((topic) => {
               return (
                 <div
                   key={topic.title}
-                  className={`rounded-md bg-white border border-gray-100 shadow-sm border-l-[5px] ${borderColors[i % borderColors.length]} p-4`}
+                  className="rounded-md bg-white border border-gray-100 shadow-sm p-4"
                 >
                   <h3 className="text-sm font-bold text-foreground mb-1">{topic.title}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">

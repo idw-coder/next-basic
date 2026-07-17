@@ -84,16 +84,15 @@ export default function RootLayout({
                 ウェブエンジニア問題集
               </span>
             </Link>
+            <HeaderSearch
+              books={headerBooks}
+              className="mx-4 hidden max-w-xs flex-1 md:flex lg:max-w-sm"
+            />
             <Suspense>
               <HeaderNav books={headerBooks} />
             </Suspense>
           </div>
         </header>
-        <div className="sticky top-14 z-40 border-b border-cream-line bg-cream-deep/95 backdrop-blur-xl md:top-16">
-          <div className="mx-auto max-w-7xl px-4 py-2 md:px-6">
-            <HeaderSearch books={headerBooks} />
-          </div>
-        </div>
         <main className="min-h-screen">{children}</main>
         <footer className="bg-cream-deep border-t border-cream-line px-4 py-6 mt-10 md:px-6 md:py-8 md:mt-16">
           <div className="max-w-6xl mx-auto">

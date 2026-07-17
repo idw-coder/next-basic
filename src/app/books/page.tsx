@@ -87,25 +87,21 @@ const LEARNING_PATHS = [
     title: 'フロントエンド開発',
     description: 'Webサイトの見た目と操作性を作る技術を基礎から学ぶ',
     books: ['javascript', 'css-basics', 'tailwind-css', 'typescript', 'react-learning', 'next-js'],
-    color: 'border-l-red-400',
   },
   {
     title: 'バックエンド開発',
     description: 'サーバーサイドの処理やデータベース操作を学ぶ',
     books: ['javascript', 'node-js', 'sql-basics', 'http-and-web-api'],
-    color: 'border-l-blue-400',
   },
   {
     title: 'インフラ・設計',
     description: 'クラウドやシステム全体の設計を理解する',
     books: ['aws-saa-c03', 'system-design', 'http-and-web-api'],
-    color: 'border-l-amber-400',
   },
   {
     title: '開発基礎・品質',
     description: 'チーム開発やテスト、CS基礎など開発の土台を固める',
     books: ['git-basic', 'cs-basics', 'unit-testing', 'integration-and-e2e-testing'],
-    color: 'border-l-green-400',
   },
 ];
 
@@ -308,19 +304,11 @@ export default function BooksPage() {
                 description:
                   '最新の仕様やベストプラクティスを反映し、内容を定期的に見直しています。',
               },
-            ].map((feature, i) => {
-              const borderColors = [
-                'border-l-red-400',
-                'border-l-blue-400',
-                'border-l-amber-400',
-                'border-l-green-400',
-                'border-l-purple-400',
-                'border-l-cyan-400',
-              ];
+            ].map((feature) => {
               return (
                 <div
                   key={feature.title}
-                  className={`rounded-md bg-white border border-gray-100 shadow-sm border-l-[5px] ${borderColors[i % borderColors.length]} p-4`}
+                  className="rounded-md bg-white border border-gray-100 shadow-sm p-4"
                 >
                   <h3 className="text-sm font-bold text-foreground mb-1">{feature.title}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
@@ -350,7 +338,7 @@ export default function BooksPage() {
               return (
                 <div
                   key={path.title}
-                  className={`rounded-lg bg-white border border-gray-100 shadow-sm border-l-[5px] ${path.color} p-4 sm:p-5`}
+                  className="rounded-lg bg-white border border-gray-100 shadow-sm p-4 sm:p-5"
                 >
                   <h3 className="text-sm font-bold text-foreground sm:text-base">{path.title}</h3>
                   <p className="text-xs text-muted-foreground mt-1 mb-3">{path.description}</p>

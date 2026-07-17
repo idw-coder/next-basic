@@ -434,7 +434,6 @@ export default function ProfilePage() {
               {
                 icon: BookOpen,
                 color: 'text-primary',
-                border: 'border-l-blue-400',
                 bg: 'bg-blue-50 dark:bg-blue-500/10',
                 value: quizStats.totalAnswered,
                 label: '回答数',
@@ -442,7 +441,6 @@ export default function ProfilePage() {
               {
                 icon: Target,
                 color: 'text-green-500',
-                border: 'border-l-green-400',
                 bg: 'bg-green-50 dark:bg-green-500/10',
                 value: `${quizStats.correctRate}%`,
                 label: '正答率',
@@ -450,7 +448,6 @@ export default function ProfilePage() {
               {
                 icon: TrendingUp,
                 color: 'text-blue-500',
-                border: 'border-l-amber-400',
                 bg: 'bg-amber-50 dark:bg-amber-500/10',
                 value: quizStats.totalCorrect,
                 label: '正解数',
@@ -458,7 +455,6 @@ export default function ProfilePage() {
               {
                 icon: Flame,
                 color: 'text-orange-500',
-                border: 'border-l-red-400',
                 bg: 'bg-red-50 dark:bg-red-500/10',
                 value: quizStats.streakDays,
                 label: '連続学習日',
@@ -466,7 +462,7 @@ export default function ProfilePage() {
             ].map((stat) => (
               <div
                 key={stat.label}
-                className={`rounded-md ${stat.bg} border border-gray-100 dark:border-gray-800 shadow-sm border-l-[5px] ${stat.border} flex flex-col items-center pt-5 pb-4`}
+                className={`rounded-md ${stat.bg} border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col items-center pt-5 pb-4`}
               >
                 <stat.icon className={`size-5 ${stat.color} mb-1`} />
                 <p className="text-2xl font-bold text-foreground">{stat.value}</p>
