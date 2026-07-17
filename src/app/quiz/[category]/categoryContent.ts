@@ -20,29 +20,29 @@ export interface CategorySeoContent {
 const categoryContentMap: Record<string, CategorySeoContent> = {
   "react-basic": {
     overview:
-      "Reactは、Meta（旧Facebook）が開発したJavaScriptライブラリで、ユーザーインターフェースを構築するために広く利用されています。コンポーネントベースのアーキテクチャにより、再利用性の高いUI部品を組み合わせて効率的にアプリケーションを開発できます。仮想DOMによる高速な描画更新、宣言的なUI記述、そして豊富なエコシステムが特徴です。",
+      "Reactは、Meta（旧Facebook）が開発したJavaScriptライブラリで、ユーザーインターフェースを構築するために広く利用されています。このReact基礎クイズでは、JSX、props、state、useState、useEffect、useRef、再レンダー、依存配列など、初学者がつまずきやすい重要テーマを4択問題で確認できます。コンポーネントベースの考え方を押さえながら、実務で必要になるReact Hooksの判断力も身につけられます。",
     whyLearn:
-      "Reactは世界中のフロントエンド開発現場で最も採用されているライブラリの一つです。Next.js、Gatsby、Remixなどのフレームワークの基盤でもあり、Reactを習得することでモダンなWebアプリケーション開発のスキルを身につけられます。求人市場でも需要が非常に高く、キャリアの選択肢を大きく広げることができます。",
+      "Reactは世界中のフロントエンド開発現場で最も採用されているライブラリの一つです。Next.js、Gatsby、Remixなどのフレームワークの基盤でもあり、Reactを習得することでモダンなWebアプリケーション開発のスキルを身につけられます。特にuseStateの更新、useEffectのクリーンアップ、useRefとstateの違い、React.memoやuseCallbackの使いどころは、面接や実装レビューでも問われやすい知識です。",
     topics: [
       {
         title: "JSXとコンポーネント",
         description:
-          "ReactのUI記述言語であるJSXの文法や、関数コンポーネント・クラスコンポーネントの違い、propsの受け渡し方を学びます。",
+          "ReactのUI記述言語であるJSXの文法、関数コンポーネント、props、children、リストのkey、条件付きレンダリングの落とし穴を学びます。",
       },
       {
-        title: "React Hooks",
+        title: "React Hooksと依存配列",
         description:
-          "useState、useEffect、useContext、useRef、useMemoなど、React Hooksの使い方と適切な活用場面について出題します。",
+          "useState、useEffect、useRef、useMemo、useCallbackの使い方に加えて、依存配列、stale closure、クリーンアップ関数、不要なEffectについて出題します。",
       },
       {
-        title: "状態管理",
+        title: "状態管理とフォーム",
         description:
-          "コンポーネントのローカル状態管理から、Context API、外部状態管理ライブラリ（Redux、Zustand等）の概念を扱います。",
+          "コンポーネントのローカル状態管理、オブジェクトstateのイミュータブル更新、controlled component、Context APIの基本的な考え方を扱います。",
       },
       {
-        title: "ライフサイクルとレンダリング",
+        title: "ライフサイクルと再レンダー",
         description:
-          "Reactのレンダリングの仕組み、再レンダリングの最適化、メモ化（React.memo、useMemo、useCallback）について理解を深めます。",
+          "レンダーとマウントの違い、再レンダーの発生条件、StrictModeでEffectが2回実行される理由、hydration mismatch、メモ化の判断基準について理解を深めます。",
       },
     ],
     faqs: [
@@ -59,7 +59,7 @@ const categoryContentMap: Record<string, CategorySeoContent> = {
       {
         question: "このクイズはReact初心者でも解けますか？",
         answer:
-          "はい、基礎的な問題から出題しているため、React の公式チュートリアルを一通り終えた方であれば挑戦できます。わからない問題があっても解説を読みながら学習できます。",
+          "はい、JSXやコンポーネントの基礎から、useState、useEffect、useRef、再レンダー、依存配列のようなReact Hooksの重要テーマまで段階的に出題しています。わからない問題があっても解説と関連教材リンクを読みながら学習できます。",
       },
     ],
     targetAudience: [
