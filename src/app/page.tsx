@@ -302,6 +302,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/07/18',
+    text: '教科書「AZ-900 合格とクラウドの基礎がわかるAzure入門」を公開しました。クラウドの概念からEntra ID・RBACまで順次章を追加中です',
+    isNew: true,
+    link: '/books/azure-az-900',
+  },
+  {
     date: '2026/07/16',
     text: '復習機能を強化しました。苦手な問題をまとめて解き直せる復習ページとヘッダーからの復習リンクを追加しています',
     isNew: true,

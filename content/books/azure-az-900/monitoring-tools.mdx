@@ -1,13 +1,131 @@
 ---
 title: 'Azureの監視ツール — Azure Monitor・Advisor・Service Healthの使い分け'
-description: 'Azure Advisorによる推奨事項、Azure Service Healthによる障害情報、Azure Monitor・Log Analytics・Application Insightsによる監視の全体像を整理します。'
+description: 'Azure Advisorの5つの推奨カテゴリ、Azure Service Healthによる障害・メンテナンス情報、Azure Monitor(メトリック・ログ・アラート)とLog Analytics・Application Insightsの関係を整理します。'
 order: 14
-draft: true
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
+最終章のテーマは **監視** です。環境を作って動かしたら、次は「ちゃんと動いているか」「もっと良くできないか」「Azure側に障害はないか」を見守る番です。
 
-この章は現在準備中です。今後コンテンツを追加予定です。
+AZ-900で問われる監視ツールは3つ。**Azure Advisor**(助言)、**Azure Service Health**(Azure側の健康状態)、**Azure Monitor**(自分のリソースの監視)です。名前が似ていて混同しやすいので、**「何を見張るのか」** で区別するのがコツです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+MonitorとかAdvisorとかHealthとか…どれも「監視っぽい名前」で、正直どれが何を見てるのか区別がつかない…
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生">
+一言ずつで整理しましょう。**Advisorは「あなたの構成への助言」、Service Healthは「Azure側の障害情報」、Monitorは「あなたのリソースの生データ」**。見ている対象がそれぞれ違うんです。順番に見ていきます。
+</SpeechBubble>
+
+---
+
+<a id="section-1"></a>
+
+## Azure Advisor — 構成への「助言」をくれる
+
+**Azure Advisorは、利用中のリソース構成を分析して、ベストプラクティスに基づく改善提案をしてくれる無料のサービス** です。人間のコンサルタントのように、5つの観点で助言をくれます。
+
+| カテゴリ | 助言の例 |
+|---|---|
+| **コスト** | 「このVMは使用率が低いので、サイズ縮小か削除を検討してください」 |
+| **セキュリティ** | 「MFAが無効なアカウントがあります」 |
+| **信頼性** | 「このVMは冗長構成がなく、障害時に停止します」 |
+| **パフォーマンス** | 「このDBはスペック不足の兆候があります」 |
+| **オペレーショナルエクセレンス** | 「サブスクリプションにサービス制限の余裕がありません」 |
+
+ポイントは、Advisorは **「あなたの使い方」への提案** だということです。何も設定しなくても自動で分析され、ポータルでいつでも確認できます。
+
+<Callout type="info">
+### 試験でのポイント
+
+「**コスト削減の推奨事項を確認したい**」「**ベストプラクティスに従っているか知りたい**」→ **Azure Advisor** が答えです。第10章のDefender for Cloud(セキュリティ特化の評価)と似ていますが、Advisorはコストやパフォーマンスも含む **総合診断** という違いがあります。
 
 </Callout>
+
+---
+
+<a id="section-2"></a>
+
+## Azure Service Health — 「Azure側」の健康状態を知る
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="PCを見て驚く女性のイラスト" maxWidth="280px" />
+
+アプリの調子が悪いとき、原因が自分側とは限りません。**Azureのリージョン自体に障害が起きている** 可能性もあります。それを知るのが **Azure Service Health** です。
+
+Service Healthは3種類の情報を提供します。
+
+- **サービスの問題(Service issues)** — 今まさに起きているAzure側の障害。自分が使うリージョン・サービスに影響があるかを表示
+- **計画メンテナンス(Planned maintenance)** — 今後予定されているメンテナンスの事前通知
+- **正常性の勧告(Health advisories)** — サービスの仕様変更・廃止予定など、対応が必要になるお知らせ
+
+自分の使っているサービスに影響が出たときに **メール等で通知するアラート** も設定できます。「障害が起きてから慌ててTwitterを検索する」のではなく、公式情報が向こうから届く状態を作れるわけです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+なるほど、「うちのアプリが遅いのは自分のせいか、Azureのせいか」をまず切り分けるためのサービスなんだね。
+</SpeechBubble>
+
+---
+
+<a id="section-3"></a>
+
+## Azure Monitor — 自分のリソースの生データを集める
+
+3つ目の **Azure Monitor** が、監視の本丸です。**自分のリソースとアプリからテレメトリー(計測データ)を収集・分析・可視化し、必要ならアクションにつなげる** 統合監視プラットフォームです。
+
+扱うデータは大きく2種類あります。
+
+- **メトリック** — CPU使用率のような **数値の時系列データ**。軽量でリアルタイム性が高い
+- **ログ** — イベントの記録(誰が何をしたか、エラーの詳細など)。**テキスト中心の詳細データ**
+
+<MermaidDiagram chart={`
+flowchart LR
+    classDef src fill:#94a3b8,color:#fff,stroke:#64748b
+    classDef mon fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef tool fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef act fill:#22c55e,color:#fff,stroke:#16a34a
+
+    S["VM / アプリ / DB<br/>(メトリックとログ)"]:::src --> M["Azure Monitor<br/>収集・分析・可視化"]:::mon
+    M --> L["Log Analytics<br/>ログをクエリで分析"]:::tool
+    M --> AI["Application Insights<br/>アプリの性能を監視"]:::tool
+    M --> AL["アラート<br/>しきい値超過で通知・自動対応"]:::act
+`} />
+
+### Azure Monitorファミリーの3つの道具
+
+| 道具 | 役割 |
+|---|---|
+| **Log Analytics** | 集めたログを **クエリ言語(KQL)で検索・分析** するツール。「先週のエラーログをサーバー別に集計」のような調査ができる |
+| **Azure Monitorアラート** | 「CPUが90%を超えたら通知」「エラーが急増したら自動でスケールアウト」のように、**しきい値ベースで通知・アクション** を起こす |
+| **Application Insights** | **アプリケーション性能監視(APM)**。ページの応答時間、リクエストの失敗率、ユーザーの利用状況などアプリ視点の監視に特化 |
+
+「Monitorが土台、Log Analyticsはログ分析の道具、Application Insightsはアプリ特化の拡張、アラートは出口」という関係で覚えましょう。
+
+---
+
+<a id="section-4"></a>
+
+## 3つのツールの使い分け — 最後の整理
+
+| 知りたいこと | 使うツール |
+|---|---|
+| 構成をもっと安く・安全に・速くするには? | Azure Advisor |
+| Azure側で障害やメンテナンスの予定はある? | Azure Service Health |
+| うちのVMのCPU使用率は?エラーログは? | Azure Monitor (+ Log Analytics) |
+| アプリの応答時間やリクエスト失敗率は? | Application Insights |
+| 異常が起きたら自動で知らせてほしい | Azure Monitorアラート / Service Healthアラート |
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生">
+これで全14章、AZ-900の出題範囲をひととおり歩き切りました。あとは仕上げです。Microsoft公式の無料練習問題(Practice Assessment)を解いて、間違えた分野の章に戻る——このサイクルを2〜3周すれば、合格ラインの700点は十分に見えてきますよ。
+</SpeechBubble>
+
+---
+
+<a id="section-5"></a>
+
+## まとめ
+
+- <Marker>監視3ツールは見る対象で区別する: **Advisor=構成への助言 / Service Health=Azure側の障害 / Monitor=自分のリソースのデータ**</Marker>
+- **Advisor** はコスト・セキュリティ・信頼性・パフォーマンス・オペレーショナルエクセレンスの5カテゴリで推奨を提示
+- **Service Health** はサービスの問題・計画メンテナンス・正常性の勧告の3種類を通知
+- **Azure Monitor** はメトリックとログを収集し、**Log Analytics**(ログ分析)・**Application Insights**(アプリ監視)・**アラート**(通知と自動対応)につなげる
+
+これで本書は完結です。総仕上げとして第1章の学習ロードマップに戻り、公式練習問題で腕試しをしてみてください。合格を応援しています!

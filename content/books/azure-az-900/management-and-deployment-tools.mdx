@@ -1,13 +1,145 @@
 ---
 title: 'Azureの管理・デプロイツール — ポータル・CLI・ARMテンプレートとIaC'
-description: 'Azure Portal、Cloud Shell、Azure CLI、Azure PowerShell、Azure Arc、Infrastructure as Code (IaC)、ARMテンプレートによるリソース管理とデプロイを学びます。'
+description: 'Azure Portal、Cloud Shell、Azure CLIとAzure PowerShellの違い、Azure Arc、Infrastructure as Code (IaC)、ARMテンプレートとBicepによる宣言的デプロイをAZ-900の出題ポイントに沿って解説します。'
 order: 13
-draft: true
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
+Azureのリソースを作る・設定する・削除する——その操作手段は1つではありません。ブラウザでポチポチやる方法から、コードで環境まるごと再現する方法まで、**用途に応じた複数の入口** が用意されています。
 
-この章は現在準備中です。今後コンテンツを追加予定です。
+この章では、**Azure Portal・Cloud Shell・CLI/PowerShell** という操作ツールと、**Azure Arc**、そして **Infrastructure as Code(IaC)とARMテンプレート** を整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+正直、画面(ポータル)で全部できるなら、コマンドとかテンプレートって覚える必要あるのかな…？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生">
+1回きりの操作ならポータルで十分です。でも「同じ環境を10個作る」「毎週同じ設定変更をする」となった瞬間、手作業は **遅くて、ミスる** 手段になります。**繰り返すなら自動化(コード)** ——これがこの章の背骨です。
+</SpeechBubble>
+
+---
+
+<a id="section-1"></a>
+
+## 操作ツールの全体像
+
+まず、Azureを操作する主なツールを一覧します。
+
+| ツール | 形態 | 向いている場面 |
+|---|---|---|
+| **Azure Portal** | ブラウザのGUI | 学習、単発の操作、状態の目視確認 |
+| **Azure CLI** | コマンドライン(`az`コマンド) | スクリプト化、Bash使いの自動化 |
+| **Azure PowerShell** | PowerShellコマンドレット(`New-AzVM`など) | Windows/PowerShell環境の自動化 |
+| **Azure Cloud Shell** | ブラウザ内のシェル環境 | インストール不要でCLI/PowerShellを使う |
+| **Azure Mobile App** | スマホアプリ | 外出先での状態確認・簡易操作 |
+
+### Azure Portal — すべての入口
+
+**Azure Portal** はブラウザで使うGUIの管理画面です。リソースの作成から監視・課金の確認まで、Azureのほぼすべての機能にアクセスできます。学習ではまずポータルで「何がどこにあるか」を掴むのがおすすめです。
+
+### Azure CLIとAzure PowerShell — 自動化の道具
+
+どちらも **コマンドでAzureを操作する** ツールで、機能的にはほぼ等価です。違いは文化圏です。
+
+```bash
+# Azure CLI (Bash風。LinuxやmacOSのエンジニアに馴染む)
+az vm create --name myVM --resource-group myRG --image Ubuntu2204
+```
+
+```powershell
+# Azure PowerShell (コマンドレット形式。Windows管理者に馴染む)
+New-AzVM -Name myVM -ResourceGroupName myRG -Image Ubuntu2204
+```
+
+試験では「どちらが正しいか」ではなく、「**スクリプトによる繰り返し操作にはCLI/PowerShellが適する**」というレベルで問われます。
+
+### Azure Cloud Shell — インストール不要のシェル
+
+**Cloud Shell** は、ブラウザ(ポータル内)から使えるシェル環境です。**Azure CLIもAzure PowerShellも最初から入っており**、手元のPCに何もインストールせずにコマンド操作ができます。「会社の共用PCからコマンドを実行したい」ようなシナリオの答えです。
+
+---
+
+<a id="section-2"></a>
+
+## Azure Arc — Azureの管理をAzureの外へ広げる
+
+<Figure src="/images/boomerang_woman_color.png" alt="ブーメランを投げる女性のイラスト" maxWidth="280px" />
+
+ここまでのツールは「Azure上のリソース」を管理するものでした。では、**オンプレミスのサーバーや他社クラウド(AWSなど)のリソース** はどうでしょうか。
+
+**Azure Arcは、Azureの外にあるサーバーやKubernetesクラスターをAzureポータルに「登録」し、Azureリソースと同じ流儀で管理できるようにするサービス** です。
+
+- オンプレのサーバーにAzure PolicyやRBACを適用する
+- AWS上のサーバーもAzureポータルで一覧・監視する
+- ハイブリッド/マルチクラウド環境の管理を一元化する
+
+第2章のハイブリッドクラウドを「管理面」から支える存在で、試験では「**オンプレミスや他社クラウドのリソースをAzureから一元管理したい → Azure Arc**」の一対一対応で出題されます。
+
+---
+
+<a id="section-3"></a>
+
+## Infrastructure as Code — 環境をコードで作る
+
+いよいよこの章の本丸、**Infrastructure as Code (IaC)** です。
+
+IaCとは、**インフラの構成をコード(定義ファイル)として書き、そのコードから環境を自動構築する** 手法です。手作業のポータル操作と比べて、こんな利点があります。
+
+- **再現性** — 同じコードからは、何度実行しても同じ環境ができる(手作業の「設定漏れ」がない)
+- **バージョン管理** — コードなのでGitで履歴管理・レビューができる
+- **スピード** — 開発・検証・本番の3環境を数分で複製できる
+
+### 宣言型と命令型
+
+IaCの書き方には2つの流儀があります。
+
+| | 命令型 (Imperative) | 宣言型 (Declarative) |
+|---|---|---|
+| 書くこと | **手順**(まずRGを作り、次にVMを…) | **あるべき最終形**(VMが2台ある状態) |
+| 例 | CLI/PowerShellのスクリプト | **ARMテンプレート**、Bicep |
+| 差分の扱い | 手順の管理は自分で | ツールが現状との差分を計算して調整 |
+
+### ARMテンプレートとBicep
+
+Azureの宣言型IaCの中核が **ARMテンプレート(Azure Resource Managerテンプレート)** です。JSONで「あるべきリソース構成」を記述し、Azureに渡すと、**Azure Resource Manager** がその通りに環境を作ります。
+
+<MermaidDiagram chart={`
+flowchart LR
+    classDef code fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef arm fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef res fill:#22c55e,color:#fff,stroke:#16a34a
+
+    T["ARMテンプレート / Bicep<br/>(あるべき構成をコードで記述)"]:::code --> M["Azure Resource Manager<br/>(すべてのデプロイ要求の受付係)"]:::arm
+    M --> R1["VM"]:::res
+    M --> R2["VNet"]:::res
+    M --> R3["ストレージ"]:::res
+`} />
+
+ポイントは、ポータルもCLIもテンプレートも、**すべての操作は最終的にAzure Resource Manager(ARM)を経由する** ことです。ARMはAzureのデプロイと管理の「一枚岩の受付係」で、だからこそどのツールから操作しても同じ結果になります。
+
+<Callout type="column">
+### Bicep — ARMテンプレートの進化形
+
+JSONのARMテンプレートは記述が冗長になりがちなため、より簡潔に書ける専用言語 **Bicep** が用意されています。BicepはデプロイのときにARMテンプレートに変換されるので、能力は同等です。AZ-900では「ARMテンプレートを簡潔に書ける言語」という位置づけだけ知っていれば十分です。
 
 </Callout>
+
+<Callout type="info">
+### 試験でのポイント
+
+「**環境を繰り返し・一貫して構築したい**」「**インフラ構成をバージョン管理したい**」というシナリオが出たら、答えは **IaC(ARMテンプレート)** です。「宣言型=最終形を書く、命令型=手順を書く」の区別もそのまま問われます。
+
+</Callout>
+
+---
+
+<a id="section-4"></a>
+
+## まとめ
+
+- <Marker>操作の使い分けは **単発・目視ならPortal、繰り返し・自動化ならCLI/PowerShell、環境ごと再現ならIaC**</Marker>
+- **Cloud Shell** はブラウザだけでCLI/PowerShellが使えるインストール不要のシェル
+- **Azure Arc** はオンプレ・他社クラウドのリソースをAzureの流儀で一元管理する
+- **IaC** は再現性・バージョン管理・スピードをもたらす。**ARMテンプレート/Bicepは宣言型**(あるべき最終形を書く)
+- どのツールの操作も最終的に **Azure Resource Manager** を経由する
+
+次はいよいよ最終章。デプロイした環境が健康に動いているかを見守る **監視ツール**(Azure Monitor・Advisor・Service Health)です。
