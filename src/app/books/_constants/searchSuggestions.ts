@@ -31,6 +31,29 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'バケットポリシー',
   ],
 
+  'azure-az-900': [
+    'Entra ID',
+    'RBAC',
+    'VNet',
+    '仮想マシン',
+    'App Service',
+    'Azure Functions',
+    'AKS',
+    'ExpressRoute',
+    'VPN Gateway',
+    '可用性ゾーン',
+    'リージョン',
+    'サブスクリプション',
+    'リソースグループ',
+    'IaaS',
+    'PaaS',
+    'SaaS',
+    'SLA',
+    'MFA',
+    '条件付きアクセス',
+    'ゼロトラスト',
+  ],
+
   'http-and-web-api': ['CORS', 'SSH'],
 
   'sql-basics': [

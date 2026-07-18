@@ -27,6 +27,7 @@ const categoryToBookMap: Record<string, string> = {
 /** 書籍一覧の表示順（先頭が先に表示される） */
 export const BOOK_ORDER = [
   'aws-saa-c03',
+  'azure-az-900',
   'http-and-web-api',
   'sql-basics',
   'integration-and-e2e-testing',
@@ -45,6 +46,7 @@ export const BOOK_ORDER = [
 
 /** NEW バッジを付ける書籍 */
 export const NEW_BOOK_SLUGS = new Set<string>([
+  'azure-az-900',
   'node-js',
   'sql-basics',
   'aws-saa-c03',

@@ -858,6 +858,76 @@ const bookSeoContentMap: Record<string, BookSeoContent> = {
     ],
     relatedQuizSlug: null,
   },
+
+  'azure-az-900': {
+    overview:
+      'AZ-900 (Microsoft Azure Fundamentals) は、Microsoftのクラウド「Azure」の基礎知識を証明する入門資格です。本書では、公式の出題範囲(クラウドの概念/Azureのアーキテクチャとサービス/管理とガバナンス)に沿って、共同責任モデル、IaaS・PaaS・SaaS、リージョンと可用性ゾーン、仮想マシン、VNet、Microsoft Entra ID、RBAC、コスト管理、Azure Policyまでを14章で体系的に解説します。実装スキルではなく「説明できること」が問われる試験なので、概念を噛み砕いた図解中心の構成にしています。',
+    whyLearn:
+      'Azureは日本のエンタープライズ市場で高いシェアを持ち、Microsoft 365を導入している企業ではクラウド基盤の第一候補になります。AZ-900はエンジニアだけでなく営業・PM・情シスにも人気で、前提条件なし・資格の有効期限なしという受けやすさも魅力です。ここで学ぶクラウドの概念(従量課金、高可用性、スケーラビリティなど)はAWSやGoogle Cloudにも通じる普遍的な知識で、上位資格(AZ-104/AZ-204)への出発点にもなります。',
+    prerequisites:
+      'IT実務経験は不要です。「サーバー」「ネットワーク」という言葉を聞いたことがあるレベルで読み始められます。クラウドの利用経験があれば、より速く読み進められます。',
+    topics: [
+      {
+        title: 'クラウドの概念',
+        description:
+          'クラウドコンピューティングの定義、共同責任モデル、パブリック・プライベート・ハイブリッド、従量課金、高可用性とスケーラビリティ、IaaS・PaaS・SaaSの違いを学びます。',
+      },
+      {
+        title: 'Azureのコアアーキテクチャ',
+        description:
+          'リージョン・リージョンペア・可用性ゾーンの物理構造と、リソースグループ・サブスクリプション・管理グループの論理階層を図解で整理します。',
+      },
+      {
+        title: 'コンピューティングとネットワーク',
+        description:
+          '仮想マシン・VMSS・App Service・Azure Functionsの使い分け、VNet・ピアリング・VPN Gateway・ExpressRouteによる接続を学びます。',
+      },
+      {
+        title: 'ストレージとデータ移行',
+        description:
+          'Azure Storageのストレージ層(ホット/クール/アーカイブ)、LRS/ZRS/GRSなどの冗長性オプション、AzCopyやAzure Data Boxによる移行を整理します。',
+      },
+      {
+        title: 'IDとセキュリティ',
+        description:
+          'Microsoft Entra ID(旧Azure AD)、SSO・MFA・パスワードレス認証、条件付きアクセス、RBAC、ゼロトラストと多層防御を学びます。',
+      },
+      {
+        title: '管理とガバナンス',
+        description:
+          'コスト管理と料金計算ツール、Azure Policy・リソースロック、Azure Portal・CLI・ARMテンプレート、Azure Monitorなどの監視ツールを押さえます。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'IT未経験でもAZ-900に合格できますか？',
+        answer:
+          'はい。AZ-900は前提条件のない入門資格で、実装スキルではなく概念の理解が問われます。未経験者の学習期間の目安は3〜4週間、IT経験者なら1〜2週間程度です。本書で概念を固め、Microsoft公式の無料練習問題で仕上げる流れがおすすめです。',
+      },
+      {
+        question: 'AWSの資格(SAA)とどちらを取るべきですか？',
+        answer:
+          '所属組織や志望先が使っているクラウドに合わせるのが基本です。Microsoft 365を導入している企業やエンタープライズ系ならAzure、Web系スタートアップならAWSが多い傾向があります。クラウドの概念部分は共通なので、片方を学べばもう片方の学習コストは大きく下がります。',
+      },
+      {
+        question: 'AZ-900に有効期限はありますか？',
+        answer:
+          'ありません。Fundamentalsレベルの資格は一度取得すれば失効しません(AZ-104などの上位資格は毎年の更新が必要です)。',
+      },
+      {
+        question: 'AZ-900の次はどの資格に進むべきですか？',
+        answer:
+          'インフラ運用ならAZ-104 (Azure Administrator)、開発者ならAZ-204 (Azure Developer)が定番です。セキュリティのSC-900、データのDP-900、AIのAI-900など、同じFundamentalsレベルに横展開する選択肢もあります。',
+      },
+    ],
+    targetAudience: [
+      'クラウドを初めて学ぶ方・IT未経験の方',
+      'AzureやMicrosoft 365を使う企業で働くエンジニア・情シス・営業・PM',
+      'AWSは知っているがAzureの全体像を短時間で掴みたい方',
+      'AZ-104やAZ-204など上位資格の土台を固めたい方',
+    ],
+    relatedQuizSlug: null,
+  },
 };
 
 export function getBookSeoContent(bookSlug: string): BookSeoContent | null {

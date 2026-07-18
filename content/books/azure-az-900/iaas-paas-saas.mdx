@@ -1,0 +1,170 @@
+---
+title: 'IaaS・PaaS・SaaSの違い — クラウドサービス3形態の使い分け'
+description: 'IaaS・PaaS・SaaSの違いをピザの例えと責任範囲の表で整理し、Azureの具体的なサービス(仮想マシン・App Service・Microsoft 365)に対応づけて解説します。'
+order: 4
+---
+
+クラウドサービスは、「どこまでを事業者に任せ、どこからを自分でやるか」によって **IaaS・PaaS・SaaS** の3形態に分類されます。
+
+この3つの違いはAZ-900の最頻出テーマのひとつで、「このシナリオに適したサービス形態はどれか」という形で必ずと言っていいほど出題されます。この章で完全に整理しましょう。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+イァース…パース…？略語が3つ並ぶと、どれが何を指してるのか毎回わからなくなるんだよね…
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生">
+略語で暗記しようとすると混乱します。まず「aaS = as a Service(サービスとして提供される)」を外して、頭文字だけ見てください。I=インフラ、P=プラットフォーム、S=ソフトウェア。**何を「サービスとして」借りるのか** が名前にそのまま書いてあるんです。
+</SpeechBubble>
+
+---
+
+<a id="section-1"></a>
+
+## まずは例えで — ピザで理解するIaaS・PaaS・SaaS
+
+<Figure src="/images/idea_drawing_woman.png" alt="アイデアを描く女性のイラスト" maxWidth="300px" />
+
+有名な「Pizza as a Service」という例えがあります。夕食にピザを食べる方法は4つあります。
+
+| 方法 | 自分でやること | 例えるなら |
+|---|---|---|
+| 完全に手作り | 生地作りから焼き上げ、テーブルの用意まで全部 | オンプレミス |
+| 冷凍ピザを買って家で焼く | 焼く・飲み物・テーブルの用意 | IaaS |
+| 宅配ピザを頼む | 飲み物とテーブルの用意だけ | PaaS |
+| レストランで食べる | 何もしない(食べるだけ) | SaaS |
+
+どの方法でも「ピザを食べる」という目的は同じです。違うのは **どこまでを他人に任せるか** だけ。クラウドサービスの3形態も、まったく同じ構造をしています。
+
+---
+
+<a id="section-2"></a>
+
+## 責任範囲で見る3形態
+
+例えを実際のITスタックに置き換えると、次のようになります。
+
+<MermaidDiagram chart={`
+flowchart LR
+    classDef user fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef vendor fill:#94a3b8,color:#fff,stroke:#64748b
+
+    subgraph IaaS["IaaS"]
+        direction TB
+        A1["アプリ / データ"]:::user
+        A2["OS・ミドルウェア"]:::user
+        A3["仮想化・サーバー<br/>ネットワーク"]:::vendor
+    end
+
+    subgraph PaaS["PaaS"]
+        direction TB
+        B1["アプリ / データ"]:::user
+        B2["OS・ミドルウェア"]:::vendor
+        B3["仮想化・サーバー<br/>ネットワーク"]:::vendor
+    end
+
+    subgraph SaaS["SaaS"]
+        direction TB
+        C1["アプリ / データ"]:::vendor
+        C2["OS・ミドルウェア"]:::vendor
+        C3["仮想化・サーバー<br/>ネットワーク"]:::vendor
+    end
+`} />
+
+青が **利用者の責任**、グレーが **事業者の責任** です。IaaS → PaaS → SaaSの順に、利用者の管理範囲が狭くなっていきます。
+
+### IaaS (Infrastructure as a Service)
+
+**インフラ(仮想マシン・ネットワーク・ストレージ)だけを借りて、OSから上は自分で管理する** 形態です。
+
+- 代表例: **Azure Virtual Machines**(仮想マシン)
+- OSの選択、ミドルウェアの構成、パッチ適用まで自由にできる
+- そのぶんOSの更新やセキュリティ対策は利用者の仕事
+- オンプレミスからの移行(リフト&シフト)で最初に選ばれやすい
+
+### PaaS (Platform as a Service)
+
+**アプリを動かす土台(プラットフォーム)まで借りて、利用者はアプリとデータだけに集中する** 形態です。
+
+- 代表例: **Azure App Service**(Webアプリ実行環境)、**Azure SQL Database**、**Azure Functions**
+- OSやランタイムのパッチ適用は事業者が自動でやってくれる
+- 開発者は「コードを書いてデプロイする」だけでよい
+- そのかわりOSレベルの細かいカスタマイズはできない
+
+### SaaS (Software as a Service)
+
+**完成したソフトウェアそのものをサービスとして使う** 形態です。
+
+- 代表例: **Microsoft 365**(Outlook、Teams、Word)、Gmail、Salesforce
+- インストールも保守も不要で、ブラウザやアプリからすぐ使える
+- 利用者が管理するのは自分のデータとアカウントだけ
+
+<Callout type="info">
+### 「データとアカウントは常に利用者の責任」
+
+第2章の共同責任モデルの復習です。SaaSであっても、**データの中身とアカウント・アクセス管理の責任は利用者に残ります**。「SaaSだからセキュリティは全部事業者の責任」という選択肢は試験では誤りです。
+
+</Callout>
+
+---
+
+<a id="section-3"></a>
+
+## Azureのサービスを3形態に対応づける
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+概念はわかってきた！でも試験では「Azure App Serviceはどれにあたるか」みたいに、具体的なサービス名で聞かれるんだよね？
+</SpeechBubble>
+
+その通りです。AZ-900で登場する主要サービスを3形態に整理しておきます。この対応表は後の章を読むときの索引にもなります。
+
+| 形態 | Azureのサービス | この本での登場章 |
+|---|---|---|
+| IaaS | Virtual Machines、Virtual Network、Azure Storage(ディスク) | 第6〜8章 |
+| PaaS | App Service、Azure SQL Database、Azure Functions、Azure Container Apps | 第6章 |
+| SaaS | Microsoft 365、Dynamics 365 | — (Azure外のMicrosoft製品) |
+
+<Callout type="column">
+### サーバーレスはPaaSの一種?
+
+Azure Functionsのようなサーバーレスは、広い意味では **PaaSに含まれます**。プラットフォーム管理を事業者に任せる点は同じで、課金の粒度(実行回数ベース)がより細かいのが特徴です。試験で「サーバーレス」が独立した選択肢として出た場合は、「サーバー管理を意識せず、実行された分だけ課金される」という説明と結びつけてください。
+
+</Callout>
+
+---
+
+<a id="section-4"></a>
+
+## ユースケースで選ぶ — 試験の定番パターン
+
+「どの形態を選ぶべきか」は、**コントロールしたい範囲と、管理の手間のトレードオフ** で決まります。試験で問われる典型シナリオを見てみましょう。
+
+**シナリオ1: 既存の社内システムを、OSの構成を変えずにそのままクラウドへ移行したい**
+
+→ **IaaS**。OSレベルの完全なコントロールが必要なので、仮想マシンにそのまま載せ替えます。
+
+**シナリオ2: 開発チームにOS管理の手間をかけさせず、Webアプリの開発に集中させたい**
+
+→ **PaaS**。App Serviceならコードのデプロイだけで済み、パッチ適用は自動です。
+
+**シナリオ3: 全社員にメールとオフィスソフトを使わせたい。管理コストは最小にしたい**
+
+→ **SaaS**。Microsoft 365を契約すれば、インフラもアプリも管理不要です。
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生">
+迷ったら「**管理したい範囲はどこまでか**」を問題文から探してください。「OSを自由に構成したい」とあればIaaS、「開発に集中」とあればPaaS、「すぐ使いたい・管理したくない」とあればSaaS。問題文には必ずヒントの語句が入っています。
+</SpeechBubble>
+
+---
+
+<a id="section-5"></a>
+
+## まとめ
+
+- <Marker>IaaS・PaaS・SaaSの違いは **「どこまでを事業者に任せるか」の違い**(ピザの例え: 冷凍ピザ・宅配ピザ・レストラン)</Marker>
+- **IaaS** = インフラだけ借りる(Azure VM)。OSから上は自分で管理
+- **PaaS** = プラットフォームまで借りる(App Service)。アプリとデータに集中できる
+- **SaaS** = 完成したソフトを使う(Microsoft 365)。管理するのはデータとアカウントだけ
+- どの形態でも **データとアカウント管理の責任は利用者に残る**
+- 形態選びの基準は **コントロールしたい範囲と管理の手間のトレードオフ**
+
+次の章では、いよいよAzure本体に入ります。**リージョン・可用性ゾーン・サブスクリプション** という、Azureのすべてのサービスの土台になる階層構造を見ていきましょう。
