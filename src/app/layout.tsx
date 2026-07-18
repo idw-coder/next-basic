@@ -75,7 +75,7 @@ export default function RootLayout({
         <HideAdsForEntry />
         <header className="sticky top-0 z-50 border-b border-cream-line bg-cream-deep/88 backdrop-blur-xl">
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-ink/10" />
-          <div className="relative mx-auto flex h-14 max-w-7xl items-center justify-between px-4 md:h-16 md:px-6">
+          <div className="relative mx-auto flex h-14 max-w-7xl items-center gap-1 px-4 md:h-16 md:gap-2 md:px-6">
             <Link
               href="/"
               className="group flex shrink-0 flex-col items-start gap-1 text-ink transition-colors hover:text-brand-blue"
@@ -84,7 +84,10 @@ export default function RootLayout({
                 ウェブエンジニア問題集
               </span>
             </Link>
-            <HeaderSearch className="mx-4 hidden max-w-xs flex-1 md:flex lg:max-w-sm" />
+            <HeaderSearch
+              books={headerBooks}
+              className="min-w-0 flex-1 justify-end md:mx-4 md:justify-center"
+            />
             <Suspense>
               <HeaderNav books={headerBooks} />
             </Suspense>
