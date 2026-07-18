@@ -139,7 +139,7 @@ flowchart TD
 
 ## クリーンアップ関数の実行タイミング
 
-<Figure src="/images/pc-work-woman01_color.png" alt="副作用の後始末を整理するイメージ" maxWidth="120px" />
+<Figure src="/images/pc-work-woman01.png" alt="副作用の後始末を整理するイメージ" maxWidth="120px" />
 
 `useEffect` から返す関数（クリーンアップ）は、2つのタイミングで実行されます。
 
@@ -259,6 +259,10 @@ function FilteredList({ items, query }: { items: Item[]; query: string }) {
 ```
 
 propsやstateから導出できる値は、レンダー中に計算すれば済みます。`useEffect` で別のstateに入れ直すのは、不要な再レンダーを生むだけです（計算コストが高い場合は次章以降の `useMemo` を使います）。
+
+<Callout type="info" title="ESLintルール react-hooks/set-state-in-effect">
+  このアンチパターンは、`eslint-plugin-react-hooks` v6で追加されたルール `react-hooks/set-state-in-effect` でも警告されます。エフェクト内で同期的に `setState` を呼んでいるコードを検出し、「レンダー中に計算するか、イベントハンドラに移せないか」を促すルールです。この警告が出たら、まず上のNG/OK例のように書き換えられないか検討してください。
+</Callout>
 
 ---
 
