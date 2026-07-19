@@ -1,0 +1,234 @@
+---
+title: "実践ハンズオン — CI/CDパイプラインをゼロから組み上げる"
+description: "本書の総仕上げとして、Next.jsプロジェクトにlint・型チェック・テスト・ビルド・デプロイのパイプラインを一気通貫で構築します。わざと失敗を起こして直すデバッグ体験も含む実践章です。"
+order: 11
+---
+
+ここまでの10章で、部品はすべて揃いました。この章では**ゼロからCI/CDパイプラインを組み上げる**過程を、実際の手順どおりに進めます。読むだけでも流れは掴めますが、ぜひ手元のプロジェクトで一緒に進めてください。
+
+## 完成形の全体像
+
+先にゴールを見ておきます。作るのはファイル3つです。
+
+```
+.github/
+├── actions/
+│   └── setup/
+│       └── action.yml        # 環境構築の共通部品（第8章）
+└── workflows/
+    ├── ci.yml                # PR用のCI（第3・6章）
+    └── deploy.yml            # mainマージ後のデプロイ（第9章）
+```
+
+```
+[PRを出す]
+   ci.yml: lint / typecheck / test / build を並列実行 ──→ 全部✅でマージ可能
+[mainにマージ]
+   deploy.yml: 検証 → staging → (承認) → production
+```
+
+<Figure src="/images/gats_suit_man_color.png" alt="ガッツポーズする人" width={180}>
+この章を終えると「自分のプロジェクトにパイプラインを組んだ」という実績が手に入る
+</Figure>
+
+## Step 1: 共通セットアップアクションを作る
+
+まず、どのジョブでも使う環境構築を部品化します。
+
+```yaml
+# .github/actions/setup/action.yml
+name: 'Setup Node.js'
+description: 'Node.jsのセットアップと依存関係のインストール'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+      shell: bash
+```
+
+## Step 2: CIワークフローを作る
+
+第3章のトリガー設計、第5章のconcurrency、第6章のジョブ設計、第10章のpermissionsを全部盛り込みます。
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**.md']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Next.jsビルドキャッシュ
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+      - run: npm run build
+```
+
+ブランチを切ってpushし、PRを出してみましょう。
+
+```bash
+git switch -c add-ci
+git add .github/
+git commit -m "CI/CDパイプラインを追加"
+git push -u origin add-ci
+```
+
+PRの画面に4つのチェックが並び、順に✅になっていけば成功です。
+
+## Step 3: わざと壊して、直す
+
+パイプラインは「失敗したときの動き」を確認して初めて信頼できます。訓練として、意図的にlintエラーを作ってみます。
+
+```ts
+// 適当なファイルに未使用の変数を追加する
+const unusedVariable = 'これはlintに怒られるはず';
+```
+
+pushすると、PRのチェックはこうなるはずです。
+
+```
+❌ lint         ← 失敗
+✅ typecheck
+✅ test
+⊘ build         ← スキップ（needsの依存先が失敗したため）
+```
+
+確認したいポイントは3つです。
+
+1. **lintだけが失敗し、無関係なtypecheck/testは成功している** — ジョブ分割のおかげで、何が悪いのか一目でわかる
+2. **buildはスキップされた** — `needs` が働いて、無駄な実行が防がれた
+3. **ログから原因行にたどり着けるか** — ❌のジョブ → 失敗したステップ → 最初のエラーの順に見る（第6章）
+
+原因の変数を消してpushし直し、全部✅に戻ることを確認してください。この「壊す→気づく→直す」のループを一度体験しておくと、実際の失敗にも落ち着いて対応できます。
+
+<SpeechBubble character="/images/relief_man_color.png" name="学習者">
+落ちても「どのジョブの・どのステップか」まで絞れてれば、あとはローカルで再現して直すだけなんだね。ちょっと怖くなくなったかも。
+</SpeechBubble>
+
+## Step 4: ブランチ保護を設定する
+
+第6章の仕上げです。Settings → Rules → Rulesets で mainブランチに **Require status checks to pass** を設定し、`lint` / `typecheck` / `test` / `build` を必須チェックに登録します。
+
+これで「CIが赤いままマージ」が物理的に不可能になりました。
+
+## Step 5: デプロイワークフローを作る
+
+第9章の形をそのまま使います。デプロイ先はVercel想定ですが、`run` の中身を差し替えれば他のサービスでも骨格は同じです。
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:        # 手動でも実行できるように
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Vercelへデプロイする
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx vercel deploy --prod --token="$VERCEL_TOKEN" --yes
+```
+
+セットアップ手順:
+
+1. Settings → Environments で `production` を作成
+2. `production` のSecretsに `VERCEL_TOKEN` などの認証情報を登録（第4章・第9章）
+3. 必要なら Required reviewers で承認者を設定（第9章）
+
+mainにマージすると、（承認を設定していれば承認後に）本番へデプロイされます。
+
+> ここではCIとデプロイを別ワークフローにしました。「デプロイ前にもCIの検証を挟みたい」場合は、第8章のReusable Workflow化で `ci.yml` を `workflow_call` にして、deploy側から `needs` で呼ぶ構成に発展させられます。腕試しにやってみてください。
+
+## Step 6: 動作確認チェックリスト
+
+パイプライン全体が意図どおりか、最終確認します。
+
+- [ ] PRを出すと lint / typecheck / test が並列で走る
+- [ ] 3つが通ると build が走る
+- [ ] どれかが失敗するとPRに❌が出て、マージボタンが押せない
+- [ ] README だけの変更ではCIが起動しない（paths-ignore）
+- [ ] 同じPRに連続pushすると古い実行がキャンセルされる（concurrency）
+- [ ] mainにマージするとデプロイが起動する
+- [ ] （承認を設定した場合）承認するまでproductionデプロイが止まる
+- [ ] ActionsタブのCaches画面にnpm / Next.jsのキャッシュができている
+
+全部チェックできたら、あなたのプロジェクトには**実務水準のCI/CDパイプライン**が通っています。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+ここまでのYAML、実は本書で学んでいない構文はひとつも出てきていません。実務のワークフローがどれだけ複雑に見えても、部品は「トリガー・ジョブ・ステップ・式・キャッシュ・environment」の組み合わせです。もう読めるはずですよ。
+</SpeechBubble>
+
+## まとめ
+
+- パイプラインは「共通部品 → CI → 破壊テスト → ブランチ保護 → デプロイ」の順に組むと迷わない
+- わざと壊す訓練で「失敗時の見え方」を体験しておくと、本番の失敗が怖くなくなる
+- ブランチ保護まで設定して初めてCIはルールになる
+- デプロイはenvironment + Secrets + （必要なら）承認フローのセットで安全に
+- 複雑なワークフローも、本書で学んだ部品の組み合わせにすぎない
+
+最終章は、日々の運用で「あれどう書くんだっけ」となったときに戻ってくるためのレシピ集＆チートシートです。

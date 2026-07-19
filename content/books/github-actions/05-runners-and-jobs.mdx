@@ -1,0 +1,180 @@
+---
+title: "ランナーとジョブの実行モデル — 並列実行・needs・マトリックス"
+description: "GitHub Actionsのランナー（実行環境）の仕組みと、ジョブの実行モデルを解説します。複数ジョブの並列実行、needsによる依存関係の制御、複数のNode.jsバージョンでまとめてテストするマトリックスビルドまでを扱います。"
+order: 5
+---
+
+第2章から使ってきた `runs-on: ubuntu-latest` の1行には、実は多くのことが詰まっています。この章では「ワークフローはどこで・どう実行されるのか」という実行モデルを理解します。ここが腹落ちすると、複数ジョブの設計やマトリックスビルドが自然に書けるようになります。
+
+## ランナー — ワークフローが動く場所
+
+**ランナー**は、ジョブを実行する仮想マシンです。GitHubが用意してくれるものを**GitHubホステッドランナー**と呼びます。
+
+| runs-on の指定 | OS | 主な用途 |
+|---|---|---|
+| `ubuntu-latest` | Ubuntu Linux | 最も一般的。速くて安い |
+| `windows-latest` | Windows Server | Windows固有の動作確認 |
+| `macos-latest` | macOS | iOS/macOSアプリのビルド |
+
+迷ったら `ubuntu-latest` 一択で構いません。ほとんどのWeb開発のCIはLinuxで完結しますし、プライベートリポジトリの課金レートもUbuntuが最安です（Windowsは2倍、macOSは10倍の消費レート）。
+
+### ランナーの重要な性質: 毎回使い捨て
+
+GitHubホステッドランナーは、**ジョブごとに新品の仮想マシンが割り当てられ、終わったら破棄されます**。
+
+- 前回の実行で作ったファイルは残っていない
+- `npm install` したパッケージも毎回消える
+- だから毎回 `actions/checkout` でコードを取得し直す
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+毎回まっさらなんだ…。それって毎回 `npm install` からやり直しってこと？時間かかりそう。
+</SpeechBubble>
+
+その通りで、これはCIの実行時間に効いてきます。対策が**キャッシュ**で、次章のテーマです。まずは「使い捨てだからこそ、環境が汚れず再現性が保たれる」というメリットの面を押さえてください。「私のPCでは動く」問題は、毎回まっさらな環境でテストすることで根絶されます。
+
+なお、自前のマシンをランナーとして登録する**セルフホステッドランナー**という選択肢もあります。特殊なハードウェアが必要な場合や実行時間を節約したい場合の上級者向けオプションなので、本書ではGitHubホステッドを前提に進めます。
+
+> ランナーの仕様詳細は[GitHubホステッドランナーの概要（公式ドキュメント）](https://docs.github.com/ja/actions/concepts/runners/github-hosted-runners)を参照してください。
+
+## 複数ジョブは並列で動く
+
+1つのワークフローには複数のジョブを定義できます。そして重要なルール——**ジョブはそれぞれ別のランナーで、デフォルトでは並列に実行されます**。
+
+```yaml
+name: CI
+
+on: push
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "lintを実行"
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "テストを実行"
+```
+
+`lint` と `test` は同時にスタートします。直列に並べるより早く結果がわかるのが並列実行の利点です。
+
+ここで前章までの知識とつながる注意点が1つ。ジョブは別マシンなので、**ジョブ間でファイルや環境変数は共有されません**。`lint` ジョブで作ったファイルは `test` ジョブには存在しないのです（受け渡したい場合の手段は次章のアーティファクトで扱います）。
+
+## needs — ジョブに順序をつける
+
+「テストが通ってからデプロイしたい」など、順序が必要なときは `needs` を使います。
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "テスト"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test              # testが成功してから始まる
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "ビルド"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, build]     # 両方の成功を待つ
+    steps:
+      - run: echo "デプロイ"
+```
+
+実行の流れはこうなります。
+
+```
+test ──→ build ──→ deploy
+  └─────────────────┘
+（needsで指定した全ジョブが成功したときだけ次へ進む）
+```
+
+`needs` で指定したジョブが失敗すると、後続のジョブは**スキップ**されます。「テストが落ちたのにデプロイされる」事故は構造的に起きません。
+
+<Figure src="/images/planning_suit_man_color.png" alt="工程を計画する人" width={180}>
+並列にできるものは並列に、順序が必要なところだけneedsで直列に——がジョブ設計の基本
+</Figure>
+
+## マトリックスビルド — 組み合わせを一括テスト
+
+「Node.js 20と22の両方でテストしたい」とき、ジョブをコピペで2つ書くのは芸がありません。**マトリックス戦略**を使えば、1つのジョブ定義から複数の実行を自動生成できます。
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: node --version
+```
+
+`matrix.node-version` に2つの値を並べたので、このジョブは**2つの並列実行**に展開されます。それぞれの実行では `${{ matrix.node-version }}` が `20`、`22` に置き換わります。
+
+ここで新顔の `with:` が出てきました。これは**アクションに引数を渡す**書き方です。`actions/setup-node` は「指定バージョンのNode.jsをランナーにセットアップする」公式アクションで、`node-version` という引数を受け取ります。
+
+軸を複数にすると、組み合わせの総当たりになります。
+
+```yaml
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [20, 22]
+    runs-on: ${{ matrix.os }}
+```
+
+この場合は 2 OS × 2 バージョン = **4つのジョブ**が並列で走ります。ライブラリ開発では定番のパターンです。
+
+### fail-fast — 1つ失敗したら全部止める？
+
+マトリックスにはデフォルトで「どれか1つが失敗したら、残りの実行を打ち切る」**fail-fast**という挙動があります。コスト節約には合理的ですが、「全部の組み合わせの成否を知りたい」ときは無効にします。
+
+```yaml
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+```
+
+## concurrency — 古い実行をキャンセルする
+
+PRに連続でpushすると、そのたびにワークフローが起動して、古いコミットのCIが無駄に回り続けます。`concurrency` を設定すると、**同じグループの実行中ワークフローをキャンセルして最新だけを走らせる**ことができます。
+
+```yaml
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+- `group` — 同時実行を制限する単位。「ワークフロー名 + ブランチ」の組み合わせが定番
+- `cancel-in-progress: true` — 同じグループの実行中ジョブをキャンセルして新しい実行を優先
+
+CIの待ち時間とコストがはっきり減るので、実務のワークフローにはほぼ必ず入れる設定だと思ってください。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+ここまでで「どこで動くか（ランナー）」「どう並ぶか（並列とneeds）」「どう増やすか（マトリックス）」「どう間引くか（concurrency）」が揃いました。実行モデルの道具はこれで一通りです。次はいよいよ実際のNode.jsプロジェクトにCIを組みますよ。
+</SpeechBubble>
+
+## まとめ
+
+- ランナーはジョブごとに使い捨ての仮想マシン。環境の再現性と引き換えに、毎回セットアップが必要
+- 迷ったら `ubuntu-latest`。課金レートも最安
+- 複数ジョブはデフォルト並列・別マシン。ファイルも環境変数も共有されない
+- 順序が必要なところだけ `needs` で依存関係を張る。失敗したら後続はスキップされる
+- マトリックス戦略で「バージョン × OS」の組み合わせテストを1つの定義から展開できる
+- `concurrency` + `cancel-in-progress` で古い実行をキャンセルし、時間とコストを節約する
+
+次章では、ここまでの道具を総動員して、Node.js/Next.jsプロジェクトに実戦的なCI(lint・型チェック・テスト)を構築します。

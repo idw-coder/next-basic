@@ -1,0 +1,194 @@
+---
+title: "はじめてのワークフロー — YAMLを置いてActionsを動かす"
+description: "GitHub Actionsのワークフローを実際に作成して動かします。.github/workflows/ の配置ルール、YAMLの最小構成、実行結果とログの読み方まで、手を動かしながら一歩ずつ進めます。"
+order: 2
+---
+
+前章でCI/CDの考え方とGitHub Actionsの登場人物を整理しました。この章では、実際にワークフローを作って動かします。まだテストの自動化はしません。まずは「YAMLを置くと、GitHubの上で何かが実行される」という体験を最短距離で手に入れることが目標です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+YAMLってあの、インデントで書く設定ファイルだよね…？書いたことないんだけど大丈夫かな。
+</SpeechBubble>
+
+大丈夫です。GitHub Actionsで使うYAMLの文法はごく一部なので、この章で出てくるパターンを押さえれば読み書きできるようになります。
+
+## 準備: 練習用リポジトリを作る
+
+実験用に、新しいリポジトリを1つ用意しましょう。既存のプロジェクトを使っても構いませんが、最初は壊しても困らないリポジトリのほうが気楽です。
+
+```bash
+# 練習用リポジトリを作ってクローン
+# （GitHub上で actions-practice という空リポジトリを作った前提）
+git clone git@github.com:あなたのユーザー名/actions-practice.git
+cd actions-practice
+```
+
+## ワークフローファイルの置き場所
+
+ワークフローは、リポジトリ内の**決まった場所**に置いたYAMLファイルとして定義します。
+
+```
+リポジトリのルート
+└── .github/
+    └── workflows/
+        ├── hello.yml      ← これから作る
+        ├── ci.yml         ← あとの章で作る
+        └── deploy.yml     ← ファイル1つ = ワークフロー1つ
+```
+
+- ディレクトリ名は `.github/workflows/`（先頭のドット含めて固定）
+- 拡張子は `.yml` または `.yaml`
+- この場所に置かれたYAMLは、pushされた時点で自動的にGitHubに認識される
+
+「特別な登録作業は不要で、ファイルを置くだけ」というのがポイントです。
+
+## 最小のワークフローを書く
+
+`.github/workflows/hello.yml` を作成して、次の内容を書きます。
+
+```yaml
+name: Hello Actions
+
+on: push
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: あいさつする
+        run: echo "Hello, GitHub Actions!"
+```
+
+たった9行ですが、前章で学んだ登場人物が全員そろっています。1行ずつ対応を確認しましょう。
+
+| 行 | 意味 |
+|---|---|
+| `name: Hello Actions` | ワークフローの表示名。GitHub上の画面に出る |
+| `on: push` | **イベント**。「pushされたら起動する」という宣言 |
+| `jobs:` | ここから**ジョブ**の定義が始まる |
+| `hello:` | ジョブのID（名前は自由につけてよい） |
+| `runs-on: ubuntu-latest` | **ランナー**の指定。Ubuntuの仮想マシンで実行する |
+| `steps:` | ここから**ステップ**の列挙が始まる |
+| `- name: あいさつする` | ステップの表示名 |
+| `run: echo "..."` | 実行するシェルコマンド |
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`run` に書くのって、ターミナルで打つコマンドそのままでいいの？
+</SpeechBubble>
+
+そのままでOKです。`runs-on: ubuntu-latest` を指定したので、ランナーはUbuntuです。つまり `run` には、Ubuntuのターミナルで打てるコマンド（bash）がそのまま書けます。`ls` も `curl` も `npm` も使えます。
+
+## pushして動かす
+
+ファイルをコミットしてpushします。
+
+```bash
+git add .github/workflows/hello.yml
+git commit -m "はじめてのワークフローを追加"
+git push
+```
+
+pushした瞬間、GitHubがこのYAMLを検出してワークフローを起動します。
+
+## 実行結果を見る — Actionsタブ
+
+ブラウザでリポジトリを開き、上部の **Actions** タブをクリックしてください。実行履歴が表示されます。
+
+```
+Actions タブ
+└── All workflows
+    └── Hello Actions            ← ワークフロー名
+        └── はじめてのワークフローを追加   ← コミットメッセージごとに1実行
+            └── hello            ← ジョブ
+                ├── Set up job       ← 自動で入る準備ステップ
+                ├── あいさつする      ← 自分で書いたステップ
+                └── Complete job     ← 自動で入る後片付け
+```
+
+実行をクリックして掘っていくと、各ステップのログが見られます。「あいさつする」を展開すると、こう表示されているはずです。
+
+```
+Hello, GitHub Actions!
+```
+
+<Figure src="/images/highfive_hi_color.png" alt="ハイタッチするふたり" width={180}>
+自分のYAMLがGitHubの上で動いた。これがCI/CDの第一歩
+</Figure>
+
+緑のチェックマーク ✅ が付いていれば成功です。この「push → 自動実行 → 結果を確認」のループが、これから最後の章までずっと使う基本動作になります。
+
+## わざと失敗させてみる
+
+成功だけでなく、**失敗したときに何が起きるか**も体験しておきましょう。ステップを1つ追加します。
+
+```yaml
+      - name: わざと失敗する
+        run: exit 1
+```
+
+pushすると、今度は実行結果に赤い ❌ が付きます。ここで大事な挙動が2つあります。
+
+- **ステップは上から順に実行され、失敗した時点でジョブが止まる** — `exit 1`（異常終了）の後にステップがあっても実行されない
+- **失敗はGitHubが通知してくれる** — デフォルト設定なら、自分がpushしたワークフローの失敗はメールで届く
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+「テストが落ちたらジョブが失敗し、赤くなって通知が来る」——CIの仕組みは、実はこれだけなんです。あとの章でやるテスト自動化も、`run: npm test` が `exit 1` で終わるかどうかを見ているにすぎません。
+</SpeechBubble>
+
+確認できたら、失敗するステップは削除してpushし直しておきましょう。
+
+## アクションを使ってみる — actions/checkout
+
+ここまでのステップは `run` でコマンドを実行するだけでした。もう1つの書き方が、**アクション（再利用可能な部品）を呼び出す** `uses` です。
+
+実は、先ほどのワークフローには重要な事実が隠れています。ランナーの仮想マシンは毎回まっさらな状態で起動するため、**あなたのリポジトリのコードはランナー上に存在しません**。試しに `ls` してみると、何も表示されないはずです。
+
+リポジトリのコードを使う作業（テストやビルド）には、まずコードをランナーに取得する必要があります。それをやってくれるのが公式アクション `actions/checkout` です。
+
+```yaml
+name: Hello Actions
+
+on: push
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得する
+        uses: actions/checkout@v4
+
+      - name: ファイル一覧を表示する
+        run: ls -la
+```
+
+| 書き方 | 意味 |
+|---|---|
+| `uses: actions/checkout@v4` | `actions` オーガニゼーションの `checkout` アクションの `v4` を使う |
+| `run: ls -la` | checkoutの後なので、リポジトリのファイルが表示される |
+
+pushしてログを見ると、`ls -la` の出力に `.github/` やリポジトリのファイルが並んでいるはずです。
+
+> `@v4` のようなバージョン指定は省略できません。この指定がセキュリティ上とても重要な意味を持つのですが、詳しくは[第10章 セキュリティ](/books/github-actions/10-security)で扱います。
+
+## YAMLでつまずきやすいポイント
+
+最後に、この先ずっと付き合うYAMLの注意点をまとめておきます。
+
+- **インデントは半角スペース2つ**が慣例。タブ文字はエラーになる
+- `key: value` の**コロンの後には必ずスペース**が必要（`name:Hello` はエラー)
+- `-` で始まる行は**リストの要素**（stepsは「ステップのリスト」なので各ステップに `-` が付く)
+- 文字列は基本クォート不要だが、`:` や `{` を含むときは `"..."` で囲むと安全
+
+ワークフローが起動しない・構文エラーになるときは、まずインデントとコロン後のスペースを疑ってください。GitHubのActionsタブにもエラー位置が表示されます。
+
+> 構文の全体像は[ワークフロー構文リファレンス（公式ドキュメント）](https://docs.github.com/ja/actions/reference/workflows-and-actions/workflow-syntax)にあります。今は「困ったらここを見る」とだけ覚えておけば十分です。
+
+## まとめ
+
+- ワークフローは `.github/workflows/*.yml` に置くだけで自動的に認識される
+- 最小構成は `name` / `on` / `jobs` → `runs-on` / `steps` の階層
+- ステップには2種類ある: `run`（コマンド実行）と `uses`（アクション呼び出し）
+- ランナーは毎回まっさらなので、コードを使う前に `actions/checkout` が必要
+- 失敗（exit code ≠ 0）でジョブは止まり、赤い❌と通知で知らせてくれる
+
+次章では、`on: push` の部分を深掘りします。「mainへのpushだけ」「Pull Requestのとき」「毎朝9時」など、ワークフローを起動する条件を自在にコントロールできるようになります。

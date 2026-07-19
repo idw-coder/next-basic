@@ -40,12 +40,14 @@ export const BOOK_ORDER = [
   'tailwind-css',
   'unit-testing',
   'git-basic',
+  'github-actions',
   'cs-basics',
   'next-js',
 ] as const;
 
 /** NEW バッジを付ける書籍 */
 export const NEW_BOOK_SLUGS = new Set<string>([
+  'github-actions',
   'azure-az-900',
   'node-js',
   'sql-basics',

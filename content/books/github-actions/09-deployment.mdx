@@ -1,0 +1,212 @@
+---
+title: "デプロイの自動化 — environmentsと承認フローで安全なCDを作る"
+description: "GitHub Actionsによる継続的デリバリー/デプロイメントの実践です。environmentsによるstaging/productionの分離、デプロイ保護ルールと承認フロー、Vercelなどのホスティングサービスとの連携パターンを解説します。"
+order: 9
+---
+
+CIで「壊れたコードをmainに入れない」仕組みができました。この章はその先、**マージされたコードを自動でリリースまで運ぶ**——第1章で予告したCDの実践です。
+
+デプロイはCIと違って「失敗してもやり直せばいい」では済まないことがあります。本番環境が壊れればユーザーに影響が出ます。だからこの章のテーマは自動化そのものよりも、**安全に自動化するための仕組み**です。
+
+## デプロイワークフローの基本形
+
+まず素朴なデプロイワークフローから始めます。「mainにマージされたらデプロイする」の骨格はこれだけです。
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]      # mainに入ったら = マージされたら
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run build
+      - name: デプロイする
+        run: echo "ここにデプロイコマンドが入る"
+```
+
+「デプロイコマンド」の中身はデプロイ先によって変わります(章の後半で扱います)。先に、どのデプロイ先でも共通して使う安全装置——**environments**を整えましょう。
+
+## environments — 環境を分離して管理する
+
+実務では、デプロイ先は1つではありません。
+
+| 環境 | 役割 |
+|---|---|
+| preview / staging | 本番相当の環境で動作確認する場所 |
+| production | ユーザーが使う本番 |
+
+GitHub Actionsには、この「環境」をそのまま表現する**environments**という機能があります。リポジトリの Settings → Environments から `staging` と `production` を作成し、ジョブで宣言して使います。
+
+```yaml
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging          # ← この宣言がポイント
+    steps:
+      - run: echo "stagingへデプロイ"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment: production
+    steps:
+      - run: echo "productionへデプロイ"
+```
+
+`environment:` を宣言すると、3つのメリットが手に入ります。
+
+1. **環境ごとのSecrets/Variables** — 同じ `DEPLOY_TOKEN` という名前でも、staging用とproduction用で別の値を登録できる。「本番のキーを間違えてstagingで使う」事故が構造的に防げる
+2. **デプロイ履歴** — リポジトリのトップに「どの環境に・いつ・どのコミットが」デプロイされたかが記録される
+3. **保護ルール** — 次で説明します
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+環境ごとにSecretsを分けられるんだ。今まで `STAGING_TOKEN` と `PROD_TOKEN` みたいに名前で区別するのかと思ってた。
+</SpeechBubble>
+
+名前で区別する方式も動きはしますが、YAMLの書き間違い1つで本番トークンがstagingに流れます。environmentsなら、ジョブが `environment: staging` を宣言している限り**stagingのSecretsしか見えない**。仕組みで守るのが大事なところです。
+
+## デプロイ保護ルール — 人間の承認を挟む
+
+Settings → Environments → production の設定画面で **Required reviewers** を有効にすると、そのenvironmentを使うジョブは**指定した人が承認するまで実行されません**。
+
+```
+mainにマージ
+   ↓
+deploy-staging が自動実行 ✅
+   ↓
+deploy-production は「承認待ち」で一時停止 ⏸
+   ↓
+承認者がActionsタブで Review deployments → Approve
+   ↓
+deploy-production が実行 🚀
+```
+
+これは第1章で学んだ2つのCDの使い分けそのものです。
+
+- **継続的デリバリー** — productionに承認を必須にする（人間が最後のボタンを押す）
+- **継続的デプロイメント** — 保護ルールなしで全自動
+
+チームがデプロイに慣れるまでは承認付き、テストへの信頼が育ったら自動化を進める——と段階的に移行できます。ほかにも **Wait timer**（指定分数待ってから実行）や、デプロイ元ブランチを制限する **Deployment branches** も設定できます。
+
+<Figure src="/images/phone_check.png" alt="スマホで承認確認する人" width={180}>
+承認リクエストは通知で届く。レビューして Approve を押すだけがリリース作業になる
+</Figure>
+
+## 実践: ホスティングサービスへのデプロイ
+
+では「デプロイコマンド」の中身です。Next.jsアプリの代表的なデプロイ先で考えます。
+
+### パターン①: Vercel / Netlify などのGit連携に任せる
+
+VercelやNetlifyには、GitHubリポジトリを接続すると**pushだけで自動デプロイされる**機能があります。実はこの場合、デプロイのためのワークフローは不要です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+えっ、じゃあこの章の内容いらないんじゃ…？
+</SpeechBubble>
+
+半分正解です。個人プロジェクトならGit連携で十分ですし、それが一番シンプルです。それでもActionsからデプロイする構成が選ばれるのは、こんな要件が出てきたときです。
+
+- デプロイ前に**自分のテストスイートを必ず通したい**（Git連携はテストを待ってくれない）
+- **承認フローを挟みたい**
+- モノレポで「変更があったアプリだけ」デプロイしたい
+- デプロイ後にE2Eテストや通知など**後続処理を続けたい**
+
+つまり「デプロイを**パイプラインの一部**として制御したくなったらActionsの出番」です。
+
+### パターン②: CLIでActionsからデプロイする
+
+Vercelを例にすると、CLI経由のデプロイはこうなります。
+
+```yaml
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Vercelへデプロイする
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx vercel deploy --prod --token="$VERCEL_TOKEN" --yes
+```
+
+トークンは第4章で学んだSecretsに、しかも**environment単位**で登録します。自前サーバーへのrsyncやAWS S3へのアップロードなど、デプロイ先が変わっても「Secretsから認証情報を受け取り、CLIを叩く」という骨格は同じです。
+
+> AWSやGCPへのデプロイでは、そもそも長寿命のトークンをSecretsに置かない**OIDC**という選択肢があります。次章のセキュリティで扱います。
+
+## タグとリリースをきっかけにする
+
+「mainへのマージで毎回デプロイ」以外に、**バージョンタグを打ったときだけデプロイ**する運用もよく使われます。
+
+```yaml
+on:
+  push:
+    tags:
+      - 'v*'          # v1.0.0 などのタグがpushされたら
+```
+
+リリースのタイミングを人間がタグで宣言するスタイルです。タグの打ち方やバージョニングの考え方は[『Gitをちゃんと使う』](/books/git-basic/01-what-is-git)の範囲を少し超えますが、`git tag v1.0.0 && git push --tags` で動くことだけ覚えておけば試せます。
+
+## デプロイワークフロー全体像
+
+この章の部品を組み上げた、完成形のイメージです。
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy                 # デプロイの同時実行は常に1つ
+  cancel-in-progress: false     # 実行中のデプロイは中断しない
+
+jobs:
+  verify:
+    uses: ./.github/workflows/reusable-ci.yml   # 第8章のCI一式で検証
+    secrets: inherit
+
+  deploy-staging:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: echo "stagingへデプロイ"
+
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production     # Required reviewersで承認必須
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: echo "productionへデプロイ"
+```
+
+デプロイの `concurrency` はCIと逆で `cancel-in-progress: false` にします。**実行中のデプロイを途中でキャンセルすると中途半端な状態が残る**ためです。「同時に走らせない・でも中断もしない」が定石です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+検証 → staging → 承認 → production。この形が組めれば、チーム開発のデリバリーとしては十分に実戦レベルです。あとはデプロイ先のCLIに合わせて中身を差し替えるだけですよ。
+</SpeechBubble>
+
+## まとめ
+
+- CDの基本形は `on: push: branches: [main]`。タグトリガー（`tags: ['v*']`）でリリース駆動にもできる
+- **environments**で環境を分離すると、環境別Secrets・デプロイ履歴・保護ルールが手に入る
+- **Required reviewers**で承認フローを挟めば継続的デリバリー、外せば継続的デプロイメント
+- Git連携の自動デプロイで足りるうちはそれでよい。テスト・承認・後続処理をパイプラインに組み込みたくなったらActionsへ
+- デプロイの `concurrency` は `cancel-in-progress: false`。実行中のデプロイは中断しない
+
+次章では、ここまで登場したSecrets・トークン・サードパーティアクションに潜むリスクと対策——**セキュリティ**を正面から扱います。

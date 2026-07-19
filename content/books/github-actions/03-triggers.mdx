@@ -1,0 +1,194 @@
+---
+title: "イベントトリガー入門 — on: push から手動実行・定期実行まで"
+description: "ワークフローを起動する「イベント」を使いこなします。push・pull_requestのフィルタリング、workflow_dispatchによる手動実行、scheduleによる定期実行まで、on: の書き方を体系的に解説します。"
+order: 3
+---
+
+前章で作ったワークフローは `on: push` —「どこかのブランチにpushされたら毎回起動」という素朴な設定でした。実務ではもっと細かい制御が必要になります。
+
+- Pull Requestが出たときにテストを回したい
+- mainブランチへのpushのときだけデプロイしたい
+- ドキュメントだけの変更ではCIを回したくない（もったいない）
+- ボタンを押したときだけ実行したい
+- 毎週月曜の朝に定期実行したい
+
+これらはすべて `on:` の書き方で実現できます。この章では、実務で使う頻度の高い順にイベントトリガーを整理します。
+
+## トリガーの全体像
+
+GitHub Actionsのトリガーは大きく3系統に分けられます。
+
+| 系統 | 代表 | 起動のきっかけ |
+|---|---|---|
+| リポジトリのイベント | `push` / `pull_request` | Git操作やGitHub上の操作 |
+| 手動 | `workflow_dispatch` | 人間がボタンを押す |
+| スケジュール | `schedule` | 指定した時刻になる |
+
+> イベントは他にも `issues`（Issue操作）、`release`（リリース発行）など多数あります。全一覧は[ワークフローをトリガーするイベント（公式ドキュメント）](https://docs.github.com/ja/actions/reference/workflows-and-actions/events-that-trigger-workflows)を参照してください。
+
+## push — ブランチとパスで絞り込む
+
+`on: push` をそのまま使うと、**すべてのブランチへのpush**で起動します。実務ではブランチを絞るのが基本です。
+
+```yaml
+on:
+  push:
+    branches:
+      - main        # mainブランチへのpushのみ
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+あれ、`on: push` って1行で書いてたのに、絞り込むときは `on:` の下に階層を作るんだね。
+</SpeechBubble>
+
+いいところに気づきました。YAMLでは「値を持つだけ」なら1行、「さらに設定を持つ」なら階層になります。`on: push` は省略形で、`on:` → `push:` → `branches:` と掘り下げていくのが完全な形です。
+
+ブランチ名にはワイルドカードも使えます。
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'   # release/v1 や release/v2.1 などにマッチ
+```
+
+### paths — 変更されたファイルで絞り込む
+
+「READMEを直しただけでテストが全部走る」のは無駄です。`paths` / `paths-ignore` で、**変更されたファイル**による絞り込みができます。
+
+```yaml
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'        # Markdownだけの変更では起動しない
+      - 'docs/**'
+```
+
+逆に `paths` を使えば「`src/` 配下が変わったときだけ」のような指定もできます。CIの実行時間はプライベートリポジトリでは課金対象なので、この絞り込みはコスト削減にも直結します。
+
+## pull_request — CIの主役
+
+チーム開発でもっとも重要なトリガーが `pull_request` です。
+
+```yaml
+on:
+  pull_request:
+    branches: [main]   # mainに向けたPRが対象
+```
+
+これで「mainに向けてPull Requestが作成・更新されるたびにワークフローが起動」します。PRの画面にチェック結果（✅/❌）が表示されるので、**レビュワーはテストが通っているPRだけをレビューすればよくなります**。
+
+<Figure src="/images/meeting_color.png" alt="チームでレビューするイメージ" width={180}>
+PRにCIの結果が表示されることで、「テスト通ってますか？」の確認会話が消える
+</Figure>
+
+### pushとpull_requestの使い分け
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+PRを出すってことは、そのブランチにpushもしてるよね？両方書いたら二重に動いちゃわない？
+</SpeechBubble>
+
+鋭い指摘です。実際、`on: [push, pull_request]` と雑に書くと、PRを出しているブランチへのpushで**同じコミットに対して2回**ワークフローが走ります。実務での定番はこの形です。
+
+```yaml
+on:
+  push:
+    branches: [main]      # mainに直接入るコミット（マージ後）を検証
+  pull_request:
+    branches: [main]      # マージ前のPRを検証
+```
+
+「PR中はpull_requestで、マージされたらpushで」と役割分担させることで、二重実行を避けつつ、マージ前後の両方を検証できます。
+
+> ブランチを使った開発フロー自体に不安がある場合は、[『Gitをちゃんと使う』第4章 ブランチを理解する](/books/git-basic/04-branches)と[第10章 GitHubでのチーム開発](/books/git-basic/10-team-development)が土台になります。
+
+## workflow_dispatch — 手動実行ボタン
+
+`workflow_dispatch` を追加すると、ActionsタブにRun workflowボタンが現れて、**好きなタイミングで手動実行**できるようになります。
+
+```yaml
+on:
+  workflow_dispatch:
+```
+
+デバッグ中に「pushせずにもう一度動かしたい」場面や、「デプロイは人間が判断してボタンを押す」という継続的デリバリー運用（第9章）で活躍します。
+
+さらに、実行時に入力値を渡すこともできます。
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'デプロイ先'
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+```
+
+ボタンを押すときに選択肢が表示され、ワークフロー内から `${{ inputs.environment }}` で参照できます（`${{ }}` の文法は次章で詳しく扱います）。
+
+## schedule — 定期実行
+
+cron形式で時刻を指定すると、pushがなくても定期的にワークフローを実行できます。
+
+```yaml
+on:
+  schedule:
+    - cron: '0 0 * * 1'   # 毎週月曜 0:00 (UTC)
+```
+
+cronの5フィールドは左から「分 時 日 月 曜日」です。
+
+| 書き方 | 意味 |
+|---|---|
+| `0 0 * * *` | 毎日 0:00 |
+| `0 9 * * 1-5` | 平日 9:00 |
+| `30 1 1 * *` | 毎月1日 1:30 |
+
+注意点が2つあります。
+
+- **時刻はUTC**。日本時間（JST）はUTC+9なので、「日本の朝9時」は `0 0 * * *` になる
+- 実行タイミングは**保証されない**。混雑時は数分〜数十分遅れることがあり、分単位の正確さが必要な用途には向かない
+
+依存パッケージの脆弱性チェックやリンク切れ検査など、「毎日どこかで1回動けばいい」タスクに使うのが定石です。
+
+## 複数トリガーの組み合わせ
+
+実務のCIワークフローでは、ここまでの内容を組み合わせてこう書くことが多いです。
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**.md']
+  workflow_dispatch:      # 手動でも動かせるように
+
+jobs:
+  # ...
+```
+
+「mainへのpushとmain向けPRで自動起動、ドキュメントのみの変更は除外、必要なら手動でも」——この形をベースに、プロジェクトに合わせて調整していくイメージです。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+トリガー設計に迷ったら「このワークフローは何を守るためのものか」から逆算しましょう。テストなら「mainに壊れたコードを入れない」が目的なので、pull_requestとmainへのpushに絞る。それだけで大半の設計は決まりますよ。
+</SpeechBubble>
+
+## まとめ
+
+- `on:` はワークフローの起動条件。省略形（`on: push`）と階層形（branches/pathsで絞り込み）がある
+- CIの基本形は **`pull_request` でマージ前を、`push`（mainのみ）でマージ後を検証**する役割分担
+- `paths-ignore` でドキュメントのみの変更を除外すると、時間もコストも節約できる
+- `workflow_dispatch` は手動実行ボタン。inputsで実行時のパラメータも渡せる
+- `schedule` はcron形式の定期実行。**UTC指定**であることに注意
+
+次章では、ワークフローの中で使える「データ」を扱います。`${{ }}` の式、環境変数、そしてAPIキーのような秘密情報を安全に扱うsecretsの仕組みです。

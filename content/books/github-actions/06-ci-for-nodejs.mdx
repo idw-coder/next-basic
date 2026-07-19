@@ -1,0 +1,203 @@
+---
+title: "Node.jsプロジェクトのCI構築 — lint・型チェック・テストの自動化"
+description: "Next.js/TypeScriptプロジェクトを題材に、実戦的なCIワークフローを構築します。actions/setup-nodeによる環境構築、npm ciの使い方、lint・型チェック・テスト・ビルドのジョブ設計、ブランチ保護ルールとの連携までを解説します。"
+order: 6
+---
+
+準備は整いました。この章では、Node.js（Next.js/TypeScript）プロジェクトに**実務レベルのCI**を構築します。ゴールはこれです。
+
+> Pull Requestを出すと、lint・型チェック・テスト・ビルドが自動で走り、全部通らないとマージできない。
+
+<Figure src="/images/toppa_suit_woman_color.png" alt="ゴールに向かって突破する人" width={180}>
+この章が終わると「壊れたコードはmainに入れない」仕組みが手に入る
+</Figure>
+
+## 題材プロジェクトの前提
+
+package.json に次のようなscriptsがあるプロジェクトを想定します（Next.js + TypeScript + ESLintの標準的な構成です）。
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}
+```
+
+**CIで実行するのは、普段ローカルで打っているコマンドそのもの**です。CI専用の特別なコマンドは登場しません。「ローカルで `npm run lint` が通る状態」を、機械に毎回確認させるだけです。
+
+## ステップ1: Node.js環境を整える
+
+ランナーは毎回まっさらなので、まずNode.jsのセットアップからです。公式アクション `actions/setup-node` を使います。
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm       # npmキャッシュを有効化（次章で詳説）
+
+      - name: 依存関係をインストールする
+        run: npm ci
+```
+
+### npm install ではなく npm ci を使う
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`npm ci`…？ローカルでは `npm install` しか使ったことないな。何が違うの？
+</SpeechBubble>
+
+`npm ci` はCI環境向けのインストールコマンドです（ciはclean installの意）。違いを整理します。
+
+| | `npm install` | `npm ci` |
+|---|---|---|
+| インストール元 | package.json（lockを更新することがある） | **package-lock.json に完全準拠** |
+| lockとの不整合 | lockを書き換えて解決 | **エラーで停止** |
+| node_modules | 既存を再利用 | 毎回削除してクリーンに入れ直す |
+| 速度 | 状況次第 | CI用途では一般に速い |
+
+CIの目的は「再現性のある検証」です。lockファイルと1バイトでも違う構成でテストが通っても意味がないので、**CIでは常に `npm ci`** と覚えてください。
+
+## ステップ2: チェックを並べる
+
+環境ができたら、あとはscriptsを順に実行するだけです。
+
+```yaml
+      - name: lint
+        run: npm run lint
+
+      - name: 型チェック
+        run: npm run typecheck
+
+      - name: テスト
+        run: npm run test
+
+      - name: ビルド
+        run: npm run build
+```
+
+これで最小構成のCIは完成です。PRを出せば4つのチェックが走り、どれかが失敗すればPRに❌が表示されます。
+
+## ジョブを分けるか、1ジョブにまとめるか
+
+第5章で「ジョブは並列に動く」と学びました。では、lint・型チェック・テスト・ビルドは別ジョブに分けるべきでしょうか？
+
+| 設計 | 長所 | 短所 |
+|---|---|---|
+| 1ジョブに直列 | セットアップ（checkout + npm ci）が1回で済む | 遅い。最初の失敗で残りが見えない |
+| ジョブごとに分割 | 並列で速い。どれが落ちたか一目瞭然 | セットアップが各ジョブで重複する |
+
+プロジェクトが小さいうちは1ジョブで十分です。テストが遅くなってきたら分割を検討する、という順番で考えましょう。分割する場合はこうなります。
+
+```yaml
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test]   # 3つが通ってからビルド
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build
+```
+
+lint・型チェック・テストが並列で走り、全部通ったらビルド——という流れです。同じセットアップ4回の重複が気になりますよね。その解消は[第8章 ワークフローの再利用](/books/github-actions/08-reusable-workflows)で扱います。
+
+## 失敗の調べ方 — ログの読み方のコツ
+
+CIが落ちたときの調査は、次の順で見るのが効率的です。
+
+1. **どのジョブ・どのステップで落ちたか** — Actionsタブで❌の付いたステップを特定
+2. **ログの最後ではなく、最初のエラーを探す** — 後続のエラーは巻き添えのことが多い
+3. **ローカルで同じコマンドを実行して再現する** — `npm run test` がCIで落ちたなら、ローカルでも落ちるはず
+
+<SpeechBubble character="/images/search_woman_color.png" name="学習者">
+ローカルだと通るのにCIだけ落ちる…ってこともあるんだよね？
+</SpeechBubble>
+
+あります。典型的な原因はだいたい決まっています。
+
+- **Node.jsのバージョン違い** — ローカルとCIの `node-version` を揃える
+- **lockファイルの更新漏れ** — package.jsonだけ変えてlockをコミットし忘れると `npm ci` が落ちる
+- **タイムゾーン・ロケール依存のテスト** — ランナーはUTC。日時を扱うテストは要注意
+- **大文字小文字の違い** — macOSは無頓着だがLinuxは厳格。`import './Button'` とファイル名 `button.tsx` の不一致はCIだけで落ちる
+
+「CIだけ落ちる」はむしろ環境差異を見つけてくれたということです。CIが正しく仕事をしている証拠だと捉えましょう。
+
+## ブランチ保護 — 「通らないとマージできない」にする
+
+CIを作っただけでは、❌が付いていてもマージ自体はできてしまいます。仕上げに**ブランチ保護ルール**（ルールセット）を設定して、チェックの通過をマージの必須条件にします。
+
+リポジトリの Settings → Rules → Rulesets → New ruleset から:
+
+1. 対象ブランチに `main` を指定する
+2. Require status checks to pass を有効にする
+3. 必須にするチェック（`lint` / `typecheck` / `test` / `build`）を選ぶ
+
+これで、CIが通っていないPRのマージボタンは押せなくなります。第1章で描いた「壊れたコードはmainに入れない」が、ルールとして強制される状態になりました。
+
+> Pull Requestベースの開発フロー自体の復習は[『Gitをちゃんと使う』第10章 GitHubでのチーム開発](/books/git-basic/10-team-development)へ。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+「CIはあるけど赤いまま放置」というチームは意外と多いんです。ブランチ保護までセットで初めて、CIは「飾り」から「ルール」になります。必ず最後まで設定しましょう。
+</SpeechBubble>
+
+## まとめ
+
+- CIで実行するのはローカルと同じ `npm run` コマンド。特別なことはしない
+- 環境構築は `actions/checkout` → `actions/setup-node` → `npm ci` が黄金パターン
+- CIでは `npm install` ではなく **`npm ci`**。lockファイルへの完全準拠が再現性を守る
+- ジョブ分割は「遅くなってから」でよい。分割したら `needs` で流れを作る
+- 「CIだけ落ちる」原因の定番: Nodeバージョン、lock更新漏れ、タイムゾーン、大文字小文字
+- ブランチ保護ルールでチェック通過を必須化して、初めてCIが完成する
+
+次章では、毎回の `npm ci` を高速化する**キャッシュ**と、ジョブ間でビルド成果物を受け渡す**アーティファクト**を扱います。

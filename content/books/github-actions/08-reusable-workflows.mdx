@@ -1,0 +1,204 @@
+---
+title: "ワークフローの再利用 — 複合アクションとReusable Workflow"
+description: "コピペで増えるワークフローの重複を解消します。ステップのまとまりを部品化する複合アクション（composite action）と、ジョブ一式を呼び出せるReusable Workflow（workflow_call）の作り方と使い分けを解説します。"
+order: 8
+---
+
+第6章でジョブを分割したとき、`checkout → setup-node → npm ci` という同じ3ステップを4回書きました。ワークフローが増えてくると、この手のコピペはどんどん増殖します。
+
+コピペの問題は見た目の冗長さだけではありません。**「Node.jsを22から24に上げる」といった変更を、散らばった全箇所に漏れなく適用しないといけなくなる**ことです。アプリのコードならすぐ関数に切り出すところですよね。ワークフローにも同じことができます。手段は2つあります。
+
+| 手段 | 部品化の単位 | イメージ |
+|---|---|---|
+| 複合アクション（composite action） | **ステップのまとまり** | 関数 |
+| Reusable Workflow | **ジョブ一式（ワークフローごと）** | 呼び出せるモジュール |
+
+## 複合アクション — ステップの関数化
+
+**複合アクション**は、複数のステップを1つのアクションにまとめたものです。リポジトリ内の決まった場所に `action.yml` を置いて定義します。
+
+```
+リポジトリのルート
+└── .github/
+    ├── actions/
+    │   └── setup/
+    │       └── action.yml   ← 複合アクション（ディレクトリ名がアクション名）
+    └── workflows/
+        └── ci.yml
+```
+
+`checkout` 後のNode.jsセットアップをまとめてみましょう。
+
+```yaml
+# .github/actions/setup/action.yml
+name: 'Node.js環境のセットアップ'
+description: 'setup-node と npm ci をまとめて実行する'
+
+inputs:
+  node-version:
+    description: 'Node.jsのバージョン'
+    required: false
+    default: '22'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+
+    - name: 依存関係をインストールする
+      run: npm ci
+      shell: bash        # 複合アクション内のrunにはshell指定が必須
+```
+
+ポイントは3つです。
+
+- `runs.using: composite` が「これは複合アクションだ」という宣言
+- `inputs` で引数を定義できる（デフォルト値も設定可能）
+- 複合アクション内の `run` には **`shell: bash` の明示が必須**（忘れるとエラーになる定番ポイント）
+
+使う側はこうなります。
+
+```yaml
+# .github/workflows/ci.yml
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup     # ローカルパスで参照
+      - run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm run test
+```
+
+3ステップの繰り返しが1行になりました。Node.jsのバージョンを上げたくなったら、`action.yml` のdefaultを1箇所変えるだけです。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`uses: ./.github/actions/setup` って、`actions/checkout@v4` と書き方が違うね。`@v4` みたいなバージョンがない。
+</SpeechBubble>
+
+いい観察です。`./` で始まるのは**同じリポジトリ内のパス参照**で、checkout済みのコードをそのまま使うのでバージョン指定が不要なんです。一方 `actions/checkout@v4` は**他のリポジトリのアクション**を参照する書き方で、`@` でバージョンを指定します。つまり自作アクションを別リポジトリに切り出して、組織内の複数プロジェクトから `@v1` 付きで参照する——という発展形もできます。
+
+## Reusable Workflow — ジョブ一式の呼び出し
+
+複合アクションはステップの部品化でした。もっと大きな単位、**「CI一式」をまるごと再利用したい**ときに使うのがReusable Workflowです。
+
+呼び出される側は、トリガーを `workflow_call` にした普通のワークフローとして書きます。
+
+```yaml
+# .github/workflows/reusable-ci.yml（呼び出される側）
+name: Reusable CI
+
+on:
+  workflow_call:              # 「他のワークフローから呼ばれる」専用トリガー
+    inputs:
+      node-version:
+        type: string
+        required: false
+        default: '22'
+    secrets:
+      API_TOKEN:
+        required: false
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ inputs.node-version }}
+      - run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          node-version: ${{ inputs.node-version }}
+      - run: npm run test
+```
+
+呼び出す側は、**ジョブの位置で** `uses` を書きます。
+
+```yaml
+# .github/workflows/ci.yml（呼び出す側）
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  call-ci:
+    uses: ./.github/workflows/reusable-ci.yml
+    with:
+      node-version: '22'
+    secrets: inherit          # 呼び出し元のsecretsをそのまま渡す
+```
+
+`secrets: inherit` は「呼び出し元リポジトリのSecretsを丸ごと引き継ぐ」指定です。個別に渡したい場合は `secrets:` の下に列挙します。
+
+### どこが複合アクションと違うのか
+
+見た目が似ているので、違いを表で押さえておきましょう。
+
+| | 複合アクション | Reusable Workflow |
+|---|---|---|
+| 部品化の単位 | ステップ列 | ジョブ一式 |
+| 書く場所 | `.github/actions/<名前>/action.yml` | `.github/workflows/*.yml` |
+| 使う場所 | ステップの `uses` | **ジョブの** `uses` |
+| ランナー | 呼び出し元のジョブ内で動く | **自分でruns-onを持つ**（別ジョブとして動く） |
+| secretsの受け取り | 呼び出し元のenv経由 | `secrets:` で明示的に受け取れる |
+| マトリックス・needs | 使えない（ステップだから） | ジョブなので使える |
+
+判断基準はシンプルです。
+
+> **「セットアップ手順」の共通化なら複合アクション、「CIパイプラインまるごと」の共通化ならReusable Workflow**
+
+<Figure src="/images/creative_color.png" alt="部品を組み立てるイメージ" width={180}>
+小さい部品は複合アクション、大きい構造はReusable Workflow——LEGOのブロックと組み立て済みユニットの関係
+</Figure>
+
+## 実務での組み合わせパターン
+
+2つは排他ではなく、組み合わせて使います。よくある構成はこうです。
+
+```
+.github/
+├── actions/
+│   └── setup/action.yml          ← 環境構築の共通部品
+└── workflows/
+    ├── reusable-ci.yml           ← CI一式（setupアクションを利用）
+    ├── ci.yml                    ← PRトリガー → reusable-ci を呼ぶ
+    └── deploy.yml                ← デプロイ前の検証にも reusable-ci を呼ぶ
+```
+
+- 「PRのCI」と「デプロイ前の検証」が**同じ検証内容であることが構造的に保証**される
+- Node.jsのバージョン変更は `action.yml` の1箇所
+- 新しいリポジトリを作っても、Reusable Workflowを別リポジトリ参照にすれば使い回せる
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+再利用の設計はやりすぎ注意でもあります。ワークフローが2つしかないのに抽象化を始めると、かえって読みにくくなる。アプリのコードと同じで、「3回目のコピペが発生したら部品化を考える」くらいの温度感がちょうどいいですよ。
+</SpeechBubble>
+
+> 制限事項（ネストは4層まで、など）の詳細は[ワークフローの再利用（公式ドキュメント）](https://docs.github.com/ja/actions/how-tos/reuse-automations/reuse-workflows)を参照してください。
+
+## まとめ
+
+- ワークフローのコピペは「変更漏れ」のリスク。アプリのコードと同様に部品化で解消する
+- **複合アクション**はステップの関数化。`.github/actions/<名前>/action.yml` + `runs.using: composite`。`run` には `shell: bash` が必須
+- **Reusable Workflow**はジョブ一式のモジュール化。`on: workflow_call` で定義し、ジョブの位置の `uses` で呼び出す
+- `secrets: inherit` で呼び出し元のSecretsを引き継げる
+- 使い分けは「ステップの共通化か、パイプラインの共通化か」。ただし抽象化のしすぎには注意
+
+次章では、いよいよデプロイの自動化に進みます。environmentsによる環境の分離、デプロイ保護ルール、そして継続的デリバリーの実践です。

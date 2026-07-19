@@ -1,0 +1,223 @@
+---
+title: "GitHub Actionsチートシート — 逆引きレシピと定番自動化集"
+description: "「あれどう書くんだっけ」を最速で解決する逆引きチートシートです。トリガー・式・ジョブ制御の構文早見表に加え、Dependabot・自動ラベル・リリースノート生成・Slack通知など定番の自動化レシピを掲載します。"
+order: 12
+---
+
+最終章は、日々の運用で戻ってくるための**逆引きチートシート**です。前半は構文の早見表、後半はCI/CD以外の「リポジトリ運用の自動化」レシピ集です。忘れた構文はここで引き、深く知りたくなったら該当章へ——という使い方をしてください。
+
+## トリガー早見表
+
+```yaml
+# mainへのpushとmain向けPR（CIの基本形）
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# ドキュメントのみの変更は除外
+    paths-ignore: ['**.md', 'docs/**']
+
+# 手動実行ボタン
+on:
+  workflow_dispatch:
+
+# 定期実行（UTC注意。JSTは-9時間）
+on:
+  schedule:
+    - cron: '0 0 * * 1'   # 毎週月曜 9:00 JST
+
+# バージョンタグでリリース駆動
+on:
+  push:
+    tags: ['v*']
+```
+
+> 詳しくは[第3章 イベントトリガー入門](/books/github-actions/03-triggers)へ。
+
+## 式・コンテキスト早見表
+
+| やりたいこと | 書き方 |
+|---|---|
+| ブランチ名を取る | `${{ github.ref_name }}` |
+| イベント種別で分岐 | `if: github.event_name == 'pull_request'` |
+| mainのときだけ実行 | `if: github.ref_name == 'main'` |
+| 失敗時だけ実行 | `if: failure()` |
+| 必ず実行（後片付け） | `if: always()` |
+| Secretsを使う | `${{ secrets.名前 }}`（env経由で渡す） |
+| Variablesを使う | `${{ vars.名前 }}` |
+| コンテキストの中身を全部見る | `run: echo '${{ toJSON(github) }}'` |
+
+ステップ間の値の受け渡し:
+
+```yaml
+- id: version
+  run: echo "value=1.2.3" >> "$GITHUB_OUTPUT"
+- run: echo "${{ steps.version.outputs.value }}"
+```
+
+> 詳しくは[第4章 コンテキストと変数](/books/github-actions/04-contexts-and-secrets)へ。
+
+## ジョブ制御早見表
+
+```yaml
+# 依存関係（testの成功を待つ）
+jobs:
+  deploy:
+    needs: test
+
+# マトリックス（Node 20/22で並列テスト）
+    strategy:
+      matrix:
+        node-version: [20, 22]
+
+# 古い実行をキャンセル（CI用）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# 同時実行を防ぎつつ中断はしない（デプロイ用）
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+# 権限の最小化（書いた瞬間、書いてない権限はnoneになる）
+permissions:
+  contents: read
+```
+
+> 詳しくは[第5章 ランナーとジョブの実行モデル](/books/github-actions/05-runners-and-jobs)、[第10章 セキュリティ](/books/github-actions/10-security)へ。
+
+## 定番公式アクション早見表
+
+| アクション | 用途 | 登場章 |
+|---|---|---|
+| `actions/checkout@v4` | リポジトリのコードを取得 | [第2章](/books/github-actions/02-first-workflow) |
+| `actions/setup-node@v4` | Node.jsセットアップ（`cache: npm` 推奨） | [第6章](/books/github-actions/06-ci-for-nodejs) |
+| `actions/cache@v4` | 任意ディレクトリのキャッシュ | [第7章](/books/github-actions/07-cache-and-artifacts) |
+| `actions/upload-artifact@v4` / `download-artifact@v4` | 成果物の保存・受け渡し | [第7章](/books/github-actions/07-cache-and-artifacts) |
+| `github/codeql-action` | コードのセキュリティスキャン | — |
+
+## レシピ①: Dependabotで依存関係を自動更新する
+
+Dependabotは、依存パッケージやGitHub Actionsのバージョン更新PRを自動で作ってくれるGitHub組み込みの機能です。`.github/dependabot.yml` を置くだけで動きます。
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions   # アクションの@v4なども更新対象に
+    directory: /
+    schedule:
+      interval: weekly
+```
+
+`package-ecosystem: github-actions` を入れておくと、第10章で行ったSHA固定のアクションも**Dependabotが新バージョンへの更新PRを出してくれます**。「固定の安全性」と「追従の手間」を両立できる組み合わせです。更新PRにはCI（第6章）が自動で走るので、「テストが通った更新だけ取り込む」運用が回り始めます。
+
+## レシピ②: PRに自動でラベルを付ける
+
+変更されたファイルに応じてPRへラベルを付けると、レビューの分担がしやすくなります。公式の `actions/labeler` を使います。
+
+```yaml
+# .github/workflows/labeler.yml
+name: PR Labeler
+on: pull_request_target
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+```
+
+```yaml
+# .github/labeler.yml（ラベルの定義）
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: 'src/**'
+docs:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+```
+
+## レシピ③: リリースノートを自動生成する
+
+タグを打ったら、そこまでにマージされたPRの一覧からリリースノートを自動生成してGitHub Releasesを作るレシピです。
+
+```yaml
+# .github/workflows/release.yml
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リリースを作成する
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --repo "$GITHUB_REPOSITORY"
+```
+
+`--generate-notes` が、前回リリース以降のマージ済みPRからノートを組み立ててくれます。ランナーには GitHub CLI（`gh`）が最初から入っているので、`uses` なしでこれだけで動きます。
+
+## レシピ④: 失敗をSlack/Discordに通知する
+
+CIの失敗にすぐ気づけるよう、チャットへ通知します。Webhook URL（SecretsにIncoming WebhookのURLを登録）があれば、curl一発です。
+
+```yaml
+      - name: 失敗をSlackに通知する
+        if: failure()
+        env:
+          WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"❌ CIが失敗しました: $RUN_URL\"}" \
+            "$WEBHOOK_URL"
+```
+
+`if: failure()`（第4章）をワークフローの最後のジョブに付けておくのがポイントです。Discordでも同じ形式で動きます（Webhook URLの末尾に `/slack` を付けるとSlack互換ペイロードを受け付けます）。
+
+## トラブルシューティング逆引き
+
+| 症状 | まず疑うこと | 章 |
+|---|---|---|
+| ワークフローが起動しない | YAMLのインデント / 置き場所が `.github/workflows/` か / ブランチフィルタ | [第2章](/books/github-actions/02-first-workflow)・[第3章](/books/github-actions/03-triggers) |
+| `npm ci` が失敗する | package-lock.json のコミット漏れ | [第6章](/books/github-actions/06-ci-for-nodejs) |
+| ローカルは通るのにCIだけ落ちる | Nodeバージョン / タイムゾーン / ファイル名の大文字小文字 | [第6章](/books/github-actions/06-ci-for-nodejs) |
+| Secretsが空になる | フォークからのPRでは渡らない / environmentの宣言漏れ | [第4章](/books/github-actions/04-contexts-and-secrets)・[第9章](/books/github-actions/09-deployment) |
+| 権限エラー（Resource not accessible） | `permissions:` の絞りすぎ。必要な権限を追加 | [第10章](/books/github-actions/10-security) |
+| 同じコミットでCIが2回走る | pushとpull_requestの両方にヒットしている | [第3章](/books/github-actions/03-triggers) |
+| キャッシュが効かない | keyの設計 / 10GB上限で削除された / 7日未使用で消えた | [第7章](/books/github-actions/07-cache-and-artifacts) |
+
+## 次のステップ
+
+本書で扱った範囲の先には、こんなテーマが待っています。
+
+- **セルフホステッドランナー** — 自前マシンでの実行。ビルド時間の短縮や特殊環境向け
+- **カスタムアクションの公開** — JavaScript/Dockerでアクションを自作してMarketplaceに公開
+- **モノレポ運用** — paths と Reusable Workflow を組み合わせた大規模構成
+- **コンテナデプロイ** — DockerイメージのビルドとECS/Cloud Runなどへのデプロイ
+
+いずれも本書の部品の組み合わせ+αで理解できます。困ったら[公式ドキュメント](https://docs.github.com/ja/actions)と本書の該当章に戻ってきてください。
+
+<Figure src="/images/stepup_suit_man_color.png" alt="ステップアップする人" width={180}>
+「pushしたら自動で検証され、マージしたら自動で届く」——開発の景色はもう変わっているはず
+</Figure>
+
+CI/CD、ちゃんと組めるようになりましたか？

@@ -1,0 +1,3 @@
+title: 'GitHub ActionsでCI/CDをはじめる'
+description: 'Gitの基本を身につけたエンジニアが、テスト・lint・デプロイの自動化を自分のプロジェクトに組み込めるようになるための入門書です。ワークフロー構文の基礎から、Node.js/Next.jsプロジェクトのCI構築、キャッシュ、再利用、セキュリティ、OIDCまでを公式ドキュメントに沿って体系的に学びます。'
+coverImage: '/images/books/github-actions.png'

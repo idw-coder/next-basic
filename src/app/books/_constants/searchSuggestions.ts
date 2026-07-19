@@ -125,6 +125,21 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
 
   'unit-testing': ['単体テスト', 'モック', 'リファクタリング', 'テスト構造', 'メソッド'],
 
+  'github-actions': [
+    'workflow',
+    'CI/CD',
+    'on push',
+    'jobs',
+    'steps',
+    'actions/checkout',
+    'secrets',
+    'matrix',
+    'cache',
+    'artifact',
+    'OIDC',
+    'deploy',
+  ],
+
   'git-basic': [
     'commit',
     'branch',

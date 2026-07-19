@@ -928,6 +928,61 @@ const bookSeoContentMap: Record<string, BookSeoContent> = {
     ],
     relatedQuizSlug: null,
   },
+
+  'github-actions': {
+    overview:
+      '本書は、Gitの基本操作を身につけたエンジニアがCI/CD（継続的インテグレーション/継続的デリバリー）を実践できるようになるための入門書です。GitHub Actionsのワークフロー構文、イベントトリガー、コンテキストと変数、ランナーの仕組みといった基礎から、Node.js/Next.jsプロジェクトのテスト・lint自動化、キャッシュによる高速化、Reusable Workflowによる再利用、デプロイ自動化、シークレット管理とOIDCによるセキュアなクラウド連携までを12章で体系的に学びます。',
+    whyLearn:
+      'テスト・ビルド・デプロイの自動化は、現代のチーム開発では標準的なプラクティスです。CIがあることで壊れたコードの混入を即座に検知でき、デプロイの属人化も解消されます。GitHub ActionsはGitHubに組み込まれており追加契約なしで使えるため、CI/CDを学び始める場所として最適です。実務のリポジトリでワークフローを読み書きできるスキルは、フロントエンド・バックエンドを問わず求められます。',
+    prerequisites:
+      'Gitの基本操作（add/commit/push、ブランチ、Pull Request）を理解していることが前提です。不安がある方は先に『Gitをちゃんと使う』を読むことをおすすめします。YAMLの知識は不要です（本書内で必要な範囲を解説します）。',
+    topics: [
+      {
+        title: 'ワークフロー構文の基礎',
+        description:
+          'ワークフロー・ジョブ・ステップ・アクションの階層構造、イベントトリガー、YAMLの書き方を基礎から学びます。',
+      },
+      {
+        title: 'コンテキスト・変数・ランナー',
+        description:
+          '式と${{ }}構文、env/secrets/varsの使い分け、GitHubホステッドランナーの仕組み、マトリックスビルドを理解します。',
+      },
+      {
+        title: 'Node.js/Next.jsプロジェクトのCI',
+        description:
+          'テスト・lint・型チェックの自動化、npmキャッシュとアーティファクト、複合アクションとReusable Workflowによる再利用を実践します。',
+      },
+      {
+        title: 'デプロイとセキュリティ',
+        description:
+          'environmentsとデプロイ保護ルール、GITHUB_TOKENの権限最小化、script injection対策、OIDCによるキーレスなクラウド連携を学びます。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'CI/CDの知識が全くなくても読めますか？',
+        answer:
+          'はい。第1章でCI/CDの概念そのものから解説しているので、「テスト自動化やデプロイ自動化をやったことがない」方でも読み進められます。Gitの基本操作だけが前提です。',
+      },
+      {
+        question: 'GitHub Actionsの利用は有料ですか？',
+        answer:
+          'パブリックリポジトリでは無料で利用できます。プライベートリポジトリでも毎月の無料枠（Freeプランで2,000分/月）があり、個人の学習用途で枠を超えることはほとんどありません。',
+      },
+      {
+        question: 'CircleCIやJenkinsとはどう違いますか？',
+        answer:
+          '大きな違いはGitHubへの組み込みの深さです。別サービスの契約や連携設定なしに、リポジトリにYAMLを置くだけで動き始めます。push以外にもIssueやリリースなどGitHub上のあらゆるイベントをトリガーにできる点も強みです。',
+      },
+    ],
+    targetAudience: [
+      'Gitの基本は身につけたが、CI/CDは未経験の方',
+      'テストやlintの実行を手作業で行っていて自動化したい方',
+      '実務のリポジトリにあるワークフローYAMLを読めるようになりたい方',
+      'Next.js/Node.jsプロジェクトにテスト自動化と自動デプロイを導入したい方',
+    ],
+    relatedQuizSlug: null,
+  },
 };
 
 export function getBookSeoContent(bookSlug: string): BookSeoContent | null {
