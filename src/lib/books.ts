@@ -42,11 +42,13 @@ export const BOOK_ORDER = [
   'git-basic',
   'github-actions',
   'cs-basics',
+  'coding-test',
   'next-js',
 ] as const;
 
 /** NEW バッジを付ける書籍 */
 export const NEW_BOOK_SLUGS = new Set<string>([
+  'coding-test',
   'github-actions',
   'azure-az-900',
   'node-js',

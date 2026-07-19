@@ -1,0 +1,162 @@
+---
+title: "グラフ応用 — ダイクストラ法とUnion-Find"
+description: "重み付きグラフの最短路を解くダイクストラ法と、グループ管理を高速化するUnion-Find（素集合データ構造）を学びます。優先度付きキューの使い方、経路復元、「辺を追加しながら連結判定」の定番問題まで扱います。"
+order: 11
+---
+
+Part 3の最終章です。第6章のグラフ探索に、上位問題で頻出の2つの道具を追加します。
+
+- **ダイクストラ法** — 辺に**重み**があるときの最短路（BFSの上位互換）
+- **Union-Find** — 「同じグループか？」を超高速で管理する構造
+
+この2つでpaiza Sランク・AtCoder緑の出題範囲をほぼカバーできます。
+
+## ダイクストラ法 — 重み付き最短路
+
+第6章のBFSは「辺の本数」の最短でした。しかし現実の問題は「距離5の道路」「運賃300円の路線」のように**辺に重みが付きます**。重みがあると、BFSの「近い順に広がる」が成立しません——本数が少なくても合計距離が長い経路があり得るからです。
+
+> **問題**: N頂点M辺の重み付きグラフで、頂点0から各頂点への最短距離を求めよ。（N, M ≤ 10^5、重みは正）
+
+**ダイクストラ法**の発想はBFSの正統進化です。
+
+> 「確定していない頂点の中で、**暫定距離が最小の頂点**は、もうそれ以上縮まない（重みが正だから）。それを確定させ、隣の暫定距離を更新する」
+
+「暫定距離が最小の頂点を高速に取り出す」ために、**優先度付きキュー(ヒープ)**を使います。TypeScriptには標準がないので自前実装が必要です(付録スニペット集に収録。ここでは `push / pop` で最小値が取れる `MinHeap` があるとします)。
+
+```typescript
+// graph[v] = [行き先, 重み] の配列（隣接リスト+重み）
+function dijkstra(N: number, graph: [number, number][][], start: number): number[] {
+  const dist = new Array(N).fill(Infinity);
+  dist[start] = 0;
+  const heap = new MinHeap<[number, number]>((a, b) => a[0] - b[0]); // [距離, 頂点]
+  heap.push([0, start]);
+
+  while (heap.size > 0) {
+    const [d, v] = heap.pop()!;
+    if (d > dist[v]) continue;        // 古い情報はスキップ（重要！）
+    for (const [next, w] of graph[v]) {
+      if (dist[v] + w < dist[next]) {
+        dist[next] = dist[v] + w;     // より短い経路を発見したら更新
+        heap.push([dist[next], next]);
+      }
+    }
+  }
+  return dist;
+}
+```
+
+計算量はO((N + M) log N)。ポイントを2つ押さえてください。
+
+- **`if (d > dist[v]) continue;`** — 同じ頂点がヒープに複数回入るため、取り出したとき古い(既により短い距離で更新済みの)エントリを捨てる。この1行を忘れるのが定番バグ
+- **重みが負の辺があると使えない** — 「最小の暫定距離は確定」という前提が崩れるため。負辺はベルマンフォード法の領分（本書の範囲外）
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+BFSとダイクストラ、どっちを使うかはどう判断するの？
+</SpeechBubble>
+
+**辺の重みがすべて同じならBFS、バラバラならダイクストラ**。それだけです。「移動に1分かかる」ならBFS、「道ごとに所要時間が違う」ならダイクストラ、と問題文が教えてくれます。
+
+### 経路復元
+
+「最短距離」だけでなく「最短**経路**」を要求されたら、更新のときに「どこから来たか」を記録します。
+
+```typescript
+// dist[next]を更新するとき: prev[next] = v; を記録
+// ゴールから prev をたどって reverse すれば経路になる
+```
+
+## Union-Find — 「同じグループ？」を一瞬で
+
+もう1つの道具は、**グループ分けの管理**に特化したデータ構造です。次の2操作だけを提供します。
+
+- `union(a, b)` — aとbのグループを合併する
+- `same(a, b)` — aとbは同じグループか判定する
+
+第6章の連結成分はDFS/BFSで求めましたが、あちらは「**固定された**グラフ」用です。**「辺が増えていく」「合併しながら質問に答える」**動的な問題では、毎回探索し直すとO(NM)で死にます。Union-Findなら各操作がほぼO(1)（正確にはアッカーマン関数の逆数——実用上定数）です。
+
+```typescript
+class UnionFind {
+  private parent: number[];
+  private rank: number[];
+
+  constructor(n: number) {
+    this.parent = Array.from({ length: n }, (_, i) => i);  // 最初は全員自分が代表
+    this.rank = new Array(n).fill(0);
+  }
+
+  find(x: number): number {           // xのグループの代表を探す
+    if (this.parent[x] !== x) {
+      this.parent[x] = this.find(this.parent[x]);  // 経路圧縮: 代表に直結し直す
+    }
+    return this.parent[x];
+  }
+
+  union(a: number, b: number): void {
+    const ra = this.find(a), rb = this.find(b);
+    if (ra === rb) return;
+    // ランクの低い木を高い木にぶら下げる（木を浅く保つ）
+    if (this.rank[ra] < this.rank[rb]) this.parent[ra] = rb;
+    else if (this.rank[ra] > this.rank[rb]) this.parent[rb] = ra;
+    else { this.parent[rb] = ra; this.rank[ra]++; }
+  }
+
+  same(a: number, b: number): boolean {
+    return this.find(a) === this.find(b);
+  }
+}
+```
+
+仕組みは「各グループを木で表し、根を代表とする」+ 2つの高速化(経路圧縮とランク)です。実装は毎回書くものではなく、**部品として暗記・コピペしてよい**類のコードです（付録スニペット集に収録）。
+
+<Figure src="/images/meeting_color.png" alt="グループが合流するイメージ" width={180}>
+「島と島を橋でつなぐ」「SNSで友達になる」——合併が起きる問題はUnion-Findの合図
+</Figure>
+
+### 定番問題: つなぎながら答える
+
+> **問題**: N個の島とQ個のクエリが与えられる。クエリは「島aとbに橋をかける」または「島aとbは行き来できるか？」の2種類。順に処理せよ。（N, Q ≤ 10^5）
+
+```typescript
+const uf = new UnionFind(N);
+for (const [type, a, b] of queries) {
+  if (type === 1) uf.union(a, b);
+  else console.log(uf.same(a, b) ? 'Yes' : 'No');
+}
+```
+
+Union-Findを知っていれば5行、知らなければ手も足も出ない——道具の有無がそのまま点差になるタイプの問題です。
+
+## Part 3の道具箱・完成図
+
+これで解法パターン編の道具が出揃いました。全体を一望しておきます。
+
+| 章 | 道具 | 一言 |
+|---|---|---|
+| [第7章](/books/coding-test/07-brute-force) | 全探索・bit全探索 | まず全部試せるか確認 |
+| [第8章](/books/coding-test/08-sort-and-binary-search) | ソート・二分探索・答えの二分探索 | 半分ずつ捨てる |
+| [第9章](/books/coding-test/09-greedy) | 貪欲法 | ソートして1本道。反例チェック必須 |
+| [第10章](/books/coding-test/10-dynamic-programming) | DP | 表埋め。定義→遷移→初期値 |
+| 第11章 | ダイクストラ・Union-Find | 重み付き最短路とグループ管理 |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+ダイクストラとUnion-Findは「発想する」道具ではなく「**知っていて、正しく貼れる**」道具です。理屈を一度理解したら、あとはスニペットを整備して、出題シグナルへの反応速度を上げましょう。それは次章のテーマでもあります。
+</SpeechBubble>
+
+## この章のパターンの見分け方
+
+| 問題文のシグナル | 使う道具 |
+|---|---|
+| 「最短」+ 辺ごとに重み（距離・運賃・時間）が違う | ダイクストラ法 |
+| 「最短」+ 重みがすべて同じ | BFS（第6章）で十分 |
+| 「つなぐ」「合併する」が動的に起きる + 「同じか？」 | Union-Find |
+| 「橋をかける」「友達になる」「グループが増減」 | Union-Find |
+
+## まとめ
+
+- **ダイクストラ法** = 重み付き版BFS。優先度付きキューで「暫定最小を確定」を繰り返す。古いエントリのスキップ（`d > dist[v]`）を忘れない。負辺は不可
+- 重みが均一ならBFS、バラバラならダイクストラ——選択は問題文が教えてくれる
+- **Union-Find** = union/sameがほぼO(1)のグループ管理。経路圧縮+ランクで木を浅く保つ
+- 動的に「つなぐ・合併する」問題はDFSやり直しではなくUnion-Find
+- どちらも「知っていれば貼るだけ」の部品。スニペット化して反応速度を上げる
+
+Part 3はここまでです。次章から実戦演習編——「問題文からパターンを見抜く」訓練に入ります。

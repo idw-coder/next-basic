@@ -1,0 +1,160 @@
+---
+title: "スタックとキュー — 括弧の対応付けからBFSの土台まで"
+description: "LIFOのスタックとFIFOのキューを実戦投入します。括弧の対応判定、直近要素との照合、TypeScriptでのキューの正しい実装（shiftを使わない）、そして次章のBFSにつながる「処理待ちリスト」の考え方を学びます。"
+order: 5
+---
+
+データ構造編の3つ目は**スタック（stack）とキュー（queue）**です。どちらも「要素を溜めて、決まった順で取り出す」だけの単純な構造ですが、**取り出す順番**が決定的に違います。
+
+| | スタック | キュー |
+|---|---|---|
+| 順序 | **LIFO**（後入れ先出し） | **FIFO**（先入れ先出し） |
+| イメージ | 積んだ皿。上から取る | レジの行列。先頭から捌く |
+| 典型用途 | 括弧の対応、直近との照合、DFS | 処理待ちリスト、BFS |
+
+> 概念の基礎は[『コンピュータサイエンスの基礎』第2章 データ構造](/books/cs-basics/02-data-structures)でも扱っています。この章は「テストでどう使うか」に絞ります。
+
+## TypeScriptでの実装 — キューに罠がある
+
+スタックは配列そのままでOKです。
+
+```typescript
+const stack: number[] = [];
+stack.push(1);        // 積む O(1)
+const top = stack.pop();          // 上から取る O(1)
+const peek = stack[stack.length - 1];  // 見るだけ
+```
+
+問題はキューです。素直に書くと `shift()`（先頭から取り出し）を使いたくなりますが——
+
+```typescript
+// ❌ ダメな例
+queue.shift();   // O(N)！ 全要素が前にずれる
+```
+
+第2章で触れた「隠れO(N)」の代表です。ループでN回shiftするとO(N²)になり、N = 10^5 でTLEします。**先頭を指す添字を進める**方式にすれば、配列のままO(1)で取り出せます。
+
+```typescript
+// ⭕ 添字方式のキュー
+const queue: number[] = [];
+let head = 0;
+queue.push(1);                    // 入れる O(1)
+const front = queue[head++];      // 出す O(1)（実際には消さず、指す位置を進める）
+const isEmpty = head >= queue.length;
+```
+
+メモリは使い捨てになりますが、テストの規模なら問題ありません。この形は付録のスニペット集にも収録します。
+
+## スタック実戦①: 括弧の対応判定
+
+スタックの代名詞ともいえる頻出問題です。
+
+> **問題**: `()[]{}` からなる文字列が、正しく対応した括弧列か判定せよ。
+
+「直近に開いた括弧が、最初に閉じられるべき」——この**「直近」との照合はLIFO**そのものです。
+
+```typescript
+function isValid(s: string): boolean {
+  const pair: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
+  const stack: string[] = [];
+  for (const ch of s) {
+    if (ch === '(' || ch === '[' || ch === '{') {
+      stack.push(ch);                       // 開き括弧は積む
+    } else {
+      if (stack.pop() !== pair[ch]) return false;  // 直近の開きと照合
+    }
+  }
+  return stack.length === 0;               // 積み残しがあれば不正
+}
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+「最後にstackが空か確認する」のを忘れそう…。`"((("` みたいに開きっぱなしのケースだね。
+</SpeechBubble>
+
+そこはこの問題の採点で最も落とされるポイントです。「閉じ括弧が合わない」と「開き括弧が余る」の**両方**で不正——テストケースを自分で考える練習にもなる問題です。
+
+## スタック実戦②: 「直近のものと消し合う」パターン
+
+括弧の考え方は、こんな問題にも化けます。
+
+> **問題**: 文字列から、隣り合う同じ文字のペアを消せるだけ消した結果を求めよ。（例: "abba" → "aa" → ""）
+
+```typescript
+function removePairs(s: string): string {
+  const stack: string[] = [];
+  for (const ch of s) {
+    if (stack[stack.length - 1] === ch) stack.pop();  // 直近と同じなら消し合う
+    else stack.push(ch);
+  }
+  return stack.join('');
+}
+```
+
+素朴に「見つけては消す」を繰り返すとO(N²)ですが、スタックなら1周O(N)。**「直近の要素との関係で処理が決まる」問題はスタック**——このシグナルは強力です。
+
+<Figure src="/images/marubatsu.png" alt="消し合いのイメージ" width={180}>
+繰り返し走査で消すのではなく、積みながらその場で消し合うのがスタック流
+</Figure>
+
+## キュー実戦: 「処理待ちリスト」として使う
+
+キューの実戦での役割は、ほぼ1つに集約されます。**「見つけたけどまだ処理していないもの」の待ち行列**です。
+
+> **問題**: グリッド上のスタート地点から、上下左右に移動して到達できるマスをすべて数えよ。
+
+```typescript
+function countReachable(grid: string[], sr: number, sc: number): number {
+  const H = grid.length, W = grid[0].length;
+  const visited = Array.from({ length: H }, () => new Array(W).fill(false));
+  const queue: [number, number][] = [[sr, sc]];
+  let head = 0;
+  visited[sr][sc] = true;
+  let count = 0;
+
+  while (head < queue.length) {
+    const [r, c] = queue[head++];          // 待ち行列の先頭を処理
+    count++;
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= H || nc < 0 || nc >= W) continue;   // 場外
+      if (grid[nr][nc] === '#' || visited[nr][nc]) continue;  // 壁 or 処理予定済み
+      visited[nr][nc] = true;
+      queue.push([nr, nc]);                // 新たに見つけたら行列に並ばせる
+    }
+  }
+  return count;
+}
+```
+
+これは実は**BFS（幅優先探索）**そのものです。詳しくは次章で扱いますが、構造は単純で:
+
+1. スタートを行列に入れる
+2. 行列の先頭を取り出して処理する
+3. そこから新しく見つかった場所を行列の末尾に足す
+4. 行列が空になるまで繰り返す
+
+「visitedへの登録は**行列に入れるとき**にやる」のが重要ポイントです。取り出すときに登録すると、同じマスが行列に重複して入り、効率が落ちます。
+
+## この章のパターンの見分け方
+
+| 問題文のシグナル | 使う構造 |
+|---|---|
+| 「括弧の対応」「入れ子」 | スタック |
+| 「隣り合う要素を消す」「直近の〇〇と比較」 | スタック |
+| 「編集履歴」「元に戻す（undo）」 | スタック |
+| 「到達できる範囲」「最短手数」「順番に処理」 | キュー（BFS） |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+スタックとキューは「単体の問題」より「他の解法の部品」として登場することが多い構造です。特にキュー＝BFSの結びつきは次章のグラフ探索の心臓部になるので、添字方式のキューは手が覚えるまで書いておきましょう。
+</SpeechBubble>
+
+## まとめ
+
+- スタックはLIFO。「**直近**のものと照合・消し合う」問題のシグナルで反射する
+- キューはFIFO。「**見つけた順に処理する**待ち行列」として使い、BFSの土台になる
+- TypeScriptのキューで `shift()` は禁止。**添字（head）を進める方式**でO(1)にする
+- 括弧問題は「閉じが合わない」と「開きが余る」の両方をチェック
+- visitedの登録はキューに**入れるとき**。取り出すときでは重複が生じる
+
+次章はデータ構造編の締めくくり、木とグラフです。この章のキューがそのままBFSに、そして再帰がDFSになります。

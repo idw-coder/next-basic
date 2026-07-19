@@ -125,6 +125,21 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
 
   'unit-testing': ['単体テスト', 'モック', 'リファクタリング', 'テスト構造', 'メソッド'],
 
+  'coding-test': [
+    '計算量',
+    'Big-O',
+    '二分探索',
+    '尺取り法',
+    '累積和',
+    'DFS',
+    'BFS',
+    '貪欲法',
+    'DP',
+    'ナップサック',
+    'Union-Find',
+    'ダイクストラ',
+  ],
+
   'github-actions': [
     'workflow',
     'CI/CD',

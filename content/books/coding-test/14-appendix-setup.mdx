@@ -1,0 +1,129 @@
+---
+title: "付録A: TypeScript環境構築 — ローカルで解いて提出するまで"
+description: "コーディングテストをTypeScriptで戦うためのローカル環境を整えます。tsxによる即時実行、標準入力の読み取りテンプレート、paiza・AtCoderへの提出時の注意点まで、最短手順でセットアップします。"
+order: 14
+---
+
+付録Aでは、問題を**ローカルで書いて・試して・提出する**ための環境を最短で整えます。ブラウザ上のエディタでも解けますが、ローカル環境には補完・型チェック・テスト実行の速さという圧倒的な利点があります。
+
+## 必要なもの
+
+- **Node.js**（v20以降推奨）— [『Node.js入門』のセットアップ章](/books/node-js/setup-and-version)にインストール手順があります
+- **tsx** — TypeScriptをコンパイルの手間なく即実行するツール
+
+```bash
+mkdir coding-test && cd coding-test
+npm init -y
+npm install -D tsx typescript @types/node
+```
+
+これで `npx tsx solve.ts` と打てばTypeScriptファイルが即実行できます。
+
+## 標準入力のテンプレート
+
+コーディングテストでは、入力は**標準入力**から与えられます。ここがWeb開発と勝手が違う最初のつまずきポイントです。次のテンプレートを固定で使ってください。
+
+```typescript
+// solve.ts — 標準入力テンプレート
+const lines = require('fs').readFileSync('/dev/stdin', 'utf8').trim().split('\n');
+
+// --- ここから問題ごとのパース ---
+// 例: 1行目に N、2行目にN個の整数、という入力形式の場合
+const n = Number(lines[0]);
+const nums = lines[1].split(' ').map(Number);
+
+// --- 解答ロジック ---
+console.log(nums.reduce((s, v) => s + v, 0));
+```
+
+手元で試すときは、入力をファイルに書いてリダイレクトします。
+
+```bash
+echo "3
+1 2 3" > input.txt
+
+npx tsx solve.ts < input.txt
+# → 6
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`/dev/stdin` って初めて見た…。Windowsでも動くの？
+</SpeechBubble>
+
+WindowsのコマンドプロンプトではNGですが、**WSLかGit Bashなら動きます**。動かない環境では `readFileSync(0, 'utf8')`（ファイルディスクリプタ0 = 標準入力）に書き換えれば同じ動作になります。提出先のジャッジサーバーはLinuxなので `/dev/stdin` も `0` もどちらも動きます。
+
+## 入力パースの頻出パターン
+
+入力形式は数パターンしかありません。まとめて手癖にしましょう。
+
+```typescript
+// パターン1: 1行に複数の数「N M K」
+const [n, m, k] = lines[0].split(' ').map(Number);
+
+// パターン2: N行にわたって1つずつ
+const values = lines.slice(1, 1 + n).map(Number);
+
+// パターン3: N行の「a b」ペア（グラフの辺など）
+const edges = lines.slice(1, 1 + m).map(line => line.split(' ').map(Number));
+
+// パターン4: グリッド（N行の文字列）
+const grid = lines.slice(1, 1 + n);   // grid[r][c] でアクセス
+```
+
+## 出力の注意点
+
+```typescript
+// 複数行の出力は、1行ずつconsole.logせず join して1回で出す（速度対策）
+const results: number[] = [];
+// ... resultsに答えを詰める ...
+console.log(results.join('\n'));
+```
+
+N = 10^5 行を `console.log` で1行ずつ出すと、それだけでTLEすることがあります。**出力はまとめて1回**が鉄則です。
+
+## 大きな数と割り算の罠
+
+TypeScript特有の注意点を2つ。
+
+- **数値は2^53が安全圏** — 合計が9×10^15を超える計算（10^9の値をN個合計など）は `BigInt` を使う。「10^9+7で割った余り」問題では、掛け算の途中で溢れるため要注意
+- **整数除算は `Math.floor(a / b)`** — `5 / 2` は `2.5` になる（他言語の整数除算と違う）
+
+```typescript
+// 10^9+7 の剰余計算（掛け算はBigIntで安全に）
+const MOD = 1_000_000_007n;
+const mulmod = (a: bigint, b: bigint) => (a * b) % MOD;
+```
+
+## paiza / AtCoderへの提出
+
+- **paiza**: 言語選択で「JavaScript」を選び、TypeScriptの型注釈を外したコードを貼る（または最初から型なしで書く）。Node.jsのバージョンは提出画面に表示される
+- **AtCoder**: 「TypeScript (Node.js)」がそのまま選べる。ローカルのコードをコピペで提出
+
+型注釈はローカルでの開発体験のためのもの。提出時に外す手間を嫌うなら、ローカルもJavaScript + JSDocで書く選択もあります(本書はローカルの書きやすさを優先してTypeScriptを推奨します)。
+
+<Figure src="/images/usingcomputer_suit_woman_color.png" alt="PCで環境を整える人" width={180}>
+環境は一度作れば終わり。solve.ts をコピーして使い回すのが日々のスタイルになる
+</Figure>
+
+## 日々の運用: 1問1ファイル
+
+```
+coding-test/
+├── package.json
+├── template.ts        # 標準入力テンプレート（これをコピーして使う）
+├── abc300_c.ts        # 解いた問題はコンテスト名で保存
+├── paiza_b01.ts
+└── input.txt          # 手元テスト用の入力
+```
+
+解いたファイルを消さずに溜めておくと、[第13章](/books/coding-test/13-mock-tests)で勧めた「シグナルメモ」をコメントとして残せて、自分専用の問題集になります。
+
+## まとめ
+
+- `tsx` で TypeScript を即時実行。`npx tsx solve.ts < input.txt` が基本動作
+- 標準入力は `readFileSync('/dev/stdin', 'utf8')` のテンプレートを固定で使う（Windowsは `0` に変更）
+- 出力は `join('\n')` でまとめて1回。1行ずつのconsole.logはTLEの元
+- 2^53超えはBigInt、整数除算は `Math.floor`。TypeScript特有の罠に注意
+- paizaはJavaScriptとして提出、AtCoderはTypeScriptがそのまま使える
+
+次の付録は、本編で登場した定番コードを集めた[スニペット集](/books/coding-test/15-appendix-snippets)です。

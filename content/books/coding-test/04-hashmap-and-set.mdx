@@ -1,0 +1,165 @@
+---
+title: "ハッシュマップとSet — 「探索をO(1)にする」発想"
+description: "MapとSetはコーディングテスト最強の時短道具です。存在判定・出現回数・グループ分けをO(1)化する定番パターンと、2-sum・重複検出・アナグラムのグループ化など頻出問題への適用を学びます。"
+order: 4
+---
+
+第2章の最後で、O(N²)の2重ループがSet1つでO(N)になる例を見ました。この章はその道具——**ハッシュマップ（Map）とSet**を本格的に道具箱へ入れます。
+
+コーディングテストにおけるMap/Setの本質は1つだけです。
+
+> **「探しものはO(N)の仕事」という常識を、O(1)に書き換える。**
+
+## MapとSetの基本操作
+
+```typescript
+// Set: 値の集合。「あるか・ないか」だけを管理
+const seen = new Set<number>();
+seen.add(3);          // 追加 O(1)
+seen.has(3);          // 存在判定 O(1) ← ここが主役
+seen.delete(3);       // 削除 O(1)
+seen.size;            // 要素数
+
+// Map: キーと値のペア。「何が・いくつ/どこに」を管理
+const count = new Map<string, number>();
+count.set('a', 1);            // 追加・上書き O(1)
+count.get('a');               // 取得 O(1)（なければ undefined）
+count.has('a');               // 存在判定 O(1)
+count.get('a') ?? 0;          // 「なければ0」の定番イディオム
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+オブジェクト `{}` をマップ代わりに使っちゃダメなの？ `obj[key] = value` のほうが書き慣れてるんだけど。
+</SpeechBubble>
+
+小さい問題なら動きますが、Mapを勧めます。オブジェクトはキーが文字列に変換される（数値キー1と文字列キー"1"が混ざる）、要素数を数えるのにO(N)かかる、プロトタイプ由来の事故がある——と罠が多いんです。**「集合はSet、対応表はMap」**で統一しましょう。
+
+## パターン1: 存在判定 — 「過去に見たか？」
+
+最頻出の型です。ループしながら「いま欲しいものを過去に見たか」をSetに聞きます。
+
+> **問題**: 配列に重複する値があるか判定せよ。（N ≤ 10^5）
+
+```typescript
+function hasDuplicate(nums: number[]): boolean {
+  const seen = new Set<number>();
+  for (const v of nums) {
+    if (seen.has(v)) return true;
+    seen.add(v);
+  }
+  return false;
+}
+```
+
+第2章の2-sum（`x - a` を探す）もこの型でした。「**ペア・重複・過去との照合**」ときたら、まずこの形を疑ってください。
+
+ちなみに「重複を取り除く」だけなら1行です。
+
+```typescript
+const unique = [...new Set(nums)];
+```
+
+## パターン2: 出現回数カウント
+
+前章の文字カウントの一般形です。「最頻値」「ちょうどk回現れる要素」「多数決」などはすべてこの前処理から始まります。
+
+```typescript
+const count = new Map<number, number>();
+for (const v of nums) {
+  count.set(v, (count.get(v) ?? 0) + 1);
+}
+
+// 最頻値を取り出す
+let best = -1, bestCount = 0;
+for (const [v, c] of count) {
+  if (c > bestCount) { best = v; bestCount = c; }
+}
+```
+
+カウントはO(N)、集計もO(N)。ソートすら不要です。
+
+## パターン3: グループ分け — キーの設計が腕の見せどころ
+
+Mapの真価は「**同じグループに同じキーを与える**」設計に現れます。代表例が面接頻出のアナグラムのグループ化です。
+
+> **問題**: 文字列の配列を、アナグラム（並べ替えると同じになる単語）ごとにグループ分けせよ。
+
+「eat」「tea」「ate」は同じグループ。ここで閃きたいのが、**ソートすると全部 "aet" になる**という事実です。ソート結果をキーにすれば、Mapが勝手にグループを作ってくれます。
+
+```typescript
+function groupAnagrams(words: string[]): string[][] {
+  const groups = new Map<string, string[]>();
+  for (const w of words) {
+    const key = [...w].sort().join('');       // "tea" → "aet"
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(w);
+  }
+  return [...groups.values()];
+}
+```
+
+<Figure src="/images/idea_drawing_woman.png" alt="キー設計を考える人" width={180}>
+「何をキーにすれば同類が同じ場所に集まるか」——Map問題の設計はこの一点に尽きる
+</Figure>
+
+キー設計の例をいくつか挙げます。
+
+| 問題 | キーの設計 |
+|---|---|
+| アナグラムのグループ化 | 文字をソートした文字列 |
+| 同じ誕生日のペア数 | 「月-日」の文字列 |
+| 座標のグループ化 | `` `${x},${y}` ``（文字列化して合成キーに） |
+| 合計が同じ部分集合 | 合計値そのもの |
+
+TypeScriptのMapはキーの比較が**参照ベース**なので、配列やオブジェクトをそのままキーにできません（`[1,2] !== [1,2]`）。**合成キーは文字列にする**のが定石です。
+
+## パターン4: インデックスの記録 — 「値→位置」の逆引き
+
+「値がどこにあったか」をMapに覚えさせる型です。
+
+> **問題**: 配列から合計がXになる2要素の**添字**を返せ。（2-sumの添字版）
+
+```typescript
+function twoSum(nums: number[], x: number): [number, number] | null {
+  const indexOf = new Map<number, number>();   // 値 → 添字
+  for (let i = 0; i < nums.length; i++) {
+    const want = x - nums[i];
+    if (indexOf.has(want)) return [indexOf.get(want)!, i];
+    indexOf.set(nums[i], i);
+  }
+  return null;
+}
+```
+
+「2つの要素の**距離**」「同じ値が最後に出た**位置**」など、位置情報が絡んだらこの型です。
+
+## Map/Setを選ぶ判断と、選ばない判断
+
+万能に見えるMap/Setにも、向かない場面があります。
+
+- **「k番目に小さい値」「範囲内の値」** — ハッシュは順序を持たないため苦手。ソート+二分探索（第8章）の領分
+- **キーが0〜Nの整数に収まる** — `new Array(n).fill(0)` の配列カウントのほうが速くてシンプル
+- **メモリ制約が厳しい** — 要素数分のメモリを食うことは意識しておく
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+面接では「まず2重ループのO(N²)が浮かびますが、探索部分をMapに置き換えてO(N)にします」と**改善の過程ごと**話すのがおすすめです。最初から最適解を暗唱するより、計算量を意識して改善できることが伝わりますから。
+</SpeechBubble>
+
+## この章のパターンの見分け方
+
+| 問題文のシグナル | 使う型 |
+|---|---|
+| 「重複」「既に出たか」「ペアが存在するか」 | Set存在判定 |
+| 「回数」「最頻」「ちょうどk個」 | Mapカウント |
+| 「グループ」「同じ〇〇同士」 | Mapグループ分け（キー設計） |
+| 「添字」「位置」「距離」 | Map逆引き（値→位置） |
+
+## まとめ
+
+- Map/Setの本質は「探索のO(1)化」。ペア・重複・照合の問題で2重ループを消す
+- 「なければ0」は `(map.get(k) ?? 0) + 1`、重複除去は `[...new Set(arr)]` がイディオム
+- グループ分けは**キー設計が全て**。「同類が同じキーになる変換」を考える。合成キーは文字列化
+- 順序・範囲が絡む問題はハッシュの苦手分野。ソート系の道具（第8章）へ
+- オブジェクト `{}` より Map/Set。罠が少なく意図も明確
+
+次章は、処理の「順番」を制御するデータ構造——スタックとキューです。括弧の対応付けから、後のグラフ探索の土台まで一気につながります。

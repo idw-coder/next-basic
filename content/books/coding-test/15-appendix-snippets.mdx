@@ -1,0 +1,229 @@
+---
+title: "付録B: スニペット集 — コピペで使う定番実装カタログ"
+description: "本編で登場した定番実装をコピペ可能な形でまとめたカタログです。キュー・lowerBound・Union-Find・優先度付きキュー（MinHeap）・BFS/DFSテンプレート・累積和など、テスト本番でそのまま使える部品集です。"
+order: 15
+---
+
+付録Bは、本編に登場した「暗記してよい部品」のカタログです。テスト前の見直しや、本番中の参照（持ち込み可の形式の場合）に使ってください。各スニペットには解説章を添えています。
+
+## 添字方式キュー — [第5章](/books/coding-test/05-stack-and-queue)
+
+```typescript
+// shift()禁止。O(1)で先頭から取り出すキュー
+const queue: number[] = [];
+let head = 0;
+queue.push(1);                          // enqueue
+const front = queue[head++];            // dequeue
+const isEmpty = () => head >= queue.length;
+```
+
+## BFSテンプレート（グリッド版） — [第5章](/books/coding-test/05-stack-and-queue)・[第6章](/books/coding-test/06-trees-and-graphs)
+
+```typescript
+const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]] as const;
+
+function bfsGrid(grid: string[], sr: number, sc: number): number[][] {
+  const H = grid.length, W = grid[0].length;
+  const dist = Array.from({ length: H }, () => new Array(W).fill(-1));
+  const queue: [number, number][] = [[sr, sc]];
+  let head = 0;
+  dist[sr][sc] = 0;
+  while (head < queue.length) {
+    const [r, c] = queue[head++];
+    for (const [dr, dc] of DIRS) {
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= H || nc < 0 || nc >= W) continue;
+      if (grid[nr][nc] === '#' || dist[nr][nc] !== -1) continue;
+      dist[nr][nc] = dist[r][c] + 1;
+      queue.push([nr, nc]);
+    }
+  }
+  return dist;   // -1 = 到達不能
+}
+```
+
+## DFSテンプレート（隣接リスト・非再帰） — [第6章](/books/coding-test/06-trees-and-graphs)
+
+```typescript
+function dfs(graph: number[][], start: number, visited: boolean[]): void {
+  const stack = [start];
+  visited[start] = true;
+  while (stack.length > 0) {
+    const v = stack.pop()!;
+    for (const next of graph[v]) {
+      if (!visited[next]) {
+        visited[next] = true;
+        stack.push(next);
+      }
+    }
+  }
+}
+```
+
+## 累積和 — [第3章](/books/coding-test/03-arrays-and-strings)
+
+```typescript
+const prefix = new Array(nums.length + 1).fill(0);
+for (let i = 0; i < nums.length; i++) prefix[i + 1] = prefix[i] + nums[i];
+const rangeSum = (l: number, r: number) => prefix[r + 1] - prefix[l];  // [l, r]両端含む
+```
+
+## lowerBound（めぐる式） — [第8章](/books/coding-test/08-sort-and-binary-search)
+
+```typescript
+// 昇順配列で「x以上が初めて現れる位置」
+function lowerBound(sorted: number[], x: number): number {
+  let ng = -1, ok = sorted.length;
+  while (ok - ng > 1) {
+    const mid = Math.floor((ng + ok) / 2);
+    if (sorted[mid] >= x) ok = mid;
+    else ng = mid;
+  }
+  return ok;
+}
+// 応用: x以上の個数 = arr.length - lowerBound(arr, x)
+//       ちょうどxの個数 = lowerBound(arr, x + 1) - lowerBound(arr, x)
+```
+
+## 答えで二分探索の骨格 — [第8章](/books/coding-test/08-sort-and-binary-search)
+
+```typescript
+// canAchieve(x) が単調（あるxを境にtrue/falseが切り替わる）であることが前提
+let ok = /* 必ず達成できる値 */ 0;
+let ng = /* 絶対に達成できない値 */ 1e9 + 1;
+while (Math.abs(ng - ok) > 1) {
+  const mid = Math.floor((ok + ng) / 2);
+  if (canAchieve(mid)) ok = mid;
+  else ng = mid;
+}
+// ok が答え
+```
+
+## Union-Find — [第11章](/books/coding-test/11-graph-advanced)
+
+```typescript
+class UnionFind {
+  private parent: number[];
+  private rank: number[];
+  groupCount: number;
+
+  constructor(n: number) {
+    this.parent = Array.from({ length: n }, (_, i) => i);
+    this.rank = new Array(n).fill(0);
+    this.groupCount = n;
+  }
+  find(x: number): number {
+    if (this.parent[x] !== x) this.parent[x] = this.find(this.parent[x]);
+    return this.parent[x];
+  }
+  union(a: number, b: number): boolean {
+    const ra = this.find(a), rb = this.find(b);
+    if (ra === rb) return false;
+    if (this.rank[ra] < this.rank[rb]) this.parent[ra] = rb;
+    else if (this.rank[ra] > this.rank[rb]) this.parent[rb] = ra;
+    else { this.parent[rb] = ra; this.rank[ra]++; }
+    this.groupCount--;
+    return true;   // 実際に合併が起きたか（第13章 問9で使う）
+  }
+  same(a: number, b: number): boolean {
+    return this.find(a) === this.find(b);
+  }
+}
+```
+
+## MinHeap（優先度付きキュー） — [第11章](/books/coding-test/11-graph-advanced)
+
+```typescript
+class MinHeap<T> {
+  private data: T[] = [];
+  constructor(private less: (a: T, b: T) => number) {}
+  get size(): number { return this.data.length; }
+
+  push(v: T): void {
+    this.data.push(v);
+    let i = this.data.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (this.less(this.data[i], this.data[p]) >= 0) break;
+      [this.data[i], this.data[p]] = [this.data[p], this.data[i]];
+      i = p;
+    }
+  }
+
+  pop(): T | undefined {
+    if (this.data.length === 0) return undefined;
+    const top = this.data[0];
+    const last = this.data.pop()!;
+    if (this.data.length > 0) {
+      this.data[0] = last;
+      let i = 0;
+      while (true) {
+        const l = i * 2 + 1, r = i * 2 + 2;
+        let smallest = i;
+        if (l < this.data.length && this.less(this.data[l], this.data[smallest]) < 0) smallest = l;
+        if (r < this.data.length && this.less(this.data[r], this.data[smallest]) < 0) smallest = r;
+        if (smallest === i) break;
+        [this.data[i], this.data[smallest]] = [this.data[smallest], this.data[i]];
+        i = smallest;
+      }
+    }
+    return top;
+  }
+}
+
+// 使用例: ダイクストラ用 [距離, 頂点] の最小ヒープ
+// const heap = new MinHeap<[number, number]>((a, b) => a[0] - b[0]);
+```
+
+## ダイクストラ法 — [第11章](/books/coding-test/11-graph-advanced)
+
+```typescript
+function dijkstra(N: number, graph: [number, number][][], start: number): number[] {
+  const dist = new Array(N).fill(Infinity);
+  dist[start] = 0;
+  const heap = new MinHeap<[number, number]>((a, b) => a[0] - b[0]);
+  heap.push([0, start]);
+  while (heap.size > 0) {
+    const [d, v] = heap.pop()!;
+    if (d > dist[v]) continue;
+    for (const [next, w] of graph[v]) {
+      if (dist[v] + w < dist[next]) {
+        dist[next] = dist[v] + w;
+        heap.push([dist[next], next]);
+      }
+    }
+  }
+  return dist;
+}
+```
+
+## よく使う小物イディオム
+
+```typescript
+// 数値ソート（比較関数を忘れない！ — 第3章）
+arr.sort((a, b) => a - b);
+
+// 重複除去 — 第4章
+const unique = [...new Set(arr)];
+
+// カウントMap — 第4章
+const count = new Map<string, number>();
+for (const v of items) count.set(v, (count.get(v) ?? 0) + 1);
+
+// 2次元配列の初期化（fillの参照共有バグを回避）
+const grid2 = Array.from({ length: H }, () => new Array(W).fill(0));
+
+// 文字コード変換（'a' = 97, 'A' = 65）
+const idx = ch.charCodeAt(0) - 97;             // 'a'→0, 'b'→1, ...
+const ch2 = String.fromCharCode(97 + idx);
+
+// 10^9+7の剰余（掛け算はBigInt — 付録A）
+const MOD = 1_000_000_007;
+sum = (sum + v) % MOD;
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="メンター">
+スニペットは「写して使ううちに、書けるようになる」もの。最初のうちはコピペで構いませんが、Union-FindとlowerBoundだけは一度白紙から書いてみてください。仕組みの理解が試験中の「アレンジ力」に直結する2つです。
+</SpeechBubble>
+
+道具はこれで全部です。最後の付録では、本書を終えたあとの[成長ロードマップ](/books/coding-test/16-appendix-next-steps)を描きます。
