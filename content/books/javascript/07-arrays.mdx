@@ -1,6 +1,6 @@
 ---
 title: '配列メソッド完全ガイド — map・filter・reduceから実務頻出パターンまで'
-description: 'map・filter・reduce・find・some・every・concatなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。'
+description: 'map・filter・reduce・find・some・every・slice・concatなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。'
 order: 7
 ---
 
@@ -405,6 +405,69 @@ console.log(isFormValid); // false（passwordが invalid）
 
 空配列の可能性がある場合は、事前に `length` をチェックしてください。
 
+<a id="slice"></a>
+
+## slice — 配列の一部を取り出して新しい配列を作る
+
+`slice` は開始位置と終了位置を指定して、配列の一部を**新しい配列**として返します。
+元の配列は変更されません（非破壊）。
+
+**構文：** `array.slice(start, end?)`
+
+```js
+const languages = ['JavaScript', 'TypeScript', 'React', 'Node.js', 'SQL'];
+
+const frontend = languages.slice(0, 3);
+
+console.log(frontend);  // ["JavaScript", "TypeScript", "React"]
+console.log(languages); // ["JavaScript", "TypeScript", "React", "Node.js", "SQL"]（元の配列はそのまま）
+```
+
+`start` は取り出し始めるインデックス、`end` は取り出しを終える位置です。
+`end` に指定した位置の要素は含まれないため、`slice(0, 3)` は「0番目から3番目の手前まで」を取り出します。
+
+### 第2引数を省略する
+
+第2引数を省略すると、`start` から配列の最後までを取り出します。
+
+```js
+const tasks = ['設計', '実装', 'レビュー', 'リリース'];
+
+tasks.slice(1);
+// ["実装", "レビュー", "リリース"]
+```
+
+### マイナスのインデックス
+
+`slice` では、末尾から数えるマイナスのインデックスも使えます。
+最後の数件だけ取り出したいときに便利です。
+
+```js
+const logs = ['10:00', '10:05', '10:10', '10:15', '10:20'];
+
+const latest = logs.slice(-2);
+// ["10:15", "10:20"]
+```
+
+### 浅いコピーを作る
+
+引数を指定せずに `slice()` を呼ぶと、配列全体の浅いコピーを作れます。
+
+```js
+const original = ['A', 'B', 'C'];
+const copied = original.slice();
+
+copied.push('D');
+
+console.log(copied);   // ["A", "B", "C", "D"]
+console.log(original); // ["A", "B", "C"]
+```
+
+<Callout type="note" title="slice と splice の違い">
+  名前が似ていますが、`slice` は元の配列を変更しない非破壊メソッドです。一方、`splice`
+  は元の配列に要素を追加・削除する破壊的メソッドです。
+</Callout>
+
 <a id="concat"></a>
 
 ## concat — 配列を結合して新しい配列を作る
@@ -581,6 +644,7 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 | 条件に合う最初のインデックス | `findIndex` | 数値 or `-1`        |
 | 1つでも条件を満たすか        | `some`      | `boolean`           |
 | すべて条件を満たすか         | `every`     | `boolean`           |
+| 配列の一部を取り出す         | `slice`     | 新しい配列          |
 | 配列を結合する               | `concat`    | 新しい配列          |
 | 変換 + 1段階の平坦化         | `flatMap`   | 新しい配列          |
 
@@ -596,7 +660,7 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 
 ### 元の配列を壊すメソッドと壊さないメソッド
 
-この章で扱った `map`・`filter`・`reduce`・`find`・`some`・`every` はすべて**非破壊**（元の配列を変更しない）です。
+この章で扱った `map`・`filter`・`reduce`・`find`・`some`・`every`・`slice`・`concat`・`flatMap` はすべて**非破壊**（元の配列を変更しない）です。
 
 一方、以下のメソッドは**元の配列を直接変更する**（破壊的）ので注意が必要です。
 
@@ -640,7 +704,7 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 - <Marker>
     配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している
   </Marker>
-- `map` は変換、`filter` は絞り込み、`reduce` は集約、`concat` は結合——目的に応じて使い分ける
+- `map` は変換、`filter` は絞り込み、`reduce` は集約、`slice` は部分取得、`concat` は結合——目的に応じて使い分ける
 - `find` は最初の1つ、`some` は1つでもあるか、`every` は全部かを判定する
 - `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快
 - 破壊的メソッド（`sort` / `reverse` / `splice`）と非破壊メソッドの区別を意識する
@@ -653,6 +717,7 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 - [MDN — Array.prototype.filter](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
 - [MDN — Array.prototype.reduce](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)
 - [MDN — Array.prototype.find](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/find)
+- [MDN — Array.prototype.slice](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/slice)
 - [MDN — Array.prototype.concat](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/concat)
 
 <QuizLink
