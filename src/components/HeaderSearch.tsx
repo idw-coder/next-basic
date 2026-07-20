@@ -135,6 +135,7 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
   const [shortcutLabel, setShortcutLabel] = useState("⌘K");
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResponse>({
     bookResults: [],
     quizResults: [],
@@ -243,7 +244,7 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
   useEffect(() => {
     if (!open || bootstrap) return;
     let cancelled = false;
-    fetch("/api/site-search")
+    fetch("/next-api/site-search")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: BootstrapResponse | null) => {
         if (data && !cancelled) setBootstrap(data);
@@ -259,30 +260,34 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
     if (!trimmedQuery) {
       setSearchResults({ bookResults: [], quizResults: [] });
       setSearching(false);
+      setSearchError(false);
       setActiveIndex(0);
       return;
     }
 
     setSearching(true);
+    setSearchError(false);
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      fetch(`/api/site-search?q=${encodeURIComponent(trimmedQuery)}`, {
+      fetch(`/next-api/site-search?q=${encodeURIComponent(trimmedQuery)}`, {
         signal: controller.signal,
       })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: SearchResponse | null) => {
-          if (data) {
-            setSearchResults({
-              bookResults: data.bookResults ?? [],
-              quizResults: data.quizResults ?? [],
-            });
-            setActiveIndex(0);
-          }
+        .then((res) => {
+          if (!res.ok) throw new Error(`site-search failed: ${res.status}`);
+          return res.json();
+        })
+        .then((data: SearchResponse) => {
+          setSearchResults({
+            bookResults: data.bookResults ?? [],
+            quizResults: data.quizResults ?? [],
+          });
+          setActiveIndex(0);
           setSearching(false);
         })
         .catch((error) => {
           if (error instanceof DOMException && error.name === "AbortError") return;
           setSearchResults({ bookResults: [], quizResults: [] });
+          setSearchError(true);
           setSearching(false);
         });
     }, 200);
@@ -490,10 +495,14 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
                     {!hasResults && !searching && (
                       <div className="px-4 py-10 text-center">
                         <p className="text-sm font-bold text-ink">
-                          「{trimmedQuery}」に一致するコンテンツが見つかりません
+                          {searchError
+                            ? "検索に失敗しました"
+                            : `「${trimmedQuery}」に一致するコンテンツが見つかりません`}
                         </p>
                         <p className="mt-1 text-xs font-medium text-ink-muted">
-                          キーワードを変えるか、検索ページで絞り込んでみてください
+                          {searchError
+                            ? "通信に問題があるようです。検索ページから試してみてください"
+                            : "キーワードを変えるか、検索ページで絞り込んでみてください"}
                         </p>
                         {allCandidate && (
                           <div className="mt-4">

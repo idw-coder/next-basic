@@ -183,7 +183,7 @@ export default function BooksPage() {
                   <p className="mb-3 max-w-[18rem] text-[0.68rem] font-black uppercase leading-relaxed tracking-normal text-ink/75 sm:max-w-none sm:text-xs">
                     Textbooks for web engineers - {books.length} books
                   </p>
-                  <h1 className="flex flex-col text-[4rem] font-black leading-[0.88] tracking-normal text-ink sm:text-[5.5rem] md:text-[7rem] lg:text-[8.5rem]">
+                  <h1 className="flex flex-col font-display text-[4rem] font-black leading-[0.98] tracking-normal text-ink sm:text-[5.5rem] md:text-[7rem] lg:text-[8.5rem]">
                     <span className="text-brand-red">理解を、</span>
                     <span>整える。</span>
                   </h1>
@@ -240,7 +240,7 @@ export default function BooksPage() {
             <div className="flex items-start gap-3">
               <Lightbulb className="size-5 text-primary mt-0.5 shrink-0" />
               <div>
-                <h2 className="text-lg font-bold text-foreground mb-2">
+                <h2 className="font-display text-lg font-bold text-foreground mb-2">
                   ウェブエンジニア問題集の教科書とは
                 </h2>
                 <p className="text-muted-foreground leading-relaxed text-sm">

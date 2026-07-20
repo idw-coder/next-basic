@@ -19,14 +19,27 @@ class VeliteWebpackPlugin {
   }
 }
 
+const API_PROXY_TARGET =
+  process.env.INTERNAL_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://localhost:8888';
+
 const nextConfig: NextConfig = {
-  // Node.js専用パッケージをwebpackバンドルから除外し、require()で直接読み込む。
-  // TypeORMは全DB/プラットフォーム用ドライバを内包しており、
-  // webpackが不要なドライバ(expo-sqlite等)まで解決しようとしてエラーになるため除外する。
-  serverExternalPackages: ['typeorm', 'mysql2'],
   webpack: (config) => {
     config.plugins.push(new VeliteWebpackPlugin());
     return config;
+  },
+  // /api/* は常にExpressバックエンドが担当する。
+  // 本番はリバースプロキシが /api/* をExpressへ流すためこのrewriteは発火しないが、
+  // プロキシのないdevでも同一オリジンの /api/* が同じExpressに届くようにして
+  // dev/本番の挙動を一致させる。Next自身のAPIルートは /next-api/* に置くこと。
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${API_PROXY_TARGET}/api/:path*`,
+      },
+    ];
   },
 };
 

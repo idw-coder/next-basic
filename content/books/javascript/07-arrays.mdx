@@ -1,6 +1,6 @@
 ---
 title: '配列メソッド完全ガイド — map・filter・reduceから実務頻出パターンまで'
-description: 'map・filter・reduce・find・some・every・slice・concatなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。'
+description: 'map・filter・reduce・find・some・every・slice・concatなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。破壊的メソッド・非破壊メソッドの一覧表つき。'
 order: 7
 ---
 
@@ -721,17 +721,24 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
   maxWidth="120px"
 />
 
-### 元の配列を壊すメソッドと壊さないメソッド
+### 破壊的メソッド・非破壊メソッド一覧 — 元の配列を壊すのはどれ？
 
-この章で扱った `map`・`filter`・`reduce`・`find`・`some`・`every`・`slice`・`concat`・`flatMap` はすべて**非破壊**（元の配列を変更しない）です。
+配列メソッドは、**元の配列を直接変更する「破壊的メソッド」**と、**元の配列はそのままに新しい配列や値を返す「非破壊メソッド」**の2種類に分けられます。この区別を意識していないと、「知らないうちに元の配列が変わっていた」というバグの原因になります。
 
-一方、以下のメソッドは**元の配列を直接変更する**（破壊的）ので注意が必要です。
+まず、破壊的メソッドの一覧です。この章では扱っていないメソッドも含めてまとめています。
 
-| 破壊的メソッド | 非破壊の代替（ES2023〜） |
-| -------------- | ------------------------ |
-| `sort()`       | `toSorted()`             |
-| `reverse()`    | `toReversed()`           |
-| `splice()`     | `toSpliced()`            |
+| 破壊的メソッド     | 何をする                 | 非破壊の代替             |
+| ------------------ | ------------------------ | ------------------------ |
+| `push` / `pop`     | 末尾に追加 / 末尾を削除  | `concat` / `slice(0, -1)` |
+| `unshift` / `shift` | 先頭に追加 / 先頭を削除 | `[x, ...arr]` / `slice(1)` |
+| `splice`           | 途中の追加・削除・置換   | `toSpliced()`（ES2023）  |
+| `sort`             | 並び替え                 | `toSorted()`（ES2023）   |
+| `reverse`          | 逆順にする               | `toReversed()`（ES2023） |
+| `fill`             | 指定値で埋める           | —                        |
+| `copyWithin`       | 配列内で要素をコピー     | —                        |
+| `arr[i] = x` での代入 | 要素の置き換え        | `with(i, x)`（ES2023）   |
+
+一方、非破壊メソッドは `map`・`filter`・`reduce`・`find`・`findIndex`・`some`・`every`・`slice`・`concat`・`flatMap`・`flat`・`includes`・`indexOf`・`join`、そしてES2023で追加された `toSorted`・`toReversed`・`toSpliced`・`with` です。**この章で学んだメソッドはすべて非破壊**なので、安心してチェーンできます。
 
 ```js
 const arr = [3, 1, 2];

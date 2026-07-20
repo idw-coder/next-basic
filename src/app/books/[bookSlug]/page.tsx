@@ -176,7 +176,7 @@ export default async function BookPage({ params }: BookPageProps) {
             <span className={cn('size-2 rounded-full', theme.accentBg)} />
             BOOK / 全{chapters.length}章
           </p>
-          <h1 className="text-2xl font-black leading-tight text-ink sm:text-3xl">{book.title}</h1>
+          <h1 className="font-display text-2xl font-black leading-tight text-balance text-ink sm:text-3xl">{book.title}</h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-body sm:text-base sm:leading-7">
             {book.description}
           </p>
@@ -300,7 +300,7 @@ export default async function BookPage({ params }: BookPageProps) {
             <div className="flex items-start gap-3">
               <Lightbulb className="size-5 text-primary mt-0.5 shrink-0" />
               <div>
-                <h2 className="text-lg font-bold text-foreground mb-2">この本で学べること</h2>
+                <h2 className="font-display text-lg font-bold text-foreground mb-2">この本で学べること</h2>
                 <p className="text-muted-foreground leading-relaxed text-sm">{seoContent.overview}</p>
               </div>
             </div>
