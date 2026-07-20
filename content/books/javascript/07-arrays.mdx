@@ -451,7 +451,7 @@ const latest = logs.slice(-2);
 
 ### 浅いコピーを作る
 
-引数を指定せずに `slice()` を呼ぶと、配列全体の浅いコピーを作れます。
+引数を指定せずに `slice()` を呼ぶと、配列全体のコピーを作れます。
 
 ```js
 const original = ['A', 'B', 'C'];
@@ -462,6 +462,69 @@ copied.push('D');
 console.log(copied);   // ["A", "B", "C", "D"]
 console.log(original); // ["A", "B", "C"]
 ```
+
+コピーした側に要素を追加しても、元の配列はそのまま。一見これで「完全なコピー」ができたように見えますよね。
+
+でも実は、このコピーは**浅いコピー（シャローコピー）**と呼ばれるもので、1つだけ落とし穴があります。
+
+### 浅いコピーの落とし穴 — 中身がオブジェクトのとき
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  コピーに「浅い」なんてあるんですか…？じゃあ「深いコピー」もあるってこと…？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  いい勘だね。ポイントは**配列の中身がオブジェクトかどうか**。さっきの例みたいに文字列や数値だけなら何も気にしなくていい。でもオブジェクトが入っていると、ちょっと不思議なことが起きるんだ。
+</SpeechBubble>
+
+まずは、実際に起きる「不思議なこと」を見てみましょう。
+
+```js
+const members = [{ name: '太郎' }, { name: '花子' }];
+const copied = members.slice(); // コピーしたはずなのに…
+
+copied[0].name = '書き換えたよ';
+
+console.log(copied[0].name);  // "書き換えたよ"
+console.log(members[0].name); // "書き換えたよ" ← 元の配列まで変わってる！？
+```
+
+<Figure
+  src="/images/surprise_pc_woman_color.png"
+  alt="コピーしたはずの配列を変更したら元の配列まで変わって驚く様子"
+  maxWidth="120px"
+/>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  ええっ！？コピーした方だけ書き換えたのに、元の `members` まで変わってます…！
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  びっくりするよね。でも仕組みがわかれば怖くないよ。ポイントは、**配列にはオブジェクトそのものではなく「参照」が入っている**ということなんだ。
+</SpeechBubble>
+
+順を追って整理しましょう。
+
+1. オブジェクトは、メモリ上のどこかに実体が1つ作られます
+2. 配列に入っているのは、その実体の場所を指し示す**参照**です
+3. `slice()` でコピーされるのは、この**参照だけ**です
+4. つまりコピー後も、2つの配列は**同じ実体を指したまま**です
+
+だから `copied[0].name = '書き換えたよ'` と書くと、参照の先にある実体そのものが書き換わります。実体は1つしかないので、`members[0]` から見ても変わっている——これが先ほどのコードで起きていたことです。
+
+コピーされるのは配列の**1階層目（参照の並び）だけ**で、その先にあるオブジェクトの中身まではコピーされない。これが「浅いコピー」と呼ばれる理由です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  なるほど…！じゃあ最初の例（`'A'`, `'B'`, `'C'`）で何も起きなかったのはどうしてですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  文字列や数値などのプリミティブは参照ではなく、**値そのものが配列に入っている**からだよ。コピーすれば値ごと複製されるので、片方を変えてももう片方には影響しない。参照が絡むのはオブジェクトや配列が要素のときだけ、と覚えておこう。
+</SpeechBubble>
+
+<Callout type="warning" title="浅いコピーは slice だけの話ではない">
+  この章で学ぶ `concat` や `filter`、`map`、スプレッド構文 `[...arr]` が返す新しい配列も、すべて浅いコピーです。「非破壊メソッドだから安全」と思っていても、**要素のオブジェクトの中身を書き換えると元の配列に影響します**。ネストしたオブジェクトの中身まで完全に複製したいときは `structuredClone(original)` を使うと、**深いコピー（ディープコピー）**が作れます。
+</Callout>
 
 <Callout type="note" title="slice と splice の違い">
   名前が似ていますが、`slice` は元の配列を変更しない非破壊メソッドです。一方、`splice`
