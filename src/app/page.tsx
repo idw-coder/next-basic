@@ -408,7 +408,7 @@ export default async function Home() {
               <span className="size-2 rounded-full bg-brand-lime" />
               1問30秒から、理解を更新する
             </p>
-            <h1 className="max-w-[11em] text-[2.35rem] font-black leading-[0.94] tracking-normal text-ink sm:text-5xl md:text-[4.15rem]">
+            <h1 className="max-w-[11em] font-display text-[2.15rem] font-black leading-[1.04] tracking-normal text-ink sm:text-[2.8rem] md:text-[3.6rem]">
               ウェブ
               <span className="block text-brand-blue">エンジニア</span>
               <span className="block">問題集</span>
@@ -469,7 +469,7 @@ export default async function Home() {
       <div className="bg-[linear-gradient(180deg,var(--color-cream)_0%,#ffffff_36%,var(--color-cream)_100%)]">
         <div className="mx-auto max-w-6xl px-4 pt-4 pb-8 md:pt-8 md:pb-14">
           {/* 特徴 */}
-          <section className="mb-8 rounded-[1.5rem] border border-white/80 bg-white/85 px-4 py-5 shadow-[0_24px_70px_rgba(47,48,47,0.08)] backdrop-blur sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
+          <section className="mb-10 pt-2 md:mb-20 md:pt-4">
             <SectionHeading
               className="mb-4 sm:mb-7"
               icon={<Sparkles className="size-5 text-brand-red" />}
@@ -505,7 +505,7 @@ export default async function Home() {
               ].map((f) => (
                 <div
                   key={f.title}
-                  className="flex items-start gap-2 rounded-xl border border-ink/10 bg-cream-soft p-2.5 shadow-[8px_8px_0_rgba(215,255,56,0.28)] sm:gap-3 sm:p-4"
+                  className="flex items-start gap-2 rounded-xl border border-ink/10 bg-white p-2.5 shadow-[8px_8px_0_rgba(215,255,56,0.28)] sm:gap-3 sm:p-4"
                 >
                   <f.icon className={`mt-0.5 size-4 ${f.color} shrink-0 sm:size-5`} />
                   <div>
@@ -523,10 +523,7 @@ export default async function Home() {
           <ReviewPromptCard />
 
           {/* 学習カテゴリ */}
-          <section
-            id="categories"
-            className="relative mb-8 overflow-hidden rounded-[1.5rem] border border-ink/10 bg-white/92 px-3 py-5 shadow-[0_24px_70px_rgba(47,48,47,0.08)] sm:rounded-[2rem] md:mb-16 md:px-10 md:py-12"
-          >
+          <section id="categories" className="relative mb-10 scroll-mt-20 md:mb-20">
             <div className="mb-4 flex justify-center">
               <div className="relative inline-block rounded-full bg-brand-blue px-5 py-1.5 text-xs font-bold text-white shadow-[8px_8px_0_var(--color-brand-lime)] sm:text-sm">
                 どのカテゴリから始める？
@@ -549,7 +546,7 @@ export default async function Home() {
                   <Link
                     key={cat.slug}
                     href={`/quiz/${cat.slug}`}
-                    className={`group relative flex items-start gap-3 overflow-hidden rounded-xl border border-white/75 ${cat.bgColor} px-3 py-3 shadow-[0_10px_28px_rgba(47,48,47,0.04)] transition hover:-translate-y-0.5 hover:shadow-md sm:gap-4 sm:px-4 sm:py-3.5`}
+                    className={`group relative flex items-start gap-3 overflow-hidden rounded-xl border border-white/75 ${cat.bgColor} px-3 py-3 shadow-[0_10px_28px_rgba(47,48,47,0.04)] transition-colors hover:border-ink/25 sm:gap-4 sm:px-4 sm:py-3.5`}
                   >
                     {/* 背景アイコン */}
                     <CatIcon
@@ -763,7 +760,7 @@ export default async function Home() {
           </section>
 
           {/* 学習のすすめ方 */}
-          <section className="mb-8 rounded-[1.5rem] border border-white/80 bg-white/86 px-4 py-5 shadow-[0_24px_70px_rgba(47,48,47,0.08)] sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
+          <section className="mb-10 md:mb-20">
             <div className="mb-3 flex justify-center">
               <div className="relative inline-block rounded-full bg-brand-red px-4 py-1.5 text-xs font-bold text-white shadow-[8px_8px_0_var(--color-brand-lime)] sm:text-sm">
                 5ステップで効率的に！

@@ -1,8 +1,18 @@
 import type { Metadata } from 'next';
+import { Dela_Gothic_One } from 'next/font/google';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
 import './globals.css';
+
+// 見出し専用のディスプレイ書体。日本語グリフはGoogle Fontsのunicode-range分割で必要分のみ配信される
+const delaGothicOne = Dela_Gothic_One({
+  weight: '400',
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  variable: '--font-dela',
+});
 
 import GoogleAdSense, { HideAdsForEntry } from '@/components/GoogleAdSense';
 import HeaderNav from '@/components/HeaderNav';
@@ -64,7 +74,7 @@ export default function RootLayout({
           <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
         )}
       </head>
-      <body className="app-font">
+      <body className={`app-font ${delaGothicOne.variable}`}>
         {clientId && !isDevelopment && (
           <Script
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientId}`}

@@ -7,6 +7,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Hallmark · genre: playful · scope: token+rhythm fix (card-in-card / type pairing / hover) · theme: existing brand (cream paper · red-blue-lime accents) */
+
 /* ブランドトークン: FVの赤・青・ライムを基準に全ページで統一する */
 @theme {
   --color-brand-red: #ff624d;
@@ -30,6 +32,8 @@
 }
 
 @theme inline {
+  /* 見出し専用ディスプレイ書体（Dela Gothic One）。本文はapp-fontのまま2書体構成 */
+  --font-display: var(--font-dela), 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -150,6 +154,11 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Dela Gothic Oneは400のみ提供。font-black併用時の疑似ボールド化を防ぐ（フォールバック時はウェイトが効く） */
+.font-display {
+  font-synthesis-weight: none;
 }
 
 .app-font {

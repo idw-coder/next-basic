@@ -24,7 +24,7 @@ export function SectionHeading({
 
   const headingClass = [
     lg ? "text-xl font-black md:text-2xl" : "text-lg font-black",
-    "text-ink",
+    "font-display text-ink",
     icon && "flex items-center gap-2",
     icon && center && "justify-center",
   ]
