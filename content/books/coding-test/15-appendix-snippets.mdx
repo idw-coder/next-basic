@@ -6,6 +6,141 @@ order: 15
 
 付録Bは、本編に登場した「暗記してよい部品」のカタログです。テスト前の見直しや、本番中の参照（持ち込み可の形式の場合）に使ってください。各スニペットには解説章を添えています。
 
+## この章で使う言語
+
+本書のスニペットは、基本的に**TypeScript**で書いています。`number[]` や `[number, number][]` のような型注釈が付いているコードはTypeScriptです。
+
+ただし、標準入力を読み取って変数や配列に入れる部分は、初心者がそのまま試しやすいように**JavaScript**の例も載せます。JavaScriptで書いた標準入力の処理は、型注釈を足せばTypeScriptでもほぼ同じ考え方で使えます。
+
+JavaScriptの変数・配列の基本に不安がある場合は、先に[『JavaScript入門』の変数宣言](/books/javascript/01-variables-and-scope)と[配列メソッド](/books/javascript/07-arrays)を確認してください。TypeScriptの型注釈を整理したい場合は、[『TypeScript入門』の導入](/books/typescript/01-introduction)と[基本の型](/books/typescript/02-basic-types)が対応します。
+
+## JavaScriptで標準入力を変数・配列に入れる
+
+コーディングテストでは、入力はキーボードから1つずつ受け取るのではなく、**標準入力**としてまとめて渡されます。Node.jsでは `fs.readFileSync(0, 'utf8')` で標準入力全体を文字列として読み取れます。
+
+### 1つの数値を受け取る
+
+入力例:
+
+```text
+5
+```
+
+JavaScript:
+
+```js
+const fs = require('fs');
+
+const input = fs.readFileSync(0, 'utf8').trim();
+const n = Number(input);
+
+console.log(n);
+```
+
+`readFileSync(0, 'utf8')` で入力全体を読み、`trim()` で前後の改行を取り除き、`Number()` で数値に変換します。
+
+### 1行に並んだ数値を配列にする
+
+入力例:
+
+```text
+3 10 20 30
+```
+
+JavaScript:
+
+```js
+const fs = require('fs');
+
+const input = fs.readFileSync(0, 'utf8').trim();
+const nums = input.split(' ').map(Number);
+
+const n = nums[0];
+const arr = nums.slice(1);
+
+console.log(n);
+console.log(arr);
+```
+
+`split(' ')` で空白区切りの文字列配列にし、`map(Number)` で数値配列に変換します。先頭だけ変数に入れたいときは `nums[0]`、残りを配列として使いたいときは `slice(1)` を使います。
+
+### 1行目がN、2行目が配列
+
+入力例:
+
+```text
+5
+8 1 3 10 2
+```
+
+JavaScript:
+
+```js
+const fs = require('fs');
+
+const lines = fs.readFileSync(0, 'utf8').trim().split('\n');
+
+const n = Number(lines[0]);
+const arr = lines[1].split(' ').map(Number);
+
+console.log(n);
+console.log(arr);
+```
+
+行ごとに扱いたい場合は、先に `split('\n')` で行の配列にします。`lines[0]` が1行目、`lines[1]` が2行目です。
+
+### 1行目に複数の変数、続く行に配列
+
+入力例:
+
+```text
+3 100
+20 30 40
+```
+
+JavaScript:
+
+```js
+const fs = require('fs');
+
+const lines = fs.readFileSync(0, 'utf8').trim().split('\n');
+
+const [n, x] = lines[0].split(' ').map(Number);
+const arr = lines[1].split(' ').map(Number);
+
+console.log(n, x);
+console.log(arr);
+```
+
+`const [n, x] = ...` は分割代入です。配列の1番目を `n`、2番目を `x` に入れます。分割代入の詳しい使い方は[JavaScript入門の分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)で扱っています。
+
+### 複数行を2次元配列にする
+
+入力例:
+
+```text
+3 4
+1 2 3 4
+5 6 7 8
+9 10 11 12
+```
+
+JavaScript:
+
+```js
+const fs = require('fs');
+
+const lines = fs.readFileSync(0, 'utf8').trim().split('\n');
+
+const [h, w] = lines[0].split(' ').map(Number);
+const grid = lines.slice(1, 1 + h).map((line) => line.split(' ').map(Number));
+
+console.log(h, w);
+console.log(grid);
+```
+
+`slice(1, 1 + h)` で、2行目から `h` 行分だけ取り出します。各行をさらに `split(' ')` して数値配列にすると、`number[][]` 相当の2次元配列になります。
+
 ## 添字方式キュー — [第5章](/books/coding-test/05-stack-and-queue)
 
 ```typescript
