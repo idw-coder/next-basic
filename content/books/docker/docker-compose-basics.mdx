@@ -1,0 +1,114 @@
+---
+title: 'Docker Compose入門 — 複数コンテナをまとめて動かす'
+description: 'Docker Composeでアプリ、DB、キャッシュなど複数コンテナをまとめて定義し、サービス名、ports、volumes、environment の基本を学びます。'
+order: 4
+---
+
+Docker Composeは、複数のコンテナをまとめて定義・起動するための仕組みです。
+
+Webアプリ開発では、アプリ本体だけでなく、MySQL、Redis、メール確認用ツールなどを一緒に動かすことがあります。これらを毎回 `docker run` で起動するのは大変です。Composeを使うと、構成を `compose.yaml` に書いて、`docker compose up` でまとめて起動できます。
+
+<Marker>Docker Composeは「複数コンテナの開発環境」をファイルで再現するための道具です。</Marker>
+
+## compose.yamlの基本
+
+Node.jsアプリとMySQLを動かす例です。
+
+```yaml
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_HOST: db
+      DATABASE_USER: app
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: app_db
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: app_db
+      MYSQL_USER: app
+      MYSQL_PASSWORD: password
+    volumes:
+      - db-data:/var/lib/mysql
+
+volumes:
+  db-data:
+```
+
+このファイルでは、`app` と `db` という2つのサービスを定義しています。
+
+| 項目 | 役割 |
+| ---- | ---- |
+| `services` | 起動するコンテナ群を定義する |
+| `build` | Dockerfileからイメージをビルドする |
+| `image` | 既存イメージを使う |
+| `ports` | ホストとコンテナのポートをつなぐ |
+| `environment` | 環境変数を渡す |
+| `volumes` | データやファイルを永続化・共有する |
+| `depends_on` | 起動順の依存関係を指定する |
+
+## 起動・停止する
+
+Composeで起動するには、`compose.yaml` があるディレクトリで次のコマンドを実行します。
+
+```bash
+docker compose up
+```
+
+バックグラウンドで起動するなら `-d` を付けます。
+
+```bash
+docker compose up -d
+```
+
+停止するには `down` を使います。
+
+```bash
+docker compose down
+```
+
+ログを見るには `logs` を使います。
+
+```bash
+docker compose logs -f app
+```
+
+## サービス名で通信する
+
+Composeでは、同じComposeプロジェクト内のサービス名をホスト名として使えます。上の例では、アプリからMySQLへ接続するときのホスト名は `db` です。
+
+```text
+DATABASE_HOST=db
+```
+
+ここで `localhost` と書くと、アプリコンテナ自身を指してしまいます。DBコンテナではありません。
+
+<Callout type="warning">
+ComposeでアプリからDBへ接続するとき、ホスト名に `localhost` を指定して失敗するケースは非常に多いです。同じCompose内ではサービス名を使う、と覚えましょう。
+</Callout>
+
+## depends_onの注意点
+
+`depends_on` は起動順を指定できますが、「DBが完全に接続可能になるまで待つ」ことを保証するものではありません。
+
+```yaml
+depends_on:
+  - db
+```
+
+この指定は、`app` より先に `db` コンテナを起動する、という意味です。DBの初期化完了まで待つわけではないため、アプリ側でリトライしたり、ヘルスチェックを使ったりする設計が必要になることがあります。
+
+## ちゃんと使うためのポイント
+
+- Composeは複数コンテナをまとめて定義する
+- `docker compose up` で起動、`docker compose down` で停止
+- アプリからDBへは `localhost` ではなくサービス名で接続する
+- `volumes` でDBデータを永続化する
+- `depends_on` は起動順であり、サービスの準備完了を完全には保証しない
