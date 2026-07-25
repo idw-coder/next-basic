@@ -96,6 +96,13 @@ Lambdaは、サーバー管理なしでコードを実行するサービスで�
 
 ### GitリポジトリとECRリポジトリの違い
 
+<Figure
+  src="/images/aws-saa-c03-repository-difference.svg"
+  alt="Gitリポジトリはソースコードとコミットを保管し、ECRリポジトリはDockerイメージとタグを保管する違いを示す図"
+  maxWidth="760px"
+  caption="Gitは作り方、ECRはビルド済みの実行パッケージを置く場所"
+/>
+
 | | Gitリポジトリ | ECRリポジトリ |
 |---|---|---|
 | **保管するもの** | ソースコード（テキストファイル） | Dockerイメージ（ビルド済みの実行環境一式） |
