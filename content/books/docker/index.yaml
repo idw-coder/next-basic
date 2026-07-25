@@ -1,0 +1,3 @@
+title: 'Docker入門 — コンテナ開発の基礎'
+description: 'Dockerの基本概念、イメージとコンテナ、Dockerfile、ボリューム、ネットワーク、Docker Compose、レジストリとタグまで、Web開発で必要なコンテナの基礎を実務目線で学ぶ入門書です。'
+coverImage: '/images/books/docker.png'

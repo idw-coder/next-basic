@@ -22,6 +22,7 @@ const categoryToBookMap: Record<string, string> = {
   'tailwind-css': 'tailwind-css',
   'aws-basic': 'aws-saa-c03',
   'sql-basic': 'sql-basics',
+  docker: 'docker',
 };
 
 /** 書籍一覧の表示順（先頭が先に表示される） */
@@ -34,6 +35,7 @@ export const BOOK_ORDER = [
   'system-design',
   'javascript',
   'node-js',
+  'docker',
   'typescript',
   'react-learning',
   'css-basics',
@@ -52,6 +54,7 @@ export const NEW_BOOK_SLUGS = new Set<string>([
   'github-actions',
   'azure-az-900',
   'node-js',
+  'docker',
   'sql-basics',
   'aws-saa-c03',
   'system-design',

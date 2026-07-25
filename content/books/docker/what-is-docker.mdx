@@ -1,0 +1,120 @@
+---
+title: 'Dockerとは何か — イメージ・コンテナ・レジストリの全体像'
+description: 'Dockerとは何か、何を解決する道具なのか、イメージ・コンテナ・レジストリ・Dockerfileの関係をWebアプリ開発の文脈で整理します。'
+order: 1
+---
+
+Dockerは、アプリケーションとその実行に必要なものを**コンテナ**としてまとめ、どこでも同じように動かしやすくするためのツールです。
+
+ローカルPC、CI、本番サーバーでNode.jsやMySQLのバージョンが違うと、「自分のPCでは動くのに本番で落ちる」という問題が起きます。Dockerは、アプリのコードだけでなく、ランタイム、ライブラリ、OSレベルの設定をまとめて扱うことで、この環境差分を小さくします。
+
+<Marker>Dockerは「アプリを入れる箱」ではなく、「同じ実行環境を作って配るための仕組み」です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Dockerを使うと環境構築が楽になる、と聞きました。でも、Node.jsを普通にインストールして動かすのと何が違うんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  普通の環境構築は「各PCに必要なものを入れる」発想です。Dockerは「必要なものが入った実行環境をイメージとして作り、そこからコンテナを起動する」発想です。
+</SpeechBubble>
+
+## Dockerが解決すること
+
+Dockerが特に役立つのは、次のような場面です。
+
+| 困りごと | Dockerでの考え方 |
+| -------- | ---------------- |
+| 開発者ごとにNode.jsやMySQLのバージョンが違う | 必要なバージョンをイメージに固定する |
+| 新しいメンバーの環境構築に時間がかかる | `docker compose up` でまとめて起動する |
+| 本番とローカルで動き方が違う | 同じイメージを使って差分を減らす |
+| 複数サービスの起動順や接続設定が複雑 | Composeでアプリ、DB、Redisなどを定義する |
+
+ただし、Dockerを使えば設計や運用の問題がすべて消えるわけではありません。ログ、永続データ、秘密情報、セキュリティ、イメージサイズなどは、Dockerを使うからこそ意識する必要があります。
+
+<Callout type="warning">
+Dockerは「本番運用を自動で正しくしてくれる魔法」ではありません。まずはイメージ、コンテナ、ボリューム、ネットワークの役割を分けて理解することが重要です。
+</Callout>
+
+## 最初に押さえる4つの言葉
+
+Dockerの学習では、似た言葉が何度も出てきます。最初は次の4つを分けて考えましょう。
+
+| 用語 | ざっくり言うと | 例 |
+| ---- | -------------- | -- |
+| イメージ | コンテナを作るためのテンプレート | `node:22`, `mysql:8.4`, 自作のWebアプリイメージ |
+| コンテナ | イメージから起動した実行中のプロセス | 起動中のNext.jsアプリ、起動中のMySQL |
+| Dockerfile | イメージの作り方を書いたファイル | `FROM node:22` から始まるビルド手順 |
+| レジストリ | イメージを置いておく場所 | Docker Hub, Amazon ECR, GitHub Container Registry |
+
+特に、**イメージ**と**コンテナ**の違いは重要です。
+
+| 観点 | イメージ | コンテナ |
+| ---- | -------- | -------- |
+| 役割 | 実行環境のテンプレート | 実際に動いているもの |
+| 状態 | 基本的に読み取り専用 | 実行中に状態を持つ |
+| たとえるなら | アプリのパッケージ | 起動したアプリ |
+| 主なコマンド | `docker build`, `docker pull`, `docker images` | `docker run`, `docker ps`, `docker stop` |
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["Dockerfile<br/>作り方"] -->|"docker build"| B["イメージ<br/>実行環境のテンプレート"]
+    B -->|"docker run"| C["コンテナ<br/>実際に動いているアプリ"]
+    B -->|"docker push"| D["レジストリ<br/>Docker Hub / ECR"]
+    D -->|"docker pull"| B
+`}
+/>
+
+## DockerはGitの代わりではない
+
+Dockerを学び始めると、Gitリポジトリ、Dockerイメージ、ECRリポジトリのように「リポジトリ」という言葉が複数出てきます。
+
+Gitリポジトリに入れるのは、ソースコードです。一方、Dockerレジストリに置くのは、ビルド済みのイメージです。つまり、Gitは「作り方」を管理し、Dockerのレジストリは「できあがった実行パッケージ」を配る場所です。
+
+```text
+Gitリポジトリ
+  ソースコード、Dockerfile、compose.yaml
+      ↓ docker build
+Dockerイメージ
+  実行に必要なものをまとめたパッケージ
+      ↓ docker push
+レジストリ
+  Docker Hub、Amazon ECRなど
+```
+
+この流れは、[AWS SAA-C03のECR章](/books/aws-saa-c03/compute-selection#gitリポジトリとecrリポジトリの違い)にもつながります。
+
+## Dockerを使う基本の流れ
+
+最小の流れは、次の3ステップです。
+
+```bash
+# 1. イメージを取得する
+docker pull nginx
+
+# 2. イメージからコンテナを起動する
+docker run --name web -p 8080:80 nginx
+
+# 3. 起動中のコンテナを確認する
+docker ps
+```
+
+この例では、Docker Hubから `nginx` イメージを取得し、そのイメージから `web` という名前のコンテナを起動しています。`-p 8080:80` は、手元のPCの `8080` 番ポートをコンテナ内の `80` 番ポートにつなぐ指定です。
+
+ブラウザで `http://localhost:8080` を開くと、コンテナ内のNginxにアクセスできます。
+
+<Callout type="info">
+最初はコマンドを丸暗記するより、「イメージを取る」「コンテナを起動する」「起動中のコンテナを見る」という流れを押さえる方が大切です。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- Dockerは、アプリと実行環境をまとめて扱うためのツール
+- イメージはテンプレート、コンテナはイメージから起動した実体
+- Dockerfileはイメージの作り方、レジストリはイメージの置き場所
+- Gitリポジトリはソースコード、Dockerレジストリはビルド済みイメージを扱う
+- 本格的なWeb開発では、単体の `docker run` だけでなく Docker Compose も重要になる
+
+---
+
+<QuizLink href="/quiz/docker" label="Dockerのクイズで確認する" />
