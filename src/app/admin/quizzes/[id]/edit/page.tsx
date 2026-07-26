@@ -1,25 +1,17 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import api from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import TiptapEditor from "@/components/admin/TiptapEditor";
-import {
-  ArrowLeft,
-  Import,
-  FileOutput,
-  Plus,
-  Trash2,
-  Copy,
-  ExternalLink,
-} from "lucide-react";
+import TiptapEditor from '@/components/admin/TiptapEditor';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import api from '@/lib/api';
+import { ArrowLeft, Copy, ExternalLink, FileOutput, Import, Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface QuizCategory {
   id: number;
@@ -40,7 +32,7 @@ interface Choice {
 
 function createDefaultChoices(count = 4): Choice[] {
   return Array.from({ length: count }, () => ({
-    choice_text: "",
+    choice_text: '',
     is_correct: false,
   }));
 }
@@ -54,26 +46,44 @@ function extractJsonFromText(text: string): string {
 }
 
 function repairJson(input: string): string {
-  const VALID_ESCAPES = new Set(['"', "\\", "/", "b", "f", "n", "r", "t", "u"]);
+  const VALID_ESCAPES = new Set(['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u']);
   const out: string[] = [];
   let inStr = false;
   let i = 0;
   while (i < input.length) {
     const ch = input[i]!;
     if (inStr) {
-      if (ch === "\\") {
+      if (ch === '\\') {
         const next = input[i + 1];
-        if (next === undefined) { out.push("\\\\"); i++; continue; }
-        if (VALID_ESCAPES.has(next)) { out.push(ch, next); } else { out.push("\\\\", next); }
+        if (next === undefined) {
+          out.push('\\\\');
+          i++;
+          continue;
+        }
+        if (VALID_ESCAPES.has(next)) {
+          out.push(ch, next);
+        } else {
+          out.push('\\\\', next);
+        }
         i += 2;
         continue;
       }
-      if (ch === "\n") { out.push("\\n"); i++; continue; }
+      if (ch === '\n') {
+        out.push('\\n');
+        i++;
+        continue;
+      }
       if (ch === '"') {
         const after = input.slice(i + 1).trimStart();
         const next = after[0] as string | undefined;
-        const isEnd = next === undefined || next === "," || next === ":" || next === "}" || next === "]";
-        if (isEnd) { inStr = false; out.push(ch); } else { out.push('\\"'); }
+        const isEnd =
+          next === undefined || next === ',' || next === ':' || next === '}' || next === ']';
+        if (isEnd) {
+          inStr = false;
+          out.push(ch);
+        } else {
+          out.push('\\"');
+        }
         i++;
         continue;
       }
@@ -84,17 +94,25 @@ function repairJson(input: string): string {
     }
     i++;
   }
-  return out.join("");
+  return out.join('');
 }
 
 function safeParseJson(text: string): unknown {
-  try { return JSON.parse(text); } catch { return JSON.parse(repairJson(text)); }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return JSON.parse(repairJson(text));
+  }
 }
 
 function escapeHtmlInCodeBlocks(html: string): string {
   return html.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, (_, content: string) => {
-    const decoded = content.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"');
-    const escaped = decoded.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const decoded = content
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"');
+    const escaped = decoded.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<pre><code>${escaped}</code></pre>`;
   });
 }
@@ -112,7 +130,7 @@ function buildPrompt(topic: string): string {
     { "choice_text": "選択肢3", "is_correct": false },
     { "choice_text": "選択肢4", "is_correct": false }
   ],
-  "explanation": "<p>HTML形式の解説</p>",
+  "explanation": "<p>解説文。<code>コード</code>や<strong>強調</strong>、<pre><code>コードブロック</code></pre>、<ul><li>リスト</li></ul>等を活用</p>",
   "tags": ["関連タグをケバブケースで"]
 }
 
@@ -120,26 +138,26 @@ function buildPrompt(topic: string): string {
 - is_correct が true の選択肢は必ず1つだけ
 - question と choice_text はプレーンテキストのみ
 - slug・tags は英語のケバブケースで出力
-- 解説は600〜1000文字程度のHTML`;
+- 解説は600〜1000文字程度のHTMLリッチテキスト（<p>, <strong>, <code>, <pre><code>, <ul><li> 等を積極的に使い、読みやすく構造化する）`;
 }
 
 export default function QuizEditPage() {
   const params = useParams();
   const router = useRouter();
   const paramId = params?.id as string | undefined;
-  const isNew = !paramId || paramId === "new";
+  const isNew = !paramId || paramId === 'new';
   const quizId = useRef<number | null>(isNew ? null : Number(paramId));
 
   const [categories, setCategories] = useState<QuizCategory[]>([]);
   const [allTags, setAllTags] = useState<QuizTag[]>([]);
 
-  const [slug, setSlug] = useState("");
-  const [question, setQuestion] = useState("");
-  const [explanation, setExplanation] = useState("");
+  const [slug, setSlug] = useState('');
+  const [question, setQuestion] = useState('');
+  const [explanation, setExplanation] = useState('');
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [newTagSlug, setNewTagSlug] = useState("");
-  const [newTagName, setNewTagName] = useState("");
+  const [newTagSlug, setNewTagSlug] = useState('');
+  const [newTagName, setNewTagName] = useState('');
   const [creatingTag, setCreatingTag] = useState(false);
   const [choices, setChoices] = useState<Choice[]>(createDefaultChoices());
   const [correctIndex, setCorrectIndex] = useState<number | null>(null);
@@ -147,9 +165,9 @@ export default function QuizEditPage() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const [aiTopic, setAiTopic] = useState("");
+  const [aiTopic, setAiTopic] = useState('');
   const [importDialog, setImportDialog] = useState(false);
-  const [importJson, setImportJson] = useState("");
+  const [importJson, setImportJson] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -160,20 +178,18 @@ export default function QuizEditPage() {
   useEffect(() => {
     (async () => {
       const [catRes, tagRes] = await Promise.all([
-        api.get("/api/quiz/categories"),
-        api.get("/api/quiz/tags"),
+        api.get('/api/quiz/categories'),
+        api.get('/api/quiz/tags'),
       ]);
       setCategories(catRes.data);
-      setAllTags(
-        (tagRes.data as QuizTag[]).sort((a, b) => a.slug.localeCompare(b.slug, "ja")),
-      );
+      setAllTags((tagRes.data as QuizTag[]).sort((a, b) => a.slug.localeCompare(b.slug, 'ja')));
 
       if (!isNew && quizId.current) {
         const res = await api.get(`/api/quiz/${quizId.current}`);
         const quiz = res.data;
         setSlug(quiz.slug);
         setQuestion(quiz.question);
-        setExplanation(quiz.explanation ?? "");
+        setExplanation(quiz.explanation ?? '');
         setCategoryId(quiz.category_id);
         setSelectedTags(quiz.tags?.map((t: QuizTag) => t.slug) ?? []);
         if (quiz.choices?.length) {
@@ -181,11 +197,9 @@ export default function QuizEditPage() {
             quiz.choices.map((c: Choice) => ({
               choice_text: c.choice_text,
               is_correct: Boolean(c.is_correct),
-            }))
+            })),
           );
-          setCorrectIndex(
-            quiz.choices.findIndex((c: Choice) => Boolean(c.is_correct))
-          );
+          setCorrectIndex(quiz.choices.findIndex((c: Choice) => Boolean(c.is_correct)));
         }
       }
     })();
@@ -193,9 +207,7 @@ export default function QuizEditPage() {
 
   const toggleTag = (tagSlug: string) => {
     setSelectedTags((prev) =>
-      prev.includes(tagSlug)
-        ? prev.filter((s) => s !== tagSlug)
-        : [...prev, tagSlug]
+      prev.includes(tagSlug) ? prev.filter((s) => s !== tagSlug) : [...prev, tagSlug],
     );
   };
 
@@ -207,50 +219,41 @@ export default function QuizEditPage() {
     setError(null);
     setCreatingTag(true);
     try {
-      const res = await api.post("/api/quiz/tags", {
+      const res = await api.post('/api/quiz/tags', {
         slug: tagSlug,
         name: tagName,
       });
       const created = res.data as QuizTag;
-      setAllTags((prev) =>
-        [...prev, created].sort((a, b) => a.slug.localeCompare(b.slug, "ja"))
-      );
-      setSelectedTags((prev) =>
-        prev.includes(created.slug) ? prev : [...prev, created.slug]
-      );
-      setNewTagSlug("");
-      setNewTagName("");
-      showToast("タグを追加しました");
+      setAllTags((prev) => [...prev, created].sort((a, b) => a.slug.localeCompare(b.slug, 'ja')));
+      setSelectedTags((prev) => (prev.includes(created.slug) ? prev : [...prev, created.slug]));
+      setNewTagSlug('');
+      setNewTagName('');
+      showToast('タグを追加しました');
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response
-        ?.data?.error;
-      setError(msg ?? "タグの追加に失敗しました");
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg ?? 'タグの追加に失敗しました');
     } finally {
       setCreatingTag(false);
     }
   };
 
-  const addChoice = () =>
-    setChoices((prev) => [...prev, { choice_text: "", is_correct: false }]);
+  const addChoice = () => setChoices((prev) => [...prev, { choice_text: '', is_correct: false }]);
 
   const removeChoice = (index: number) => {
     if (choices.length <= 2) return;
     setChoices((prev) => prev.filter((_, i) => i !== index));
     if (correctIndex === index) setCorrectIndex(null);
-    else if (correctIndex !== null && correctIndex > index)
-      setCorrectIndex(correctIndex - 1);
+    else if (correctIndex !== null && correctIndex > index) setCorrectIndex(correctIndex - 1);
   };
 
   const updateChoiceText = (index: number, text: string) => {
-    setChoices((prev) =>
-      prev.map((c, i) => (i === index ? { ...c, choice_text: text } : c))
-    );
+    setChoices((prev) => prev.map((c, i) => (i === index ? { ...c, choice_text: text } : c)));
   };
 
   const handleSubmit = async () => {
     setError(null);
     if (!slug.trim() || !question.trim() || categoryId === null || correctIndex === null) {
-      setError("必須項目を入力してください");
+      setError('必須項目を入力してください');
       return;
     }
     const choicesPayload = choices.map((c, i) => ({
@@ -269,17 +272,16 @@ export default function QuizEditPage() {
         tags: selectedTags,
       };
       if (isNew) {
-        const res = await api.post("/api/quiz", payload);
+        const res = await api.post('/api/quiz', payload);
         quizId.current = res.data.id;
         router.replace(`/admin/quizzes/${res.data.id}/edit`);
       } else {
         await api.put(`/api/quiz/${quizId.current}`, payload);
       }
-      showToast("保存しました");
+      showToast('保存しました');
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response
-        ?.data?.error;
-      setError(msg ?? "保存に失敗しました");
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg ?? '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -288,7 +290,7 @@ export default function QuizEditPage() {
   const copyPrompt = async () => {
     if (!aiTopic.trim()) return;
     await navigator.clipboard.writeText(buildPrompt(aiTopic.trim()));
-    showToast("プロンプトをコピーしました");
+    showToast('プロンプトをコピーしました');
   };
 
   const applyImport = () => {
@@ -304,30 +306,25 @@ export default function QuizEditPage() {
       };
       if (data.slug) setSlug(data.slug);
       if (data.question) setQuestion(data.question);
-      if (data.explanation)
-        setExplanation(escapeHtmlInCodeBlocks(data.explanation));
+      if (data.explanation) setExplanation(escapeHtmlInCodeBlocks(data.explanation));
       if (data.choices?.length) {
         setChoices(
           data.choices.map((c) => ({
             choice_text: c.choice_text,
             is_correct: Boolean(c.is_correct),
-          }))
+          })),
         );
-        setCorrectIndex(
-          data.choices.findIndex((c) => Boolean(c.is_correct))
-        );
+        setCorrectIndex(data.choices.findIndex((c) => Boolean(c.is_correct)));
       }
       if (data.tags?.length) {
         const existing = new Set(allTags.map((t) => t.slug));
         setSelectedTags(data.tags.filter((t) => existing.has(t)));
       }
       setImportDialog(false);
-      setImportJson("");
-      showToast("インポートしました");
+      setImportJson('');
+      showToast('インポートしました');
     } catch (e) {
-      setImportError(
-        `JSONの解析に失敗しました。${e instanceof Error ? e.message : ""}`
-      );
+      setImportError(`JSONの解析に失敗しました。${e instanceof Error ? e.message : ''}`);
     }
   };
 
@@ -343,7 +340,7 @@ export default function QuizEditPage() {
       tags: selectedTags,
     };
     await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    showToast("JSONをコピーしました");
+    showToast('JSONをコピーしました');
   };
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
@@ -364,9 +361,7 @@ export default function QuizEditPage() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-lg font-bold">
-              {isNew ? "新規クイズ作成" : "クイズを編集"}
-            </h1>
+            <h1 className="text-lg font-bold">{isNew ? '新規クイズ作成' : 'クイズを編集'}</h1>
             <div className="flex gap-2">
               {quizPageHref && (
                 <Button asChild variant="outline" size="sm">
@@ -376,11 +371,7 @@ export default function QuizEditPage() {
                   </Link>
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setImportDialog(true)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setImportDialog(true)}>
                 <Import className="h-3.5 w-3.5 mr-1" />
                 インポート
               </Button>
@@ -399,20 +390,15 @@ export default function QuizEditPage() {
                 placeholder="トピック（例: JavaScriptのクロージャ）"
                 value={aiTopic}
                 onChange={(e) => setAiTopic(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && copyPrompt()}
+                onKeyDown={(e) => e.key === 'Enter' && copyPrompt()}
               />
-              <Button
-                variant="outline"
-                disabled={!aiTopic.trim()}
-                onClick={copyPrompt}
-              >
+              <Button variant="outline" disabled={!aiTopic.trim()} onClick={copyPrompt}>
                 <Copy className="h-3.5 w-3.5 mr-1" />
                 プロンプトをコピー
               </Button>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              トピックを入力 → プロンプトをコピー → AIに貼り付け →
-              結果を「インポート」で取り込み
+              トピックを入力 → プロンプトをコピー → AIに貼り付け → 結果を「インポート」で取り込み
             </p>
           </div>
 
@@ -425,11 +411,7 @@ export default function QuizEditPage() {
           <div className="space-y-4">
             <div>
               <Label>スラッグ</Label>
-              <Input
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                className="mt-1"
-              />
+              <Input value={slug} onChange={(e) => setSlug(e.target.value)} className="mt-1" />
             </div>
 
             <div>
@@ -456,10 +438,8 @@ export default function QuizEditPage() {
               <Label>カテゴリ</Label>
               <select
                 className="mt-1 w-full border rounded px-3 py-2 text-sm"
-                value={categoryId ?? ""}
-                onChange={(e) =>
-                  setCategoryId(e.target.value ? Number(e.target.value) : null)
-                }
+                value={categoryId ?? ''}
+                onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
               >
                 <option value="">選択してください</option>
                 {categories.map((c) => (
@@ -474,18 +454,12 @@ export default function QuizEditPage() {
               <Label>タグ</Label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {allTags.length === 0 ? (
-                  <span className="text-gray-400 text-sm">
-                    タグが登録されていません
-                  </span>
+                  <span className="text-gray-400 text-sm">タグが登録されていません</span>
                 ) : (
                   allTags.map((tag) => (
                     <Badge
                       key={tag.slug}
-                      variant={
-                        selectedTags.includes(tag.slug)
-                          ? "default"
-                          : "outline"
-                      }
+                      variant={selectedTags.includes(tag.slug) ? 'default' : 'outline'}
                       className="cursor-pointer"
                       onClick={() => toggleTag(tag.slug)}
                     >
@@ -501,13 +475,13 @@ export default function QuizEditPage() {
                     placeholder="slug"
                     value={newTagSlug}
                     onChange={(e) => setNewTagSlug(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleCreateTag()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
                   />
                   <Input
                     placeholder="表示名"
                     value={newTagName}
                     onChange={(e) => setNewTagName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleCreateTag()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
                   />
                   <Button
                     type="button"
@@ -516,7 +490,7 @@ export default function QuizEditPage() {
                     onClick={handleCreateTag}
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" />
-                    {creatingTag ? "追加中..." : "追加して選択"}
+                    {creatingTag ? '追加中...' : '追加して選択'}
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
@@ -547,9 +521,7 @@ export default function QuizEditPage() {
                       className="flex-1"
                       placeholder={`選択肢 ${index + 1}`}
                       value={choice.choice_text}
-                      onChange={(e) =>
-                        updateChoiceText(index, e.target.value)
-                      }
+                      onChange={(e) => updateChoiceText(index, e.target.value)}
                     />
                     <Button
                       variant="ghost"
@@ -563,15 +535,13 @@ export default function QuizEditPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                ラジオボタンで正解を1つ選んでください
-              </p>
+              <p className="text-xs text-gray-500 mt-1">ラジオボタンで正解を1つ選んでください</p>
             </div>
           </div>
 
           <div className="flex gap-2 mt-6">
             <Button disabled={saving} onClick={handleSubmit}>
-              {saving ? "保存中..." : "保存"}
+              {saving ? '保存中...' : '保存'}
             </Button>
             <Link href="/admin/quizzes">
               <Button variant="outline">キャンセル</Button>
@@ -605,16 +575,13 @@ export default function QuizEditPage() {
                   variant="outline"
                   onClick={() => {
                     setImportDialog(false);
-                    setImportJson("");
+                    setImportJson('');
                     setImportError(null);
                   }}
                 >
                   キャンセル
                 </Button>
-                <Button
-                  disabled={!importJson.trim()}
-                  onClick={applyImport}
-                >
+                <Button disabled={!importJson.trim()} onClick={applyImport}>
                   取り込み
                 </Button>
               </div>
