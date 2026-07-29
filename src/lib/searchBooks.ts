@@ -41,7 +41,11 @@ export function searchBooks(query: string): SearchBookResult[] {
     }
 
     for (const chapter of getChaptersByBook(book.bookSlug)) {
-      if (matches(chapter.title, q) || matches(chapter.description, q)) {
+      if (
+        matches(chapter.title, q) ||
+        matches(chapter.description, q) ||
+        matches(chapter.chapterSlug, q)
+      ) {
         results.push({
           kind: 'chapter',
           bookSlug: book.bookSlug,
