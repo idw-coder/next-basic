@@ -225,7 +225,7 @@ text.replace(/りんご/g, 'ぶどう');
 
 <a id="section-7"></a>
 
-## 大文字小文字・空白の処理
+## 大文字小文字・空白・繰り返し
 
 ```js
 'Hello'.toUpperCase(); // "HELLO"
@@ -243,6 +243,31 @@ text.replace(/りんご/g, 'ぶどう');
 | --------------------- | -------------------------------------------------------------------------- |
 | `targetLength`        | **最終的に揃えたい文字数**。元の文字列がすでにこの長さ以上なら何も埋めない |
 | `padString`（省略可） | **埋めるのに使う文字**。デフォルトは半角スペース                           |
+
+### repeat — 文字列を指定回数繰り返す
+
+**構文：** `str.repeat(count)`
+
+| 引数    | 説明                                        |
+| ------- | ------------------------------------------- |
+| `count` | 繰り返す回数（0以上の整数。0なら空文字列）  |
+
+**戻り値：** 元の文字列を `count` 回連結した新しい文字列
+
+```js
+'abc'.repeat(3); // "abcabcabc"
+'-'.repeat(40); // "----------------------------------------"（区切り線を作る）
+'⭐'.repeat(5); // "⭐⭐⭐⭐⭐"（レーティング表示など）
+```
+
+実務では区切り線の生成やインデント文字列の構築に使います。
+
+```js
+function indent(level) {
+  return '  '.repeat(level);
+}
+indent(3) + 'nested'; // "      nested"
+```
 
 <Callout type="info" title="入力値の正規化に必須">
   フォームのメールアドレスや検索キーワードは、`value.trim().toLowerCase()`
@@ -279,27 +304,149 @@ text.replace(/りんご/g, 'ぶどう');
 
 ## 正規表現の基本
 
-正規表現（RegExp）は「文字列のパターン」を表す仕組みです。`replace` や検索と組み合わせて使います。組み合わせるメソッドの引数は次のとおりです。
+正規表現（RegExp）は「文字列のパターン」を表す仕組みです。`replace` や検索と組み合わせて使います。
 
-| メソッド              | 引数                                | 戻り値                                                            |
-| --------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `regex.test(str)`     | `str`：調べる文字列                 | `boolean`（マッチするか）                                         |
-| `str.match(regex)`    | `regex`：正規表現                   | マッチ情報。`g` なしなら最初のマッチ＋キャプチャ、なければ `null` |
-| `str.matchAll(regex)` | `regex`：正規表現（`g` フラグ必須） | すべてのマッチのイテレータ                                        |
+### test — マッチするかだけ調べる
+
+**構文：** `regex.test(str)`
+
+`true` / `false` を返すだけのシンプルなメソッド。バリデーションに最適です。
 
 ```js
 const re = /\d{3}-\d{4}/; // 「数字3桁-数字4桁」のパターン（郵便番号など）
 
-re.test('123-4567'); // true（マッチするか → boolean）
-'郵便番号は123-4567です'.match(re); // マッチ部分の情報を返す
+re.test('123-4567'); // true
+re.test('abc-defg'); // false
 
-// すべてのマッチを取り出す（matchAll + g フラグ）
-const text = 'tel: 03-1234, 06-5678';
-[...text.matchAll(/\d{2}-\d{4}/g)].map((m) => m[0]);
-// ["03-1234", "06-5678"]
+// 実務パターン: メールアドレスの簡易チェック
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+emailRe.test('user@example.com'); // true
 ```
 
-よく使うパターン部品：
+### match — 最初のマッチを詳しく取得する
+
+**構文：** `str.match(regex)`
+
+| `g` フラグ | 戻り値                                                        |
+| ---------- | ------------------------------------------------------------- |
+| なし       | 最初のマッチ1件 + キャプチャグループ + `index` 情報（配列）   |
+| あり       | マッチした部分文字列の配列（キャプチャ情報はなし）            |
+| マッチなし | `null`                                                        |
+
+```js
+// g フラグなし → 最初の1件を詳しく取得
+const result = '2024-01-31 の次は 2024-02-01'.match(/(\d{4})-(\d{2})-(\d{2})/);
+console.log(result[0]); // "2024-01-31"（マッチ全体）
+console.log(result[1]); // "2024"（1番目のキャプチャ）
+console.log(result[2]); // "01"
+console.log(result.index); // 0（マッチ開始位置）
+
+// g フラグあり → すべてのマッチを取り出す（ただしキャプチャは取れない）
+'2024-01-31 の次は 2024-02-01'.match(/\d{4}-\d{2}-\d{2}/g);
+// ["2024-01-31", "2024-02-01"]
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `g` ありだと全部取れるけどキャプチャが消える…全部のマッチでキャプチャも欲しいときは？
+</SpeechBubble>
+
+そこで `matchAll` の出番です。
+
+### matchAll — すべてのマッチを詳細に取得する
+
+**構文：** `str.matchAll(regex)`（`g` フラグ必須）
+
+**戻り値：** 各マッチの詳細情報（キャプチャグループ・`index` 含む）を順に返す**イテレータ**
+
+`match` に `g` フラグを付けると全マッチが取れますが、キャプチャグループの情報が失われます。`matchAll` は**すべてのマッチについて、キャプチャやインデックスも含めた詳細情報**を取得できます。
+
+```js
+const text = '価格: ¥1,200（税込¥1,320）';
+const regex = /¥([\d,]+)/g;
+
+// matchAll はイテレータを返すのでスプレッドか for...of で展開する
+const matches = [...text.matchAll(regex)];
+
+console.log(matches[0][0]); // "¥1,200"（マッチ全体）
+console.log(matches[0][1]); // "1,200"（キャプチャグループ）
+console.log(matches[0].index); // 4（マッチ開始位置）
+
+console.log(matches[1][0]); // "¥1,320"
+console.log(matches[1][1]); // "1,320"
+```
+
+#### 実務パターン: HTMLからリンクを抽出
+
+```js
+const html = '<a href="/about">About</a> と <a href="/contact">Contact</a>';
+const linkRe = /<a href="([^"]+)">([^<]+)<\/a>/g;
+
+for (const m of html.matchAll(linkRe)) {
+  console.log(`URL: ${m[1]}, テキスト: ${m[2]}`);
+}
+// URL: /about, テキスト: About
+// URL: /contact, テキスト: Contact
+```
+
+#### 実務パターン: ログからデータを構造化
+
+```js
+const log = '[2024-01-15 09:30] ERROR db connection failed\n[2024-01-15 09:31] INFO retry succeeded';
+const logRe = /\[(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})\] (\w+) (.+)/g;
+
+const entries = [...log.matchAll(logRe)].map((m) => ({
+  date: m[1],
+  time: m[2],
+  level: m[3],
+  message: m[4],
+}));
+// [{ date: "2024-01-15", time: "09:30", level: "ERROR", message: "db connection failed" }, ...]
+```
+
+<Callout type="note" title="match vs matchAll の使い分け">
+  - **1件だけ欲しい** → `match`（`g` なし）
+  - **全マッチの文字列だけ欲しい** → `match`（`g` あり）
+  - **全マッチ＋キャプチャ・位置も欲しい** → `matchAll`（`g` 必須）
+</Callout>
+
+### 名前付きキャプチャグループ — `(?<name>...)`
+
+ES2018で追加された機能で、キャプチャグループに名前を付けられます。`$1`・`$2` のような番号より**コードの意図が明確**になります。
+
+```js
+const dateStr = '2024-01-31';
+const re = /(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})/;
+
+const { groups } = dateStr.match(re);
+console.log(groups.year); // "2024"
+console.log(groups.month); // "01"
+console.log(groups.day); // "31"
+```
+
+`matchAll` との組み合わせが特に強力です。
+
+```js
+const text = '田中太郎 (30歳), 佐藤花子 (25歳)';
+const re = /(?<name>\S+)\s*\((?<age>\d+)歳\)/g;
+
+const people = [...text.matchAll(re)].map((m) => ({
+  name: m.groups.name,
+  age: Number(m.groups.age),
+}));
+// [{ name: "田中太郎", age: 30 }, { name: "佐藤花子", age: 25 }]
+```
+
+`replace` でも `$<name>` で参照できます。
+
+```js
+'2024-01-31'.replace(
+  /(?<y>\d{4})-(?<m>\d{2})-(?<d>\d{2})/,
+  '$<y>年$<m>月$<d>日',
+);
+// "2024年01月31日"
+```
+
+### よく使うパターン部品
 
 | 記法      | 意味                         |
 | --------- | ---------------------------- |
@@ -311,11 +458,14 @@ const text = 'tel: 03-1234, 06-5678';
 | `*`       | 直前を0回以上                |
 | `?`       | 直前を0回または1回           |
 | `{n}`     | 直前をn回                    |
+| `{n,m}`   | 直前をn回以上m回以下         |
 | `^` / `$` | 行頭 / 行末                  |
 | `[abc]`   | a,b,cのいずれか              |
+| `[^abc]`  | a,b,c以外                    |
 | `\|`      | または                       |
+| `(?:...)` | キャプチャしないグループ     |
 
-主なフラグ：`g`（全マッチ）、`i`（大文字小文字を無視）、`m`（複数行）。
+主なフラグ：`g`（全マッチ）、`i`（大文字小文字を無視）、`m`（複数行）、`s`（`.` が改行にもマッチ）。
 
 正規表現の全体像は [MDN — 正規表現](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Regular_expressions) にまとまっています。
 
@@ -323,17 +473,20 @@ const text = 'tel: 03-1234, 06-5678';
 
 ## メソッド早見表
 
-| やりたいこと         | メソッド                      | 戻り値       |
-| -------------------- | ----------------------------- | ------------ |
-| 一部を切り出す       | `slice`                       | 新しい文字列 |
-| 含まれるか調べる     | `includes`                    | `boolean`    |
-| 前方/後方一致        | `startsWith` / `endsWith`     | `boolean`    |
-| 最初の1件を置換      | `replace`                     | 新しい文字列 |
-| すべて置換           | `replaceAll`                  | 新しい文字列 |
-| 大文字/小文字化      | `toUpperCase` / `toLowerCase` | 新しい文字列 |
-| 前後の空白除去       | `trim`                        | 新しい文字列 |
-| 区切って配列に       | `split`                       | 配列         |
-| パターンに一致するか | 正規表現 + `test`             | `boolean`    |
+| やりたいこと                   | メソッド                      | 戻り値           |
+| ------------------------------ | ----------------------------- | ---------------- |
+| 一部を切り出す                 | `slice`                       | 新しい文字列     |
+| 含まれるか調べる               | `includes`                    | `boolean`        |
+| 前方/後方一致                  | `startsWith` / `endsWith`     | `boolean`        |
+| 最初の1件を置換                | `replace`                     | 新しい文字列     |
+| すべて置換                     | `replaceAll`                  | 新しい文字列     |
+| 大文字/小文字化                | `toUpperCase` / `toLowerCase` | 新しい文字列     |
+| 前後の空白除去                 | `trim`                        | 新しい文字列     |
+| 文字列を繰り返す               | `repeat`                      | 新しい文字列     |
+| 区切って配列に                 | `split`                       | 配列             |
+| パターンに一致するか           | 正規表現 + `test`             | `boolean`        |
+| 最初のマッチを詳しく           | `match`（`g` なし）           | 配列 or `null`   |
+| 全マッチ＋キャプチャ           | `matchAll`（`g` 必須）        | イテレータ       |
 
 各メソッドの詳細は [MDN — String リファレンス](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String) を参照してください。
 
@@ -374,6 +527,7 @@ const text = 'tel: 03-1234, 06-5678';
 - **全置換は `replaceAll`**。`replace` に文字列を渡すと最初の1件だけなので注意
 - 入力値は `trim()` で前後空白を落としてから扱う
 - 複雑なパターンの検索・置換は正規表現と組み合わせる
+- 全マッチ＋キャプチャが必要なら `matchAll`。名前付きキャプチャ `(?<name>...)` で可読性を上げる
 
 次の章では、**[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)** を扱います。`split` で作った配列の受け取りなど、ここで学んだ文字列操作とも自然につながります。
 
@@ -382,7 +536,13 @@ const text = 'tel: 03-1234, 06-5678';
 - [MDN — String.prototype.slice](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String/slice)
 - [MDN — String.prototype.includes](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String/includes)
 - [MDN — String.prototype.replace](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String/replace)
+- [MDN — String.prototype.replaceAll](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String/replaceAll)
+- [MDN — String.prototype.match](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String/match)
+- [MDN — String.prototype.matchAll](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String/matchAll)
+- [MDN — String.prototype.repeat](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String/repeat)
+- [MDN — String.prototype.split](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/String/split)
 - [MDN — RegExp](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/RegExp)
+- [MDN — 名前付きキャプチャグループ](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Regular_expressions/Named_capturing_group)
 
 <QuizLink
   href="/quiz/javascript-basic"
