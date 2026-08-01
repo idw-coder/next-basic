@@ -1,13 +1,13 @@
 ---
 title: '配列メソッド完全ガイド — map・filter・reduceから実務頻出パターンまで'
-description: 'map・filter・reduce・find・some・every・slice・concatなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。破壊的メソッド・非破壊メソッドの一覧表つき。'
+description: 'map・filter・reduce・find・some・every・slice・concat・fillなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。破壊的メソッド・非破壊メソッドの一覧表つき。'
 order: 7
 ---
 
 JavaScriptで最も触る機会が多いデータ構造は配列です。
 APIのレスポンスを加工する、フォームの入力値をまとめる、UIにリストを表示する——ほぼすべての場面で配列が登場します。
 
-この章では、配列の「メソッド」とは何かという前提から始めて、実務で頻出する `map`・`filter`・`reduce`・`find`・`some`・`every` を用途別に整理します。
+この章では、配列の「メソッド」とは何かという前提から始めて、実務で頻出する `map`・`filter`・`reduce`・`find`・`some`・`every`・`fill` を用途別に整理します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
   `map` とか `filter` とか、名前は聞くけど…結局どれをいつ使えばいいのか毎回迷っちゃう。
@@ -611,6 +611,93 @@ const menu = baseMenu.concat(
 );
 ```
 
+<a id="fill"></a>
+
+## fill — 配列を同じ値で埋める
+
+`fill` は、配列の要素を指定した値で埋めるメソッドです。
+配列の初期化や、既存配列の一部をまとめて同じ値に置き換えたいときに使います。
+
+ただし、`fill` は**元の配列を直接変更する破壊的メソッド**です。
+`map` や `filter` のように新しい配列を返す感覚で使うと、意図せず元の配列を書き換えてしまいます。
+
+**構文：** `array.fill(value, start?, end?)`
+
+| 引数              | 説明                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `value`           | 埋める値                                                                              |
+| `start`（省略可） | 埋め始める位置（0始まり）。省略すると `0`                                             |
+| `end`（省略可）   | 埋め終える位置。その**手前まで**が対象で `end` 自身は含まない。省略すると配列の末尾まで |
+
+**戻り値：** 変更後の元の配列（新しい配列ではない）
+
+```js
+const scores = new Array(5).fill(0);
+console.log(scores); // [0, 0, 0, 0, 0]
+
+const statuses = ['todo', 'todo', 'todo', 'todo'];
+statuses.fill('done', 1, 3);
+
+console.log(statuses); // ["todo", "done", "done", "todo"]
+```
+
+### 実務パターン: 初期値つきの配列を作る
+
+`new Array(length)` だけだと「長さはあるが、要素が空の配列」になります。
+そのままでは `map` などが期待どおりに処理されないため、連番や初期値つき配列を作るときは `fill` と組み合わせることがあります。
+
+```js
+const indexes = new Array(5).fill(0).map((_, index) => index);
+console.log(indexes); // [0, 1, 2, 3, 4]
+
+const counts = new Array(3).fill(0);
+console.log(counts); // [0, 0, 0]
+```
+
+<Callout type="warning" title="fill は破壊的メソッド">
+  `fill` は呼び出した配列そのものを書き換えます。元の配列を残したい場合は、`slice()` やスプレッド構文でコピーしてから `fill`
+  してください。
+</Callout>
+
+```js
+const original = [1, 2, 3];
+
+// ❌ original も変わる
+original.fill(0);
+console.log(original); // [0, 0, 0]
+
+// ⭕ コピーしてから fill する
+const numbers = [1, 2, 3];
+const filled = [...numbers].fill(0);
+
+console.log(filled);  // [0, 0, 0]
+console.log(numbers); // [1, 2, 3]
+```
+
+### オブジェクトを fill すると同じ参照が入る
+
+`fill` にオブジェクトや配列を渡すと、各要素に別々のオブジェクトが作られるわけではありません。
+**同じ参照**がすべての要素に入ります。
+
+```js
+const rows = new Array(3).fill([]);
+
+rows[0].push('A');
+
+console.log(rows); // [["A"], ["A"], ["A"]]
+```
+
+これは「3つの空配列を作った」のではなく、「1つの空配列への参照を3か所に入れた」状態です。
+2次元配列やオブジェクト配列を初期化するときは、`Array.from` を使って要素ごとに新しい値を作ります。
+
+```js
+const rows = Array.from({ length: 3 }, () => []);
+
+rows[0].push('A');
+
+console.log(rows); // [["A"], [], []]
+```
+
 <a id="flatmap"></a>
 
 ## flatMap — 変換と平坦化を同時に行う
@@ -709,6 +796,7 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 | すべて条件を満たすか         | `every`     | `boolean`           |
 | 配列の一部を取り出す         | `slice`     | 新しい配列          |
 | 配列を結合する               | `concat`    | 新しい配列          |
+| 同じ値で埋める               | `fill`      | 変更後の元の配列    |
 | 変換 + 1段階の平坦化         | `flatMap`   | 新しい配列          |
 
 <a id="common-pitfalls"></a>
@@ -774,10 +862,10 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 - <Marker>
     配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している
   </Marker>
-- `map` は変換、`filter` は絞り込み、`reduce` は集約、`slice` は部分取得、`concat` は結合——目的に応じて使い分ける
+- `map` は変換、`filter` は絞り込み、`reduce` は集約、`slice` は部分取得、`concat` は結合、`fill` は同じ値で埋める——目的に応じて使い分ける
 - `find` は最初の1つ、`some` は1つでもあるか、`every` は全部かを判定する
 - `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快
-- 破壊的メソッド（`sort` / `reverse` / `splice`）と非破壊メソッドの区別を意識する
+- 破壊的メソッド（`sort` / `reverse` / `splice` / `fill`）と非破壊メソッドの区別を意識する
 
 次の章では、**文字列操作と正規表現**を取り上げます。実務でよく使うパターンをまとめます。
 
@@ -789,6 +877,7 @@ const result = numbers.filter((n) => n > 3).map((n) => n * 2);
 - [MDN — Array.prototype.find](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/find)
 - [MDN — Array.prototype.slice](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/slice)
 - [MDN — Array.prototype.concat](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/concat)
+- [MDN — Array.prototype.fill](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/fill)
 
 <QuizLink
   href="/quiz/javascript-basic"
