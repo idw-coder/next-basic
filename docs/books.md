@@ -50,6 +50,7 @@ coverImage: '/images/books/nextjs-cover.png' # 任意。設定すると一覧カ
 title: 'Next.jsとは何か'
 description: 'Next.jsの概要と...' # 任意
 order: 1 # 章の並び順
+chapterLabel: '第1章' # 任意。order と別の表示ラベルにしたい場合だけ指定
 ---
 ```
 
@@ -58,6 +59,7 @@ order: 1 # 章の並び順
 | `title`       | string | はい   | 章のタイトル                       |
 | `description` | string | いいえ | 章の概要（メタデータ・目次で使用） |
 | `order`       | number | はい   | 表示順序（昇順ソート）             |
+| `chapterLabel` | string | いいえ | 章番号の代わりに表示するラベル     |
 
 ファイル名がそのまま `chapterSlug` になる（例: `01-introduction.mdx` → `chapterSlug: "01-introduction"`）。
 
@@ -256,6 +258,7 @@ content/books/aws-saa-c03/01-iam-and-least-privilege.mdx
 - 新規ファイル名は既存本・新規本を問わず `route-handlers.mdx` のような意味ベース slug にする
 - 新規ファイル名に `01-`、`02-`、`08-` のような並び順の番号を入れない
 - 並び順は `order` で調整する
+- `order: 7.1` のような小数を使う場合、表示が不自然にならないよう `chapterLabel` を指定する
 - 章末の「次の章」リンクや本文中の章番号表記だけ更新する
 
 ### 関連トピックには詳細ページへのリンクを付ける

@@ -12,6 +12,7 @@ import {
 import { getBookTheme } from '@/lib/book-theme';
 import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { getChapterListLabel } from '@/lib/chapter-label';
 
 const iconMap: Record<string, LucideIcon> = {
   BookOpen, Blocks, Braces, FileCode2, Atom, Paintbrush, Wind,
@@ -22,6 +23,7 @@ const iconMap: Record<string, LucideIcon> = {
 interface ChapterLink {
   title: string;
   order: number;
+  chapterLabel?: string;
   chapterSlug: string;
 }
 
@@ -166,7 +168,7 @@ export default function BookCard({
                     className="flex items-start gap-2 px-3.5 py-1.5 text-[11px] transition-colors hover:bg-gray-50"
                   >
                     <span className={cn('shrink-0 font-mono tabular-nums mt-px font-semibold', theme.accent)}>
-                      {String(ch.order).padStart(2, '0')}
+                      {getChapterListLabel(ch)}
                     </span>
                     <span className="text-gray-600 line-clamp-1 hover:text-gray-900">
                       {ch.title}

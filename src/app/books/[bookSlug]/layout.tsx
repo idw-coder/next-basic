@@ -23,6 +23,7 @@ export default async function BookLayout({
   const sidebarChapters = chapters.map((c) => ({
     title: c.title,
     order: c.order,
+    chapterLabel: c.chapterLabel,
     bookSlug: c.bookSlug,
     chapterSlug: c.chapterSlug,
     draft: c.draft,

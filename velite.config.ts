@@ -130,6 +130,7 @@ const chapters = defineCollection({
       title: s.string(),
       description: s.string().optional(),
       order: s.number(), // 章の表示順（昇順ソートに使用）
+      chapterLabel: s.string().optional(), // 小数 order などを読者向けに自然に表示する任意ラベル
       draft: s.boolean().default(false), // 執筆中の章。noindex・sitemap除外・バッジ表示の対象
       slug: s.path(),
       raw: s.raw(),

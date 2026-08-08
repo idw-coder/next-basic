@@ -8,10 +8,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { useState, useRef, useTransition, useCallback, useEffect } from 'react';
 import { searchInBook, type InBookSearchResult } from '../_actions/searchInBook';
 import { BOOK_SEARCH_SUGGESTIONS } from '../_constants/searchSuggestions';
+import { getChapterListLabel } from '@/lib/chapter-label';
 
 interface Chapter {
   title: string;
   order: number;
+  chapterLabel?: string;
   bookSlug: string;
   chapterSlug: string;
   draft?: boolean;
@@ -281,8 +283,8 @@ function SidebarContent({
                 )}
               >
                 <span className="flex items-start gap-2.5">
-                  <span className="shrink-0 text-xs font-mono mt-0.5 text-gray-400 w-4 text-right">
-                    {chapter.order}
+                  <span className="mt-0.5 min-w-4 shrink-0 text-right font-mono text-xs text-gray-400">
+                    {getChapterListLabel(chapter)}
                   </span>
                   <span className="line-clamp-2">
                     {chapter.title}

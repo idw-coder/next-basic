@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { getAllBooks, getBook, getChaptersByBook } from '@/lib/books';
 import { getBookTheme } from '@/lib/book-theme';
+import { getChapterListLabel } from '@/lib/chapter-label';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { SectionHeading } from '@/components/SectionHeading';
@@ -258,13 +259,13 @@ export default async function BookPage({ params }: BookPageProps) {
                 >
                   <span
                     className={cn(
-                      'w-5 shrink-0 text-center text-[11px] font-bold tabular-nums sm:flex sm:h-7 sm:w-7 sm:items-center sm:justify-center sm:rounded-full sm:text-xs sm:text-white',
+                      'min-w-5 shrink-0 text-center text-[11px] font-bold tabular-nums sm:flex sm:min-h-7 sm:min-w-7 sm:items-center sm:justify-center sm:rounded-full sm:px-2 sm:text-xs sm:text-white',
                       i % 2 === 0
                         ? 'text-primary sm:bg-primary'
                         : 'text-primary/70 sm:bg-primary/80',
                     )}
                   >
-                    {chapter.order}
+                    {getChapterListLabel(chapter)}
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="text-[13px] leading-snug font-medium text-gray-900 group-hover:text-primary transition-colors sm:text-base">

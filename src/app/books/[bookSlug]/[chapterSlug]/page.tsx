@@ -12,6 +12,7 @@ import {
 import { MDXContent } from '@/components/mdx-content';
 import { ChapterNav } from '../../_components/ChapterNav';
 import { ChapterTocDesktop, ChapterTocMobile } from '../../_components/TableOfContents';
+import { getChapterLabel } from '@/lib/chapter-label';
 
 import { SITE_URL } from '@/lib/site';
 
@@ -118,7 +119,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
 
       <div className="mb-2 flex items-center gap-2">
         <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
-          第{chapter.order}章
+          {getChapterLabel(chapter)}
         </span>
       </div>
       <h1 className="text-2xl md:text-3xl font-bold text-gray-900">

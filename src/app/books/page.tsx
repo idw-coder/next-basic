@@ -226,6 +226,7 @@ export default function BooksPage() {
                 chapters={chapters.map((c) => ({
                   title: c.title,
                   order: c.order,
+                  chapterLabel: c.chapterLabel,
                   chapterSlug: c.chapterSlug,
                 }))}
                 isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}

@@ -40,11 +40,13 @@ content/books/typescript/
 title: '章タイトル — サブタイトル'
 description: '1〜2文の説明。検索やOGPに使われる。'
 order: 1
+chapterLabel: '第1章' # 任意。order と別の表示ラベルにしたい場合だけ指定
 ---
 ```
 
 - `title`: 章番号は含めない。ダッシュ区切りでサブタイトルを付けるパターンが多い（例: `'ユニオン型とリテラル型 — 型を絞り込む'`）
 - `order`: 章の表示順（数値）
+- `chapterLabel`: 任意。`order: 7.1` のような小数で差し込む章を、読者向けに自然なラベルで表示したい場合だけ指定する
 
 ---
 
@@ -232,6 +234,7 @@ flowchart TD
 - title: [章タイトル]
 - description: [説明文]
 - order: [数値]
+- chapterLabel: [任意。例: 配列メソッド 1]
 - 扱うトピック: [箇条書きで主要トピックを列挙]
 - 想定読者レベル: [例: JavaScript経験者、TypeScript初学者]
 - 前の章との接続: [前章の最後で何を予告したか]
