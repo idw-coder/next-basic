@@ -1,5 +1,7 @@
 # Express → Next.js API 移行計画
 
+> 状態（2026-08-08）: 古い移行計画。現在の `next.config.ts` は `/api/*` を Express バックエンドへプロキシし、Next.js 側のAPIは `/next-api/*` に置く方針になっている。`package.json` に TypeORM / mysql2 は無く、本文の「完了済みの作業」も現在のコードとは一致しない。再開する場合は、この文書をそのまま実行せず現状調査からやり直す。
+
 ## 現在の構成
 
 ```

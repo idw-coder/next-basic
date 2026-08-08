@@ -1,10 +1,12 @@
 # Google AdSense 広告設定メモ
 
+最終確認日: 2026-08-08
+
 ## 現在の広告構成
 
 ### 自動広告（Auto Ads）— 有効
 
-`layout.tsx` で `adsbygoogle.js` スクリプトを読み込んでおり、AdSense 管理画面側でオート広告が有効であれば Google が自動的にページを分析して広告を配置する。
+`src/app/layout.tsx` で `adsbygoogle.js` スクリプトを読み込んでおり、AdSense 管理画面側でオート広告が有効であれば Google が自動的にページを分析して広告を配置する。
 
 ```
 <script
@@ -14,11 +16,11 @@
 />
 ```
 
-### 手動広告（Manual Ads）— 無効
+### 手動広告（Manual Ads）— フッターで使用
 
-`GoogleAdSense` コンポーネント（`<ins>` 要素による手動配置）は存在するが、`layout.tsx` のフッターでコメントアウトされており、他のページでも使用されていない。
+`GoogleAdSense` コンポーネント（`<ins>` 要素による手動配置）は `src/app/layout.tsx` のフッターで描画している。
 
-コメントアウトされた経緯: 2026-02-22 のコミット `d0f2f16` にて、レイアウト整理の一環で無効化された。
+開発環境では `GoogleAdSense` が `null` を返すため表示されない。本番環境で `NEXT_PUBLIC_ADSENSE_CLIENT_ID` と `NEXT_PUBLIC_ADSENSE_SLOT` が設定されている場合に利用する。
 
 ## UI 変更時の自動広告への影響
 
@@ -41,7 +43,7 @@
 | 変数名 | 説明 |
 |---|---|
 | `NEXT_PUBLIC_ADSENSE_CLIENT_ID` | AdSense パブリッシャー ID（`ca-pub-xxx`） |
-| `NEXT_PUBLIC_ADSENSE_SLOT` | 広告スロット ID（手動広告用、現在未使用） |
+| `NEXT_PUBLIC_ADSENSE_SLOT` | 広告スロット ID（フッターの手動広告用） |
 
 ## 広告の非表示制御
 

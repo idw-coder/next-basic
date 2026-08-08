@@ -21,7 +21,6 @@ class VeliteWebpackPlugin {
 
 const API_PROXY_TARGET =
   process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
   'http://localhost:8888';
 
 const nextConfig: NextConfig = {

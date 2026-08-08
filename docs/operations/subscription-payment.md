@@ -1,5 +1,7 @@
 # サブスクリプション決済機能 仕様書
 
+最終確認日: 2026-08-08
+
 ## 概要
 
 Stripe Checkout を利用したサブスクリプション決済機能のフロントエンド実装。
@@ -107,12 +109,13 @@ Stripe Checkout を利用したサブスクリプション決済機能のフロ�
 #### 準備中フラグの制御（Feature Flag）
 
 `?mode=stripeActive` クエリパラメータによる Feature Flag で制御。
-汎用フック `useFeatureFlag`（`src/lib/featureFlags.ts`）を使用し、sessionStorage でタブ単位のフラグを管理する。
+現在は `src/app/payment/SubscriptionClient.tsx` 内で `sessionStorage` を直接扱い、タブ単位のフラグとして管理する。
 
 ```typescript
 // src/app/payment/SubscriptionClient.tsx
-const stripeActive = useFeatureFlag('stripeActive');
-const isPreparingBanner = !stripeActive;        // 準備中バナーの表示
+const [stripeActive, setStripeActive] = useState(false);
+// ?mode=stripeActive のとき sessionStorage に保存
+const isPreparingBanner = !stripeActive; // 準備中バナーの表示
 const isPreparingPlan = !isFree && !stripeActive; // 有料プランボタンの disabled 制御
 ```
 
@@ -123,8 +126,7 @@ const isPreparingPlan = !isFree && !stripeActive; // 有料プランボタンの
 
 **フラグの有効化方法:** `?mode=stripeActive` 付きでページにアクセスする。以降そのタブ内ではフラグが維持され、タブを閉じると解除される。
 
-> この方式は `?mode=entry`（広告非表示）と同じ sessionStorage パターンを汎用化したもの。
-> 将来的に `?mode=xxxFeature` のような別のフラグも `useFeatureFlag('xxxFeature')` で追加可能。
+> この方式は `?mode=entry`（広告非表示）と同じ sessionStorage パターン。現時点では汎用フック化していない。
 
 ---
 
@@ -336,7 +338,6 @@ pending ──(payment_intent.payment_failed)──> failed
 
 | ファイル | 説明 |
 |---|---|
-| `src/lib/featureFlags.ts` | `?mode=xxx` による Feature Flag 管理フック（汎用） |
 | `src/app/payment/page.tsx` | プラン一覧ページ（Server Component、メタデータ） |
 | `src/app/payment/SubscriptionClient.tsx` | プラン一覧・申込ロジック（Client Component） |
 | `src/app/payment/success/page.tsx` | 決済完了ページ |
@@ -475,14 +476,14 @@ NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_YEARLY
 
 ```typescript
 // 変更前（Feature Flag で制御）
-const stripeActive = useFeatureFlag('stripeActive');
+const [stripeActive, setStripeActive] = useState(false);
 const isPreparingBanner = !stripeActive;
 
 // 変更後（常に有効）
 const isPreparingBanner = false;
 ```
 
-`useFeatureFlag` の import と `isPreparingPlan` の参照も合わせて削除する。
+`stripeActive` / `setStripeActive` / `isPreparingPlan` の参照も合わせて削除する。
 
 ### 6. トップページのお知らせを更新
 

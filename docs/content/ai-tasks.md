@@ -3,6 +3,8 @@
 教科書（Books）機能の改善タスクを、別のAIセッションへコピペで委任するための指示書。
 優先度順（P1が最優先）。各コードブロックを丸ごと貼り、「添付」欄のファイルを一緒に渡す。
 
+> 整理メモ（2026-08-08）: Books 仕様の一次情報は `docs/books.md`。このファイルは委任用プロンプトと進捗履歴として使う。
+
 ## 全タスク共通の注意（委任前に必ず伝える）
 
 - **devサーバーを起動するのは1セッションだけ。** 多重起動すると velite が `.velite/` を同時書き込みしてビルドが壊れる。起動前に `lsof -nP -iTCP:3000 -sTCP:LISTEN` 等で確認
@@ -52,8 +54,8 @@ docs/books.md / velite.config.ts / 上記4〜5のファイル
 
 **モデル**: 高性能必須 / **効果**: SEO大（主要検索クエリの受け皿） / **工数**: 1章あたり数時間
 
-対象（javascript 12章 / system-design 8章）は `grep -rl "この章は現在執筆中です" content/books/` で最新を確認。
-javascript のクロージャ・this・async/Promise・モジュール・DOM操作を優先。
+対象は `grep -rl "この章は現在執筆中です" content/books/` で最新を確認。
+2026-08-08 時点では draft プレースホルダーが 17 章残っている。
 
 **進捗**: `javascript/12-closures.mdx` ✅（2026-07-03執筆・公開済み。トーンの見本としてこの章も参照可）。
 執筆完了時のチェック: frontmatterの `draft: true` を削除 → noindexが外れsitemapに載る。章末に参考リンク＋QuizLinkを置く。draft章へのMarkdownリンクは張らない（執筆中ページに誘導しない）。
@@ -141,10 +143,10 @@ docs/books.md / src/lib/books.ts / QuizLink.tsx / mdx-content.tsx
 
 **モデル**: 中位以上（URL実在確認が必須） / **効果**: SEO中（E-E-A-T）+ UX / **工数**: 本あたり中
 
-**進捗**: javascript ✅ / typescript ✅（2026-07-03、14章30本・全URL検証済み） / 残り: css-basics → react-learning → next-js。
+**進捗**: javascript ✅ / typescript ✅ / css-basics ✅（2026-08-08確認） / 残り: react-learning → next-js。
 メモ: TypeScript公式ハンドブックに日本語版は無い（/ja/ は tsconfig リファレンスと Playground のみ）。英語リンクには「（英語）」を明記する。
 
-対象の優先順: css-basics → react-learning → next-js。
+対象の優先順: react-learning → next-js。
 リンク先の目安: TS=typescriptlang.org、CSS/JS/Web API=developer.mozilla.org/ja、
 React=ja.react.dev、Next.js=nextjs.org/docs。
 
@@ -173,9 +175,11 @@ docs/books.md / 対象の本の全章
 
 ---
 
-## P5: sitemap の lastModified 正確化
+## ✅ P5: sitemap の lastModified 正確化（2026-08-08 確認済み）
 
 **モデル**: 中位（デプロイ環境の制約理解が必要） / **効果**: SEO中 / **工数**: 中
+
+`velite.config.ts` の `getUpdatedAt()` で git log / mtime から `updated` を作成し、`src/app/sitemap.ts` で章ページと本ページの `lastModified` に使用済み。
 
 ```
 docs/books.md 仕様の教科書で、src/app/sitemap.ts が全URLに new Date() を返しており、
