@@ -1,0 +1,184 @@
+---
+title: '配列の初期化・平坦化メソッド — fill・flat・flatMap'
+description: 'JavaScriptの配列メソッド fill・flat・flatMap を、初期値つき配列、2次元配列、ネスト配列の平坦化、filter + map の置き換えパターンとともに整理します。'
+order: 7.5
+chapterLabel: '配列メソッド 5'
+---
+
+この章では、配列の初期化やネストした配列の処理で使う `fill`・`flat`・`flatMap` を扱います。
+
+| メソッド | 役割 | 注意点 |
+| -------- | ---- | ------ |
+| `fill` | 配列を同じ値で埋める | 破壊的メソッド。同じ参照が入ることがある |
+| `flat` | ネストした配列を平坦化する | 深さを指定できる |
+| `flatMap` | 変換して1段階だけ平坦化する | `map().flat(1)` に近い |
+
+<a id="fill"></a>
+
+## fill — 配列を同じ値で埋める
+
+`fill` は、配列の要素を指定した値で埋めるメソッドです。
+配列の初期化や、既存配列の一部をまとめて同じ値に置き換えたいときに使います。
+
+ただし、`fill` は**元の配列を直接変更する破壊的メソッド**です。
+`map` や `filter` のように新しい配列を返す感覚で使うと、意図せず元の配列を書き換えてしまいます。
+
+**構文：** `array.fill(value, start?, end?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `value` | 埋める値 |
+| `start`（省略可） | 埋め始める位置。省略すると `0` |
+| `end`（省略可） | 埋め終える位置。その手前までが対象 |
+
+```js
+const scores = new Array(5).fill(0);
+console.log(scores); // [0, 0, 0, 0, 0]
+
+const statuses = ['todo', 'todo', 'todo', 'todo'];
+statuses.fill('done', 1, 3);
+
+console.log(statuses); // ["todo", "done", "done", "todo"]
+```
+
+### 実務パターン: 初期値つきの配列を作る
+
+`new Array(length)` だけだと「長さはあるが、要素が空の配列」になります。
+そのままでは `map` などが期待どおりに処理されないため、連番や初期値つき配列を作るときは `fill` と組み合わせることがあります。
+
+```js
+const indexes = new Array(5).fill(0).map((_, index) => index);
+console.log(indexes); // [0, 1, 2, 3, 4]
+
+const counts = new Array(3).fill(0);
+console.log(counts); // [0, 0, 0]
+```
+
+<Callout type="warning" title="fill は破壊的メソッド">
+  `fill` は呼び出した配列そのものを書き換えます。元の配列を残したい場合は、`slice()` やスプレッド構文でコピーしてから `fill` してください。
+</Callout>
+
+```js
+const original = [1, 2, 3];
+
+// ❌ original も変わる
+original.fill(0);
+console.log(original); // [0, 0, 0]
+
+// ⭕ コピーしてから fill する
+const numbers = [1, 2, 3];
+const filled = [...numbers].fill(0);
+
+console.log(filled);  // [0, 0, 0]
+console.log(numbers); // [1, 2, 3]
+```
+
+### オブジェクトを fill すると同じ参照が入る
+
+`fill` にオブジェクトや配列を渡すと、各要素に別々のオブジェクトが作られるわけではありません。
+**同じ参照**がすべての要素に入ります。
+
+```js
+const rows = new Array(3).fill([]);
+
+rows[0].push('A');
+
+console.log(rows); // [["A"], ["A"], ["A"]]
+```
+
+これは「3つの空配列を作った」のではなく、「1つの空配列への参照を3か所に入れた」状態です。
+2次元配列やオブジェクト配列を初期化するときは、`Array.from` を使って要素ごとに新しい値を作ります。
+
+```js
+const rows = Array.from({ length: 3 }, () => []);
+
+rows[0].push('A');
+
+console.log(rows); // [["A"], [], []]
+```
+
+<a id="flat"></a>
+
+## flat — ネストされた配列を平坦化する
+
+`flat` は配列内のネストを取り除き、指定した深さまで平坦化した新しい配列を返します。
+引数を省略すると深さ1（1段階）だけ平坦化します。
+
+```js
+const nested = [1, [2, 3], [4, [5, 6]]];
+
+nested.flat(); // [1, 2, 3, 4, [5, 6]]
+nested.flat(2); // [1, 2, 3, 4, 5, 6]
+```
+
+深さが不明な場合は `Infinity` を渡すと、どれだけ深くても完全に平坦化できます。
+
+```js
+const deep = [1, [2, [3, [4, [5]]]]];
+
+deep.flat(Infinity); // [1, 2, 3, 4, 5]
+```
+
+また、`flat` は配列内の空スロット（holes）を取り除く性質もあります。
+
+```js
+const sparse = [1, , 3, , 5];
+
+sparse.flat(); // [1, 3, 5]
+```
+
+<a id="flatmap"></a>
+
+## flatMap — 変換と平坦化を同時に行う
+
+`flatMap` は各要素にコールバックを適用し、その結果を**1段階だけ平坦化**した新しい配列を返します。
+`map` してから `flat(1)` するのと同じですが、1回の走査で済むため効率的です。
+
+```js
+const sentences = ['Hello world', 'Good morning'];
+
+sentences.map((s) => s.split(' '));
+// [["Hello", "world"], ["Good", "morning"]]
+
+sentences.flatMap((s) => s.split(' '));
+// ["Hello", "world", "Good", "morning"]
+```
+
+### 実務パターン: filter + map を1回で
+
+`flatMap` で空配列 `[]` を返すと、その要素を除外できます。
+`filter` + `map` を1回の走査にまとめたいときに便利です。
+
+```js
+const items = [
+  { name: 'PC', price: 120000, inStock: true },
+  { name: 'マウス', price: 3000, inStock: false },
+  { name: 'モニター', price: 45000, inStock: true },
+];
+
+items.filter((i) => i.inStock).map((i) => i.name);
+
+items.flatMap((i) => (i.inStock ? [i.name] : []));
+// ["PC", "モニター"]
+```
+
+<Callout type="column" title="flatMap vs filter + map">
+  `filter` + `map` の方が読みやすいケースが多いです。`flatMap` は「変換の結果が可変長の配列になる」ケース（1対多の変換）で真価を発揮します。単純な絞り込み + 変換なら `filter` + `map` で問題ありません。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- `fill` は元配列を変更する
+- オブジェクトや配列を `fill` すると、すべての要素に同じ参照が入る
+- 2次元配列やオブジェクト配列の初期化は `Array.from` を使う
+- `flat` はネスト配列を指定した深さまで平坦化する
+- `flatMap` は「1つの要素から0個以上の要素を作る」変換で便利
+
+次の章では、**[文字列操作と正規表現](/books/javascript/08-string-methods)** を取り上げます。実務でよく使うパターンをまとめます。
+
+## 参考リンク
+
+- [MDN — Array.prototype.fill](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/fill)
+- [MDN — Array.prototype.flat](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/flat)
+- [MDN — Array.prototype.flatMap](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/flatMap)
+- [MDN — Array.from](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/from)

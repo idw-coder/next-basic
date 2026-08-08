@@ -1,0 +1,269 @@
+---
+title: '配列の変換メソッド — map・filter・reduce'
+description: 'JavaScriptの配列メソッド map・filter・reduce を、APIレスポンスの整形、検索フィルタリング、グルーピング、メソッドチェーンの実務パターンとともに整理します。'
+order: 7.1
+chapterLabel: '配列メソッド 1'
+---
+
+`map`・`filter`・`reduce` は、配列メソッドの中でも特に使用頻度が高い3つです。
+それぞれの役割は、次のように覚えると整理しやすくなります。
+
+| メソッド | 役割 | 戻り値 |
+| -------- | ---- | ------ |
+| `map` | 各要素を変換する | 新しい配列 |
+| `filter` | 条件に合う要素だけ残す | 新しい配列 |
+| `reduce` | 配列全体を1つの値にまとめる | 任意の値 |
+
+<Callout type="note" title="コールバックの引数">
+  `map`・`filter` などのコールバックは `(element, index, array)` の3つの引数を受け取れます。実務では第1引数だけ使うケースがほとんどです。各メソッドで違うのは「コールバックの戻り値をどう扱い、メソッド自身が最終的に何を返すか」です。
+</Callout>
+
+<a id="map"></a>
+
+## map — 各要素を変換して新しい配列を作る
+
+<Figure
+  src="/images/boomerang_woman_color.png"
+  alt="mapが変換結果を新しい配列として返すイメージ"
+  maxWidth="120px"
+/>
+
+`map` は配列の各要素にコールバック関数を適用し、その戻り値で構成された**新しい配列**を返します。
+元の配列は変更されません（非破壊）。
+
+```js
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map((n) => n * 2);
+
+console.log(doubled); // [2, 4, 6, 8, 10]
+console.log(numbers); // [1, 2, 3, 4, 5]（元の配列はそのまま）
+```
+
+### コールバックの引数
+
+```js
+const result = ['a', 'b', 'c'].map((element, index, array) => {
+  // element: 現在の要素（"a", "b", "c"）
+  // index:   現在のインデックス（0, 1, 2）
+  // array:   元の配列自体
+  return `${index}: ${element}`;
+});
+// ["0: a", "1: b", "2: c"]
+```
+
+### 実務パターン: APIレスポンスの整形
+
+```js
+const users = [
+  { id: 1, first_name: '太郎', last_name: '田中' },
+  { id: 2, first_name: '花子', last_name: '佐藤' },
+];
+
+const displayUsers = users.map((user) => ({
+  id: user.id,
+  fullName: `${user.last_name} ${user.first_name}`,
+}));
+// [{ id: 1, fullName: "田中 太郎" }, { id: 2, fullName: "佐藤 花子" }]
+```
+
+### map を使うべきでない場面
+
+`map` は「変換した新しい配列が欲しいとき」に使います。
+戻り値を使わずに副作用（ログ出力、DOM操作など）だけが目的なら `forEach` を使ってください。
+
+```js
+// ❌ mapの戻り値を捨てている
+users.map((user) => {
+  console.log(user.name);
+});
+
+// ⭕
+users.forEach((user) => {
+  console.log(user.name);
+});
+```
+
+<a id="filter"></a>
+
+## filter — 条件に合う要素だけを残す
+
+`filter` はコールバックが `true` を返した要素だけで構成された**新しい配列**を返します。
+元の配列は変更されません。
+
+```js
+const numbers = [1, 2, 3, 4, 5, 6];
+const evens = numbers.filter((n) => n % 2 === 0);
+
+console.log(evens); // [2, 4, 6]
+```
+
+### 実務パターン: 検索フィルタリング
+
+```js
+const products = [
+  { name: 'ノートPC', price: 120000, inStock: true },
+  { name: 'マウス', price: 3000, inStock: true },
+  { name: 'キーボード', price: 15000, inStock: false },
+  { name: 'モニター', price: 45000, inStock: true },
+];
+
+const result = products.filter((p) => p.inStock && p.price >= 10000);
+// [{ name: "ノートPC", ... }, { name: "モニター", ... }]
+```
+
+### filter + map のチェーン
+
+`filter` で絞り込んでから `map` で変換する、というチェーンは実務で非常によく書きます。
+
+```js
+const inStockNames = products.filter((p) => p.inStock).map((p) => p.name);
+// ["ノートPC", "マウス", "モニター"]
+```
+
+### 該当なしの場合
+
+条件に合う要素がなければ空配列 `[]` が返ります。`null` や `undefined` ではありません。
+
+```js
+const result = [1, 2, 3].filter((n) => n > 10);
+console.log(result); // []
+console.log(result.length); // 0
+```
+
+<a id="reduce"></a>
+
+## reduce — 配列を1つの値にまとめる
+
+`reduce` は配列の各要素を順に処理し、最終的に**1つの値**に集約します。
+合計値、オブジェクト、別の配列など、あらゆる形に集約できる汎用性の高いメソッドです。
+
+```js
+const numbers = [1, 2, 3, 4, 5];
+const sum = numbers.reduce((accumulator, current) => {
+  return accumulator + current;
+}, 0);
+// 15
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `reduce` だけ急に難しい…！`accumulator` って何者…？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  `accumulator`（アキュムレータ）は「途中経過を入れておく箱」。要素を1つ処理するたびに箱の中身を更新して、最後にその箱を返す——そうイメージすると一気にわかりやすくなるよ。
+</SpeechBubble>
+
+### 引数の構造
+
+```js
+array.reduce((accumulator, currentValue, index, array) => {
+  // accumulator: 前回のコールバックの戻り値（初回は初期値）
+  // currentValue: 現在の要素
+  return nextAccumulator;
+}, initialValue);
+//  ^^^^^^^^^^^^^ 第2引数: 初期値
+```
+
+### 初期値は必ず指定する
+
+初期値を省略すると、配列の最初の要素が初期値として使われます。
+空配列に対して初期値なしで `reduce` を呼ぶと `TypeError` になるため、**初期値は常に指定する**のが安全です。
+
+```js
+// ❌ 空配列でエラー
+[].reduce((acc, cur) => acc + cur);
+
+// ⭕ 初期値を指定すれば空配列でも安全
+[].reduce((acc, cur) => acc + cur, 0); // 0
+```
+
+### 実務パターン: グルーピング
+
+```js
+const orders = [
+  { product: 'PC', category: 'electronics' },
+  { product: 'シャツ', category: 'clothing' },
+  { product: 'マウス', category: 'electronics' },
+  { product: 'パンツ', category: 'clothing' },
+];
+
+const grouped = orders.reduce((acc, order) => {
+  const key = order.category;
+  if (!acc[key]) {
+    acc[key] = [];
+  }
+  acc[key].push(order);
+  return acc;
+}, {});
+```
+
+なお、このグルーピングは ES2024 で追加された `Object.groupBy` でより簡潔に書けるようになりました。
+
+```js
+const grouped = Object.groupBy(orders, (order) => order.category);
+```
+
+### reduce を使いすぎない
+
+`reduce` は汎用的すぎるがゆえに、何をしているか読みにくくなりがちです。
+`map` + `filter` で書ける処理を無理に `reduce` で書く必要はありません。
+
+```js
+// ❌ reduceで書いているが、やっていることはfilter + map
+const result = numbers.reduce((acc, n) => {
+  if (n > 3) acc.push(n * 2);
+  return acc;
+}, []);
+
+// ⭕ 意図が明確
+const result = numbers.filter((n) => n > 3).map((n) => n * 2);
+```
+
+<a id="chaining"></a>
+
+## メソッドチェーンの実践パターン
+
+配列メソッドを連鎖させる**メソッドチェーン**は、実務で最もよく書くパターンの一つです。
+
+```js
+const transactions = [
+  { id: 1, type: 'income', amount: 50000, date: '2024-06' },
+  { id: 2, type: 'expense', amount: 3000, date: '2024-06' },
+  { id: 3, type: 'expense', amount: 15000, date: '2024-07' },
+  { id: 4, type: 'income', amount: 80000, date: '2024-07' },
+  { id: 5, type: 'expense', amount: 5000, date: '2024-06' },
+];
+
+const juneExpenses = transactions
+  .filter((t) => t.type === 'expense')
+  .filter((t) => t.date === '2024-06')
+  .reduce((sum, t) => sum + t.amount, 0);
+// 8000
+```
+
+チェーンは上から下に「絞り込み → 変換 → 集約」の順で読めるのが理想です。
+
+### 途中で結果を確認したいとき
+
+チェーンの途中で `console.log` を挟みたい場合、一時変数に切り出すと確認しやすくなります。
+
+```js
+const expenses = transactions.filter((t) => t.type === 'expense');
+console.log('expenses:', expenses);
+const total = expenses.reduce((sum, t) => sum + t.amount, 0);
+```
+
+## ちゃんと使うためのポイント
+
+- `map` は変換した新しい配列が欲しいときに使う
+- `filter` は条件に合う要素だけを残したいときに使う
+- `reduce` は合計、グルーピング、オブジェクトへの変換などの集約で使う
+- `reduce` で何でも書けるが、読みやすさでは `filter` + `map` の方がよいことも多い
+
+次は、条件に合う要素を探したり判定したりする **[配列の検索・判定メソッド](/books/javascript/array-search-methods)** を見ていきます。
+
+## 参考リンク
+
+- [MDN — Array.prototype.map](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/map)
+- [MDN — Array.prototype.filter](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
+- [MDN — Array.prototype.reduce](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)

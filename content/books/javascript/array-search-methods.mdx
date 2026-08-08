@@ -1,0 +1,178 @@
+---
+title: '配列の検索・判定メソッド — find・some・every'
+description: 'JavaScriptの配列メソッド find・findIndex・some・every・includes を、検索・権限チェック・フォームバリデーションなどの実務パターンで整理します。'
+order: 7.2
+chapterLabel: '配列メソッド 2'
+---
+
+この章では、配列の中から要素を探したり、条件を満たすか判定したりするメソッドを扱います。
+
+| やりたいこと | メソッド | 戻り値 |
+| ------------ | -------- | ------ |
+| 条件に合う最初の要素が欲しい | `find` | 要素 or `undefined` |
+| 条件に合う最初の位置が欲しい | `findIndex` | 数値 or `-1` |
+| 1つでも条件を満たすか確認したい | `some` | `boolean` |
+| すべて条件を満たすか確認したい | `every` | `boolean` |
+| 値が含まれるか確認したい | `includes` | `boolean` |
+
+<a id="find"></a>
+
+## find — 条件に合う最初の1つを取得
+
+`find` はコールバックが `true` を返した**最初の要素**を返します。
+見つからなければ `undefined` です。
+
+```js
+const users = [
+  { id: 1, name: '太郎' },
+  { id: 2, name: '花子' },
+  { id: 3, name: '次郎' },
+];
+
+const user = users.find((u) => u.id === 2);
+console.log(user); // { id: 2, name: "花子" }
+
+const notFound = users.find((u) => u.id === 99);
+console.log(notFound); // undefined
+```
+
+### filter との違い
+
+| メソッド | 戻り値 | 見つからない場合 |
+| -------- | ------ | ---------------- |
+| `find` | 最初にマッチした**要素そのもの** | `undefined` |
+| `filter` | マッチした**すべての要素の配列** | `[]`（空配列） |
+
+「1つだけ欲しい」なら `find`、「全部欲しい」なら `filter` です。
+
+<a id="findindex"></a>
+
+## findIndex — 条件に合う最初のインデックスを取得
+
+要素ではなくインデックスが欲しい場合は `findIndex` を使います。
+見つからなければ `-1` を返します。
+
+```js
+const index = users.findIndex((u) => u.id === 2);
+console.log(index); // 1
+```
+
+`findIndex` は「該当要素を置き換えたい」「位置を基準に前後の要素を見たい」ような場面で使います。
+
+```js
+const targetIndex = users.findIndex((u) => u.id === 2);
+
+if (targetIndex !== -1) {
+  const updated = users.with(targetIndex, { ...users[targetIndex], name: '佐藤' });
+}
+```
+
+<a id="some"></a>
+
+## some — 1つでも条件を満たすか
+
+`some` はコールバックが `true` を返す要素が**1つでもあれば** `true` を返します。
+全要素が `false` なら `false` です。
+
+```js
+const numbers = [1, 3, 5, 8, 9];
+
+const hasEven = numbers.some((n) => n % 2 === 0);
+console.log(hasEven); // true（8が偶数）
+```
+
+### 実務パターン: 権限チェック
+
+```js
+const userRoles = ['editor', 'viewer'];
+const canEdit = userRoles.some((role) => role === 'editor' || role === 'admin');
+console.log(canEdit); // true
+```
+
+### 短絡評価する
+
+`some` は `true` を返す要素を<Marker>見つけた時点で残りの要素を処理せずに終了</Marker>します。
+大きな配列でもパフォーマンス上の問題になりにくいです。
+
+<a id="every"></a>
+
+## every — すべてが条件を満たすか
+
+`every` は**すべての要素**でコールバックが `true` を返した場合に `true` を返します。
+1つでも `false` があれば即座に `false` を返します。
+
+```js
+const ages = [20, 25, 30, 18];
+
+const allAdults = ages.every((age) => age >= 20);
+console.log(allAdults); // false（18が条件を満たさない）
+```
+
+### 実務パターン: フォームバリデーション
+
+```js
+const fields = [
+  { name: 'email', value: 'test@example.com', valid: true },
+  { name: 'password', value: 'abc', valid: false },
+  { name: 'name', value: '太郎', valid: true },
+];
+
+const isFormValid = fields.every((field) => field.valid);
+console.log(isFormValid); // false（passwordが invalid）
+```
+
+### 空配列に対する every
+
+空配列に対して `every` は常に `true` を返します。
+これは論理学の「空真」（vacuous truth）に基づく仕様ですが、実務ではバグの原因になりえます。
+
+```js
+[].every((x) => x > 0); // true（！）
+```
+
+空配列の可能性がある場合は、事前に `length` をチェックしてください。
+
+```js
+const allChecked = items.length > 0 && items.every((item) => item.checked);
+```
+
+<a id="includes"></a>
+
+## includes — 値が含まれているか
+
+`includes` は、配列に指定した値が含まれていれば `true` を返します。
+単純な値の存在チェックなら、`some` よりも `includes` の方が読みやすくなります。
+
+```js
+const roles = ['admin', 'editor', 'viewer'];
+
+console.log(roles.includes('admin')); // true
+console.log(roles.includes('guest')); // false
+```
+
+ただし、オブジェクトの中身を条件で探す場合は `includes` ではなく `some` や `find` を使います。
+
+```js
+const users = [{ id: 1 }, { id: 2 }];
+
+users.includes({ id: 1 }); // false（別のオブジェクトなので一致しない）
+users.some((user) => user.id === 1); // true
+```
+
+## ちゃんと使うためのポイント
+
+- 1件だけ欲しいなら `find`
+- 位置が欲しいなら `findIndex`
+- 存在確認だけなら `some` / `includes`
+- 全件が条件を満たすか確認するなら `every`
+- `every` は空配列で `true` になるため、必要なら `length > 0` と組み合わせる
+
+次は、元の配列を壊さずに一部を取り出したり結合したりする **[配列のコピー・結合メソッド](/books/javascript/array-copy-and-merge)** を見ていきます。
+
+## 参考リンク
+
+- [MDN — Array.prototype.find](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/find)
+- [MDN — Array.prototype.findIndex](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/findIndex)
+- [MDN — Array.prototype.some](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/some)
+- [MDN — Array.prototype.every](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/every)
+- [MDN — Array.prototype.includes](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/includes)

@@ -1,19 +1,18 @@
 ---
-title: '配列メソッド完全ガイド — map・filter・reduceから実務頻出パターンまで'
-description: 'map・filter・reduce・find・some・every・slice・concat・fillなど、配列メソッドを用途別に整理し、実務でよく書くパターンをまとめます。破壊的メソッド・非破壊メソッドの一覧表つき。'
+title: '配列メソッド早見表 — やりたいことから選ぶチートシート'
+description: 'JavaScriptの配列メソッドを、変換・絞り込み・検索・コピー・結合・破壊的操作などの目的別に整理します。map・filter・reduce・find・some・every・slice・concat・fillなどの詳細ページへの入口です。'
 order: 7
 ---
 
 JavaScriptで最も触る機会が多いデータ構造は配列です。
 APIのレスポンスを加工する、フォームの入力値をまとめる、UIにリストを表示する——ほぼすべての場面で配列が登場します。
 
-この章では、配列の「メソッド」とは何かという前提から始めて、実務で頻出する `map`・`filter`・`reduce`・`find`・`some`・`every`・`fill` を用途別に整理します。
-
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
   `map` とか `filter` とか、名前は聞くけど…結局どれをいつ使えばいいのか毎回迷っちゃう。
 </SpeechBubble>
 
-この章を読めば「変換は `map`、絞り込みは `filter`、集約は `reduce`」のように、**やりたいことから逆引きで**選べるようになります。
+このページは、配列メソッドを**やりたいことから逆引きする入口**です。
+詳しい使い方は各ページへ分けているので、迷ったらまずこの早見表から探してください。
 
 ---
 
@@ -34,15 +33,9 @@ JavaScriptでは、`[]` というリテラルで配列を作ると、内部的�
 そして、すべての `Array` インスタンスは **`Array.prototype`** というオブジェクトからメソッドを継承しています。
 
 ```js
-// .map() は配列自体が持っているのではなく、Array.prototype から借りている
 console.log(arr.hasOwnProperty('map')); // false
 console.log(Array.prototype.hasOwnProperty('map')); // true
 ```
-
-つまり `arr.map(...)` と書いたとき、JavaScriptは以下の順序でメソッドを探しています。
-
-1. `arr` 自身に `map` プロパティがあるか → ない
-2. `arr` のプロトタイプ（`Array.prototype`）に `map` があるか → ある → これを使う
 
 <MermaidDiagram
   chart={`
@@ -55,858 +48,135 @@ flowchart TB
 `}
 />
 
-これが「配列メソッドは `Array` インスタンスのメソッド」という意味です。
 配列っぽく見えるが `Array` インスタンスではないもの（例: `document.querySelectorAll()` の戻り値である `NodeList`）では、そのままでは `.map()` が使えません。
 
 ```js
 const nodes = document.querySelectorAll('div');
 // nodes.map(...) → TypeError: nodes.map is not a function
 
-// Array.from() で本物の配列に変換すれば使える
 Array.from(nodes).map((node) => node.textContent);
 ```
 
-この前提を押さえたうえで、実務で特に使用頻度の高いメソッドを見ていきます。
-
-<Callout type="note" title="この章のメソッド表記について">
-  配列メソッドの多くは**コールバック関数**を引数に取ります。そのコールバックは `(element, index,
-  array)` の3つの引数を受け取れる、という形が共通です（`index`・`array`
-  は省略可能で、使わなければ書かなくてかまいません）。各メソッドでは「コールバックが何を返すと、メソッド自身が最終的に何を返すか（戻り値）」に注目すると整理しやすくなります。
+<Callout type="note" title="コールバックの基本形">
+  配列メソッドの多くは `(element, index, array)` の3つの引数を受け取れるコールバック関数を使います。実務では第1引数だけ使うケースが多く、`index`・`array` は必要なときだけ書けば十分です。
 </Callout>
 
-<a id="map"></a>
-
-## map — 各要素を変換して新しい配列を作る
-
-<Figure
-  src="/images/boomerang_woman_color.png"
-  alt="mapが変換結果を新しい配列として返すイメージ"
-  maxWidth="120px"
-/>
-
-`map` は配列の各要素にコールバック関数を適用し、その戻り値で構成された**新しい配列**を返します。
-元の配列は変更されません（非破壊）。
-
-```js
-const numbers = [1, 2, 3, 4, 5];
-const doubled = numbers.map((n) => n * 2);
-
-console.log(doubled); // [2, 4, 6, 8, 10]
-console.log(numbers); // [1, 2, 3, 4, 5]（元の配列はそのまま）
-```
-
-### コールバックの引数
-
-コールバックは最大3つの引数を受け取ります。
-
-| 引数                      | 意味                          |
-| ------------------------- | ----------------------------- |
-| 第1引数 `element`         | 現在処理している要素          |
-| 第2引数 `index`（省略可） | 現在のインデックス（0始まり） |
-| 第3引数 `array`（省略可） | 元の配列そのもの              |
-
-```js
-const result = ['a', 'b', 'c'].map((element, index, array) => {
-  // element: 現在の要素（"a", "b", "c"）
-  // index:   現在のインデックス（0, 1, 2）
-  // array:   元の配列自体
-  return `${index}: ${element}`;
-});
-// ["0: a", "1: b", "2: c"]
-```
-
-実務では第1引数だけ使うケースがほとんどです。第2引数の `index` はリスト表示の `key` 生成などで使うことがあります。
-
-この `(element, index, array)` という3引数のコールバックは、`map` だけでなく `filter`・`find`・`findIndex`・`some`・`every` でも共通です。各メソッドで違うのは「コールバックの戻り値をどう扱い、最終的に何を返すか」だけ、と捉えると一気に整理できます。
-
-### 実務パターン: APIレスポンスの整形
-
-```js
-// APIから返ってきたユーザーデータ
-const users = [
-  { id: 1, first_name: '太郎', last_name: '田中' },
-  { id: 2, first_name: '花子', last_name: '佐藤' },
-];
-
-// フロントで使いやすい形に変換
-const displayUsers = users.map((user) => ({
-  id: user.id,
-  fullName: `${user.last_name} ${user.first_name}`,
-}));
-// [{ id: 1, fullName: "田中 太郎" }, { id: 2, fullName: "佐藤 花子" }]
-```
-
-### map を使うべきでない場面
-
-`map` は「変換した新しい配列が欲しいとき」に使います。
-戻り値を使わずに副作用（ログ出力、DOM操作など）だけが目的なら `forEach` を使ってください。
-
-```js
-// ❌ mapの戻り値を捨てている — forEachを使うべき
-users.map((user) => {
-  console.log(user.name);
-});
-
-// ⭕
-users.forEach((user) => {
-  console.log(user.name);
-});
-```
-
-<a id="filter"></a>
-
-## filter — 条件に合う要素だけを残す
-
-`filter` はコールバックが `true` を返した要素だけで構成された**新しい配列**を返します。
-元の配列は変更されません。
-
-```js
-const numbers = [1, 2, 3, 4, 5, 6];
-const evens = numbers.filter((n) => n % 2 === 0);
-
-console.log(evens); // [2, 4, 6]
-```
-
-### 実務パターン: 検索フィルタリング
-
-```js
-const products = [
-  { name: 'ノートPC', price: 120000, inStock: true },
-  { name: 'マウス', price: 3000, inStock: true },
-  { name: 'キーボード', price: 15000, inStock: false },
-  { name: 'モニター', price: 45000, inStock: true },
-];
-
-// 在庫ありで1万円以上の商品
-const result = products.filter((p) => p.inStock && p.price >= 10000);
-// [{ name: "ノートPC", ... }, { name: "モニター", ... }]
-```
-
-### filter + map のチェーン
-
-`filter` で絞り込んでから `map` で変換する、というチェーンは実務で非常によく書きます。
-
-```js
-// 在庫あり商品の名前だけを取得
-const inStockNames = products.filter((p) => p.inStock).map((p) => p.name);
-// ["ノートPC", "マウス", "モニター"]
-```
-
-### 該当なしの場合
-
-条件に合う要素がなければ空配列 `[]` が返ります。`null` や `undefined` ではありません。
-
-```js
-const result = [1, 2, 3].filter((n) => n > 10);
-console.log(result); // []
-console.log(result.length); // 0
-```
-
-<a id="reduce"></a>
-
-## reduce — 配列を1つの値にまとめる
-
-`reduce` は配列の各要素を順に処理し、最終的に**1つの値**に集約します。
-合計値、オブジェクト、別の配列など、あらゆる形に集約できる汎用性の高いメソッドです。
-
-```js
-const numbers = [1, 2, 3, 4, 5];
-const sum = numbers.reduce((accumulator, current) => {
-  return accumulator + current;
-}, 0);
-// 0 + 1 + 2 + 3 + 4 + 5 = 15
-```
-
-<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-  `reduce` だけ急に難しい…！`accumulator` って何者…？
-</SpeechBubble>
-
-<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-  `accumulator`（アキュムレータ）は「途中経過を入れておく箱」。要素を1つ処理するたびに箱の中身を更新して、最後にその箱を返す——そうイメージすると一気にわかりやすくなるよ。
-</SpeechBubble>
-
-### 引数の構造
-
-```js
-array.reduce((accumulator, currentValue, index, array) => {
-  // accumulator: 前回のコールバックの戻り値（初回は初期値）
-  // currentValue: 現在の要素
-  return nextAccumulator;
-}, initialValue);
-//  ^^^^^^^^^^^^^ 第2引数: 初期値（省略可能だが、常に指定するのが安全）
-```
-
-### 初期値は必ず指定する
-
-初期値を省略すると、配列の最初の要素が初期値として使われます。
-空配列に対して初期値なしで `reduce` を呼ぶと `TypeError` になるため、**初期値は常に指定する**のが安全です。
-
-```js
-// ❌ 空配列でエラー
-[].reduce((acc, cur) => acc + cur);
-// TypeError: Reduce of empty array with no initial value
-
-// ⭕ 初期値を指定すれば空配列でも安全
-[].reduce((acc, cur) => acc + cur, 0); // 0
-```
-
-### 実務パターン: グルーピング
-
-```js
-const orders = [
-  { product: 'PC', category: 'electronics' },
-  { product: 'シャツ', category: 'clothing' },
-  { product: 'マウス', category: 'electronics' },
-  { product: 'パンツ', category: 'clothing' },
-];
-
-const grouped = orders.reduce((acc, order) => {
-  const key = order.category;
-  if (!acc[key]) {
-    acc[key] = [];
-  }
-  acc[key].push(order);
-  return acc;
-}, {});
-
-// {
-//   electronics: [{ product: "PC", ... }, { product: "マウス", ... }],
-//   clothing: [{ product: "シャツ", ... }, { product: "パンツ", ... }]
-// }
-```
-
-なお、このグルーピングは ES2024 で追加された `Object.groupBy` でより簡潔に書けるようになりました。
-
-```js
-const grouped = Object.groupBy(orders, (order) => order.category);
-```
-
-### reduce を使いすぎない
-
-`reduce` は汎用的すぎるがゆえに、何をしているか読みにくくなりがちです。
-`map` + `filter` で書ける処理を無理に `reduce` で書く必要はありません。
-
-```js
-// ❌ reduceで書いているが、やっていることはfilter + map
-const result = numbers.reduce((acc, n) => {
-  if (n > 3) acc.push(n * 2);
-  return acc;
-}, []);
-
-// ⭕ 意図が明確
-const result = numbers.filter((n) => n > 3).map((n) => n * 2);
-```
-
-`reduce` の出番は「合計」「グルーピング」「オブジェクトへの変換」など、`map` / `filter` では表現できない集約処理です。
-
-<a id="find"></a>
-
-## find — 条件に合う最初の1つを取得
-
-`find` はコールバックが `true` を返した**最初の要素**を返します。
-見つからなければ `undefined` です。
-
-```js
-const users = [
-  { id: 1, name: '太郎' },
-  { id: 2, name: '花子' },
-  { id: 3, name: '次郎' },
-];
-
-const user = users.find((u) => u.id === 2);
-console.log(user); // { id: 2, name: "花子" }
-
-const notFound = users.find((u) => u.id === 99);
-console.log(notFound); // undefined
-```
-
-### filter との違い
-
-| メソッド | 戻り値                           | 見つからない場合 |
-| -------- | -------------------------------- | ---------------- |
-| `find`   | 最初にマッチした**要素そのもの** | `undefined`      |
-| `filter` | マッチした**すべての要素の配列** | `[]`（空配列）   |
-
-「1つだけ欲しい」なら `find`、「全部欲しい」なら `filter` です。
-
-### findIndex
-
-要素ではなくインデックスが欲しい場合は `findIndex` を使います。見つからなければ `-1` を返します。
-
-```js
-const index = users.findIndex((u) => u.id === 2);
-console.log(index); // 1
-```
-
-<a id="some"></a>
-
-## some — 1つでも条件を満たすか
-
-`some` はコールバックが `true` を返す要素が**1つでもあれば** `true` を返します。
-全要素が `false` なら `false` です。
-
-```js
-const numbers = [1, 3, 5, 8, 9];
-
-const hasEven = numbers.some((n) => n % 2 === 0);
-console.log(hasEven); // true（8が偶数）
-```
-
-### 実務パターン: 権限チェック
-
-```js
-const userRoles = ['editor', 'viewer'];
-const canEdit = userRoles.some((role) => role === 'editor' || role === 'admin');
-console.log(canEdit); // true
-```
-
-### 短絡評価する
-
-`some` は `true` を返す要素を<Marker>見つけた時点で残りの要素を処理せずに終了</Marker>します。大きな配列でもパフォーマンス上の問題になりにくいです。
-
-> 配列の要素のいずれかで callbackFn が真値を返した場合は、直ちに true を返します。それ以外の場合は false です。
-> [MDN - Array.prototype.some](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/some)
-
-<a id="every"></a>
-
-## every — すべてが条件を満たすか
-
-`every` は**すべての要素**でコールバックが `true` を返した場合に `true` を返します。
-1つでも `false` があれば即座に `false` を返します。
-
-```js
-const ages = [20, 25, 30, 18];
-
-const allAdults = ages.every((age) => age >= 20);
-console.log(allAdults); // false（18が条件を満たさない）
-```
-
-### 実務パターン: フォームバリデーション
-
-```js
-const fields = [
-  { name: 'email', value: 'test@example.com', valid: true },
-  { name: 'password', value: 'abc', valid: false },
-  { name: 'name', value: '太郎', valid: true },
-];
-
-const isFormValid = fields.every((field) => field.valid);
-console.log(isFormValid); // false（passwordが invalid）
-```
-
-### 空配列に対する every
-
-空配列に対して `every` は常に `true` を返します。
-これは論理学の「空真」（vacuous truth）に基づく仕様ですが、実務ではバグの原因になりえます。
-
-```js
-[].every((x) => x > 0); // true（！）
-```
-
-空配列の可能性がある場合は、事前に `length` をチェックしてください。
-
-<a id="slice"></a>
-
-## slice — 配列の一部を取り出して新しい配列を作る
-
-`slice` は開始位置と終了位置を指定して、配列の一部を**新しい配列**として返します。
-元の配列は変更されません（非破壊）。
-
-**構文：** `array.slice(start, end?)`
-
-```js
-const languages = ['JavaScript', 'TypeScript', 'React', 'Node.js', 'SQL'];
-
-const frontend = languages.slice(0, 3);
-
-console.log(frontend);  // ["JavaScript", "TypeScript", "React"]
-console.log(languages); // ["JavaScript", "TypeScript", "React", "Node.js", "SQL"]（元の配列はそのまま）
-```
-
-`start` は取り出し始めるインデックス、`end` は取り出しを終える位置です。
-`end` に指定した位置の要素は含まれないため、`slice(0, 3)` は「0番目から3番目の手前まで」を取り出します。
-
-### 第2引数を省略する
-
-第2引数を省略すると、`start` から配列の最後までを取り出します。
-
-```js
-const tasks = ['設計', '実装', 'レビュー', 'リリース'];
-
-tasks.slice(1);
-// ["実装", "レビュー", "リリース"]
-```
-
-### マイナスのインデックス
-
-`slice` では、末尾から数えるマイナスのインデックスも使えます。
-最後の数件だけ取り出したいときに便利です。
-
-```js
-const logs = ['10:00', '10:05', '10:10', '10:15', '10:20'];
-
-const latest = logs.slice(-2);
-// ["10:15", "10:20"]
-```
-
-### 浅いコピーを作る
-
-引数を指定せずに `slice()` を呼ぶと、配列全体のコピーを作れます。
-
-```js
-const original = ['A', 'B', 'C'];
-const copied = original.slice();
-
-copied.push('D');
-
-console.log(copied);   // ["A", "B", "C", "D"]
-console.log(original); // ["A", "B", "C"]
-```
-
-コピーした側に要素を追加しても、元の配列はそのまま。一見これで「完全なコピー」ができたように見えますよね。
-
-でも実は、このコピーは**浅いコピー（シャローコピー）**と呼ばれるもので、1つだけ落とし穴があります。
-
-### 浅いコピーの落とし穴 — 中身がオブジェクトのとき
-
-<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-  コピーに「浅い」なんてあるんですか…？じゃあ「深いコピー」もあるってこと…？
-</SpeechBubble>
-
-<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-  いい勘だね。ポイントは**配列の中身がオブジェクトかどうか**。さっきの例みたいに文字列や数値だけなら何も気にしなくていい。でもオブジェクトが入っていると、ちょっと不思議なことが起きるんだ。
-</SpeechBubble>
-
-まずは、実際に起きる「不思議なこと」を見てみましょう。
-
-```js
-const members = [{ name: '太郎' }, { name: '花子' }];
-const copied = members.slice(); // コピーしたはずなのに…
-
-copied[0].name = '書き換えたよ';
-
-console.log(copied[0].name);  // "書き換えたよ"
-console.log(members[0].name); // "書き換えたよ" ← 元の配列まで変わってる！？
-```
-
-<Figure
-  src="/images/surprise_pc_woman_color.png"
-  alt="コピーしたはずの配列を変更したら元の配列まで変わって驚く様子"
-  maxWidth="120px"
-/>
-
-<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-  ええっ！？コピーした方だけ書き換えたのに、元の `members` まで変わってます…！
-</SpeechBubble>
-
-<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
-  びっくりするよね。でも仕組みがわかれば怖くないよ。ポイントは、**配列にはオブジェクトそのものではなく「参照」が入っている**ということなんだ。
-</SpeechBubble>
-
-順を追って整理しましょう。
-
-1. オブジェクトは、メモリ上のどこかに実体が1つ作られます
-2. 配列に入っているのは、その実体の場所を指し示す**参照**です
-3. `slice()` でコピーされるのは、この**参照だけ**です
-4. つまりコピー後も、2つの配列は**同じ実体を指したまま**です
-
-だから `copied[0].name = '書き換えたよ'` と書くと、参照の先にある実体そのものが書き換わります。実体は1つしかないので、`members[0]` から見ても変わっている——これが先ほどのコードで起きていたことです。
-
-コピーされるのは配列の**1階層目（参照の並び）だけ**で、その先にあるオブジェクトの中身まではコピーされない。これが「浅いコピー」と呼ばれる理由です。
-
-<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-  なるほど…！じゃあ最初の例（`'A'`, `'B'`, `'C'`）で何も起きなかったのはどうしてですか？
-</SpeechBubble>
-
-<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-  文字列や数値などのプリミティブは参照ではなく、**値そのものが配列に入っている**からだよ。コピーすれば値ごと複製されるので、片方を変えてももう片方には影響しない。参照が絡むのはオブジェクトや配列が要素のときだけ、と覚えておこう。
-</SpeechBubble>
-
-<Callout type="warning" title="浅いコピーは slice だけの話ではない">
-  この章で学ぶ `concat` や `filter`、`map`、スプレッド構文 `[...arr]` が返す新しい配列も、すべて浅いコピーです。「非破壊メソッドだから安全」と思っていても、**要素のオブジェクトの中身を書き換えると元の配列に影響します**。ネストしたオブジェクトの中身まで完全に複製したいときは `structuredClone(original)` を使うと、**深いコピー（ディープコピー）**が作れます。
-</Callout>
-
-<Callout type="note" title="slice と splice の違い">
-  名前が似ていますが、`slice` は元の配列を変更しない非破壊メソッドです。一方、`splice`
-  は元の配列に要素を追加・削除する破壊的メソッドです。
-</Callout>
-
-<a id="concat"></a>
-
-## concat — 配列を結合して新しい配列を作る
-
-`concat` は2つ以上の配列を結合し、**新しい配列**を返します。元の配列は変更されません。
-
-```js
-const front = ['HTML', 'CSS'];
-const back = ['Node.js', 'SQL'];
-
-const all = front.concat(back);
-
-console.log(all);   // ["HTML", "CSS", "Node.js", "SQL"]
-console.log(front); // ["HTML", "CSS"]（元の配列はそのまま）
-```
-
-### 複数の配列を一度に結合する
-
-`concat` は引数を複数取れるので、3つ以上の配列もまとめて結合できます。
-
-```js
-const a = [1, 2];
-const b = [3, 4];
-const c = [5, 6];
-
-const merged = a.concat(b, c);
-// [1, 2, 3, 4, 5, 6]
-```
-
-### 配列でない値も追加できる
-
-引数が配列でなければ、その値がそのまま末尾に追加されます。
-
-```js
-const arr = [1, 2, 3];
-
-arr.concat(4, 5);        // [1, 2, 3, 4, 5]
-arr.concat([4, 5], 6);   // [1, 2, 3, 4, 5, 6]
-```
-
-ただし、ネストした配列は**1段階しか展開されません**。
-
-```js
-[1].concat([[2, 3]]);
-// [1, [2, 3]]  ← 内側の配列はそのまま
-```
-
-### スプレッド構文との比較
-
-ES2015以降は、スプレッド構文 `...` でも配列を結合できます。
-
-```js
-// concat
-const merged1 = a.concat(b);
-
-// スプレッド構文
-const merged2 = [...a, ...b];
-```
-
-<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-  `concat` とスプレッド構文、どっちを使えばいいの？
-</SpeechBubble>
-
-<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-  どちらでも結果は同じだから、プロジェクトのスタイルに合わせればOK。スプレッド構文の方が短く書けるから現在のコードベースではよく使われるけど、`concat` は「結合している」という意図が名前から明確に伝わる利点があるよ。
-</SpeechBubble>
-
-### 実務パターン: 条件付きで要素を追加
-
-`concat` は非破壊なので、条件に応じて要素を追加したい場面で安全に使えます。
-
-```js
-const baseMenu = ['ホーム', 'プロフィール'];
-
-const menu = baseMenu.concat(
-  isAdmin ? ['管理画面'] : [],
-  isLoggedIn ? ['ログアウト'] : ['ログイン'],
-);
-```
-
-<a id="fill"></a>
-
-## fill — 配列を同じ値で埋める
-
-`fill` は、配列の要素を指定した値で埋めるメソッドです。
-配列の初期化や、既存配列の一部をまとめて同じ値に置き換えたいときに使います。
-
-ただし、`fill` は**元の配列を直接変更する破壊的メソッド**です。
-`map` や `filter` のように新しい配列を返す感覚で使うと、意図せず元の配列を書き換えてしまいます。
-
-**構文：** `array.fill(value, start?, end?)`
-
-| 引数              | 説明                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------- |
-| `value`           | 埋める値                                                                              |
-| `start`（省略可） | 埋め始める位置（0始まり）。省略すると `0`                                             |
-| `end`（省略可）   | 埋め終える位置。その**手前まで**が対象で `end` 自身は含まない。省略すると配列の末尾まで |
-
-**戻り値：** 変更後の元の配列（新しい配列ではない）
-
-```js
-const scores = new Array(5).fill(0);
-console.log(scores); // [0, 0, 0, 0, 0]
-
-const statuses = ['todo', 'todo', 'todo', 'todo'];
-statuses.fill('done', 1, 3);
-
-console.log(statuses); // ["todo", "done", "done", "todo"]
-```
-
-### 実務パターン: 初期値つきの配列を作る
-
-`new Array(length)` だけだと「長さはあるが、要素が空の配列」になります。
-そのままでは `map` などが期待どおりに処理されないため、連番や初期値つき配列を作るときは `fill` と組み合わせることがあります。
-
-```js
-const indexes = new Array(5).fill(0).map((_, index) => index);
-console.log(indexes); // [0, 1, 2, 3, 4]
-
-const counts = new Array(3).fill(0);
-console.log(counts); // [0, 0, 0]
-```
-
-<Callout type="warning" title="fill は破壊的メソッド">
-  `fill` は呼び出した配列そのものを書き換えます。元の配列を残したい場合は、`slice()` やスプレッド構文でコピーしてから `fill`
-  してください。
-</Callout>
-
-```js
-const original = [1, 2, 3];
-
-// ❌ original も変わる
-original.fill(0);
-console.log(original); // [0, 0, 0]
-
-// ⭕ コピーしてから fill する
-const numbers = [1, 2, 3];
-const filled = [...numbers].fill(0);
-
-console.log(filled);  // [0, 0, 0]
-console.log(numbers); // [1, 2, 3]
-```
-
-### オブジェクトを fill すると同じ参照が入る
-
-`fill` にオブジェクトや配列を渡すと、各要素に別々のオブジェクトが作られるわけではありません。
-**同じ参照**がすべての要素に入ります。
-
-```js
-const rows = new Array(3).fill([]);
-
-rows[0].push('A');
-
-console.log(rows); // [["A"], ["A"], ["A"]]
-```
-
-これは「3つの空配列を作った」のではなく、「1つの空配列への参照を3か所に入れた」状態です。
-2次元配列やオブジェクト配列を初期化するときは、`Array.from` を使って要素ごとに新しい値を作ります。
-
-```js
-const rows = Array.from({ length: 3 }, () => []);
-
-rows[0].push('A');
-
-console.log(rows); // [["A"], [], []]
-```
-
-<a id="flat"></a>
-
-## flat — ネストされた配列を平坦化する
-
-`flat` は配列内のネストを取り除き、指定した深さまで平坦化した新しい配列を返します。引数を省略すると深さ1（1段階）だけ平坦化します。
-
-```js
-const nested = [1, [2, 3], [4, [5, 6]]];
-
-nested.flat(); // [1, 2, 3, 4, [5, 6]]  — 1段階だけ
-nested.flat(2); // [1, 2, 3, 4, 5, 6]    — 2段階まで
-```
-
-深さが不明な場合は `Infinity` を渡すと、どれだけ深くても完全に平坦化できます。
-
-```js
-const deep = [1, [2, [3, [4, [5]]]]];
-
-deep.flat(Infinity); // [1, 2, 3, 4, 5]
-```
-
-また、`flat` は配列内の空スロット（holes）を取り除く性質もあります。
-
-```js
-const sparse = [1, , 3, , 5];
-
-sparse.flat(); // [1, 3, 5]
-```
-
-<a id="flatmap"></a>
-
-## flatMap — 変換と平坦化を同時に行う
-
-`flatMap` は各要素にコールバックを適用し、その結果を**1段階だけ平坦化**した新しい配列を返します。`map` してから `flat(1)` するのと同じですが、1回の走査で済むため効率的です。
-
-```js
-const sentences = ['Hello world', 'Good morning'];
-
-// map だと配列の配列になる
-sentences.map((s) => s.split(' '));
-// [["Hello", "world"], ["Good", "morning"]]
-
-// flatMap なら1段階平坦化される
-sentences.flatMap((s) => s.split(' '));
-// ["Hello", "world", "Good", "morning"]
-```
-
-### 実務パターン: filter + map を1回で
-
-`flatMap` で空配列 `[]` を返すと、その要素を除外できます。`filter` + `map` を1回の走査にまとめたいときに便利です。
-
-```js
-const items = [
-  { name: 'PC', price: 120000, inStock: true },
-  { name: 'マウス', price: 3000, inStock: false },
-  { name: 'モニター', price: 45000, inStock: true },
-];
-
-// filter + map
-items.filter((i) => i.inStock).map((i) => i.name);
-
-// flatMap で同じことを1回で
-items.flatMap((i) => (i.inStock ? [i.name] : []));
-// ["PC", "モニター"]
-```
-
-<Callout type="column" title="flatMap vs filter + map">
-  `filter` + `map` の方が読みやすいケースが多いです。`flatMap`
-  は「変換の結果が可変長の配列になる」ケース（1対多の変換）で真価を発揮します。単純な絞り込み +
-  変換なら `filter` + `map` で問題ありません。
-</Callout>
-
----
-
-<a id="chaining"></a>
-
-## メソッドチェーンの実践パターン
-
-配列メソッドを連鎖させる**メソッドチェーン**は、実務で最もよく書くパターンの一つです。
-
-```js
-const transactions = [
-  { id: 1, type: 'income', amount: 50000, date: '2024-06' },
-  { id: 2, type: 'expense', amount: 3000, date: '2024-06' },
-  { id: 3, type: 'expense', amount: 15000, date: '2024-07' },
-  { id: 4, type: 'income', amount: 80000, date: '2024-07' },
-  { id: 5, type: 'expense', amount: 5000, date: '2024-06' },
-];
-
-// 6月の支出合計を計算
-const juneExpenses = transactions
-  .filter((t) => t.type === 'expense') // 支出だけ
-  .filter((t) => t.date === '2024-06') // 6月だけ
-  .reduce((sum, t) => sum + t.amount, 0); // 合計
-// 8000
-```
-
-チェーンは上から下に「絞り込み → 変換 → 集約」の順で読めるのが理想です。
-
-### 途中で結果を確認したいとき
-
-チェーンの途中で `console.log` を挟みたい場合、一時変数に切り出すか、デバッグ用の `tap` パターンを使います。
-
-```js
-// 一時変数に切り出す
-const expenses = transactions.filter((t) => t.type === 'expense');
-console.log('expenses:', expenses);
-const total = expenses.reduce((sum, t) => sum + t.amount, 0);
-```
-
----
-
-<a id="method-comparison"></a>
-
-## メソッドの使い分け早見表
-
-| やりたいこと                 | メソッド    | 戻り値              |
-| ---------------------------- | ----------- | ------------------- |
-| 各要素を変換する             | `map`       | 新しい配列          |
-| 条件で絞り込む               | `filter`    | 新しい配列          |
-| 1つの値にまとめる            | `reduce`    | 任意の値            |
-| 条件に合う最初の要素         | `find`      | 要素 or `undefined` |
-| 条件に合う最初のインデックス | `findIndex` | 数値 or `-1`        |
-| 1つでも条件を満たすか        | `some`      | `boolean`           |
-| すべて条件を満たすか         | `every`     | `boolean`           |
-| 配列の一部を取り出す         | `slice`     | 新しい配列          |
-| 配列を結合する               | `concat`    | 新しい配列          |
-| 同じ値で埋める               | `fill`      | 変更後の元の配列    |
-| 変換 + 1段階の平坦化         | `flatMap`   | 新しい配列          |
-
-<a id="common-pitfalls"></a>
-
-## よくあるハマりどころ
+<a id="cheatsheet"></a>
+
+## やりたいことから選ぶ早見表
+
+| やりたいこと | 使うメソッド | 詳細 |
+| ------------ | ------------ | ---- |
+| 各要素を別の形に変換したい | `map` | [配列の変換メソッド](/books/javascript/array-transform-methods#map) |
+| 条件に合う要素だけ残したい | `filter` | [配列の変換メソッド](/books/javascript/array-transform-methods#filter) |
+| 配列全体を1つの値にまとめたい | `reduce` | [配列の変換メソッド](/books/javascript/array-transform-methods#reduce) |
+| 最初の1件を探したい | `find` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#find) |
+| 最初のインデックスを探したい | `findIndex` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#findindex) |
+| 1つでも条件を満たすか確認したい | `some` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#some) |
+| すべて条件を満たすか確認したい | `every` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#every) |
+| 値が含まれるか確認したい | `includes` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#includes) |
+| 配列の一部を取り出したい | `slice` | [配列のコピー・結合メソッド](/books/javascript/array-copy-and-merge#slice) |
+| 配列を結合したい | `concat` / スプレッド構文 | [配列のコピー・結合メソッド](/books/javascript/array-copy-and-merge#concat) |
+| 同じ値で埋めたい | `fill` | [配列の初期化・平坦化メソッド](/books/javascript/array-fill-flat-methods#fill) |
+| ネストした配列を平坦化したい | `flat` | [配列の初期化・平坦化メソッド](/books/javascript/array-fill-flat-methods#flat) |
+| 変換して平坦化したい | `flatMap` | [配列の初期化・平坦化メソッド](/books/javascript/array-fill-flat-methods#flatmap) |
+| 元の配列を直接変更したい | `push` / `splice` / `sort` など | [配列の破壊的メソッド](/books/javascript/array-mutating-methods) |
+
+<a id="recommended-pages"></a>
+
+## 詳しく読む順番
 
 <Figure
   src="/images/deskwork_check_woman_color.png"
-  alt="配列メソッドのハマりどころを確認するイメージ"
+  alt="配列メソッドの使い分けを確認するイメージ"
   maxWidth="120px"
 />
 
-### 破壊的メソッド・非破壊メソッド一覧 — 元の配列を壊すのはどれ？
+### 1. 変換・絞り込み・集約
 
-配列メソッドは、**元の配列を直接変更する「破壊的メソッド」**と、**元の配列はそのままに新しい配列や値を返す「非破壊メソッド」**の2種類に分けられます。この区別を意識していないと、「知らないうちに元の配列が変わっていた」というバグの原因になります。
+まずは `map`・`filter`・`reduce` です。
+実務で最もよく使う組み合わせで、APIレスポンスの整形、リスト表示、集計処理の基礎になります。
 
-まず、破壊的メソッドの一覧です。この章では扱っていないメソッドも含めてまとめています。
+[配列の変換メソッド — map・filter・reduce](/books/javascript/array-transform-methods) で詳しく扱います。
 
-| 破壊的メソッド     | 何をする                 | 非破壊の代替             |
-| ------------------ | ------------------------ | ------------------------ |
-| `push` / `pop`     | 末尾に追加 / 末尾を削除  | `concat` / `slice(0, -1)` |
-| `unshift` / `shift` | 先頭に追加 / 先頭を削除 | `[x, ...arr]` / `slice(1)` |
-| `splice`           | 途中の追加・削除・置換   | `toSpliced()`（ES2023）  |
-| `sort`             | 並び替え                 | `toSorted()`（ES2023）   |
-| `reverse`          | 逆順にする               | `toReversed()`（ES2023） |
-| `fill`             | 指定値で埋める           | —                        |
-| `copyWithin`       | 配列内で要素をコピー     | —                        |
-| `arr[i] = x` での代入 | 要素の置き換え        | `with(i, x)`（ES2023）   |
+### 2. 検索・判定
 
-一方、非破壊メソッドは `map`・`filter`・`reduce`・`find`・`findIndex`・`some`・`every`・`slice`・`concat`・`flatMap`・`flat`・`includes`・`indexOf`・`join`、そしてES2023で追加された `toSorted`・`toReversed`・`toSpliced`・`with` です。**この章で学んだメソッドはすべて非破壊**なので、安心してチェーンできます。
+「1件だけ探す」「条件を満たすものがあるか確認する」場面では `find`・`findIndex`・`some`・`every` を使います。
+`filter` で全部取るべきか、`find` で1件だけ取るべきかを分けられると、コードの意図が読みやすくなります。
 
-```js
-const arr = [3, 1, 2];
+[配列の検索・判定メソッド — find・some・every](/books/javascript/array-search-methods) で詳しく扱います。
 
-// ❌ 元の配列が変わる
-arr.sort();
-console.log(arr); // [1, 2, 3]（元の配列が変わっている）
+### 3. コピー・結合・浅いコピー
 
-// ⭕ 元の配列は変わらない（ES2023）
-const sorted = [3, 1, 2].toSorted();
-```
+`slice`・`concat`・スプレッド構文は、元の配列を壊さずに新しい配列を作るときの基本です。
+ただし、オブジェクトが入った配列では**浅いコピー**の落とし穴があります。
 
-### map の中で条件分岐しない
+[配列のコピー・結合メソッド — slice・concat・浅いコピー](/books/javascript/array-copy-and-merge) で詳しく扱います。
 
-`map` の中で `if` を使って一部の要素だけ変換するのは、`filter` + `map` に分けるべきサインです。
+### 4. 破壊的メソッド
 
-```js
-// ❌ mapの中で条件分岐 → undefinedが混じる
-const result = numbers.map((n) => {
-  if (n > 3) return n * 2;
-});
-// [undefined, undefined, undefined, 8, 10]
+`push`・`pop`・`splice`・`sort`・`reverse`・`fill` などは、元の配列を直接変更します。
+ReactなどのUI実装では、状態を直接変更しないために非破壊の代替を選ぶことが多いです。
 
-// ⭕
-const result = numbers.filter((n) => n > 3).map((n) => n * 2);
-// [8, 10]
-```
+[配列の破壊的メソッド — sort・splice・push と非破壊の代替](/books/javascript/array-mutating-methods) で詳しく扱います。
+
+### 5. 初期化・平坦化
+
+`fill` は配列の初期化、`flat`・`flatMap` はネストした配列の処理で使います。
+特に `fill` にオブジェクトや配列を渡すと同じ参照が入る点は、実務でよくハマります。
+
+[配列の初期化・平坦化メソッド — fill・flat・flatMap](/books/javascript/array-fill-flat-methods) で詳しく扱います。
+
+<a id="method-comparison"></a>
+
+## 戻り値で整理する
+
+配列メソッドは「何を返すか」で見ると整理しやすくなります。
+
+| 戻り値 | メソッド | 例 |
+| ------ | -------- | -- |
+| 新しい配列 | `map` / `filter` / `slice` / `concat` / `flat` / `flatMap` | 元配列を壊さず加工する |
+| 1つの値 | `reduce` | 合計、集計、グルーピング |
+| 要素 or `undefined` | `find` | ID一致の1件を探す |
+| 数値 | `findIndex` / `indexOf` | 位置を探す |
+| `boolean` | `some` / `every` / `includes` | 条件チェック |
+| 変更後の元配列 | `push` / `splice` / `sort` / `reverse` / `fill` | 破壊的操作 |
+
+<a id="mutating-vs-non-mutating"></a>
+
+## 破壊的・非破壊的メソッド早見表
+
+配列メソッドは、**元の配列を直接変更する「破壊的メソッド」**と、**元の配列はそのままに新しい配列や値を返す「非破壊メソッド」**に分けられます。
+
+| 種類 | メソッド |
+| ---- | -------- |
+| 破壊的 | `push` / `pop` / `shift` / `unshift` / `splice` / `sort` / `reverse` / `fill` / `copyWithin` |
+| 非破壊 | `map` / `filter` / `reduce` / `find` / `findIndex` / `some` / `every` / `slice` / `concat` / `flat` / `flatMap` / `includes` / `join` |
+| ES2023の非破壊代替 | `toSorted` / `toReversed` / `toSpliced` / `with` |
+
+<Callout type="warning" title="非破壊でも中身のオブジェクトは共有される">
+  `map`・`filter`・`slice`・`concat`・スプレッド構文が返す新しい配列は、基本的に浅いコピーです。配列の中にオブジェクトが入っている場合、オブジェクトの中身を書き換えると元配列側にも影響します。
+</Callout>
 
 <a id="checklist"></a>
 
 ## ちゃんと使うためのポイント
 
-- <Marker>
-    配列メソッドは `Array.prototype` に定義されており、すべての配列インスタンスが継承している
-  </Marker>
-- `map` は変換、`filter` は絞り込み、`reduce` は集約、`slice` は部分取得、`concat` は結合、`fill` は同じ値で埋める——目的に応じて使い分ける
-- `find` は最初の1つ、`some` は1つでもあるか、`every` は全部かを判定する
+- <Marker>変換は `map`、絞り込みは `filter`、集約は `reduce`</Marker>
+- 「1件だけ欲しい」なら `find`、「全部欲しい」なら `filter`
+- 「あるかどうか」だけなら `some` / `every` / `includes`
+- 元の配列を壊したくないときは `slice`・`concat`・スプレッド構文・ES2023の非破壊代替を使う
 - `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快
 - 破壊的メソッド（`sort` / `reverse` / `splice` / `fill`）と非破壊メソッドの区別を意識する
 
-次の章では、**文字列操作と正規表現**を取り上げます。実務でよく使うパターンをまとめます。
+次は、実務で最もよく使う **[配列の変換メソッド — map・filter・reduce](/books/javascript/array-transform-methods)** を詳しく見ていきます。
 
 ## 参考リンク
 
+- [MDN — Array](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array)
 - [MDN — Array.prototype.map](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/map)
 - [MDN — Array.prototype.filter](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
 - [MDN — Array.prototype.reduce](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)
-- [MDN — Array.prototype.find](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/find)
-- [MDN — Array.prototype.slice](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/slice)
-- [MDN — Array.prototype.concat](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/concat)
-- [MDN — Array.prototype.fill](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/fill)
 
 <QuizLink
   href="/quiz/javascript-basic"

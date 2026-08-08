@@ -1,0 +1,252 @@
+---
+title: '配列の破壊的メソッド — sort・splice・push と非破壊の代替'
+description: 'JavaScriptの配列を直接変更する push・pop・splice・sort・reverse・fill などの破壊的メソッドと、toSorted・toSpliced・toReversed・with などの非破壊な代替を整理します。'
+order: 7.4
+chapterLabel: '配列メソッド 4'
+---
+
+配列メソッドには、元の配列をそのまま残して新しい値を返すものと、元の配列を直接変更するものがあります。
+この章では、後者の**破壊的メソッド**をまとめます。
+
+<Callout type="warning" title="破壊的メソッドは元の配列を変える">
+  `sort`・`reverse`・`splice`・`push` などは、呼び出した配列そのものを変更します。Reactのstateや、別の場所でも使っている配列を扱うときは、意図せず表示やデータが変わる原因になります。
+</Callout>
+
+<a id="overview"></a>
+
+## 破壊的メソッド早見表
+
+| メソッド | 何をする | 非破壊の代替 |
+| -------- | -------- | ------------ |
+| `push` | 末尾に追加 | `[...arr, value]` / `concat` |
+| `pop` | 末尾を削除 | `slice(0, -1)` |
+| `unshift` | 先頭に追加 | `[value, ...arr]` |
+| `shift` | 先頭を削除 | `slice(1)` |
+| `splice` | 途中の追加・削除・置換 | `toSpliced()` |
+| `sort` | 並び替え | `toSorted()` |
+| `reverse` | 逆順にする | `toReversed()` |
+| `fill` | 指定値で埋める | コピーしてから `fill` |
+| `copyWithin` | 配列内で要素をコピー | 目的に応じて `slice` / `map` |
+| `arr[i] = value` | 要素を置き換える | `with(i, value)` |
+
+<a id="push-pop"></a>
+
+## push / pop — 末尾に追加・削除する
+
+`push` は末尾に要素を追加し、`pop` は末尾の要素を取り除きます。
+どちらも元の配列を変更します。
+
+```js
+const items = ['A', 'B'];
+
+items.push('C');
+console.log(items); // ["A", "B", "C"]
+
+const last = items.pop();
+console.log(last);  // "C"
+console.log(items); // ["A", "B"]
+```
+
+元の配列を変えたくない場合は、スプレッド構文や `slice` を使います。
+
+```js
+const items = ['A', 'B'];
+
+const added = [...items, 'C'];
+const removedLast = items.slice(0, -1);
+
+console.log(items); // ["A", "B"]
+```
+
+<a id="shift-unshift"></a>
+
+## shift / unshift — 先頭に追加・削除する
+
+`unshift` は先頭に要素を追加し、`shift` は先頭の要素を取り除きます。
+
+```js
+const queue = ['B', 'C'];
+
+queue.unshift('A');
+console.log(queue); // ["A", "B", "C"]
+
+const first = queue.shift();
+console.log(first); // "A"
+console.log(queue); // ["B", "C"]
+```
+
+非破壊で書くなら、追加は `[value, ...arr]`、削除は `slice(1)` です。
+
+```js
+const queue = ['B', 'C'];
+
+const added = ['A', ...queue];
+const removedFirst = queue.slice(1);
+```
+
+<a id="splice"></a>
+
+## splice — 途中の追加・削除・置換
+
+`splice` は配列の途中に対して、削除・追加・置換を行うメソッドです。
+柔軟ですが、元の配列を直接変更するため注意が必要です。
+
+**構文：** `array.splice(start, deleteCount, ...items)`
+
+```js
+const tasks = ['設計', '実装', 'レビュー'];
+
+tasks.splice(1, 1, 'テスト');
+
+console.log(tasks); // ["設計", "テスト", "レビュー"]
+```
+
+`splice` の戻り値は「削除された要素の配列」です。変更後の配列ではありません。
+
+```js
+const items = ['A', 'B', 'C'];
+const removed = items.splice(1, 1);
+
+console.log(removed); // ["B"]
+console.log(items);   // ["A", "C"]
+```
+
+ES2023以降は、非破壊の `toSpliced` が使えます。
+
+```js
+const tasks = ['設計', '実装', 'レビュー'];
+const updated = tasks.toSpliced(1, 1, 'テスト');
+
+console.log(updated); // ["設計", "テスト", "レビュー"]
+console.log(tasks);   // ["設計", "実装", "レビュー"]
+```
+
+<a id="sort"></a>
+
+## sort — 並び替える
+
+`sort` は配列を並び替えますが、元の配列を直接変更します。
+
+```js
+const scores = [80, 100, 60];
+
+scores.sort((a, b) => a - b);
+console.log(scores); // [60, 80, 100]
+```
+
+数値の並び替えでは、比較関数を必ず渡します。
+比較関数なしの `sort()` は文字列として比較するため、意図しない順番になります。
+
+```js
+[1, 20, 3].sort(); // [1, 20, 3] ではなく、文字列順で比較される
+
+[1, 20, 3].sort((a, b) => a - b); // [1, 3, 20]
+```
+
+元の配列を変えたくない場合は、ES2023の `toSorted` を使います。
+
+```js
+const scores = [80, 100, 60];
+const sorted = scores.toSorted((a, b) => a - b);
+
+console.log(sorted); // [60, 80, 100]
+console.log(scores); // [80, 100, 60]
+```
+
+`toSorted` が使えない環境では、コピーしてから `sort` します。
+
+```js
+const sorted = [...scores].sort((a, b) => a - b);
+```
+
+<a id="reverse"></a>
+
+## reverse — 逆順にする
+
+`reverse` は配列の順番を逆にします。
+これも元の配列を直接変更します。
+
+```js
+const steps = ['入力', '確認', '完了'];
+
+steps.reverse();
+console.log(steps); // ["完了", "確認", "入力"]
+```
+
+非破壊で書くなら `toReversed` を使います。
+
+```js
+const steps = ['入力', '確認', '完了'];
+const reversed = steps.toReversed();
+
+console.log(reversed); // ["完了", "確認", "入力"]
+console.log(steps);    // ["入力", "確認", "完了"]
+```
+
+<a id="with"></a>
+
+## with — 要素の置き換えを非破壊で行う
+
+配列の要素を `arr[i] = value` で書き換えるのも、元の配列を直接変更する操作です。
+
+```js
+const users = ['太郎', '花子', '次郎'];
+
+users[1] = '佐藤';
+console.log(users); // ["太郎", "佐藤", "次郎"]
+```
+
+ES2023の `with` を使うと、指定した位置だけ置き換えた新しい配列を作れます。
+
+```js
+const users = ['太郎', '花子', '次郎'];
+const updated = users.with(1, '佐藤');
+
+console.log(updated); // ["太郎", "佐藤", "次郎"]
+console.log(users);   // ["太郎", "花子", "次郎"]
+```
+
+<a id="react-state"></a>
+
+## 実務パターン: 状態更新では非破壊にする
+
+Reactのstateのように、変更検知が参照の違いに依存する場面では、元配列を直接変更しない書き方が基本です。
+
+```js
+// ❌ 元の配列を直接変更している
+items.push(newItem);
+setItems(items);
+
+// ⭕ 新しい配列を作る
+setItems([...items, newItem]);
+```
+
+削除・並び替え・置き換えも同じです。
+
+```js
+// 削除
+setItems(items.filter((item) => item.id !== targetId));
+
+// 並び替え
+setItems(items.toSorted((a, b) => a.order - b.order));
+
+// 置き換え
+setItems(items.map((item) => (item.id === targetId ? { ...item, done: true } : item)));
+```
+
+## ちゃんと使うためのポイント
+
+- `push` / `pop` / `shift` / `unshift` / `splice` / `sort` / `reverse` / `fill` は元配列を変更する
+- `sort` は比較関数を渡す
+- ES2023では `toSorted` / `toReversed` / `toSpliced` / `with` が非破壊の代替になる
+- UIのstate更新では、元配列を直接変更せず新しい配列を作る
+
+次は、初期化や平坦化で使う **[配列の初期化・平坦化メソッド](/books/javascript/array-fill-flat-methods)** を見ていきます。
+
+## 参考リンク
+
+- [MDN — Array.prototype.splice](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/splice)
+- [MDN — Array.prototype.sort](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/sort)
+- [MDN — Array.prototype.toSorted](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/toSorted)
+- [MDN — Array.prototype.toSpliced](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/toSpliced)
+- [MDN — Array.prototype.with](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/with)
