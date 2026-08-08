@@ -67,20 +67,20 @@ Array.from(nodes).map((node) => node.textContent);
 
 | やりたいこと | 使うメソッド | 詳細 |
 | ------------ | ------------ | ---- |
-| 各要素を別の形に変換したい | `map` | [配列の変換メソッド](/books/javascript/array-transform-methods#map) |
-| 条件に合う要素だけ残したい | `filter` | [配列の変換メソッド](/books/javascript/array-transform-methods#filter) |
-| 配列全体を1つの値にまとめたい | `reduce` | [配列の変換メソッド](/books/javascript/array-transform-methods#reduce) |
-| 最初の1件を探したい | `find` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#find) |
-| 最初のインデックスを探したい | `findIndex` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#findindex) |
-| 1つでも条件を満たすか確認したい | `some` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#some) |
-| すべて条件を満たすか確認したい | `every` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#every) |
-| 値が含まれるか確認したい | `includes` | [配列の検索・判定メソッド](/books/javascript/array-search-methods#includes) |
-| 配列の一部を取り出したい | `slice` | [配列のコピー・結合メソッド](/books/javascript/array-copy-and-merge#slice) |
-| 配列を結合したい | `concat` / スプレッド構文 | [配列のコピー・結合メソッド](/books/javascript/array-copy-and-merge#concat) |
-| 同じ値で埋めたい | `fill` | [配列の初期化・平坦化メソッド](/books/javascript/array-fill-flat-methods#fill) |
-| ネストした配列を平坦化したい | `flat` | [配列の初期化・平坦化メソッド](/books/javascript/array-fill-flat-methods#flat) |
-| 変換して平坦化したい | `flatMap` | [配列の初期化・平坦化メソッド](/books/javascript/array-fill-flat-methods#flatmap) |
-| 元の配列を直接変更したい | `push` / `splice` / `sort` など | [配列の破壊的メソッド](/books/javascript/array-mutating-methods) |
+| 各要素を別の形に変換したい | `map` | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#map) |
+| 条件に合う要素だけ残したい | `filter` | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#filter) |
+| 配列全体を1つの値にまとめたい | `reduce` | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#reduce) |
+| 最初の1件を探したい | `find` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#find) |
+| 最初のインデックスを探したい | `findIndex` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#findindex) |
+| 1つでも条件を満たすか確認したい | `some` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#some) |
+| すべて条件を満たすか確認したい | `every` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#every) |
+| 値が含まれるか確認したい | `includes` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#includes) |
+| 配列の一部を取り出したい | `slice` | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#slice) |
+| 配列を結合したい | `concat` / スプレッド構文 | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#concat) |
+| 同じ値で埋めたい | `fill` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#fill) |
+| ネストした配列を平坦化したい | `flat` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flat) |
+| 変換して平坦化したい | `flatMap` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flatmap) |
+| 元の配列を直接変更したい | `push` / `splice` / `sort` など | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods) |
 
 <a id="recommended-pages"></a>
 
@@ -97,35 +97,35 @@ Array.from(nodes).map((node) => node.textContent);
 まずは `map`・`filter`・`reduce` です。
 実務で最もよく使う組み合わせで、APIレスポンスの整形、リスト表示、集計処理の基礎になります。
 
-[配列の変換メソッド — map・filter・reduce](/books/javascript/array-transform-methods) で詳しく扱います。
+[配列の変換メソッド — map・filter・reduce](/books/javascript/07-arrays1-transform-methods) で詳しく扱います。
 
 ### 2. 検索・判定
 
 「1件だけ探す」「条件を満たすものがあるか確認する」場面では `find`・`findIndex`・`some`・`every` を使います。
 `filter` で全部取るべきか、`find` で1件だけ取るべきかを分けられると、コードの意図が読みやすくなります。
 
-[配列の検索・判定メソッド — find・some・every](/books/javascript/array-search-methods) で詳しく扱います。
+[配列の検索・判定メソッド — find・some・every](/books/javascript/07-arrays2-search-methods) で詳しく扱います。
 
 ### 3. コピー・結合・浅いコピー
 
 `slice`・`concat`・スプレッド構文は、元の配列を壊さずに新しい配列を作るときの基本です。
 ただし、オブジェクトが入った配列では**浅いコピー**の落とし穴があります。
 
-[配列のコピー・結合メソッド — slice・concat・浅いコピー](/books/javascript/array-copy-and-merge) で詳しく扱います。
+[配列のコピー・結合メソッド — slice・concat・浅いコピー](/books/javascript/07-arrays3-copy-and-merge) で詳しく扱います。
 
 ### 4. 破壊的メソッド
 
 `push`・`pop`・`splice`・`sort`・`reverse`・`fill` などは、元の配列を直接変更します。
 ReactなどのUI実装では、状態を直接変更しないために非破壊の代替を選ぶことが多いです。
 
-[配列の破壊的メソッド — sort・splice・push と非破壊の代替](/books/javascript/array-mutating-methods) で詳しく扱います。
+[配列の破壊的メソッド — sort・splice・push と非破壊の代替](/books/javascript/07-arrays4-mutating-methods) で詳しく扱います。
 
 ### 5. 初期化・平坦化
 
 `fill` は配列の初期化、`flat`・`flatMap` はネストした配列の処理で使います。
 特に `fill` にオブジェクトや配列を渡すと同じ参照が入る点は、実務でよくハマります。
 
-[配列の初期化・平坦化メソッド — fill・flat・flatMap](/books/javascript/array-fill-flat-methods) で詳しく扱います。
+[配列の初期化・平坦化メソッド — fill・flat・flatMap](/books/javascript/07-arrays5-fill-flat-methods) で詳しく扱います。
 
 <a id="method-comparison"></a>
 
@@ -169,7 +169,7 @@ ReactなどのUI実装では、状態を直接変更しないために非破壊�
 - `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快
 - 破壊的メソッド（`sort` / `reverse` / `splice` / `fill`）と非破壊メソッドの区別を意識する
 
-次は、実務で最もよく使う **[配列の変換メソッド — map・filter・reduce](/books/javascript/array-transform-methods)** を詳しく見ていきます。
+次は、実務で最もよく使う **[配列の変換メソッド — map・filter・reduce](/books/javascript/07-arrays1-transform-methods)** を詳しく見ていきます。
 
 ## 参考リンク
 

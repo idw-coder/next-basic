@@ -1,130 +1,163 @@
-# Express → Next.js API 移行計画
+# Express → Next.js API 移行メモ
 
-> 状態（2026-08-08）: 古い移行計画。現在の `next.config.ts` は `/api/*` を Express バックエンドへプロキシし、Next.js 側のAPIは `/next-api/*` に置く方針になっている。`package.json` に TypeORM / mysql2 は無く、本文の「完了済みの作業」も現在のコードとは一致しない。再開する場合は、この文書をそのまま実行せず現状調査からやり直す。
+> 状態（2026-08-08 更新）: 現在は Express バックエンドを維持する構成。`/api/*` は Next.js から Express へプロキシし、Next.js 自身の Route Handler は `/next-api/*` に置く。Express 廃止や DB 直接参照へ進む場合は、このメモを出発点に再設計する。
 
-## 現在の構成
+## 現在の前提
 
-```
-docker-compose
-├── next.js      （フロント + SSR）  port:3000
-├── express      （API サーバー）     port:8888
-├── mysql 8.4    （DB）              port:3306
-├── vue.js       （管理画面、Express の public に同梱）
-└── postfix      （メール送信）
-```
+### ルーティング
 
-- ローカル開発: Next.js と Express を `npm run dev` で個別起動、MySQL は Docker
-- 本番（Lightsail）: 全サービスを `docker-compose.prod.yml` で起動
+- `next.config.ts` で `/api/:path*` を `INTERNAL_API_URL` または `http://localhost:8888` へ rewrite している。
+- そのため、`src/app/api/...` に Route Handler を追加しても `/api/...` としては扱いにくい。
+- Next.js 側で独自に持つAPIは `src/app/next-api/...` に置く方針。
+- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts` のみ。
+- 本番 `https://study.ntorelabo.com/next-api/site-search` でも 200 OK / JSON 応答を確認済み。
 
-## 移行の目的
+### フロントエンドからのAPI呼び出し
 
-- Docker コンテナ数を削減（Express コンテナを廃止）
-- Next.js の Server Component から DB を直接参照し、不要な HTTP ラウンドトリップを排除
-- デプロイ・運用の簡素化
+- `src/lib/api.ts` は `INTERNAL_API_URL` / `NEXT_PUBLIC_API_BASE_URL` / `http://localhost:8888` を基準に Express API を呼ぶ。
+- ブラウザ上では `localStorage` の `token` を Bearer トークンとして付与する。
+- Server Component / Route Handler では `API_BASE_URL + '/api/...'` または `fetchApiJson('/api/...')` で Express API を呼ぶ。
 
-## Express 側のルート一覧と移行難易度
+### DBアクセス
 
-| ルート | 認証 | 移行難易度 | 備考 |
-|--------|------|-----------|------|
-| `/api/quiz/search` | 不要 | 低 | |
-| `/api/quiz/categories` (CRUD) | GET 不要 / 他は要 | 低 | |
-| `/api/quiz/tags` (CRUD) | GET 不要 / 他は要 | 低 | |
-| `/api/quiz/category/:id/quizzes` | 不要 | 低 | |
-| `/api/quiz/category/:id/tags` | 不要 | 低 | |
-| `/api/quiz/:quizId` (CRUD) | GET 不要 / PUT,DELETE は editor | 低 | |
-| `/api/quiz/csv/*` | export/import は要 | 低 | |
-| `/api/quiz/history/*` | 要 | 低 | |
-| `/api/auth/login` | 不要 | 低 | JWT 発行 |
-| `/api/auth/me` | 要 | 低 | |
-| `/api/auth/google*` | 不要 | **高** | Passport → NextAuth or 自前 OAuth |
-| `/api/users` | 要（admin） | 低 | |
-| `/api/notes` (CRUD) | 要 | 低 | |
-| `/api/upload/:category` | 要 | **中** | multer → formData 書き換え |
-| `/api/payment/*` | 要 | 中 | Stripe 連携 |
-| `/api/webhook/stripe` | 不要（Stripe 署名検証） | **中** | raw body 処理が必要 |
+- `package.json` に `typeorm` / `mysql2` / `reflect-metadata` は入っていない。
+- `serverExternalPackages: ["typeorm", "mysql2"]` も `next.config.ts` には設定されていない。
+- `tsconfig.json` には TypeORM 用の `experimentalDecorators` / `emitDecoratorMetadata` が残っている。
+- `src/lib/datasource.ts` や `src/entities/...` は存在しない。
 
-## 移行方針
+### Express 側コード
 
-### フェーズ 1: quiz 系ルートの移行（Server Component 直接呼び出し）
+- この `next-basic` リポジトリ内には Express の routes / controllers / entities は含まれていない。
+- 移行を再開する場合は、Express バックエンド側のリポジトリまたはディレクトリを別途確認する必要がある。
 
-Next.js の Server Component から TypeORM リポジトリを直接呼び出す方式に段階的に移行する。
-Route Handler（`app/api/...`）を HTTP プロキシとして経由するのではなく、
-DB ロジックを共通関数として切り出し、Server Component と Route Handler の両方から使える形にする。
+## 現在 `/api` に依存している主な機能
 
-### フェーズ 2: 認証系の移行
+| 領域 | 主なエンドポイント | 呼び出し元 |
+|---|---|---|
+| クイズ公開ページ | `/api/quiz/categories`, `/api/quiz/category/:id/quizzes`, `/api/quiz/category/:id/tags`, `/api/quiz/:quizId`, `/api/quiz/search` | トップ、検索、カテゴリ、個別クイズ、サイト内検索 |
+| クイズ履歴 | `/api/quiz/history`, `/api/quiz/history/sync` | 学習履歴、プロフィール、復習 |
+| 認証 | `/api/auth/login`, `/api/auth/me`, `/api/auth/google` | ログイン、登録、プロフィール |
+| ユーザー管理 | `/api/users`, `/api/users/:id` | 管理画面 |
+| クイズ管理 | `/api/quiz`, `/api/quiz/:id`, `/api/quiz/categories`, `/api/quiz/tags`, `/api/quiz/csv/*` | 管理画面 |
+| 決済 | `/api/payment/subscription`, `/api/payment/portal`, `/api/payment/status/:sessionId`, `/api/webhook/stripe` | サブスクリプション画面、Stripe |
 
-- JWT 検証ヘルパー（`lib/auth.ts`）は作成済み
-- Google OAuth は Passport から NextAuth.js への置き換えを検討
+## 移行ステータス
 
-### フェーズ 3: その他ルートの移行
+### 移行済み
 
-- ファイルアップロード（multer → Web API formData）
-- Stripe Webhook（raw body 処理）
-- メール送信
+| 機能 | Next.js 側エンドポイント | 実装 | 状態 | 備考 |
+|---|---|---|---|---|
+| サイト内検索の集約API | `/next-api/site-search` | `src/app/next-api/site-search/route.ts` | 本番稼働済み | ヘッダー検索から利用。Books検索はNext.js内で完結し、クイズ検索はExpress APIを内部呼び出しする |
 
-### フェーズ 4: Express コンテナ廃止
+確認済み:
 
-- Vue.js 管理画面の配信先を決定（別コンテナ or Next.js の static 配信）
-- docker-compose から backend サービスを削除
+- `https://study.ntorelabo.com/next-api/site-search` は 200 OK / JSON を返す。
+- `https://study.ntorelabo.com/next-api/site-search?q=javascript` は 200 OK / JSON を返す。
+- `src/components/HeaderSearch.tsx` は `/next-api/site-search` を呼ぶ。
 
-## 完了済みの作業
+### 部分移行
 
-### Step 1: パッケージ追加
-- `typeorm` を 1.0.0 に更新（0.3.x → 1.0.0、2026-05-19 リリースの最新版）
-- `reflect-metadata`, `mysql2`, `jsonwebtoken` は既存
+| 機能 | Next.js 化された範囲 | Express に残っている範囲 | 次に移すなら |
+|---|---|---|---|
+| サイト内検索 | 検索結果の集約、Books検索、レスポンス整形 | `/api/quiz/categories`, `/api/quiz/tags`, `/api/quiz/search` からのクイズデータ取得 | クイズ検索の読み取り系APIをNext.js側へ移す |
 
-### Step 2: tsconfig.json 修正
-```json
-{
-  "compilerOptions": {
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
-  }
-}
-```
-TypeORM のデコレータ（`@Entity`, `@Column` 等）に必要。
+### 未移行
 
-### Step 3: next.config.ts 修正
-```typescript
-serverExternalPackages: ["typeorm", "mysql2"]
-```
-TypeORM が全 DB ドライバを内包しており、webpack が不要なドライバ（expo-sqlite 等）まで
-解決しようとするのを防ぐ。
+| 領域 | 状態 |
+|---|---|
+| クイズ公開API | Express の `/api/quiz/...` を利用中 |
+| クイズ履歴API | Express の `/api/quiz/history...` を利用中 |
+| 認証API | Express の `/api/auth/...` を利用中 |
+| ユーザー管理API | Express の `/api/users...` を利用中 |
+| クイズ管理API | Express の `/api/quiz...` を利用中 |
+| 決済API / Stripe Webhook | Express の `/api/payment...` / `/api/webhook/stripe` を利用中 |
 
-### Step 4: エンティティのコピーと循環参照修正
-Express 側から以下をコピー:
-- `Quiz.ts`, `QuizCategory.ts`, `QuizChoice.ts`, `QuizTag.ts`, `QuizTagging.ts`
+## 引き継ぎメモ
 
-循環参照対策として修正:
-- `import { QuizChoice }` → `import type { QuizChoice }`
-- `@OneToMany(() => QuizChoice, ...)` → `@OneToMany('QuizChoice', 'quiz')`
-- `@ManyToOne(() => Quiz, ...)` → `@ManyToOne('Quiz', 'choices')`
+- 「移行済み」と書く場合は、Next.js 側に Route Handler またはサーバー処理があり、本番で疎通確認できているものだけにする。
+- Express APIを内部で呼んでいる場合は「部分移行」として、残っている依存先を明記する。
+- 新しい移行が完了したら、この文書の「移行ステータス」に機能名、Next.js側エンドポイント、実装ファイル、本番確認結果、残依存を追記する。
+- 本番確認は最低限、対象の `/next-api/...` が 200 OK を返すことと、対応する画面がそのAPIを呼んでいることを確認する。
+- `/api/...` が Express 側で処理されているか確認したい場合は、レスポンスヘッダーの `X-Powered-By: Express` が参考になる。
 
-webpack の ESM 解決が厳密なため、Express（CommonJS）では問題なかった循環 import が
-エラーになる。`import type` は実行時に消え、文字列参照はTypeORM 内部で解決されるため回避できる。
+## 当面の方針
 
-### Step 5: lib/datasource.ts 作成
-- TypeORM DataSource のシングルトン管理
-- `globalThis` にキャッシュして dev 時の HMR で接続が増殖しないようにする
-- `.env.local` に `DB_HOST=localhost` を設定（ローカル開発ではコンテナ名 `mysql` が解決できないため）
+### 原則
 
-### Step 6: search ルート作成・動作確認
-- `app/api/quiz/search/route.ts` を作成
-- `GET /api/quiz/search` が正常にデータを返すことを確認
+- Express を残す限り、フロントから呼ぶ既存APIは `/api/...` のまま維持する。
+- Next.js だけで完結する集約APIやサイト内検索APIは `/next-api/...` に追加する。
+- `/api/...` に Next.js Route Handler を作る場合は、rewrite の例外設計または `/api` の所有者変更を先に決める。
+- DB直接参照を導入する場合は、Express 側の実装・スキーマ・認証仕様を確認してから ORM / SQL クライアントを選ぶ。
 
-## 次のステップ
+### 推奨する短期対応
 
-- categories GET / tags GET を Server Component から直接呼び出す形で実装
-- 検索ページ（`/search`）の `page.tsx` から Express への fetch を除去し、DB 直接参照に切り替え
-- 動作確認後、他の quiz 系ルートに展開
+1. 既存の Express API 呼び出しは維持する。
+2. 新規の Next.js 内部APIは `/next-api/...` に作る。
+3. `src/app/api/...` を使う指示やメモがあれば `/next-api/...` 前提に読み替える。
+4. Express 廃止を再開するまでは、TypeORM や `mysql2` を Next.js 側に追加しない。
 
-## ハマったポイントまとめ
+## Express 廃止を再開する場合の進め方
 
-| 問題 | 原因 | 解決策 |
-|------|------|--------|
-| デコレータの型エラー (TS1240) | `experimentalDecorators` 未設定 | tsconfig.json に追加 |
-| `Can't resolve 'expo-sqlite'` | webpack が TypeORM の全ドライバを解決しようとする | `serverExternalPackages` に追加 |
-| `Cannot access 'Quiz' before initialization` | Quiz ↔ QuizChoice の循環 import | `import type` + デコレータ文字列参照 |
-| `getaddrinfo ENOTFOUND mysql` | ローカルではコンテナ名が解決できない | `.env.local` で `DB_HOST=localhost` |
-| `Entity metadata for Quiz#choices was not found` | datasource の entities に QuizChoice が未登録 | entities 配列に追加 |
-| `relations` の型エラー (TS2559) | TypeORM 1.0.0 で文字列配列が非推奨 | `relations: { quizTag: true }` に変更 |
+### Phase 0: 現状棚卸し
+
+- Express 側の routes / controllers / services / entities を一覧化する。
+- 各APIのレスポンス形式、認証要否、利用画面、更新系の副作用を確認する。
+- 本番の Nginx / docker-compose / 環境変数で `/api` がどこへ流れているか確認する。
+
+### Phase 1: 読み取り系APIの移行
+
+- 対象候補:
+  - `/api/quiz/categories`
+  - `/api/quiz/tags`
+  - `/api/quiz/category/:id/quizzes`
+  - `/api/quiz/category/:id/tags`
+  - `/api/quiz/:quizId`
+  - `/api/quiz/search`
+- 最初は Next.js 側の `/next-api/...` として並行実装し、画面単位で呼び出し先を切り替える。
+- DBアクセス方式は Express 側の実装に合わせて決める。TypeORM 前提で始めない。
+
+### Phase 2: 認証・ユーザー系APIの移行
+
+- JWT の発行・検証・期限・保存場所を整理する。
+- Google OAuth は Passport 継続、NextAuth.js、自前OAuthのどれに寄せるか決める。
+- 管理画面の権限判定は admin / editor の境界を先に固定する。
+
+### Phase 3: 更新系・管理系APIの移行
+
+- クイズCRUD、カテゴリCRUD、タグCRUD、CSV import/export を移行する。
+- バリデーション、権限、既存レスポンス形式を Express と合わせる。
+- 管理画面側の `api.get/post/put/delete('/api/...')` を段階的に置き換える。
+
+### Phase 4: 外部連携APIの移行
+
+- ファイルアップロードは `multer` 依存を Web API の `formData()` ベースへ置き換える。
+- Stripe Webhook は raw body と署名検証を先に検証する。
+- メール送信は postfix 前提を維持するか、別サービスへ移すか決める。
+
+### Phase 5: `/api` の所有者変更
+
+- Next.js 側へ十分に移行できた段階で、`/api/*` rewrite を削除または例外化する。
+- Express に残すAPIがある場合は `/legacy-api/...` などに分離する。
+- 本番の Nginx / docker-compose / health check / 環境変数を更新する。
+
+### Phase 6: Express コンテナ廃止
+
+- Vue.js 管理画面の配信先を決める。
+- backend サービスを docker-compose から削除する。
+- 本番デプロイ手順とロールバック手順を更新する。
+
+## 注意点
+
+- 旧メモにあった「TypeORM 1.0.0 追加」「`app/api/quiz/search/route.ts` 作成」「`lib/datasource.ts` 作成」は、現在のコードでは確認できない。
+- `tsconfig.json` の TypeORM 用デコレータ設定は残っているが、現状では利用箇所がない。
+- `/next-api/site-search` は Next.js 内部APIだが、クイズデータは今も Express の `/api/quiz/...` から取得している。
+- 本番 `https://study.ntorelabo.com/api/quiz/categories` は `X-Powered-By: Express` 付きで 200 OK を返すため、本番でも `/api` は Express 側で処理されている。
+- Stripe Webhook は raw body と署名検証が必要なため、単純な Route Handler 移植で済ませない。
+- 認証・決済・CSV import は移行時の事故影響が大きいため、読み取り系APIより後に扱う。
+
+## 次にやるなら
+
+1. Express 側コードを確認できる場所を特定する。
+2. `/api` エンドポイント一覧を実装ベースで作り直す。
+3. 「Express 維持」「一部 `/next-api` 化」「Express 廃止」のどこを目標にするか決める。
+4. 最初の移行対象は公開読み取り系の `/api/quiz/categories` または `/api/quiz/search` にする。

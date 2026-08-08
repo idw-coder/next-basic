@@ -26,7 +26,7 @@
 | `operations/google-adsense.md` | AdSense設定メモ | 現行 |
 | `operations/x-operation-summary.md` | X運用メモ | 運用メモ。最新数値は要確認 |
 | `technical/mui-progress.md` | MUI導入メモ | 管理画面限定の実験メモ |
-| `technical/express-to-nextjs-migration.md` | Express移行計画 | 古い計画。現状とズレがあるため着手前に再設計が必要 |
+| `technical/express-to-nextjs-migration.md` | Express移行メモ | 現行の `/api` プロキシ方針と、Express廃止を再開する場合の整理メモ |
 
 ## 整理時に確認・修正した内容
 
@@ -35,7 +35,7 @@
 - P4 の公式ドキュメントリンクは、`css-basics` も全12章に参考リンクが入っている。残りは `react-learning` と `next-js` が中心。
 - `operations/subscription-payment.md` の Feature Flag 説明を、実装に合わせて `SubscriptionClient.tsx` 内の `sessionStorage` 管理へ修正した。
 - `operations/google-adsense.md` の手動広告説明を、現在のフッター描画に合わせて修正した。
-- `technical/express-to-nextjs-migration.md` は TypeORM 直接参照への移行計画だが、現在の `next.config.ts` は `/api/*` を Express にプロキシし、Next.js 側のAPIは `/next-api/*` に置く方針になっている。
+- `technical/express-to-nextjs-migration.md` は、現在の `next.config.ts` に合わせて `/api/*` を Express にプロキシし、Next.js 側のAPIは `/next-api/*` に置く前提へ更新した。
 
 ## 残っている主な作業
 

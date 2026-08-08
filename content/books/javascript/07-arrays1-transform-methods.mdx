@@ -177,6 +177,22 @@ array.reduce((accumulator, currentValue, index, array) => {
 [].reduce((acc, cur) => acc + cur, 0); // 0
 ```
 
+### 配列の最大値を求める
+
+合計以外にも、要素同士を比較して1つの値に絞り込む処理にも `reduce` が使えます。
+
+```js
+const scores = [72, 95, 58, 88, 100];
+const max = scores.reduce((acc, cur) => Math.max(acc, cur), -Infinity);
+// 100
+```
+
+初期値に `-Infinity` を指定することで、どんな数値と比較しても最初の要素が必ず採用されます。
+
+<Callout type="note" title="Math.max(...scores) との違い">
+  `Math.max(...scores)` でも同じ結果が得られます。短くて読みやすいので通常はこちらが一般的です。ただし、配列が非常に大きい場合（数万件以上）はスプレッド構文だとスタックオーバーフローの可能性があるため、`reduce` 版が安全です。
+</Callout>
+
 ### 実務パターン: グルーピング
 
 ```js
@@ -260,7 +276,7 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 - `reduce` は合計、グルーピング、オブジェクトへの変換などの集約で使う
 - `reduce` で何でも書けるが、読みやすさでは `filter` + `map` の方がよいことも多い
 
-次は、条件に合う要素を探したり判定したりする **[配列の検索・判定メソッド](/books/javascript/array-search-methods)** を見ていきます。
+次は、条件に合う要素を探したり判定したりする **[配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods)** を見ていきます。
 
 ## 参考リンク
 
