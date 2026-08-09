@@ -21,6 +21,8 @@ import { getCategorySeoContent, type CategorySeoContent } from './categoryConten
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getBookTheme } from '@/lib/book-theme';
 import { getCategoryTheme } from '@/lib/categoryTheme';
+import { getQuizTagsByCategory } from '@/lib/server/quizCategoryTags';
+import { getQuizCategories } from '@/lib/server/quizCategories';
 import { getSectionTags } from './sectionTagMap';
 
 const API_BASE_URL =
@@ -47,16 +49,12 @@ interface Category {
   id: number;
   slug: string;
   category_name: string;
-  description?: string;
+  description?: string | null;
 }
 
 async function getCategory(categorySlug: string): Promise<Category | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    const categories: Category[] = await res.json();
+    const { categories } = await getQuizCategories();
     return categories.find((c) => c.slug === categorySlug) || null;
   } catch (error) {
     console.error('Failed to fetch category:', error);
@@ -84,11 +82,8 @@ async function getQuizzes(categoryId: number, q?: string, tagSlug?: string): Pro
 
 async function getTagsByCategory(categoryId: number): Promise<Tag[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/quiz/category/${categoryId}/tags`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return [];
-    return await res.json();
+    const { tags } = await getQuizTagsByCategory(categoryId);
+    return tags;
   } catch (error) {
     console.error('Failed to fetch tags:', error);
     return [];

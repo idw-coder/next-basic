@@ -1,0 +1,348 @@
+---
+title: 'バンドラーとビルドツール — webpack・Turbopack・SWCを理解する'
+description: 'JavaScriptのバンドラーとは何か、なぜ必要なのかを歴史とともに解説し、Next.jsにおけるwebpack→Turbopack・Babel→SWCの変遷を整理します。'
+order: 2.5
+chapterLabel: 'ビルドツール'
+---
+
+[前章のセットアップ](/books/next-js/02-setup)で、`create-next-app` の質問に「Turbopackを使いますか？」という項目がありました。また、`package.json` の dev スクリプトには `next dev --turbopack` と書かれていました。
+
+この **Turbopack** とは一体何なのでしょうか？ そもそも「バンドラー」「ビルドツール」「コンパイラー」といった言葉は何を指しているのでしょうか？
+
+この章では、Next.jsの裏側で動いているこれらのツールを理解します。直接触る機会は少ないかもしれませんが、エラーメッセージの意味やパフォーマンスの仕組みを理解するうえで、知っておくと役立つ知識です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Turbopackって名前は見たことあるけど、何をしてくれてるのか正直よくわかってない…。
+</SpeechBubble>
+
+---
+
+## バンドラーとは何か
+
+### 狭義のバンドラー — ファイルを束ねる
+
+**バンドラー（bundler）** とは、文字通り「束ねるもの」です。複数のJavaScriptファイルを、ブラウザが効率よく読み込める形に**結合**するツールを指します。
+
+たとえば、アプリケーションが `utils.js`、`api.js`、`app.js` の3ファイルに分かれているとします。これらをバンドラーに通すと、依存関係を解析して1つの `bundle.js` にまとめてくれます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["utils.js"] --> D["バンドラー"]
+    B["api.js"] --> D
+    C["app.js"] --> D
+    D --> E["bundle.js"]
+`}
+/>
+
+### 広義のバンドラー — ビルドツール
+
+現在「バンドラー」と呼ばれるツールの多くは、ファイルの結合だけでなく、もっと広い役割を担っています。結合・変換・最適化・開発環境の提供まで一手に引き受ける**ビルドツール**としての意味で使われることが増えています。
+
+| 役割 | 何をするか | 具体例 |
+| --- | --- | --- |
+| **バンドル**（結合） | 複数ファイルを1つにまとめる | webpack, Rollup |
+| **トランスパイル**（変換） | 新しい構文や TypeScript を、ブラウザが理解できる JavaScript に変換する | Babel, SWC |
+| **ミニファイ**（圧縮） | 空白や改行を削除し、変数名を短くしてファイルサイズを減らす | Terser, SWC |
+| **ツリーシェイキング** | 使われていないコードを検出して削除する | webpack, Rollup |
+| **コードスプリッティング** | ページごとに必要なコードだけを分割して配信する | webpack, Turbopack |
+| **HMR**（ホットリロード） | コードを変更したら、ブラウザをリロードせずに即座に反映する | Vite, Turbopack |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「バンドラー」と聞いたら、狭い意味の「ファイル結合」だけじゃなく、変換や最適化まで含めた「ビルドツール全般」を指していることが多い。文脈で判断しよう。
+</SpeechBubble>
+
+---
+
+## なぜバンドラーが必要になったのか
+
+<Figure src="/images/readingbook_woman_color.png" alt="歴史を学ぶ" caption="バンドラーの歴史を振り返ると、なぜ今のツールがあるのかが見えてきます" maxWidth="200px" />
+
+バンドラーが生まれた背景には、JavaScriptの**モジュールシステムの不在**という根本的な課題がありました。
+
+### モジュールがなかった時代
+
+JavaScriptは1995年にわずか10日間で設計された言語です。当時は「ページに動きを少し加える」程度の用途で、別のファイルからコードを読み込む**モジュールシステム**はありませんでした。
+
+複数のJSファイルを使うには、HTMLに `<script>` タグを並べるしかありません。
+
+```html
+<!-- 2000年代のJavaScript読み込み -->
+<script src="jquery.js"></script>
+<script src="utils.js"></script>
+<script src="app.js"></script>
+```
+
+この方法には問題がありました。
+
+- **依存関係が暗黙的** — `app.js` が `utils.js` に依存しているなら、`<script>` タグの順番を正しくしないと動かない
+- **グローバル汚染** — すべての変数が `window` オブジェクトに属するので、ファイル間で変数名が衝突する
+- **パフォーマンス** — ファイルが増えるほどHTTPリクエストが増え、ページの読み込みが遅くなる
+
+### CommonJS と Node.js（2009年）
+
+2009年に登場した**Node.js**は、**CommonJS**というモジュール仕様を採用しました。`require()` と `module.exports` で、ファイル間の依存関係を明示的に書けるようになります。
+
+```js
+// math.js — CommonJS
+module.exports = { add: (a, b) => a + b };
+
+// app.js
+const math = require('./math');
+console.log(math.add(1, 2)); // 3
+```
+
+しかし CommonJS はサーバー（Node.js）向けの仕様で、**ブラウザではそのまま動きません**。ブラウザには `require()` 関数が存在しないからです。
+
+### バンドラーの登場 — Browserify（2011年）
+
+「CommonJSで書いたコードをブラウザでも動かしたい」——この要望に応えたのが **Browserify** です。CommonJS の `require()` を解析し、依存関係をたどって1つのファイルに結合します。
+
+これが**狭義のバンドラー**の始まりです。
+
+### ESモジュールの標準化（2015年）
+
+2015年、JavaScriptの公式仕様（ES2015）でついに**ESモジュール**が標準化されました。`import` / `export` 構文は、今では誰もが使っているものです。
+
+```js
+// math.js — ESモジュール
+export const add = (a, b) => a + b;
+
+// app.js
+import { add } from './math';
+console.log(add(1, 2)); // 3
+```
+
+ESモジュールはCommonJSと違い、コードを実行しなくても依存関係が**静的に**わかります。これにより、使われていないコードを自動で削除する**ツリーシェイキング**が可能になりました。
+
+<Callout type="column" title="CommonJS vs ESモジュール">
+CommonJS（`require` / `module.exports`）は今でもNode.jsで広く使われていますが、新しいプロジェクトではESモジュール（`import` / `export`）が標準です。Next.jsのコードも基本的にESモジュールで書きます。
+</Callout>
+
+### ブラウザ互換性の問題 — トランスパイラーの登場
+
+モジュールの問題とは別に、**ブラウザ間の差異**という課題もありました。新しいJavaScript構文（アロー関数、`async/await` など）は、古いブラウザでは動きません。
+
+この問題を解決するのが**トランスパイラー**です。新しい構文で書いたコードを、古いブラウザでも動く形に変換します。
+
+```js
+// 開発者が書くコード（ES2015+）
+const greet = (name) => `Hello, ${name}!`;
+
+// トランスパイル後（ES5）
+var greet = function(name) { return "Hello, " + name + "!"; };
+```
+
+2014年に登場した **Babel** は、このトランスパイルの代表的なツールとして広く使われました。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+TypeScriptをJavaScriptに変換するのも「トランスパイル」なの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そう。TypeScript→JavaScript、JSX→JavaScript、新しいJS→古いJS、どれも「ある言語を別の形に変換する」という意味でトランスパイルと呼ぶよ。
+</SpeechBubble>
+
+---
+
+## webpackの時代 — すべてを1つに
+
+<Figure src="/images/deta_man_color.png" alt="データを整理する" caption="webpackは複雑だけど、多くの課題を一手に引き受けた功労者です" maxWidth="200px" />
+
+2012年に登場した **webpack** は、バンドル・トランスパイル・最適化を**1つのツールから統合的に管理**できるようにしました。
+
+それまでは「結合はBrowserify」「変換はBabel」「CSSの処理はまた別のツール」と、複数のツールを組み合わせる必要がありました。webpackは**ローダー**という仕組みで、JavaScript以外のファイル（CSS、画像、フォントなど）もまとめて扱えるようにしたのです。
+
+```
+JavaScript  ─┐
+TypeScript  ─┤
+CSS / Sass  ─┼─→  webpack  ─→  最適化されたバンドル
+画像        ─┤
+フォント    ─┘
+```
+
+webpackは長年にわたりフロントエンド開発の**事実上の標準**として使われ、Next.jsも**バージョン15まで**内部でwebpackを使っていました。
+
+### webpackの課題
+
+webpackは非常に強力でしたが、いくつかの課題もありました。
+
+- **設定が複雑** — `webpack.config.js` の設定ファイルが肥大化しやすく、理解・管理が難しい
+- **ビルドが遅い** — JavaScript（Node.js）で書かれているため、大規模プロジェクトではビルドに数分〜数十分かかることもあった
+- **開発サーバーの起動が遅い** — プロジェクト全体をバンドルしてから開発サーバーを起動するため、変更のたびに待ち時間が発生する
+
+<Callout type="note">
+Next.jsを使う場合、webpackの設定はNext.jsが隠蔽してくれるので、直接 `webpack.config.js` を書く必要はほとんどありません。ただし、内部で何が動いているかを理解しておくと、ビルドエラーやパフォーマンスの問題を調査するときに役立ちます。
+</Callout>
+
+---
+
+## 次世代ツールの登場
+
+2020年代に入ると、webpackの課題を解決する新しいツールが次々と登場しました。
+
+### Rustで書き直す — 速度革命
+
+webpackの遅さの大きな原因は、JavaScript（Node.js）で書かれていることでした。JavaScriptは柔軟な言語ですが、低レベルの計算処理には向いていません。
+
+この問題に対し、**Rust**や**Go**といった高速な言語でツールを書き直す動きが始まりました。
+
+| ツール | 言語 | 置き換え対象 | 速度向上 |
+| --- | --- | --- | --- |
+| **SWC** | Rust | Babel（トランスパイラー） | 約17倍 |
+| **esbuild** | Go | webpack（バンドラー） | 数十倍 |
+| **Turbopack** | Rust | webpack（バンドラー） | 大規模アプリで大幅改善 |
+
+### Vite — 開発体験の革新
+
+2020年に登場した **Vite** は、開発時とビルド時で異なるアプローチを取るビルドツールです。
+
+- **開発時**: ESモジュールをそのままブラウザに配信し、esbuildで高速にトランスパイル
+- **ビルド時**: Rollupで最適化されたバンドルを生成
+
+webpackのように「すべてをバンドルしてから配信」するのではなく、「必要なファイルだけを必要なときに変換する」ことで、開発サーバーの起動を劇的に高速化しました。
+
+<Marker>ViteはNext.jsでは使いませんが、React単体やVue.jsのプロジェクトでは現在最も人気のあるビルドツールです。</Marker>
+
+---
+
+## Next.jsにおけるビルドツールの変遷
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="ステップアップ" caption="Next.jsのビルドツールは、バージョンを追うごとに進化しています" maxWidth="200px" />
+
+Next.jsは内部で使うビルドツールを段階的に進化させてきました。この変遷を知っておくと、バージョンごとの違いやエラーメッセージの意味が理解しやすくなります。
+
+### Babel → SWC（Next.js 12〜）
+
+Next.js 12（2021年）で、トランスパイラーが **Babel** から **SWC** に置き換わりました。
+
+SWC（Speedy Web Compiler）はRustで書かれたコンパイラーで、TypeScript・JSX・最新のJavaScript構文をJavaScriptに変換します。Babelと同じ役割を、**約17倍の速度**でこなします。
+
+```
+Next.js 11以前:  TypeScript/JSX → [Babel] → JavaScript
+Next.js 12以降:  TypeScript/JSX → [SWC]  → JavaScript（17倍高速）
+```
+
+<Callout type="info" title="Babelが完全になくなったわけではない">
+プロジェクトにBabelの設定ファイル（`.babelrc` など）がある場合、Next.jsは自動的にBabelにフォールバックします。また、一部のライブラリ（React Compilerなど）はまだBabelプラグインを必要とする場合があります。
+</Callout>
+
+### webpack → Turbopack（Next.js 15〜16）
+
+バンドラーについても、**webpack** から **Turbopack** への移行が進んでいます。
+
+Turbopackは、Vercel社がwebpackの開発者（Tobias Koppers氏）とともに、Rustでゼロから開発した**インクリメンタルバンドラー**です。
+
+| バージョン | 開発サーバー（`next dev`） | ビルド（`next build`） |
+| --- | --- | --- |
+| Next.js 14以前 | webpack | webpack |
+| Next.js 15.0 | **Turbopack**（安定版） | webpack |
+| Next.js 15.3 | Turbopack | Turbopack（実験的） |
+| Next.js 15.5 | Turbopack | Turbopack（ベータ） |
+| **Next.js 16** | **Turbopack（デフォルト）** | **Turbopack（デフォルト）** |
+
+<Marker>Next.js 16からは、Turbopackが開発・ビルドの両方でデフォルトのバンドラーになりました。特別な設定は不要です。</Marker>
+
+### Turbopackの特徴
+
+Turbopackがwebpackと比べて優れている点は、主に以下の3つです。
+
+**1. インクリメンタルな計算**
+
+一度処理した結果を関数レベルでキャッシュし、変更があった部分だけを再計算します。大規模なアプリケーションほど効果が大きくなります。
+
+**2. 遅延バンドル**
+
+開発サーバーが実際にリクエストされたページだけをバンドルします。プロジェクト全体をまとめてからサーバーを起動するwebpackと違い、初期のコンパイル時間とメモリ使用量を抑えられます。
+
+**3. 統合グラフ**
+
+クライアント・サーバーなど複数の出力環境を**1つのグラフ**で管理します。webpackでは環境ごとに別のコンパイラーを動かしていましたが、Turbopackは統合的に処理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Turbopackを使うために何か設定は必要なの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+Next.js 16以降なら何も設定しなくてOK。`next dev` も `next build` も、デフォルトでTurbopackが使われるよ。逆にwebpackを使いたい場合に `--webpack` フラグをつける形になったんだ。
+</SpeechBubble>
+
+### webpackに戻すには
+
+Turbopackに対応していないwebpackプラグインを使っている場合など、webpackに切り替える必要があるときは `--webpack` フラグを指定します。
+
+```json
+{
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack"
+  }
+}
+```
+
+---
+
+## 現在のNext.jsのビルドツール構成
+
+ここまでの内容を整理すると、現在のNext.js（v16）のビルドツール構成は次のようになっています。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    subgraph Input["開発者が書くコード"]
+        TS["TypeScript / JSX"]
+        CSS["CSS / Sass"]
+        IMG["画像 / フォント"]
+    end
+    subgraph Turbo["Turbopack（バンドラー）"]
+        SWC["SWC（トランスパイル）"]
+        LCSS["Lightning CSS（CSS処理）"]
+        OPT["最適化\nツリーシェイキング\nコードスプリッティング\nミニファイ"]
+    end
+    subgraph Output["出力"]
+        JS["最適化されたJS"]
+        CSSOUT["最適化されたCSS"]
+        ASSETS["最適化されたアセット"]
+    end
+    TS --> SWC
+    CSS --> LCSS
+    IMG --> OPT
+    SWC --> OPT
+    LCSS --> OPT
+    OPT --> JS
+    OPT --> CSSOUT
+    OPT --> ASSETS
+`}
+/>
+
+| 役割 | 担当ツール | 言語 |
+| --- | --- | --- |
+| バンドル（結合・コードスプリッティング） | Turbopack | Rust |
+| トランスパイル（TypeScript/JSX → JS） | SWC | Rust |
+| CSS処理（CSS Modules、ネスト等） | Lightning CSS | Rust |
+| ミニファイ（圧縮） | SWC | Rust |
+
+<Marker>すべてのコアツールがRustで書かれていることで、ビルドパイプライン全体が高速に動作します。</Marker>
+
+---
+
+## まとめ
+
+- **バンドラー**は、複数のJSファイルを結合するツール。広義では変換・最適化・開発環境まで含むビルドツール全般を指す
+- JavaScriptにモジュールシステムがなかったことが、バンドラーが生まれた背景にある
+- **webpack**は長年のデファクトスタンダードだったが、設定の複雑さと速度が課題だった
+- Next.jsはトランスパイラーを**Babel→SWC**（v12〜）、バンドラーを**webpack→Turbopack**（v15〜16）と段階的に移行してきた
+- **Next.js 16では、Turbopackがデフォルト**。特別な設定なしで高速なビルドが得られる
+
+普段の開発でバンドラーを直接設定することは少ないですが、裏側の仕組みを知っておくと、ビルドエラーの原因調査やパフォーマンス改善の理解に役立ちます。
+
+次の章では、Next.jsの基本となる[コンポーネントの仕組み](/books/next-js/03-components) — Server ComponentsとClient Componentsの違いを学びます。
+
+---
+
+## 参考リンク
+
+- [Turbopack — Next.js公式ドキュメント](https://nextjs.org/docs/app/api-reference/turbopack)
+- [Next.js Compiler（SWC）— Next.js公式ドキュメント](https://nextjs.org/docs/architecture/nextjs-compiler)
+- [SWC公式サイト](https://swc.rs/)
+- [Vite公式サイト](https://vite.dev/)

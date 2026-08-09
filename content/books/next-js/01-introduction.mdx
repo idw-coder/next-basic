@@ -31,7 +31,7 @@ Next.jsは2016年10月、**Guillermo Rauch**（ギジェルモ・ラウチ）に
 - **ルーティング**がない → `react-router` を自分で導入・設定する
 - **サーバーサイドレンダリング（SSR）**の仕組みがない → SEOや初回表示速度のために自前でNode.jsサーバーを構築する
 - **コード分割**を自分で設定する必要がある → ページごとに適切にバンドルを分ける
-- **ビルド設定**（Webpack）が複雑 → `create-react-app` はあったが、SSR非対応
+- **ビルド設定**（webpack等のバンドラー）が複雑 → `create-react-app` はあったが、SSR非対応
 
 <MermaidDiagram
   chart={`
@@ -78,7 +78,7 @@ Guillermoは当時のブログで、Next.jsのコンセプトを次のような�
 | サーバー処理 | なし（別途API構築が必要）     | API Routes / Server Actions      |
 | 画像最適化   | 自分で実装                    | `next/image` で自動最適化        |
 | コード分割   | 手動設定                      | ページ単位で自動                 |
-| 初期設定     | Webpack等の設定が必要         | `npx create-next-app` ですぐ開始 |
+| 初期設定     | webpack等の設定が必要         | `npx create-next-app` ですぐ開始 |
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
   React公式ドキュメントでも「新しいプロジェクトを始めるならNext.jsなどのフレームワークを使おう」と推奨しているよ。Reactチーム自身が「Reactだけでは足りない」と認めている、ということなんだ。
