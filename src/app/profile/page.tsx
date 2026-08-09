@@ -184,8 +184,10 @@ export default function ProfilePage() {
 
     const fetchAnswers = async () => {
       try {
-        const res = await api.get('/api/quiz/history');
-        setAnswers(res.data);
+        const answers = await fetchNextApiJson<QuizAnswerRecord[]>('/next-api/quiz/history', {
+          auth: true,
+        });
+        setAnswers(answers);
       } catch (error) {
         console.error('Failed to fetch quiz history:', error);
       }
