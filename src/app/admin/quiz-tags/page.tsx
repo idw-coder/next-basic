@@ -185,8 +185,11 @@ export default function QuizTagManagePage() {
     setDeletingId(tag.id);
 
     try {
-      const res = await api.get<QuizTagDetail>(`/api/quiz/tags/${tag.id}`);
-      const quizCount = res.data.quizCount ?? 0;
+      const tagDetail = await fetchNextApiJson<QuizTagDetail>(
+        `/next-api/quiz/tags/${tag.id}`,
+        { auth: true },
+      );
+      const quizCount = tagDetail.quizCount ?? 0;
       const confirmed =
         quizCount > 0
           ? confirm(
