@@ -1,6 +1,6 @@
 # Express → Next.js API 移行メモ
 
-> 状態（2026-08-08 更新）: 現在は Express バックエンドを維持する構成。`/api/*` は Next.js から Express へプロキシし、Next.js 自身の Route Handler は `/next-api/*` に置く。Express 廃止や DB 直接参照へ進む場合は、このメモを出発点に再設計する。
+> 状態（2026-08-09 更新）: 現在は Express バックエンドを維持しつつ、一部の読み取りAPIを Next.js 側へ移行中。`/api/*` は Next.js から Express へプロキシし、Next.js 自身の Route Handler は `/next-api/*` に置く。
 
 ## 現在の前提
 
@@ -9,7 +9,7 @@
 - `next.config.ts` で `/api/:path*` を `INTERNAL_API_URL` または `http://localhost:8888` へ rewrite している。
 - そのため、`src/app/api/...` に Route Handler を追加しても `/api/...` としては扱いにくい。
 - Next.js 側で独自に持つAPIは `src/app/next-api/...` に置く方針。
-- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts` のみ。
+- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts` と `src/app/next-api/quiz/categories/route.ts`。
 - 本番 `https://study.ntorelabo.com/next-api/site-search` でも 200 OK / JSON 応答を確認済み。
 
 ### フロントエンドからのAPI呼び出し
@@ -20,10 +20,12 @@
 
 ### DBアクセス
 
-- `package.json` に `typeorm` / `mysql2` / `reflect-metadata` は入っていない。
-- `serverExternalPackages: ["typeorm", "mysql2"]` も `next.config.ts` には設定されていない。
+- Next.js 側のDB直接参照用に `mysql2` を追加済み。
+- `next.config.ts` には `serverExternalPackages: ['mysql2']` を設定済み。
+- `typeorm` / `reflect-metadata` は入っていない。移行は TypeORM 前提ではなく、現時点では `mysql2/promise` で最小限に進める。
 - `tsconfig.json` には TypeORM 用の `experimentalDecorators` / `emitDecoratorMetadata` が残っている。
 - `src/lib/datasource.ts` や `src/entities/...` は存在しない。
+- DB接続は `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_CONNECTION_LIMIT` を使う。
 
 ### Express 側コード
 
@@ -47,7 +49,7 @@
 
 | 機能 | Next.js 側エンドポイント | 実装 | 状態 | 備考 |
 |---|---|---|---|---|
-| サイト内検索の集約API | `/next-api/site-search` | `src/app/next-api/site-search/route.ts` | 本番稼働済み | ヘッダー検索から利用。Books検索はNext.js内で完結し、クイズ検索はExpress APIを内部呼び出しする |
+| サイト内検索の集約API | `/next-api/site-search` | `src/app/next-api/site-search/route.ts` | 本番稼働済み | ヘッダー検索から利用。Books検索はNext.js内で完結。カテゴリ一覧はNext.js側取得へ切り替え済み。タグ・クイズ検索はExpress APIを内部呼び出しする |
 
 確認済み:
 
@@ -55,17 +57,32 @@
 - `https://study.ntorelabo.com/next-api/site-search?q=javascript` は 200 OK / JSON を返す。
 - `src/components/HeaderSearch.tsx` は `/next-api/site-search` を呼ぶ。
 
+### 実装済み・デプロイ待ち
+
+| 機能 | Next.js 側エンドポイント | 実装 | 状態 | 備考 |
+|---|---|---|---|---|
+| クイズカテゴリ一覧 GET | `/next-api/quiz/categories` | `src/app/next-api/quiz/categories/route.ts`, `src/lib/server/quizCategories.ts`, `src/lib/server/mysql.ts` | ローカル疎通済み / 本番未確認 | `quiz_category` と `quiz` をMySQLから直接読み、`quiz_count` を集計する。DB取得に失敗した場合はExpressの `/api/quiz/categories` へフォールバックする |
+
+確認済み:
+
+- ローカル `http://localhost:3000/next-api/quiz/categories` は 200 OK を返す。
+- ローカルでDB/Expressが使えない場合も 500 にせず、空配列と `x-next-api-fallback: unavailable` を返す。
+- ローカル `http://localhost:3000/next-api/site-search` はカテゴリ取得失敗時も 200 OK を返す。
+- `npm run lint` はエラーなし。既存警告のみ残る。
+- `npm run build` は成功する。
+
 ### 部分移行
 
 | 機能 | Next.js 化された範囲 | Express に残っている範囲 | 次に移すなら |
 |---|---|---|---|
-| サイト内検索 | 検索結果の集約、Books検索、レスポンス整形 | `/api/quiz/categories`, `/api/quiz/tags`, `/api/quiz/search` からのクイズデータ取得 | クイズ検索の読み取り系APIをNext.js側へ移す |
+| サイト内検索 | 検索結果の集約、Books検索、レスポンス整形、カテゴリ一覧取得 | `/api/quiz/tags`, `/api/quiz/search` からのクイズデータ取得 | タグ一覧GET、クイズ検索GETをNext.js側へ移す |
+| クイズカテゴリ一覧 | `/next-api/quiz/categories` を追加し、MySQL直接参照を実装 | 既存画面の多くはまだ `/api/quiz/categories` を利用中。POST/PUT/DELETE はExpressのまま | まず `site-search` 以外の公開ページでGETだけ切り替える |
 
 ### 未移行
 
 | 領域 | 状態 |
 |---|---|
-| クイズ公開API | Express の `/api/quiz/...` を利用中 |
+| クイズ公開API | カテゴリ一覧GETのみNext.js側に実装済み。その他は Express の `/api/quiz/...` を利用中 |
 | クイズ履歴API | Express の `/api/quiz/history...` を利用中 |
 | 認証API | Express の `/api/auth/...` を利用中 |
 | ユーザー管理API | Express の `/api/users...` を利用中 |
@@ -76,6 +93,7 @@
 
 - 「移行済み」と書く場合は、Next.js 側に Route Handler またはサーバー処理があり、本番で疎通確認できているものだけにする。
 - Express APIを内部で呼んでいる場合は「部分移行」として、残っている依存先を明記する。
+- 実装したが本番確認前のものは「実装済み・デプロイ待ち」に置き、本番確認後に「移行済み」へ移す。
 - 新しい移行が完了したら、この文書の「移行ステータス」に機能名、Next.js側エンドポイント、実装ファイル、本番確認結果、残依存を追記する。
 - 本番確認は最低限、対象の `/next-api/...` が 200 OK を返すことと、対応する画面がそのAPIを呼んでいることを確認する。
 - `/api/...` が Express 側で処理されているか確認したい場合は、レスポンスヘッダーの `X-Powered-By: Express` が参考になる。
@@ -94,7 +112,7 @@
 1. 既存の Express API 呼び出しは維持する。
 2. 新規の Next.js 内部APIは `/next-api/...` に作る。
 3. `src/app/api/...` を使う指示やメモがあれば `/next-api/...` 前提に読み替える。
-4. Express 廃止を再開するまでは、TypeORM や `mysql2` を Next.js 側に追加しない。
+4. DB直接参照は `mysql2/promise` で小さく進める。ORM導入は複数APIで重複や複雑さが出てから再検討する。
 
 ## Express 廃止を再開する場合の進め方
 
@@ -115,6 +133,7 @@
   - `/api/quiz/search`
 - 最初は Next.js 側の `/next-api/...` として並行実装し、画面単位で呼び出し先を切り替える。
 - DBアクセス方式は Express 側の実装に合わせて決める。TypeORM 前提で始めない。
+- 2026-08-09 時点で `/next-api/quiz/categories` は実装済み。次は `/next-api/quiz/tags` が候補。
 
 ### Phase 2: 認証・ユーザー系APIの移行
 
@@ -150,7 +169,7 @@
 
 - 旧メモにあった「TypeORM 1.0.0 追加」「`app/api/quiz/search/route.ts` 作成」「`lib/datasource.ts` 作成」は、現在のコードでは確認できない。
 - `tsconfig.json` の TypeORM 用デコレータ設定は残っているが、現状では利用箇所がない。
-- `/next-api/site-search` は Next.js 内部APIだが、クイズデータは今も Express の `/api/quiz/...` から取得している。
+- `/next-api/site-search` は Next.js 内部API。カテゴリ一覧は `src/lib/server/quizCategories.ts` 経由でNext.js側取得へ切り替え済み。タグとクイズ検索は今も Express の `/api/quiz/...` から取得している。
 - 本番 `https://study.ntorelabo.com/api/quiz/categories` は `X-Powered-By: Express` 付きで 200 OK を返すため、本番でも `/api` は Express 側で処理されている。
 - Stripe Webhook は raw body と署名検証が必要なため、単純な Route Handler 移植で済ませない。
 - 認証・決済・CSV import は移行時の事故影響が大きいため、読み取り系APIより後に扱う。
@@ -160,4 +179,4 @@
 1. Express 側コードを確認できる場所を特定する。
 2. `/api` エンドポイント一覧を実装ベースで作り直す。
 3. 「Express 維持」「一部 `/next-api` 化」「Express 廃止」のどこを目標にするか決める。
-4. 最初の移行対象は公開読み取り系の `/api/quiz/categories` または `/api/quiz/search` にする。
+4. 次の移行対象は公開読み取り系の `/api/quiz/tags` GET にする。

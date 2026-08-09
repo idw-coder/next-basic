@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getAllBooks } from '@/lib/books';
 import { searchBooks } from '@/lib/searchBooks';
+import { getQuizCategories } from '@/lib/server/quizCategories';
 
 export const runtime = 'nodejs';
 
@@ -16,13 +17,6 @@ const EXCLUDED_SUGGESTED_TAG_SLUGS = new Set([
   'error',
   'test-tag',
 ]);
-
-interface Category {
-  id: number;
-  slug: string;
-  category_name: string;
-  quiz_count?: number;
-}
 
 interface Tag {
   id: number;
@@ -64,13 +58,13 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get('q')?.trim() ?? '';
 
   if (!q) {
-    const [categories, tags] = await Promise.all([
-      fetchApiJson<Category[]>('/api/quiz/categories', { cache: 'no-store' }),
+    const [categoriesResult, tags] = await Promise.all([
+      getQuizCategories(),
       fetchApiJson<Tag[]>('/api/quiz/tags', { next: { revalidate: 3600 } }),
     ]);
 
     return NextResponse.json({
-      categories: categories ?? [],
+      categories: categoriesResult.categories,
       suggestedKeywords: buildSuggestedKeywords(tags ?? []),
       books: getAllBooks().map((book) => ({
         bookSlug: book.bookSlug,

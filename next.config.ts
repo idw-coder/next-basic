@@ -24,6 +24,7 @@ const API_PROXY_TARGET =
   'http://localhost:8888';
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['mysql2'],
   webpack: (config) => {
     config.plugins.push(new VeliteWebpackPlugin());
     return config;
