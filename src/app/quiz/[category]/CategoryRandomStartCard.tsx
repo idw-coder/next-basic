@@ -6,7 +6,6 @@ import { HelpCircle, Loader2, Play, X } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import api from '@/lib/api';
 import { saveRandomSession, type RandomQuizSession } from '@/lib/randomQuizSession';
 
 const QUIZ_COUNTS = [5, 10, 15, 20] as const;
@@ -78,10 +77,14 @@ export default function CategoryRandomStartCard({
       const params = new URLSearchParams();
       if (selectedTagSlug !== 'all') params.set('tagSlug', selectedTagSlug);
 
-      const res = await api.get(
-        `/api/quiz/category/${categoryId}/quizzes${params.size ? `?${params.toString()}` : ''}`,
+      const res = await fetch(
+        `/next-api/quiz/category/${categoryId}/quizzes${params.size ? `?${params.toString()}` : ''}`,
+        { cache: 'no-store' },
       );
-      const allQuizzes = (res.data as { id: number; question: string }[]).map((quiz) => ({
+      if (!res.ok) throw new Error(`status ${res.status}`);
+
+      const data = (await res.json()) as { id: number; question: string }[];
+      const allQuizzes = data.map((quiz) => ({
         id: quiz.id,
         categorySlug,
         question: quiz.question,

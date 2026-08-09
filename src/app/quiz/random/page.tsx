@@ -1,10 +1,6 @@
 import { Metadata } from "next";
 import RandomQuizClient from "./RandomQuizClient";
-
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8888";
+import { getQuizCategories } from "@/lib/server/quizCategories";
 
 interface Category {
   id: number;
@@ -14,11 +10,8 @@ interface Category {
 
 async function getCategories(): Promise<Category[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return [];
-    return await res.json();
+    const { categories } = await getQuizCategories();
+    return categories;
   } catch {
     return [];
   }

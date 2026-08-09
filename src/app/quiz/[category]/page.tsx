@@ -21,12 +21,10 @@ import { getCategorySeoContent, type CategorySeoContent } from './categoryConten
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getBookTheme } from '@/lib/book-theme';
 import { getCategoryTheme } from '@/lib/categoryTheme';
+import { getQuizCategoryQuizzes } from '@/lib/server/quizCategoryQuizzes';
 import { getQuizTagsByCategory } from '@/lib/server/quizCategoryTags';
 import { getQuizCategories } from '@/lib/server/quizCategories';
 import { getSectionTags } from './sectionTagMap';
-
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
 
 import { SITE_URL } from '@/lib/site';
 
@@ -64,16 +62,8 @@ async function getCategory(categorySlug: string): Promise<Category | null> {
 
 async function getQuizzes(categoryId: number, q?: string, tagSlug?: string): Promise<Quiz[]> {
   try {
-    const params = new URLSearchParams();
-    if (q) params.append('q', q);
-    if (tagSlug) params.append('tagSlug', tagSlug);
-
-    const res = await fetch(
-      `${API_BASE_URL}/api/quiz/category/${categoryId}/quizzes?${params.toString()}`,
-      { cache: 'no-store' },
-    );
-    if (!res.ok) return [];
-    return await res.json();
+    const { quizzes } = await getQuizCategoryQuizzes(categoryId, { q, tagSlug });
+    return quizzes;
   } catch (error) {
     console.error('Failed to fetch quizzes:', error);
     return [];

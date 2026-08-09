@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import api from '@/lib/api';
 import {
   getRandomSession,
   saveRandomSession,
@@ -216,8 +215,12 @@ export default function RandomQuizClient({
       if (selectedCategoryId === 'all') {
         const results = await Promise.all(
           categories.map(async (cat) => {
-            const res = await api.get(`/api/quiz/category/${cat.id}/quizzes`);
-            return (res.data as { id: number; question: string }[]).map((q) => ({
+            const res = await fetch(`/next-api/quiz/category/${cat.id}/quizzes`, {
+              cache: 'no-store',
+            });
+            if (!res.ok) throw new Error(`status ${res.status}`);
+            const data = (await res.json()) as { id: number; question: string }[];
+            return data.map((q) => ({
               id: q.id,
               categorySlug: cat.slug,
               question: q.question,
@@ -232,8 +235,12 @@ export default function RandomQuizClient({
           setIsLoading(false);
           return;
         }
-        const res = await api.get(`/api/quiz/category/${selectedCategoryId}/quizzes`);
-        allQuizzes = (res.data as { id: number; question: string }[]).map((q) => ({
+        const res = await fetch(`/next-api/quiz/category/${selectedCategoryId}/quizzes`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const data = (await res.json()) as { id: number; question: string }[];
+        allQuizzes = data.map((q) => ({
           id: q.id,
           categorySlug: cat.slug,
           question: q.question,

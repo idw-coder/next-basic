@@ -1,10 +1,7 @@
 import { MetadataRoute } from "next";
 import { getAllBooks, getChaptersByBook } from "@/lib/books";
-
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8888";
+import { getQuizCategoryQuizzes } from "@/lib/server/quizCategoryQuizzes";
+import { getQuizCategories } from "@/lib/server/quizCategories";
 
 import { SITE_URL } from '@/lib/site';
 
@@ -22,11 +19,8 @@ interface Quiz {
 
 async function getCategories(): Promise<Category[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return [];
-    return await res.json();
+    const { categories } = await getQuizCategories();
+    return categories;
   } catch {
     return [];
   }
@@ -34,12 +28,8 @@ async function getCategories(): Promise<Category[]> {
 
 async function getQuizzesByCategory(categoryId: number): Promise<Quiz[]> {
   try {
-    const res = await fetch(
-      `${API_BASE_URL}/api/quiz/category/${categoryId}/quizzes`,
-      { next: { revalidate: 3600 } }
-    );
-    if (!res.ok) return [];
-    return await res.json();
+    const { quizzes } = await getQuizCategoryQuizzes(categoryId);
+    return quizzes;
   } catch {
     return [];
   }

@@ -4,6 +4,8 @@ import { SectionHeading } from '@/components/SectionHeading';
 import { NewsList } from '@/components/news-list';
 import { Button } from '@/components/ui/button';
 import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
+import { getQuizCategoryQuizzes } from '@/lib/server/quizCategoryQuizzes';
+import { getQuizCategories } from '@/lib/server/quizCategories';
 import {
   ArrowRight,
   Atom,
@@ -35,27 +37,16 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
-
 async function getQuizCountsBySlugs(slugs: string[]): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
   try {
-    const categoriesRes = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
-      cache: 'no-store',
-    });
-    if (!categoriesRes.ok) return Object.fromEntries(slugs.map((s) => [s, 0]));
-    const categories: { id: number; slug: string }[] = await categoriesRes.json();
+    const { categories } = await getQuizCategories();
 
     const counts = await Promise.all(
       slugs.map(async (slug) => {
         const cat = categories.find((c) => c.slug === slug);
         if (!cat) return { slug, count: 0 };
-        const res = await fetch(`${API_BASE_URL}/api/quiz/category/${cat.id}/quizzes`, {
-          cache: 'no-store',
-        });
-        if (!res.ok) return { slug, count: 0 };
-        const quizzes: unknown[] = await res.json();
+        const { quizzes } = await getQuizCategoryQuizzes(cat.id);
         return { slug, count: quizzes.length };
       }),
     );
