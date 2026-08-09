@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import api from '@/lib/api';
+import { fetchNextApiJson } from '@/lib/nextApiClient';
 import { ArrowLeft, Copy, ExternalLink, FileOutput, Import, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -28,6 +29,15 @@ interface QuizTag {
 interface Choice {
   choice_text: string;
   is_correct: boolean;
+}
+
+interface QuizForm {
+  slug: string;
+  question: string;
+  explanation?: string;
+  category_id: number;
+  choices?: Choice[];
+  tags?: QuizTag[];
 }
 
 function createDefaultChoices(count = 4): Choice[] {
@@ -177,16 +187,15 @@ export default function QuizEditPage() {
 
   useEffect(() => {
     (async () => {
-      const [catRes, tagRes] = await Promise.all([
-        api.get('/api/quiz/categories'),
-        api.get('/api/quiz/tags'),
+      const [categories, tags] = await Promise.all([
+        fetchNextApiJson<QuizCategory[]>('/next-api/quiz/categories'),
+        fetchNextApiJson<QuizTag[]>('/next-api/quiz/tags'),
       ]);
-      setCategories(catRes.data);
-      setAllTags((tagRes.data as QuizTag[]).sort((a, b) => a.slug.localeCompare(b.slug, 'ja')));
+      setCategories(categories);
+      setAllTags(tags.sort((a, b) => a.slug.localeCompare(b.slug, 'ja')));
 
       if (!isNew && quizId.current) {
-        const res = await api.get(`/api/quiz/${quizId.current}`);
-        const quiz = res.data;
+        const quiz = await fetchNextApiJson<QuizForm>(`/next-api/quiz/${quizId.current}`);
         setSlug(quiz.slug);
         setQuestion(quiz.question);
         setExplanation(quiz.explanation ?? '');

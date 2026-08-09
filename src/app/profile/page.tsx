@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import api from '@/lib/api';
+import { fetchNextApiJson } from '@/lib/nextApiClient';
 import { createAvatar } from '@dicebear/core';
 import { identicon } from '@dicebear/collection';
 import { Flame, Target, BookOpen, TrendingUp, Bookmark } from 'lucide-react';
@@ -192,8 +193,7 @@ export default function ProfilePage() {
 
     const fetchCategories = async () => {
       try {
-        const res = await api.get('/api/quiz/categories');
-        const cats: ApiCategory[] = res.data;
+        const cats = await fetchNextApiJson<ApiCategory[]>('/next-api/quiz/categories');
         const map: Record<number, { slug: string; name: string }> = {};
         for (const c of cats) {
           map[c.id] = {

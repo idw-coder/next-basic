@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import api from "@/lib/api";
+import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -76,8 +77,8 @@ export default function QuizTagManagePage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const res = await api.get("/api/quiz/tags");
-      setTags(res.data);
+      const tags = await fetchNextApiJson<QuizTag[]>("/next-api/quiz/tags");
+      setTags(tags);
       setLoading(false);
     })();
   }, []);

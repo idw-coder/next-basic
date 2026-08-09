@@ -3,6 +3,7 @@ import { ArrowLeft, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getCategoryTheme } from '@/lib/categoryTheme';
+import { getQuizDetail } from '@/lib/server/quizDetail';
 import { extractBookChapterLinks } from '@/lib/quiz-book-links';
 import QuizInteraction from './QuizInteraction';
 
@@ -19,9 +20,6 @@ interface QuizTag {
   name: string;
 }
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8888';
-
 interface QuizDetail {
   id: number;
   slug: string;
@@ -34,11 +32,8 @@ interface QuizDetail {
 
 async function getQuiz(quizId: string): Promise<QuizDetail | null> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/quiz/${quizId}`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    return await res.json();
+    const { quiz } = await getQuizDetail(quizId);
+    return quiz;
   } catch (error) {
     console.error('Failed to fetch quiz:', error);
     return null;

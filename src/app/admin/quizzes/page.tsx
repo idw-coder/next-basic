@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -71,8 +72,10 @@ export default function QuizListPage() {
       );
       const results = await Promise.all(
         useCats.map(async (cat) => {
-          const res = await api.get(`/api/quiz/category/${cat.id}/quizzes`);
-          return (res.data as Quiz[]).map((q) => ({
+          const quizzes = await fetchNextApiJson<Quiz[]>(
+            `/next-api/quiz/category/${cat.id}/quizzes`,
+          );
+          return quizzes.map((q) => ({
             ...q,
             category_id: cat.id,
             category_name: categoryMap.get(cat.id) ?? "",
@@ -86,22 +89,21 @@ export default function QuizListPage() {
   }, [categories]);
 
   const fetchAllTags = useCallback(async () => {
-    const res = await api.get("/api/quiz/tags");
+    const tags = await fetchNextApiJson<QuizTag[]>("/next-api/quiz/tags");
     setAllTags(
-      (res.data as QuizTag[]).sort((a, b) => a.slug.localeCompare(b.slug, "ja"))
+      tags.sort((a, b) => a.slug.localeCompare(b.slug, "ja"))
     );
   }, []);
 
   useEffect(() => {
     (async () => {
-      const [categoryRes, tagRes] = await Promise.all([
-        api.get("/api/quiz/categories"),
-        api.get("/api/quiz/tags"),
+      const [cats, tags] = await Promise.all([
+        fetchNextApiJson<QuizCategory[]>("/next-api/quiz/categories"),
+        fetchNextApiJson<QuizTag[]>("/next-api/quiz/tags"),
       ]);
-      const cats = categoryRes.data as QuizCategory[];
       setCategories(cats);
       setAllTags(
-        (tagRes.data as QuizTag[]).sort((a, b) =>
+        tags.sort((a, b) =>
           a.slug.localeCompare(b.slug, "ja")
         )
       );

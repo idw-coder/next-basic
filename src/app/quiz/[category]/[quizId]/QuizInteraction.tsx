@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/sheet';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
 import api from '@/lib/api';
+import { fetchNextApiJson } from '@/lib/nextApiClient';
 import {
   clearRandomSession,
   getRandomSession,
@@ -120,8 +121,8 @@ export default function QuizInteraction({
       setTagLoading(true);
       setTagError(null);
       try {
-        const res = await api.get('/api/quiz/tags');
-        const tags = (res.data as QuizTag[]).sort((a, b) => a.slug.localeCompare(b.slug, 'ja'));
+        const tags = await fetchNextApiJson<QuizTag[]>('/next-api/quiz/tags');
+        tags.sort((a, b) => a.slug.localeCompare(b.slug, 'ja'));
         setAllTags(tags);
       } catch {
         setTagError('タグ一覧の取得に失敗しました');

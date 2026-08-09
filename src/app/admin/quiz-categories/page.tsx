@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,8 +38,8 @@ export default function QuizCategoryManagePage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const res = await api.get("/api/quiz/categories");
-      setCategories(res.data);
+      const categories = await fetchNextApiJson<QuizCategory[]>("/next-api/quiz/categories");
+      setCategories(categories);
       setLoading(false);
     })();
   }, []);
