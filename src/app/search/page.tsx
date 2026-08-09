@@ -4,11 +4,9 @@ import { ChevronRight, Search } from 'lucide-react';
 import SearchClient from './SearchClient';
 import { getAllBooks } from '@/lib/books';
 import { searchBooks } from '@/lib/searchBooks';
-
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
+import { getQuizCategories } from '@/lib/server/quizCategories';
+import { searchQuizzes as searchQuizzesFromServer } from '@/lib/server/quizSearch';
+import { getQuizTags } from '@/lib/server/quizTags';
 
 import { SITE_URL } from '@/lib/site';
 
@@ -51,48 +49,20 @@ export interface SearchQuiz {
 }
 
 async function getCategories(): Promise<Category[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
+  const { categories } = await getQuizCategories();
+  return categories;
 }
 
 async function getTags(): Promise<Tag[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/quiz/tags`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
+  const { tags } = await getQuizTags();
+  return tags;
 }
 
 async function searchQuizzes(q: string): Promise<SearchQuiz[]> {
   if (!q.trim()) return [];
 
   try {
-    const params = new URLSearchParams({ q });
-    const res = await fetch(
-      `${API_BASE_URL}/api/quiz/search?${params.toString()}`,
-      { cache: 'no-store' },
-    );
-    if (!res.ok) return [];
-    const quizzes: {
-      id: number;
-      slug: string;
-      question: string;
-      tags: Tag[];
-      category_id: number;
-      category_slug: string | null;
-      category_name: string | null;
-    }[] = await res.json();
+    const { quizzes } = await searchQuizzesFromServer({ q });
     return quizzes.map((quiz) => ({
       id: quiz.id,
       slug: quiz.slug,

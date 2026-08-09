@@ -100,7 +100,7 @@ export default function ReviewClient({ isCompleted }: { isCompleted: boolean }) 
     let aborted = false;
     (async () => {
       try {
-        const res = await fetch(`/api/quiz/search?ids=${wrongIdsKey}`, { cache: 'no-store' });
+        const res = await fetch(`/next-api/quiz/search?ids=${wrongIdsKey}`, { cache: 'no-store' });
         if (!res.ok) throw new Error(`status ${res.status}`);
         const list: {
           id: number;

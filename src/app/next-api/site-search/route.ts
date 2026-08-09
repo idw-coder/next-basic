@@ -3,14 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllBooks } from '@/lib/books';
 import { searchBooks } from '@/lib/searchBooks';
 import { getQuizCategories } from '@/lib/server/quizCategories';
+import { searchQuizzes } from '@/lib/server/quizSearch';
 import { getQuizTags } from '@/lib/server/quizTags';
 
 export const runtime = 'nodejs';
-
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
 
 const EXCLUDED_SUGGESTED_TAG_SLUGS = new Set([
   'basic',
@@ -34,16 +30,6 @@ interface ApiQuiz {
   category_id: number;
   category_slug: string | null;
   category_name: string | null;
-}
-
-async function fetchApiJson<T>(path: string, init?: RequestInit): Promise<T | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}${path}`, init);
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
 }
 
 function buildSuggestedKeywords(tags: Tag[]): string[] {
@@ -75,17 +61,15 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const params = new URLSearchParams({ q });
-  const [quizResults, bookResults] = await Promise.all([
-    fetchApiJson<ApiQuiz[]>(`/api/quiz/search?${params.toString()}`, {
-      cache: 'no-store',
-    }),
+  const [quizSearchResult, bookResults] = await Promise.all([
+    searchQuizzes({ q }),
     Promise.resolve(searchBooks(q)),
   ]);
+  const quizResults = quizSearchResult.quizzes as ApiQuiz[];
 
   return NextResponse.json({
     bookResults: bookResults.slice(0, 8),
-    quizResults: (quizResults ?? []).slice(0, 8).map((quiz) => ({
+    quizResults: quizResults.slice(0, 8).map((quiz) => ({
       id: quiz.id,
       slug: quiz.slug,
       question: quiz.question,
