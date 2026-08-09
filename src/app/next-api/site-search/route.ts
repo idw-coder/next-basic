@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllBooks } from '@/lib/books';
 import { searchBooks } from '@/lib/searchBooks';
 import { getQuizCategories } from '@/lib/server/quizCategories';
+import { getQuizTags } from '@/lib/server/quizTags';
 
 export const runtime = 'nodejs';
 
@@ -58,14 +59,14 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get('q')?.trim() ?? '';
 
   if (!q) {
-    const [categoriesResult, tags] = await Promise.all([
+    const [categoriesResult, tagsResult] = await Promise.all([
       getQuizCategories(),
-      fetchApiJson<Tag[]>('/api/quiz/tags', { next: { revalidate: 3600 } }),
+      getQuizTags(),
     ]);
 
     return NextResponse.json({
       categories: categoriesResult.categories,
-      suggestedKeywords: buildSuggestedKeywords(tags ?? []),
+      suggestedKeywords: buildSuggestedKeywords(tagsResult.tags),
       books: getAllBooks().map((book) => ({
         bookSlug: book.bookSlug,
         title: book.title,
