@@ -1,5 +1,7 @@
 interface FetchNextApiJsonOptions {
   auth?: boolean;
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  body?: unknown;
 }
 
 export async function fetchNextApiJson<T>(
@@ -15,9 +17,15 @@ export async function fetchNextApiJson<T>(
     }
   }
 
+  if (options.body !== undefined) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const res = await fetch(path, {
+    method: options.method ?? 'GET',
     cache: 'no-store',
     headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
   if (!res.ok) {

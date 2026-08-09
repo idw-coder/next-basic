@@ -9,8 +9,8 @@
 - `next.config.ts` で `/api/:path*` を `INTERNAL_API_URL` または `http://localhost:8888` へ rewrite している。
 - そのため、`src/app/api/...` に Route Handler を追加しても `/api/...` としては扱いにくい。
 - Next.js 側で独自に持つAPIは `src/app/next-api/...` に置く方針。
-- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts`, `src/app/next-api/quiz/categories/route.ts`, `src/app/next-api/quiz/tags/route.ts`, `src/app/next-api/quiz/tags/[tagId]/route.ts`, `src/app/next-api/quiz/history/route.ts`, `src/app/next-api/quiz/search/route.ts`, `src/app/next-api/quiz/category/[categoryId]/tags/route.ts`, `src/app/next-api/quiz/category/[categoryId]/quizzes/route.ts`, `src/app/next-api/quiz/[quizId]/route.ts`。
-- 本番 `https://study.ntorelabo.com/next-api/site-search`, `/next-api/quiz/categories`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/search`, `/next-api/quiz/category/:categoryId/tags`, `/next-api/quiz/category/:categoryId/quizzes`, `/next-api/quiz/:quizId` で 200 OK / JSON 応答を確認済み。
+- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts`, `src/app/next-api/quiz/categories/route.ts`, `src/app/next-api/quiz/tags/route.ts`, `src/app/next-api/quiz/tags/[tagId]/route.ts`, `src/app/next-api/quiz/history/route.ts`, `src/app/next-api/quiz/history/sync/route.ts`, `src/app/next-api/quiz/search/route.ts`, `src/app/next-api/quiz/category/[categoryId]/tags/route.ts`, `src/app/next-api/quiz/category/[categoryId]/quizzes/route.ts`, `src/app/next-api/quiz/[quizId]/route.ts`。
+- 本番 `https://study.ntorelabo.com/next-api/site-search`, `/next-api/quiz/categories`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history`, `/next-api/quiz/search`, `/next-api/quiz/category/:categoryId/tags`, `/next-api/quiz/category/:categoryId/quizzes`, `/next-api/quiz/:quizId` で 200 OK / JSON 応答を確認済み。
 
 ### フロントエンドからのAPI呼び出し
 
@@ -38,13 +38,13 @@
 | 領域 | 主なエンドポイント | 呼び出し元 |
 |---|---|---|
 | クイズ公開ページ | ~~`GET /api/quiz/categories`~~（移行済み: `/next-api/quiz/categories`）, ~~`GET /api/quiz/tags`~~（移行済み: `/next-api/quiz/tags`）, ~~`GET /api/quiz/category/:id/quizzes`~~（移行済み: `/next-api/quiz/category/:id/quizzes`）, ~~`GET /api/quiz/category/:id/tags`~~（移行済み: `/next-api/quiz/category/:id/tags`）, ~~`GET /api/quiz/:quizId`~~（移行済み: `/next-api/quiz/:quizId`）, ~~`GET /api/quiz/search`~~（移行済み: `/next-api/quiz/search`） | トップ、検索、カテゴリ、個別クイズ、サイト内検索 |
-| クイズ履歴 | ~~`GET /api/quiz/history`~~（実装済み・本番未確認: `/next-api/quiz/history`）, `POST /api/quiz/history`, `/api/quiz/history/sync` | 学習履歴、プロフィール、復習 |
+| クイズ履歴 | ~~`GET /api/quiz/history`~~（移行済み: `/next-api/quiz/history`）, ~~`POST /api/quiz/history`~~（実装済み・本番未確認: `/next-api/quiz/history`）, ~~`POST /api/quiz/history/sync`~~（実装済み・本番未確認: `/next-api/quiz/history/sync`） | 学習履歴、プロフィール、復習 |
 | 認証 | `/api/auth/login`, `/api/auth/me`, `/api/auth/google` | ログイン、登録、プロフィール |
 | ユーザー管理 | `/api/users`, `/api/users/:id` | 管理画面 |
 | クイズ管理 | `/api/quiz`, `/api/quiz/:id`, ~~`GET /api/quiz/categories`~~（移行済み: `/next-api/quiz/categories`）, `POST/PUT/DELETE /api/quiz/categories`, ~~`GET /api/quiz/tags`~~（移行済み: `/next-api/quiz/tags`）, ~~`GET /api/quiz/tags/:id`~~（移行済み: `/next-api/quiz/tags/:id`）, `POST/PUT/DELETE /api/quiz/tags`, `/api/quiz/csv/*` | 管理画面 |
 | 決済 | `/api/payment/subscription`, `/api/payment/portal`, `/api/payment/status/:sessionId`, `/api/webhook/stripe` | サブスクリプション画面、Stripe |
 
-注: ~~取り消し線~~ の `/api` は Next.js 側へ移行済み、または実装済みで本番確認待ち。Express 側の同名GETは、既存クライアント・管理画面・Next.jsフォールバック用として当面残す。ただし最終目標は Express 廃止のため、フォールバックも移行完了後に削除対象とする。
+注: ~~取り消し線~~ の `/api` は Next.js 側へ移行済み、または実装済みで本番確認待ち。Express 側の同名APIは、既存クライアント・管理画面・Next.jsフォールバック用として当面残す。ただし最終目標は Express 廃止のため、フォールバックも移行完了後に削除対象とする。
 
 ## 移行ステータス
 
@@ -56,6 +56,7 @@
 | クイズカテゴリ一覧 GET | `/next-api/quiz/categories` | `src/app/next-api/quiz/categories/route.ts`, `src/lib/server/quizCategories.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | Next.js側DB直接参照の1本目。`quiz_category` と `quiz` をMySQLから直接読み、`quiz_count` を集計する。DB取得に失敗した場合はExpressの `/api/quiz/categories` へフォールバックする |
 | クイズタグ一覧 GET | `/next-api/quiz/tags` | `src/app/next-api/quiz/tags/route.ts`, `src/lib/server/quizTags.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | `quiz_tag`, `quiz_tagging`, `quiz` をMySQLから直接読み、削除済みクイズを除いて `quiz_count` を集計する。DB取得に失敗した場合はExpressの `/api/quiz/tags` へフォールバックする |
 | タグ詳細 GET | `/next-api/quiz/tags/:tagId` | `src/app/next-api/quiz/tags/[tagId]/route.ts`, `src/lib/server/quizTagDetail.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | Bearer JWT の `role` が `editor` 以上の場合のみ、`quiz_tag` と `quiz_tagging` をMySQLから直接読み、削除前確認用の `quizCount` を返す。DB取得に失敗した場合はExpressの `/api/quiz/tags/:tagId` へ一時フォールバックする |
+| クイズ履歴 GET | `/next-api/quiz/history` | `src/app/next-api/quiz/history/route.ts`, `src/lib/server/quizHistory.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | Bearer JWT から `userId` を取り、`quiz_answers` をMySQLから直接読む。プロフィール画面の履歴取得はNext.js側へ切り替え済み。DB取得に失敗した場合はExpressの `/api/quiz/history` へ一時フォールバックする |
 | クイズ検索 GET | `/next-api/quiz/search` | `src/app/next-api/quiz/search/route.ts`, `src/lib/server/quizSearch.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | `q`, `categoryId`, `tagSlug`, `ids` を受け付ける。`quiz`, `quiz_category`, `quiz_tagging`, `quiz_tag` をMySQLから直接読み、DB取得に失敗した場合はExpressの `/api/quiz/search` へフォールバックする |
 | カテゴリ別タグ一覧 GET | `/next-api/quiz/category/:categoryId/tags` | `src/app/next-api/quiz/category/[categoryId]/tags/route.ts`, `src/lib/server/quizCategoryTags.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | `quiz_tag`, `quiz_tagging`, `quiz` をMySQLから直接読み、カテゴリ内の削除済みでないクイズに紐づくタグを返す。DB取得に失敗した場合はExpressの `/api/quiz/category/:categoryId/tags` へ一時フォールバックする |
 | カテゴリ別クイズ一覧 GET | `/next-api/quiz/category/:categoryId/quizzes` | `src/app/next-api/quiz/category/[categoryId]/quizzes/route.ts`, `src/lib/server/quizCategoryQuizzes.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | `q`, `tagSlug` を受け付ける。`quiz`, `quiz_category`, `quiz_tagging`, `quiz_tag` をMySQLから直接読み、カテゴリ内の削除済みでないクイズを返す。DB取得に失敗した場合はExpressの `/api/quiz/category/:categoryId/quizzes` へ一時フォールバックする |
@@ -68,6 +69,7 @@
 - `https://study.ntorelabo.com/next-api/quiz/categories` は 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。
 - `https://study.ntorelabo.com/next-api/quiz/tags` は 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。
 - `https://study.ntorelabo.com/next-api/quiz/tags/1` は Bearer JWT 付きで 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。
+- `https://study.ntorelabo.com/next-api/quiz/history` は Bearer JWT 付きで 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。
 - `https://study.ntorelabo.com/next-api/quiz/search?q=javascript` は 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。
 - `https://study.ntorelabo.com/next-api/quiz/category/1/tags` は 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。
 - `https://study.ntorelabo.com/next-api/quiz/category/1/quizzes` は 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。
@@ -79,7 +81,8 @@
 
 | 機能 | Next.js 側エンドポイント | 実装 | 状態 | 備考 |
 |---|---|---|---|---|
-| クイズ履歴 GET | `/next-api/quiz/history` | `src/app/next-api/quiz/history/route.ts`, `src/lib/server/quizHistory.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | ローカル実装済み / 本番未確認 | Bearer JWT から `userId` を取り、`quiz_answers` をMySQLから直接読む。プロフィール画面の履歴取得はNext.js側へ切り替え済み。DB取得に失敗した場合はExpressの `/api/quiz/history` へ一時フォールバックする。履歴追加POSTと同期POSTはExpressのまま |
+| クイズ履歴 追加POST | `/next-api/quiz/history` | `src/app/next-api/quiz/history/route.ts`, `src/lib/server/quizHistory.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | ローカル実装済み / 本番未確認 | Bearer JWT から `userId` を取り、`quiz_answers` に回答履歴を追加する。重複時はExpress同様に成功扱いで `message: already exists` を返す。DB書き込みに失敗した場合はExpressの `POST /api/quiz/history` へ一時フォールバックする |
+| クイズ履歴 同期POST | `/next-api/quiz/history/sync` | `src/app/next-api/quiz/history/sync/route.ts`, `src/lib/server/quizHistory.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | ローカル実装済み / 本番未確認 | Bearer JWT から `userId` を取り、localStorage由来の回答履歴を `quiz_answers` へ一括同期する。不正な1件や重複はExpress同様にスキップする。DB書き込みに失敗した場合はExpressの `POST /api/quiz/history/sync` へ一時フォールバックする |
 
 ### 部分移行
 
@@ -91,14 +94,14 @@
 | カテゴリ別タグ一覧 | `/next-api/quiz/category/:categoryId/tags` を追加し、カテゴリページのタグ取得をNext.js側へ切り替え | Express側GETは一時フォールバックとして残す | 次はフォールバックを外せる段階まで利用画面を確認する |
 | カテゴリ別クイズ一覧 | `/next-api/quiz/category/:categoryId/quizzes` を追加し、カテゴリページ・ランダム出題・トップページ件数・サイトマップ・管理画面一覧取得をNext.js側へ切り替え | Express側GETは一時フォールバックとして残す | 次はフォールバックを外せる段階まで利用画面を確認する |
 | クイズ詳細 | `/next-api/quiz/:quizId` を追加し、公開の個別クイズページ取得と管理画面の編集GETをNext.js側へ切り替え。本番稼働確認済み | 管理画面の作成/更新/削除とタグ編集PUTはExpressのまま | 次は更新系へ進む前に認証・権限仕様をNext.js側へ移す |
-| クイズ履歴 | `/next-api/quiz/history` を追加し、プロフィール画面の履歴取得GETをNext.js側へ切り替え | 本番確認前。履歴追加POSTとローカル履歴同期POSTはExpressのまま | 本番確認後、追加POSTまたは同期POSTを移す |
+| クイズ履歴 | `/next-api/quiz/history` を追加し、プロフィール画面の履歴取得GETをNext.js側へ切り替え。本番稼働確認済み。履歴追加POSTとローカル履歴同期POSTもNext.js側へ切り替え済み | POST系は本番確認前。Express側POSTは一時フォールバックとして残す | 本番確認後、POST系を移行済みに更新する |
 
 ### 未移行
 
 | 領域 | 状態 |
 |---|---|
 | クイズ公開API | カテゴリ一覧GET・タグ一覧GET・クイズ検索GET・カテゴリ別タグ一覧GET・カテゴリ別クイズ一覧GET・クイズ詳細GETはNext.js側で本番稼働済み。その他は Express の `/api/quiz/...` を利用中 |
-| クイズ履歴API | 履歴取得GETは実装済み・本番未確認。履歴追加POSTとローカル履歴同期POSTは Express の `/api/quiz/history...` を利用中 |
+| クイズ履歴API | 履歴取得GETはNext.js側で本番稼働済み。履歴追加POSTとローカル履歴同期POSTは実装済み・本番未確認 |
 | 認証API | Express の `/api/auth/...` を利用中 |
 | ユーザー管理API | Express の `/api/users...` を利用中 |
 | クイズ管理API | 一覧・カテゴリGET・タグGET・タグ詳細GET・編集GETはNext.js側へ切り替え済み。作成/更新/削除、CSVは Express の `/api/quiz...` を利用中 |
@@ -113,6 +116,26 @@
 - 本番確認は最低限、対象の `/next-api/...` が 200 OK を返すことと、対応する画面がそのAPIを呼んでいることを確認する。
 - Express フォールバックは移行中の安全装置。最終的に Express を廃止する段階では、Next.js 側のフォールバック呼び出しも削除する。
 - `/api/...` が Express 側で処理されているか確認したい場合は、レスポンスヘッダーの `X-Powered-By: Express` が参考になる。
+
+## 認証・権限マップ
+
+Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`, `requireRole(...)` を見ると権限が分かる。Next.js 側は `src/app/next-api/.../route.ts` 内で `verifyAuth()` / `requireRole()` を呼ぶ方式。
+
+| 領域 | Express 側の権限 | Next.js 移行時の扱い |
+|---|---|---|
+| 公開クイズGET | 認証なし | 認証なし |
+| `GET /api/quiz/tags/:tagId` | `authMiddleware` + `requireRole('editor')` | `/next-api/quiz/tags/:tagId` で `verifyAuth()` + `requireRole(user, 'editor')` |
+| `GET /api/quiz/history` | `authMiddleware` | `/next-api/quiz/history` で `verifyAuth()` |
+| `POST /api/quiz/history`, `/api/quiz/history/sync` | `authMiddleware` | `/next-api/quiz/history`, `/next-api/quiz/history/sync` で `verifyAuth()`。本番確認前 |
+| `POST /api/quiz/categories`, `PUT/DELETE /api/quiz/categories/:id` | `authMiddleware` + `requireRole('editor')` | 未移行。移行時は `verifyAuth()` + `requireRole(user, 'editor')` |
+| `POST /api/quiz/tags`, `PUT/DELETE /api/quiz/tags/:tagId` | `authMiddleware` + `requireRole('editor')` | 未移行。移行時は `verifyAuth()` + `requireRole(user, 'editor')` |
+| `PUT/DELETE /api/quiz/:quizId` | `authMiddleware` + `requireRole('editor')` | 未移行。移行時は `verifyAuth()` + `requireRole(user, 'editor')` |
+| `POST /api/quiz` | `authMiddleware` | 未移行。Express現状ではeditor制限なし。移行前にこのままでよいか要確認 |
+| `/api/quiz/csv/export`, `/api/quiz/csv/import` | `authMiddleware` | 未移行。Express現状ではeditor制限なし。移行前にこのままでよいか要確認 |
+| `/api/users` GET/PATCH/DELETE | `authMiddleware` + `adminMiddleware` | 未移行。移行時は `verifyAuth()` + admin確認 |
+| `/api/payment/...` | `authMiddleware` | 未移行。Stripe連携はraw bodyや外部API影響があるため後回し |
+
+注: `requireRole('editor')` は `editor` と `admin` を許可する。Expressの定義は `backend/src/middleware/requireRole.ts`、Next.jsの定義は `src/lib/server/auth.ts`。
 
 ## 当面の方針
 
@@ -148,7 +171,7 @@
   - `/api/quiz/:quizId`
 - 最初は Next.js 側の `/next-api/...` として並行実装し、画面単位で呼び出し先を切り替える。
 - DBアクセス方式は Express 側の実装に合わせて決める。TypeORM 前提で始めない。
-- 2026-08-09 時点で `/next-api/quiz/categories`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/search`, `/next-api/quiz/category/:id/tags`, `/next-api/quiz/category/:id/quizzes`, `/next-api/quiz/:quizId` は本番稼働済み。`/next-api/quiz/history` は実装済み・本番未確認。管理画面側のGET切り替えも一部完了。次は履歴POST系またはタグ更新系が候補。
+- 2026-08-09 時点で `/next-api/quiz/categories`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history` のGET, `/next-api/quiz/search`, `/next-api/quiz/category/:id/tags`, `/next-api/quiz/category/:id/quizzes`, `/next-api/quiz/:quizId` は本番稼働済み。`/next-api/quiz/history` のPOSTと `/next-api/quiz/history/sync` は実装済み・本番未確認。管理画面側のGET切り替えも一部完了。次は履歴POST系の本番確認またはタグ更新系が候補。
 
 ### Phase 2: 認証・ユーザー系APIの移行
 

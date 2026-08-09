@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import api from "@/lib/api";
+import { fetchNextApiJson } from "@/lib/nextApiClient";
 
 export interface QuizAnswer {
   quizId: number;
@@ -58,7 +58,11 @@ export async function syncLocalHistoryToServer(): Promise<void> {
   if (local.length === 0) return;
 
   try {
-    await api.post("/api/quiz/history/sync", { answers: local });
+    await fetchNextApiJson<{ synced: number }>("/next-api/quiz/history/sync", {
+      auth: true,
+      method: "POST",
+      body: { answers: local },
+    });
     // 同期が成功したらlocalStorageをクリア
     localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
@@ -101,8 +105,14 @@ export function useQuizHistory() {
       });
 
       if (isLoggedIn()) {
-        api
-          .post("/api/quiz/history", newAnswer)
+        fetchNextApiJson<{ id: number } | { message: "already exists" }>(
+          "/next-api/quiz/history",
+          {
+            auth: true,
+            method: "POST",
+            body: newAnswer,
+          },
+        )
           .catch((err) => console.error("Failed to save answer to server:", err));
       }
     },
