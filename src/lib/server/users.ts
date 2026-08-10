@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 import { getMysqlPool } from '@/lib/server/mysql';
@@ -46,6 +47,16 @@ export interface UserMutationResult {
   source: 'db' | 'express-fallback';
 }
 
+export interface RegisterUserResult {
+  body: {
+    user: Omit<AdminUser, 'role'>;
+    role: 'user';
+    emailVerified: false;
+  };
+  status: 201;
+  source: 'db' | 'express-fallback';
+}
+
 export class UserParamsError extends Error {
   constructor(message: string) {
     super(message);
@@ -65,6 +76,15 @@ export class UserNotFoundError extends Error {
     super('User not found');
     this.name = 'UserNotFoundError';
   }
+}
+
+function isDuplicateEntryError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'ER_DUP_ENTRY'
+  );
 }
 
 function parseUserId(userIdInput: string | number): number {
@@ -111,6 +131,28 @@ async function fetchUsersFromExpress(authorization: string | null): Promise<Admi
 
   const body = (await res.json()) as { users: AdminUser[] };
   return body.users;
+}
+
+async function registerUserFromExpress(payload: unknown): Promise<RegisterUserResult> {
+  const res = await fetch(`${API_BASE_URL}/api/users`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(`Express user registration fallback failed: ${res.status}`);
+  }
+
+  return {
+    body,
+    status: 201,
+    source: 'express-fallback',
+  };
 }
 
 async function requestUserMutationFromExpress(
@@ -212,6 +254,104 @@ function normalizeUserPayload(payload: unknown): {
   };
 }
 
+function normalizeRegisterPayload(payload: unknown): {
+  name?: string;
+  email?: string;
+  password?: string;
+} {
+  const body = payload as { name?: unknown; email?: unknown; password?: unknown };
+
+  return {
+    ...(typeof body.name === 'string' ? { name: body.name.trim() } : {}),
+    ...(typeof body.email === 'string' ? { email: body.email.trim() } : {}),
+    ...(typeof body.password === 'string' ? { password: body.password } : {}),
+  };
+}
+
+async function createUserInDb(payload: unknown): Promise<RegisterUserResult> {
+  const user = normalizeRegisterPayload(payload);
+
+  if (!user.name || !user.email || !user.password) {
+    throw new UserParamsError('Name, email, and password are required');
+  }
+
+  const [existingRows] = await getMysqlPool().query<IdRow[]>(
+    `
+      SELECT id
+      FROM \`user\`
+      WHERE email = ?
+      LIMIT 1
+    `,
+    [user.email],
+  );
+
+  if (existingRows.length > 0) {
+    throw new UserConflictError();
+  }
+
+  const hashedPassword = await bcrypt.hash(user.password, 10);
+  const connection = await getMysqlPool().getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [insertResult] = await connection.query<ResultSetHeader>(
+      `
+        INSERT INTO \`user\`
+          (name, email, password, emailVerified, createdAt, updatedAt)
+        VALUES (?, ?, ?, FALSE, NOW(), NOW())
+      `,
+      [user.name, user.email, hashedPassword],
+    );
+
+    const userId = Number(insertResult.insertId);
+
+    await connection.query(
+      `
+        INSERT INTO user_meta
+          (userId, metaKey, metaValue, createdAt, updatedAt)
+        VALUES (?, 'role', 'user', NOW(), NOW())
+      `,
+      [userId],
+    );
+
+    await connection.commit();
+
+    const createdUser = await getUserFromDb(userId);
+
+    return {
+      body: {
+        user: {
+          id: createdUser.id,
+          name: createdUser.name,
+          email: createdUser.email,
+          ...(createdUser.googleId ? { googleId: createdUser.googleId } : {}),
+          emailVerified: createdUser.emailVerified,
+          ...(createdUser.stripeCustomerId
+            ? { stripeCustomerId: createdUser.stripeCustomerId }
+            : {}),
+          createdAt: createdUser.createdAt,
+          updatedAt: createdUser.updatedAt,
+        },
+        role: 'user',
+        emailVerified: false,
+      },
+      status: 201,
+      source: 'db',
+    };
+  } catch (error) {
+    await connection.rollback();
+
+    if (isDuplicateEntryError(error)) {
+      throw new UserConflictError();
+    }
+
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 async function updateUserInDb(
   userId: number,
   payload: unknown,
@@ -294,6 +434,19 @@ async function deleteUserFromDb(userId: number, currentUserId: number): Promise<
     status: 200,
     source: 'db',
   };
+}
+
+export async function registerUser(payload: unknown): Promise<RegisterUserResult> {
+  try {
+    return await createUserInDb(payload);
+  } catch (error) {
+    if (error instanceof UserParamsError || error instanceof UserConflictError) {
+      throw error;
+    }
+
+    console.error('Failed to register user in DB. Falling back to Express.', error);
+    return registerUserFromExpress(payload);
+  }
 }
 
 export async function getAdminUsers(authorization: string | null): Promise<UsersListResult> {

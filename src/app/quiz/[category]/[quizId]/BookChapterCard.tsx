@@ -12,15 +12,20 @@ import type { RelatedChapterLink } from '@/lib/quiz-book-links';
  */
 export default function BookChapterCard({
   link,
+  className,
 }: {
   link: Omit<RelatedChapterLink, 'matched'>;
+  className?: string;
 }) {
   const theme = getBookTheme(link.bookSlug);
 
   return (
     <Link
       href={link.href}
-      className="group mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3.5 no-underline shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md sm:p-4"
+      className={cn(
+        'group mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3.5 no-underline shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md sm:p-4',
+        className,
+      )}
     >
       <span
         className={cn(

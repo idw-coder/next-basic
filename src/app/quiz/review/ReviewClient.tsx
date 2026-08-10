@@ -17,6 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { saveQuizQueueSession } from '@/lib/quizQueueSession';
 import { useQuizHistory, type QuizAnswer } from '@/hooks/useQuizHistory';
 import {
   clearRandomSession,
@@ -163,6 +164,18 @@ export default function ReviewClient({ isCompleted }: { isCompleted: boolean }) 
   };
 
   const totalWrong = quizzes?.length ?? 0;
+  const saveReviewQueue = () => {
+    saveQuizQueueSession({
+      source: 'review',
+      label: '復習リスト',
+      returnHref: '/quiz/review',
+      items: (quizzes ?? []).map((quiz) => ({
+        id: quiz.id,
+        categorySlug: quiz.categorySlug,
+        question: quiz.question,
+      })),
+    });
+  };
 
   return (
     <>
@@ -352,6 +365,7 @@ export default function ReviewClient({ isCompleted }: { isCompleted: boolean }) 
                     <Link
                       key={quiz.id}
                       href={`/quiz/${quiz.categorySlug}/${quiz.id}`}
+                      onClick={saveReviewQueue}
                       className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-rose-50/50 dark:hover:bg-rose-500/5"
                     >
                       <span

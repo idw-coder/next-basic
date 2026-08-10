@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { clearQuizQueueSession } from "@/lib/quizQueueSession";
 
 interface HeaderSearchBook {
   bookSlug: string;
@@ -207,6 +208,9 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
 
   const navigateTo = useCallback(
     (href: string) => {
+      if (/^\/quiz\/[^/]+\/\d+$/.test(href)) {
+        clearQuizQueueSession();
+      }
       router.push(href);
       closeSearch();
     },
@@ -334,7 +338,12 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
         key={candidate.key}
         href={candidate.href}
         data-active={active}
-        onClick={closeSearch}
+        onClick={() => {
+          if (candidate.group === "quiz") {
+            clearQuizQueueSession();
+          }
+          closeSearch();
+        }}
         onMouseMove={() => setActiveIndex(index)}
         className={cn(
           "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",

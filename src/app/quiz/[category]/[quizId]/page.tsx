@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getCategoryTheme } from '@/lib/categoryTheme';
 import { getQuizDetail } from '@/lib/server/quizDetail';
+import { getQuizCategoryQuizzes, type QuizCategoryQuiz } from '@/lib/server/quizCategoryQuizzes';
 import { extractBookChapterLinks } from '@/lib/quiz-book-links';
+import { getBookForCategory, getChaptersByBook } from '@/lib/books';
+import { getCategorySeoContent } from '../categoryContent';
 import QuizInteraction from './QuizInteraction';
 
 interface Choice {
@@ -30,6 +33,23 @@ interface QuizDetail {
   tags?: QuizTag[];
 }
 
+interface RelatedQuizSummary {
+  id: number;
+  question: string;
+  tags: QuizTag[];
+}
+
+interface RelatedTagQuizGroup {
+  tag: QuizTag;
+  quizzes: RelatedQuizSummary[];
+}
+
+interface RelatedBookSummary {
+  href: string;
+  title: string;
+  chapterCount: number;
+}
+
 async function getQuiz(quizId: string): Promise<QuizDetail | null> {
   try {
     const { quiz } = await getQuizDetail(quizId);
@@ -38,6 +58,56 @@ async function getQuiz(quizId: string): Promise<QuizDetail | null> {
     console.error('Failed to fetch quiz:', error);
     return null;
   }
+}
+
+async function getCategoryQuizzes(categoryId: number): Promise<QuizCategoryQuiz[]> {
+  try {
+    const { quizzes } = await getQuizCategoryQuizzes(categoryId);
+    return quizzes;
+  } catch (error) {
+    console.error('Failed to fetch category quizzes:', error);
+    return [];
+  }
+}
+
+function toRelatedQuizSummary(quiz: QuizCategoryQuiz): RelatedQuizSummary {
+  return {
+    id: quiz.id,
+    question: quiz.question,
+    tags: quiz.tags,
+  };
+}
+
+function buildFollowupData(quiz: QuizDetail, categoryQuizzes: QuizCategoryQuiz[]) {
+  const otherQuizzes = categoryQuizzes.filter((q) => q.id !== quiz.id);
+  const usedQuizIds = new Set<number>();
+
+  const relatedTagGroups: RelatedTagQuizGroup[] = [];
+  for (const tag of quiz.tags ?? []) {
+    const quizzes = otherQuizzes
+      .filter((candidate) => candidate.tags.some((candidateTag) => candidateTag.slug === tag.slug))
+      .filter((candidate) => !usedQuizIds.has(candidate.id))
+      .slice(0, 2);
+
+    if (quizzes.length === 0) continue;
+    quizzes.forEach((candidate) => usedQuizIds.add(candidate.id));
+    relatedTagGroups.push({
+      tag,
+      quizzes: quizzes.map(toRelatedQuizSummary),
+    });
+
+    if (relatedTagGroups.length >= 3) break;
+  }
+
+  const sameCategoryQuizzes = otherQuizzes
+    .filter((candidate) => !usedQuizIds.has(candidate.id))
+    .slice(0, 3)
+    .map(toRelatedQuizSummary);
+
+  return {
+    relatedTagGroups,
+    sameCategoryQuizzes,
+  };
 }
 
 // Vue管理画面 リッチテキストエディタ
@@ -133,6 +203,18 @@ export default async function QuizDetailPage({
     );
   }
 
+  const [categoryQuizzes] = await Promise.all([getCategoryQuizzes(quiz.category_id)]);
+  const followupData = buildFollowupData(quiz, categoryQuizzes);
+  const seoContent = getCategorySeoContent(category);
+  const relatedBook = getBookForCategory(category);
+  const relatedBookSummary: RelatedBookSummary | null = relatedBook
+    ? {
+        href: `/books/${relatedBook.bookSlug}`,
+        title: relatedBook.title,
+        chapterCount: getChaptersByBook(relatedBook.bookSlug).length,
+      }
+    : null;
+
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4 py-8 md:py-12">
       <div className="mb-4 sm:mb-6">
@@ -178,6 +260,10 @@ export default async function QuizDetailPage({
             relatedChapters={
               quiz.explanation ? extractBookChapterLinks(quiz.explanation) : []
             }
+            relatedTagGroups={followupData.relatedTagGroups}
+            sameCategoryQuizzes={followupData.sameCategoryQuizzes}
+            relatedCategories={seoContent?.relatedCategories.slice(0, 3) ?? []}
+            relatedBook={relatedBookSummary}
           />
 
           {/*

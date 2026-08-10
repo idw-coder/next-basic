@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import api from "@/lib/api";
+import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { Separator } from "@/components/ui/separator";
 
 interface RegisterForm {
@@ -29,10 +30,13 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     try {
       setErrorMsg("");
-      await api.post("/api/users", {
-        name: data.name,
-        email: data.email,
-        password: data.password,
+      await fetchNextApiJson("/next-api/users", {
+        method: "POST",
+        body: {
+          name: data.name,
+          email: data.email,
+          password: data.password,
+        },
       });
 
       const loginRes = await api.post("/api/auth/login", {

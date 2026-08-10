@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
 import { useQuizBookmarks } from '@/hooks/useQuizBookmarks';
+import { saveQuizQueueSession, type QuizQueueItem } from '@/lib/quizQueueSession';
 import type { Quiz, Tag } from './page';
 import type { SectionTagConfig, SectionBookLink } from './sectionTagMap';
 
@@ -83,6 +84,7 @@ function QuizCard({
   getLatestAnswer,
   isBookmarked,
   hiddenTagSlugs = EMPTY_TAG_SLUGS,
+  onOpen,
 }: {
   quiz: Quiz;
   index: number;
@@ -90,6 +92,7 @@ function QuizCard({
   getLatestAnswer: (quizId: number) => { isCorrect: boolean } | null;
   isBookmarked?: boolean;
   hiddenTagSlugs?: Set<string>;
+  onOpen?: () => void;
 }) {
   const latestAnswer = getLatestAnswer(quiz.id);
   const visibleTags = quiz.tags.filter((tag) => !hiddenTagSlugs.has(tag.slug));
@@ -99,6 +102,7 @@ function QuizCard({
   return (
     <Link
       href={`/quiz/${categorySlug}/${quiz.id}`}
+      onClick={onOpen}
       className="flex items-center gap-3 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:border-blue-500/30 hover:bg-blue-400/5"
     >
       <span
@@ -160,11 +164,13 @@ function SectionGroup({
   categorySlug,
   getLatestAnswer,
   isBookmarked,
+  onOpen,
 }: {
   section: QuizSection;
   categorySlug: string;
   getLatestAnswer: (quizId: number) => { isCorrect: boolean } | null;
   isBookmarked: (quizId: number) => boolean;
+  onOpen: (items: Quiz[]) => void;
 }) {
   return (
     <div>
@@ -184,6 +190,7 @@ function SectionGroup({
             getLatestAnswer={getLatestAnswer}
             isBookmarked={isBookmarked(quiz.id)}
             hiddenTagSlugs={section.tagSlugs}
+            onOpen={() => onOpen(section.quizzes)}
           />
         ))}
       </div>
@@ -222,6 +229,30 @@ export default function QuizListClient({
   const { isBookmarked } = useQuizBookmarks();
 
   const [inputValue, setInputValue] = useState(currentQuery);
+
+  const selectedTagName = tags.find((tag) => tag.slug === currentTagSlug)?.name;
+  const queueLabel = selectedTagName
+    ? `${selectedTagName}の問題`
+    : currentQuery
+      ? `「${currentQuery}」の検索結果`
+      : 'このカテゴリの問題';
+  const returnParams = new URLSearchParams();
+  if (currentQuery) returnParams.set('q', currentQuery);
+  if (currentTagSlug) returnParams.set('tagSlug', currentTagSlug);
+  const returnHref = `/quiz/${categorySlug}${returnParams.size ? `?${returnParams.toString()}` : ''}`;
+  const saveCategoryQueue = (quizzes: Quiz[]) => {
+    const items: QuizQueueItem[] = quizzes.map((quiz) => ({
+      id: quiz.id,
+      categorySlug,
+      question: quiz.question,
+    }));
+    saveQuizQueueSession({
+      source: 'category',
+      label: queueLabel,
+      returnHref,
+      items,
+    });
+  };
 
   const stats = getCategoryStats(categoryId);
 
@@ -346,6 +377,7 @@ export default function QuizListClient({
                   categorySlug={categorySlug}
                   getLatestAnswer={getLatestAnswer}
                   isBookmarked={isBookmarked}
+                  onOpen={saveCategoryQueue}
                 />
               ))}
             </div>
@@ -358,6 +390,7 @@ export default function QuizListClient({
                 categorySlug={categorySlug}
                 getLatestAnswer={getLatestAnswer}
                 isBookmarked={isBookmarked(quiz.id)}
+                onOpen={() => saveCategoryQueue(initialQuizzes)}
               />
             ))
           )

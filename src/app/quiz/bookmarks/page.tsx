@@ -5,6 +5,7 @@ import { useQuizHistory } from '@/hooks/useQuizHistory';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { saveQuizQueueSession } from '@/lib/quizQueueSession';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -35,6 +36,18 @@ export default function BookmarksPage() {
   const correctCount = bookmarks.filter(
     (bm) => getLatestAnswer(bm.quizId)?.isCorrect,
   ).length;
+  const saveBookmarkQueue = (items: typeof bookmarks) => {
+    saveQuizQueueSession({
+      source: 'bookmarks',
+      label: 'ブックマーク',
+      returnHref: '/quiz/bookmarks',
+      items: items.map((bm) => ({
+        id: bm.quizId,
+        categorySlug: bm.categorySlug,
+        question: bm.question,
+      })),
+    });
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
@@ -190,6 +203,7 @@ export default function BookmarksPage() {
                       </span>
                       <Link
                         href={`/quiz/${bm.categorySlug}/${bm.quizId}`}
+                        onClick={() => saveBookmarkQueue(group.quizzes)}
                         className="flex items-center gap-3 min-w-0 flex-1"
                       >
                         <p className="text-foreground text-sm leading-snug line-clamp-2 whitespace-pre-line min-w-0 flex-1">

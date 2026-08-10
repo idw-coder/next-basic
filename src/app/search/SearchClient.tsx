@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
+import { saveQuizQueueSession } from '@/lib/quizQueueSession';
 import type { SearchQuiz } from './page';
 import type { SearchBookResult } from '@/lib/searchBooks';
 
@@ -187,6 +188,22 @@ export default function SearchClient({
     contentFilter === 'quiz' ? [] : initialBookResults;
   const visibleQuizResults =
     contentFilter === 'book' ? [] : filteredQuizResults;
+  const selectedCategoryName = categories.find((category) => category.slug === filterCategory)?.category_name;
+
+  const saveSearchQueue = () => {
+    saveQuizQueueSession({
+      source: 'search',
+      label: selectedCategoryName
+        ? `「${currentQuery}」の${selectedCategoryName}検索`
+        : `「${currentQuery}」の検索結果`,
+      returnHref: `/search?q=${encodeURIComponent(currentQuery)}`,
+      items: visibleQuizResults.map((quiz) => ({
+        id: quiz.id,
+        categorySlug: quiz.categorySlug,
+        question: quiz.question,
+      })),
+    });
+  };
 
   const totalCount = initialQuizResults.length + initialBookResults.length;
   const visibleCount = visibleBookResults.length + visibleQuizResults.length;
@@ -416,6 +433,7 @@ export default function SearchClient({
                     <Link
                       key={`${quiz.categorySlug}-${quiz.id}`}
                       href={`/quiz/${quiz.categorySlug}/${quiz.id}`}
+                      onClick={saveSearchQueue}
                       className="block group"
                     >
                       <Card className="transition-colors hover:border-primary/40 hover:bg-primary/5 py-0">
