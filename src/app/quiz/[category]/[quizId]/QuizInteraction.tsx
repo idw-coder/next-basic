@@ -13,7 +13,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
-import api from '@/lib/api';
 import { fetchNextApiJson } from '@/lib/nextApiClient';
 import {
   clearRandomSession,
@@ -209,8 +208,12 @@ export default function QuizInteraction({
     setTagSaving(true);
     setTagError(null);
     try {
-      const res = await api.put(`/api/quiz/${quiz.id}`, { tags: selectedTagSlugs });
-      const tags = (res.data.tags ?? []) as QuizTag[];
+      const res = await fetchNextApiJson<QuizDetail>(`/next-api/quiz/${quiz.id}`, {
+        auth: true,
+        method: 'PUT',
+        body: { tags: selectedTagSlugs },
+      });
+      const tags = res.tags ?? [];
       setCurrentTags(tags);
       setSelectedTagSlugs(tags.map((tag) => tag.slug));
       setTagSheetOpen(false);

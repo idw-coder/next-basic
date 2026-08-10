@@ -59,6 +59,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-sky-700',
     iconName: 'Server',
   },
+  fastify: {
+    cardBg: 'bg-zinc-50',
+    iconBg: 'bg-yellow-100',
+    iconText: 'text-zinc-900',
+    accent: 'text-yellow-700',
+    accentHover: 'group-hover:text-yellow-800',
+    accentBg: 'bg-yellow-500',
+    badgeBg: 'bg-yellow-50',
+    badgeText: 'text-yellow-800',
+    iconName: 'Server',
+  },
   docker: {
     cardBg: 'bg-sky-50',
     iconBg: 'bg-sky-100',

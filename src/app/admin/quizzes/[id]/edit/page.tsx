@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import api from '@/lib/api';
 import { fetchNextApiJson } from '@/lib/nextApiClient';
 import { ArrowLeft, Copy, ExternalLink, FileOutput, Import, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -284,11 +283,19 @@ export default function QuizEditPage() {
         tags: selectedTags,
       };
       if (isNew) {
-        const res = await api.post('/api/quiz', payload);
-        quizId.current = res.data.id;
-        router.replace(`/admin/quizzes/${res.data.id}/edit`);
+        const quiz = await fetchNextApiJson<QuizForm & { id: number }>('/next-api/quiz', {
+          auth: true,
+          method: 'POST',
+          body: payload,
+        });
+        quizId.current = quiz.id;
+        router.replace(`/admin/quizzes/${quiz.id}/edit`);
       } else {
-        await api.put(`/api/quiz/${quizId.current}`, payload);
+        await fetchNextApiJson<QuizForm>(`/next-api/quiz/${quizId.current}`, {
+          auth: true,
+          method: 'PUT',
+          body: payload,
+        });
       }
       showToast('保存しました');
     } catch (e: unknown) {

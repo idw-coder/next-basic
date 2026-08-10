@@ -208,7 +208,10 @@ export default function QuizListPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("削除しますか？")) return;
-    await api.delete(`/api/quiz/${id}`);
+    await fetchNextApiJson<{ message: string }>(`/next-api/quiz/${id}`, {
+      auth: true,
+      method: "DELETE",
+    });
     setQuizzes((prev) => prev.filter((q) => q.id !== id));
   };
 
