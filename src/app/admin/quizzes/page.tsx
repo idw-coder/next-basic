@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
-import api from "@/lib/api";
 import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,10 +57,7 @@ export default function QuizListPage() {
   const rawFileRef = useRef<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const sampleCsvUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL
-      ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/quiz/csv/sample`
-      : "http://localhost:8888/api/quiz/csv/sample";
+  const sampleCsvUrl = "/next-api/quiz/csv/sample";
 
   const fetchAllQuizzes = useCallback(async (cats?: QuizCategory[]) => {
     setLoading(true);
@@ -157,20 +153,39 @@ export default function QuizListPage() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const params = selectedCategoryId
-        ? { category_id: selectedCategoryId }
-        : {};
-      const res = await api.get("/api/quiz/csv/export", {
-        params,
-        responseType: "blob",
-      });
-      const blob = new Blob([res.data], {
-        type: "text/csv;charset=utf-8;",
-      });
-      const url = URL.createObjectURL(blob);
+      const params = new URLSearchParams();
+      if (selectedCategoryId) {
+        params.set("category_id", String(selectedCategoryId));
+      }
+
+      const headers = new Headers();
+      const token = localStorage.getItem("token");
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+
+      const res = await fetch(
+        `/next-api/quiz/csv/export${params.size ? `?${params.toString()}` : ""}`,
+        {
+          cache: "no-store",
+          headers,
+        },
+      );
+      if (!res.ok) {
+        throw new Error("CSV出力に失敗しました");
+      }
+
+      const blob = await res.blob();
+      const contentDisposition = res.headers.get("Content-Disposition");
+      const filename = contentDisposition?.match(/filename="([^"]+)"/)?.[1];
+      const url = URL.createObjectURL(
+        new Blob([blob], {
+          type: "text/csv;charset=utf-8;",
+        }),
+      );
       const a = document.createElement("a");
       a.href = url;
-      a.download = `quizzes_${Date.now()}.csv`;
+      a.download = filename ?? `quizzes_${Date.now()}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -185,8 +200,18 @@ export default function QuizListPage() {
     setImportError(null);
     try {
       const csvText = await rawFileRef.current.text();
-      const res = await api.post("/api/quiz/csv/import", { csv: csvText });
-      setImportResult(res.data);
+      const result = await fetchNextApiJson<{
+        created_count: number;
+        updated_count: number;
+        error_count: number;
+        created_tags: string[];
+        errors: string[];
+      }>("/next-api/quiz/csv/import", {
+        auth: true,
+        method: "POST",
+        body: { csv: csvText },
+      });
+      setImportResult(result);
       await Promise.all([fetchAllQuizzes(), fetchAllTags()]);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response
