@@ -23,6 +23,7 @@ import {
 import {
   clearQuizQueueSession,
   getQuizQueueSession,
+  saveQuizQueueSession,
   type QuizQueueSession,
 } from '@/lib/quizQueueSession';
 import { cn } from '@/lib/utils';
@@ -248,6 +249,13 @@ export default function QuizInteraction({
       };
       saveRandomSession(updated);
       setRandomSession(updated);
+    } else if (quizQueue) {
+      const updated: QuizQueueSession = {
+        ...quizQueue,
+        answeredIds: Array.from(new Set([...quizQueue.answeredIds, quiz.id])),
+      };
+      saveQuizQueueSession(updated);
+      setQuizQueue(updated);
     }
   };
 
@@ -411,6 +419,10 @@ export default function QuizInteraction({
     const queueIndex = quizQueue?.items.findIndex((item) => item.id === quiz.id) ?? -1;
     const hasQueue = Boolean(quizQueue && queueIndex >= 0);
     const nextQueueItem = hasQueue ? quizQueue?.items[queueIndex + 1] : undefined;
+    const answeredQueueIds = new Set(quizQueue?.answeredIds ?? []);
+    const hasCompletedQueue = Boolean(
+      hasQueue && quizQueue && quizQueue.items.every((item) => answeredQueueIds.has(item.id)),
+    );
     const hasTagQuizzes = relatedTagGroups.some((group) => group.quizzes.length > 0);
     const hasLearningLinks = relatedChapters.length > 0 || relatedBook;
     const hasLowerSections =
@@ -421,33 +433,37 @@ export default function QuizInteraction({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-bold text-muted-foreground">次の学習</p>
-            <h2 className="mt-1 text-base font-extrabold leading-snug text-foreground sm:text-lg">
+            <h2 className="mt-1 break-words text-base font-extrabold leading-snug text-foreground sm:text-lg">
               {hasQueue ? `${quizQueue?.label}を続ける` : '関連する問題を探す'}
             </h2>
             {hasQueue && quizQueue && (
               <p className="mt-1 text-xs text-muted-foreground">
-                {queueIndex + 1} / {quizQueue.items.length} 問
-                {nextQueueItem ? `　次: ${nextQueueItem.question}` : '　この一覧は完了です'}
+                {queueIndex + 1} / {quizQueue.items.length} 問目
+                {nextQueueItem
+                  ? `　次: ${nextQueueItem.question}`
+                  : hasCompletedQueue
+                    ? '　この一覧を完了しました'
+                    : '　この一覧の最後の問題です'}
               </p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:min-w-72">
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:min-w-72">
             {hasQueue && nextQueueItem ? (
-              <Button asChild size="lg" className="h-11">
+              <Button asChild size="lg" className="h-11 w-full min-w-0">
                 <Link href={`/quiz/${nextQueueItem.categorySlug}/${nextQueueItem.id}`}>
                   次の問題
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
             ) : hasQueue && quizQueue ? (
-              <Button asChild size="lg" className="h-11">
+              <Button asChild size="lg" className="h-11 w-full min-w-0">
                 <Link href={quizQueue.returnHref}>
                   一覧に戻る
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
             ) : (
-              <Button asChild size="lg" className="h-11">
+              <Button asChild size="lg" className="h-11 w-full min-w-0">
                 <Link href={`/quiz/${categorySlug}`}>
                   同じカテゴリを見る
                   <ArrowRight className="size-4" />
@@ -458,7 +474,7 @@ export default function QuizInteraction({
               type="button"
               variant="outline"
               size="lg"
-              className="h-11"
+              className="h-11 w-full min-w-0"
               disabled={quickStartLoading !== null}
               onClick={() => handleQuickRandomStart()}
             >
@@ -493,10 +509,10 @@ export default function QuizInteraction({
                 <div className="space-y-3">
                   {relatedTagGroups.map((group) => (
                     <div key={group.tag.slug} className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Link
                           href={`/quiz/${categorySlug}?tagSlug=${group.tag.slug}`}
-                          className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary hover:text-primary-foreground"
+                          className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary hover:text-primary-foreground"
                         >
                           <span className="truncate">{group.tag.name}</span>
                           <ChevronRight className="size-3" />
@@ -505,7 +521,7 @@ export default function QuizInteraction({
                           type="button"
                           onClick={() => handleQuickRandomStart(group.tag.slug)}
                           disabled={quickStartLoading !== null}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-muted-foreground transition-colors hover:bg-white hover:text-foreground disabled:opacity-60"
+                          className="inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-muted-foreground transition-colors hover:bg-white hover:text-foreground disabled:opacity-60 sm:ml-auto sm:w-auto"
                         >
                           {quickStartLoading === group.tag.slug ? (
                             <Loader2 className="size-3.5 animate-spin" />
@@ -695,6 +711,7 @@ export default function QuizInteraction({
         </div>
       )}
 
+      <div className="min-w-0 rounded-xl border border-black/10 bg-white/95 p-3 shadow-sm sm:p-5 dark:border-white/10 dark:bg-white/[0.96]">
       {/* ブックマークボタン */}
       <div className="flex justify-end">
         <button
@@ -823,10 +840,13 @@ export default function QuizInteraction({
             </div>
           )}
 
-          {/* ナビゲーション: ランダムモード or 通常モード */}
-          {randomSession ? renderAnsweredNavigation('bottom') : renderNormalFollowupNavigation()}
+          {/* ランダムモードの進行ボタン */}
+          {randomSession ? renderAnsweredNavigation('bottom') : null}
         </div>
       )}
+      </div>
+
+      {!randomSession && isAnswered && renderNormalFollowupNavigation()}
 
       <Sheet open={tagSheetOpen} onOpenChange={setTagSheetOpen}>
         <SheetContent className="w-[92vw] sm:max-w-lg" onOpenAutoFocus={(e) => e.preventDefault()}>

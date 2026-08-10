@@ -239,7 +239,7 @@ export default async function QuizDetailPage({
           <span className="size-2 rounded-full bg-white/70" />
         </span>
 
-        <CardHeader className="gap-3 sm:gap-4 px-3 sm:px-6">
+        <CardHeader className="gap-3 bg-white/95 px-3 py-4 sm:gap-4 sm:px-6 sm:py-6 dark:bg-white/[0.96]">
           <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${theme.badgeClass}`}

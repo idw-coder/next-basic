@@ -13,6 +13,7 @@ export interface QuizQueueSession {
   label: string;
   returnHref: string;
   items: QuizQueueItem[];
+  answeredIds: number[];
   createdAt: number;
 }
 
@@ -33,13 +34,21 @@ export function getQuizQueueSession(): QuizQueueSession | null {
     }
 
     if (!Array.isArray(session.items) || session.items.length === 0) return null;
-    return session;
+    return {
+      ...session,
+      answeredIds: Array.isArray(session.answeredIds) ? session.answeredIds : [],
+    };
   } catch {
     return null;
   }
 }
 
-export function saveQuizQueueSession(session: Omit<QuizQueueSession, 'createdAt'>): void {
+export function saveQuizQueueSession(
+  session: Omit<QuizQueueSession, 'createdAt' | 'answeredIds'> & {
+    answeredIds?: number[];
+    createdAt?: number;
+  },
+): void {
   if (typeof window === 'undefined') return;
 
   clearRandomSession();
@@ -47,6 +56,7 @@ export function saveQuizQueueSession(session: Omit<QuizQueueSession, 'createdAt'
     SESSION_KEY,
     JSON.stringify({
       ...session,
+      answeredIds: session.answeredIds ?? [],
       createdAt: Date.now(),
     }),
   );
