@@ -7,6 +7,11 @@ interface QuizLinkProps {
   title: string;
   description?: string;
   imageSrc?: string;
+  /**
+   * 章ページが注入する流入元（`book:<bookSlug>/<chapterSlug>`）。
+   * クイズ側で「教科書に戻る」を出すために URL で引き継ぐ。MDX 側の記述は変更不要。
+   */
+  fromChapter?: string;
 }
 
 export default function QuizLink({
@@ -14,10 +19,15 @@ export default function QuizLink({
   title,
   description,
   imageSrc = '/images/phone_check.png',
+  fromChapter,
 }: QuizLinkProps) {
+  const targetHref = fromChapter
+    ? `${href}${href.includes('?') ? '&' : '?'}from=${encodeURIComponent(fromChapter)}`
+    : href;
+
   return (
     <Link
-      href={href}
+      href={targetHref}
       className="group relative my-6 flex items-center gap-3 overflow-hidden rounded-lg border border-sky-300 bg-sky-600 px-4 py-4 no-underline shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md sm:px-5 sm:py-4"
     >
       <span className="absolute inset-0 bg-gradient-to-r from-sky-700/95 via-cyan-600/88 to-blue-500/74" />

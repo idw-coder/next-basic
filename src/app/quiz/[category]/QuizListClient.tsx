@@ -22,6 +22,8 @@ interface QuizListClientProps {
   currentQuery?: string;
   currentTagSlug?: string;
   sectionTags?: SectionTagConfig[];
+  /** 教科書などの流入元。各問題のリンクに引き継いで解答後の戻り導線に使う */
+  originParam?: string;
 }
 
 interface QuizSection {
@@ -85,6 +87,7 @@ function QuizCard({
   isBookmarked,
   hiddenTagSlugs = EMPTY_TAG_SLUGS,
   onOpen,
+  originParam,
 }: {
   quiz: Quiz;
   index: number;
@@ -93,6 +96,7 @@ function QuizCard({
   isBookmarked?: boolean;
   hiddenTagSlugs?: Set<string>;
   onOpen?: () => void;
+  originParam?: string;
 }) {
   const latestAnswer = getLatestAnswer(quiz.id);
   const visibleTags = quiz.tags.filter((tag) => !hiddenTagSlugs.has(tag.slug));
@@ -101,7 +105,7 @@ function QuizCard({
     Date.now() - new Date(quiz.createdAt).getTime() < 14 * 24 * 60 * 60 * 1000;
   return (
     <Link
-      href={`/quiz/${categorySlug}/${quiz.id}`}
+      href={`/quiz/${categorySlug}/${quiz.id}${originParam ? `?from=${encodeURIComponent(originParam)}` : ''}`}
       onClick={onOpen}
       className="flex items-center gap-3 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:border-blue-500/30 hover:bg-blue-400/5"
     >
@@ -165,12 +169,14 @@ function SectionGroup({
   getLatestAnswer,
   isBookmarked,
   onOpen,
+  originParam,
 }: {
   section: QuizSection;
   categorySlug: string;
   getLatestAnswer: (quizId: number) => { isCorrect: boolean } | null;
   isBookmarked: (quizId: number) => boolean;
   onOpen: (items: Quiz[]) => void;
+  originParam?: string;
 }) {
   return (
     <div>
@@ -191,6 +197,7 @@ function SectionGroup({
             isBookmarked={isBookmarked(quiz.id)}
             hiddenTagSlugs={section.tagSlugs}
             onOpen={() => onOpen(section.quizzes)}
+            originParam={originParam}
           />
         ))}
       </div>
@@ -220,6 +227,7 @@ export default function QuizListClient({
   currentQuery = '',
   currentTagSlug = '',
   sectionTags = [],
+  originParam,
 }: QuizListClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -378,6 +386,7 @@ export default function QuizListClient({
                   getLatestAnswer={getLatestAnswer}
                   isBookmarked={isBookmarked}
                   onOpen={saveCategoryQueue}
+                  originParam={originParam}
                 />
               ))}
             </div>
@@ -391,6 +400,7 @@ export default function QuizListClient({
                 getLatestAnswer={getLatestAnswer}
                 isBookmarked={isBookmarked(quiz.id)}
                 onOpen={() => saveCategoryQueue(initialQuizzes)}
+                originParam={originParam}
               />
             ))
           )

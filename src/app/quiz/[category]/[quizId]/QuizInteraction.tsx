@@ -21,24 +21,27 @@ import {
   type RandomQuizSession,
 } from '@/lib/randomQuizSession';
 import {
-  clearQuizQueueSession,
+  getQuizQueueProgress,
   getQuizQueueSession,
+  getReturnLabel,
+  isReplayQueue,
   saveQuizQueueSession,
   type QuizQueueSession,
 } from '@/lib/quizQueueSession';
+import type { QuizOrigin } from '@/lib/quizOrigin';
 import { cn } from '@/lib/utils';
 import type { RelatedChapterLink } from '@/lib/quiz-book-links';
 import {
-  ArrowLeft,
   ArrowRight,
   Bookmark,
   BookOpen,
   Check,
+  ChevronDown,
   ChevronRight,
   Layers3,
+  Lightbulb,
   Loader2,
   Pencil,
-  Play,
   Plus,
   Shuffle,
   Tags,
@@ -97,6 +100,20 @@ interface RelatedBookSummary {
   chapterCount: number;
 }
 
+/**
+ * 「学習を広げる」のグリッド。
+ *
+ * グリッド項目は min-width:auto が既定のため、長い問題文や教科書名がトラックを
+ * コンテナ幅より広げてしまう。祖先の overflow-x-hidden により横スクロールにはならず
+ * 黙って右端が見切れるので、項目に min-w-0 を明示する。
+ */
+const EXPLORE_GRID_CLASS = 'mt-3 grid gap-5 [&>*]:min-w-0 lg:grid-cols-2';
+
+/** 解答後の導線ボタン。リンク遷移か、その場でランダムセッションを開始するかの2種類 */
+type FollowupAction =
+  | { type: 'link'; href: string; label: string }
+  | { type: 'random'; label: string };
+
 interface QuizInteractionProps {
   quiz: QuizDetail;
   categorySlug: string;
@@ -106,6 +123,8 @@ interface QuizInteractionProps {
   sameCategoryQuizzes?: RelatedQuizSummary[];
   relatedCategories?: RelatedCategoryLink[];
   relatedBook?: RelatedBookSummary | null;
+  /** 教科書など、問題の集合ではない流入元（URLの ?from= 由来） */
+  origin?: QuizOrigin | null;
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -117,6 +136,10 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
+/**
+ * 関連問題への「寄り道」リンク。
+ * 元の一覧セッションは消さない（乗り換えではなく寄り道なので、戻り導線を残す）。
+ */
 function FollowupQuizLink({
   href,
   quiz,
@@ -127,7 +150,6 @@ function FollowupQuizLink({
   return (
     <Link
       href={href}
-      onClick={clearQuizQueueSession}
       className="group flex items-center gap-2 rounded-md border border-gray-100 bg-white px-3 py-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.04] dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-primary/10"
     >
       <span className="min-w-0 flex-1">
@@ -160,6 +182,7 @@ export default function QuizInteraction({
   sameCategoryQuizzes = [],
   relatedCategories = [],
   relatedBook = null,
+  origin = null,
 }: QuizInteractionProps) {
   const [selectedChoice, setSelectedChoice] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -180,7 +203,9 @@ export default function QuizInteraction({
   const [creatingTag, setCreatingTag] = useState(false);
   const [quickStartLoading, setQuickStartLoading] = useState<'category' | string | null>(null);
   const [quickStartError, setQuickStartError] = useState<string | null>(null);
-  const { addAnswer } = useQuizHistory();
+  // null のあいだは正誤で決める（不正解なら開いた状態から始める）
+  const [exploreOpen, setExploreOpen] = useState<boolean | null>(null);
+  const { addAnswer, answers } = useQuizHistory();
   const { isBookmarked, toggleBookmark } = useQuizBookmarks();
   const router = useRouter();
 
@@ -204,13 +229,10 @@ export default function QuizInteraction({
     }
   }, [quiz.id]);
 
+  // 現在の問題が一覧に含まれるかは問わずに読み込む。
+  // 関連問題へ寄り道した先でも「元の一覧に戻る／続ける」を出せるようにするため。
   useEffect(() => {
-    const session = getQuizQueueSession();
-    if (session?.items.some((item) => item.id === quiz.id)) {
-      setQuizQueue(session);
-    } else {
-      setQuizQueue(null);
-    }
+    setQuizQueue(getQuizQueueSession());
   }, [quiz.id]);
 
   useEffect(() => {
@@ -231,6 +253,24 @@ export default function QuizInteraction({
   }, [allTags.length, isAdmin, tagSheetOpen]);
 
   const shuffledChoices = useMemo(() => shuffleArray(quiz.choices), [quiz.choices]);
+
+  /**
+   * 一覧の中で「もう解いた」とみなす問題のID。
+   *
+   * 通常の一覧は過去の回答履歴も含めて未回答の問題を出したいが、
+   * 復習リストとブックマークは解き直しが目的なので今のセッション内の回答だけを見る。
+   */
+  const answeredIds = useMemo(() => {
+    const ids = new Set<number>(quizQueue?.answeredIds ?? []);
+    if (quizQueue && !isReplayQueue(quizQueue.source)) {
+      answers.forEach((answer) => ids.add(answer.quizId));
+    }
+    return ids;
+  }, [answers, quizQueue]);
+
+  /** 教科書などの流入元を次の問題にも引き継ぐ */
+  const withOrigin = (href: string) =>
+    origin ? `${href}?from=${encodeURIComponent(origin.param)}` : href;
 
   const correctChoice = quiz.choices.find((c) => c.is_correct);
   const isCorrect =
@@ -394,8 +434,12 @@ export default function QuizInteraction({
     ? ((randomSession.currentIndex + (isAnswered ? 1 : 0)) / randomSession.quizzes.length) * 100
     : 0;
 
-  const renderAnsweredNavigation = (position: 'top' | 'bottom') =>
-    randomSession ? (
+  const renderAnsweredNavigation = (position: 'top' | 'bottom') => {
+    if (!randomSession) return null;
+    // 不正解のときは解説を読み飛ばさせないよう、解説の下にだけ進行ボタンを出す
+    if (position === 'top' && !isCorrect) return null;
+
+    return (
       <Button
         onClick={handleNextRandomQuiz}
         className={cn('w-full', position === 'top' && 'shadow-md')}
@@ -413,79 +457,193 @@ export default function QuizInteraction({
           </>
         )}
       </Button>
-    ) : null;
-
-  const renderNormalFollowupNavigation = () => {
-    const queueIndex = quizQueue?.items.findIndex((item) => item.id === quiz.id) ?? -1;
-    const hasQueue = Boolean(quizQueue && queueIndex >= 0);
-    const nextQueueItem = hasQueue ? quizQueue?.items[queueIndex + 1] : undefined;
-    const answeredQueueIds = new Set(quizQueue?.answeredIds ?? []);
-    const hasCompletedQueue = Boolean(
-      hasQueue && quizQueue && quizQueue.items.every((item) => answeredQueueIds.has(item.id)),
     );
-    const hasTagQuizzes = relatedTagGroups.some((group) => group.quizzes.length > 0);
-    const hasLearningLinks = relatedChapters.length > 0 || relatedBook;
-    const hasLowerSections =
-      hasTagQuizzes || sameCategoryQuizzes.length > 0 || hasLearningLinks || relatedCategories.length > 0;
+  };
+
+  const hasLearningLinks = relatedChapters.length > 0 || Boolean(relatedBook);
+
+  const renderLearningLinks = () => (
+    <div className="space-y-2">
+      {relatedChapters.map((chapter) => (
+        <BookChapterCard key={chapter.href} link={chapter} className="mt-0" />
+      ))}
+      {relatedBook && (
+        <Link
+          href={relatedBook.href}
+          className="group flex items-center gap-3 rounded-lg border border-amber-200 bg-white p-3.5 shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50"
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+            <BookOpen className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-bold text-muted-foreground">教科書トップ</span>
+            <span className="block truncate text-sm font-bold text-gray-900">
+              {relatedBook.title}
+            </span>
+            <span className="block text-[11px] text-muted-foreground">
+              全{relatedBook.chapterCount}章
+            </span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-700" />
+        </Link>
+      )}
+    </div>
+  );
+
+  /**
+   * 不正解のときだけ、次に進む導線より前に置く復習ブロック。
+   * 間違えた直後に最も必要なのは次の問題ではなく理解の手当てなので、
+   * 教科書リンクを「学習を広げる」から引き上げて先頭に出す。
+   */
+  const renderDeepenBlock = () => {
+    if (isCorrect || !hasLearningLinks) return null;
 
     return (
-      <div className="space-y-5 border-t border-black/10 pt-5 dark:border-white/10">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-muted-foreground">次の学習</p>
-            <h2 className="mt-1 break-words text-base font-extrabold leading-snug text-foreground sm:text-lg">
-              {hasQueue ? `${quizQueue?.label}を続ける` : '関連する問題を探す'}
-            </h2>
-            {hasQueue && quizQueue && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {queueIndex + 1} / {quizQueue.items.length} 問目
-                {nextQueueItem
-                  ? `　次: ${nextQueueItem.question}`
-                  : hasCompletedQueue
-                    ? '　この一覧を完了しました'
-                    : '　この一覧の最後の問題です'}
-              </p>
-            )}
-          </div>
-          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:min-w-72">
-            {hasQueue && nextQueueItem ? (
-              <Button asChild size="lg" className="h-11 w-full min-w-0">
-                <Link href={`/quiz/${nextQueueItem.categorySlug}/${nextQueueItem.id}`}>
-                  次の問題
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            ) : hasQueue && quizQueue ? (
-              <Button asChild size="lg" className="h-11 w-full min-w-0">
-                <Link href={quizQueue.returnHref}>
-                  一覧に戻る
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+      <div className="space-y-3 border-t border-black/10 pt-5 dark:border-white/10">
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-muted-foreground">まず理解する</p>
+          <h2 className="mt-1 flex items-center gap-2 text-base font-extrabold leading-snug text-foreground sm:text-lg">
+            <Lightbulb className="size-4 shrink-0 text-amber-600" />
+            教科書で確認する
+          </h2>
+        </div>
+        {renderLearningLinks()}
+      </div>
+    );
+  };
+
+  /**
+   * 解答後の主導線。
+   *
+   * 「一覧の何番目か」ではなく「一覧にまだ解いていない問題が残っているか」で組み立てる。
+   * 一覧の最後の問題を直接開いた場合でも普通に次の1問が出るため、
+   * 「最後の問題です」のような位置由来の例外表示が要らない。
+   */
+  const renderNormalFollowupNavigation = () => {
+    const progress = quizQueue ? getQuizQueueProgress(quizQueue, quiz.id, answeredIds) : null;
+    const nextItem = progress?.next ?? null;
+    // 検索は探し物が見つかった時点で終わることが多いので、続けるより戻るを主導線にする
+    const preferReturn = quizQueue?.source === 'search';
+
+    let heading: string;
+    let subline: string | null = null;
+    let primary: FollowupAction | null = null;
+    let secondary: FollowupAction | null = null;
+
+    if (quizQueue && progress && nextItem) {
+      const continueAction: FollowupAction = {
+        type: 'link',
+        href: withOrigin(`/quiz/${nextItem.categorySlug}/${nextItem.id}`),
+        label: 'もう1問',
+      };
+      const returnAction: FollowupAction = {
+        type: 'link',
+        href: quizQueue.returnHref,
+        label: getReturnLabel(quizQueue.source),
+      };
+
+      heading = preferReturn ? `${quizQueue.label}に戻る` : `${quizQueue.label}を続ける`;
+      subline = `残り${progress.remaining}問　次: ${nextItem.question}`;
+      primary = preferReturn ? returnAction : continueAction;
+      // 一覧への戻りはページ上部に常設されているので、
+      // 教科書から来ている場合は副導線を章へ戻る側に譲る
+      secondary = preferReturn
+        ? { ...continueAction, label: 'もう1問解く' }
+        : origin
+          ? { type: 'link', href: origin.href, label: origin.actionLabel }
+          : returnAction;
+    } else if (quizQueue && progress) {
+      // 一覧に未回答が残っていない状態。区切りではあるが「完了」とは呼ばない
+      heading = `${quizQueue.label}をすべて解きました`;
+      subline = `全${progress.total}問`;
+      primary = origin
+        ? { type: 'link', href: origin.href, label: origin.actionLabel }
+        : { type: 'link', href: quizQueue.returnHref, label: getReturnLabel(quizQueue.source) };
+      secondary = origin
+        ? { type: 'link', href: quizQueue.returnHref, label: getReturnLabel(quizQueue.source) }
+        : { type: 'random', label: 'ランダムで5問復習する' };
+    } else if (origin) {
+      heading = origin.title;
+      subline = 'このカテゴリの問題は一覧からいつでも解けます';
+      primary = { type: 'link', href: origin.href, label: origin.actionLabel };
+      secondary = { type: 'link', href: `/quiz/${categorySlug}`, label: '問題一覧を見る' };
+    } else {
+      // 関連問題や検索エンジンからの単発アクセス。ここから始める提案をする
+      heading = 'このカテゴリの問題を解く';
+      subline = 'ランダムに5問出題します';
+      primary = { type: 'random', label: 'このカテゴリを5問解く' };
+      secondary = { type: 'link', href: `/quiz/${categorySlug}`, label: '問題一覧を見る' };
+    }
+
+    const renderAction = (action: FollowupAction, level: 'primary' | 'secondary') => {
+      const isPrimary = level === 'primary';
+      const className = isPrimary
+        ? 'h-12 w-full text-base font-bold shadow-sm'
+        : 'h-9 w-full text-muted-foreground';
+
+      if (action.type === 'random') {
+        return (
+          <Button
+            type="button"
+            size={isPrimary ? 'lg' : 'sm'}
+            variant={isPrimary ? 'default' : 'ghost'}
+            className={className}
+            disabled={quickStartLoading !== null}
+            onClick={() => handleQuickRandomStart()}
+          >
+            {quickStartLoading === 'category' ? (
+              <Loader2 className="size-4 animate-spin" />
             ) : (
-              <Button asChild size="lg" className="h-11 w-full min-w-0">
-                <Link href={`/quiz/${categorySlug}`}>
-                  同じカテゴリを見る
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
+              <Shuffle className="size-4" />
             )}
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="h-11 w-full min-w-0"
-              disabled={quickStartLoading !== null}
-              onClick={() => handleQuickRandomStart()}
-            >
-              {quickStartLoading === 'category' ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Shuffle className="size-4" />
-              )}
-              5問ランダム
-            </Button>
-          </div>
+            {action.label}
+          </Button>
+        );
+      }
+
+      return (
+        <Button
+          asChild
+          size={isPrimary ? 'lg' : 'sm'}
+          variant={isPrimary ? 'default' : 'ghost'}
+          className={className}
+        >
+          <Link href={action.href}>
+            {action.label}
+            {isPrimary && <ArrowRight className="size-4" />}
+          </Link>
+        </Button>
+      );
+    };
+
+    const hasTagQuizzes = relatedTagGroups.some((group) => group.quizzes.length > 0);
+    // 不正解時は教科書リンクを「まず理解する」として上に出すので、下では重複させない
+    const showLearningLinksHere = hasLearningLinks && isCorrect;
+    // ランダムは1画面に1つだけ。主導線・副導線で既に出しているならここには出さない
+    const showRandomInExplore = primary?.type !== 'random' && secondary?.type !== 'random';
+    const hasExploreSections =
+      hasTagQuizzes ||
+      sameCategoryQuizzes.length > 0 ||
+      showLearningLinksHere ||
+      showRandomInExplore ||
+      relatedCategories.length > 0;
+    const isExploreOpen = exploreOpen ?? !isCorrect;
+
+    return (
+      <div className="space-y-4 border-t border-black/10 pt-5 dark:border-white/10">
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-muted-foreground">次の学習</p>
+          <h2 className="mt-1 break-words text-base font-extrabold leading-snug text-foreground sm:text-lg">
+            {heading}
+          </h2>
+          {subline && (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{subline}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {primary && renderAction(primary, 'primary')}
+          {secondary && renderAction(secondary, 'secondary')}
         </div>
 
         {quickStartError && (
@@ -494,150 +652,124 @@ export default function QuizInteraction({
           </Alert>
         )}
 
-        {hasLowerSections && (
-          <div className="border-t border-gray-100 pt-4 dark:border-gray-800">
-            <p className="text-xs font-bold text-muted-foreground">学習を広げる</p>
-            <div className="mt-3 grid gap-5 lg:grid-cols-2">
-            {hasTagQuizzes && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm font-bold">
-                    <Tags className="size-4 text-primary" />
-                    関連タグの問題
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {relatedTagGroups.map((group) => (
-                    <div key={group.tag.slug} className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/quiz/${categorySlug}?tagSlug=${group.tag.slug}`}
-                          className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary hover:text-primary-foreground"
-                        >
-                          <span className="truncate">{group.tag.name}</span>
-                          <ChevronRight className="size-3" />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickRandomStart(group.tag.slug)}
-                          disabled={quickStartLoading !== null}
-                          className="inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-bold text-muted-foreground transition-colors hover:bg-white hover:text-foreground disabled:opacity-60 sm:ml-auto sm:w-auto"
-                        >
-                          {quickStartLoading === group.tag.slug ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Play className="size-3.5" />
-                          )}
-                          5問ランダム
-                        </button>
-                      </div>
-                      <div className="space-y-1.5">
-                        {group.quizzes.map((relatedQuiz) => (
-                          <FollowupQuizLink
-                            key={`${group.tag.slug}-${relatedQuiz.id}`}
-                            href={`/quiz/${categorySlug}/${relatedQuiz.id}`}
-                            quiz={relatedQuiz}
-                          />
-                        ))}
-                      </div>
+        {hasExploreSections && (
+          <div className="border-t border-gray-100 pt-3 dark:border-gray-800">
+            <button
+              type="button"
+              onClick={() => setExploreOpen(!isExploreOpen)}
+              aria-expanded={isExploreOpen}
+              className="flex w-full items-center justify-between gap-2 py-1 text-xs font-bold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              学習を広げる
+              <ChevronDown
+                className={cn('size-4 transition-transform', isExploreOpen && 'rotate-180')}
+              />
+            </button>
+
+            {isExploreOpen && (
+              <div className={EXPLORE_GRID_CLASS}>
+                {showRandomInExplore && (
+                  <section className="lg:col-span-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 w-full"
+                      disabled={quickStartLoading !== null}
+                      onClick={() => handleQuickRandomStart()}
+                    >
+                      {quickStartLoading === 'category' ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Shuffle className="size-4" />
+                      )}
+                      このカテゴリから5問ランダム
+                    </Button>
+                  </section>
+                )}
+
+                {hasTagQuizzes && (
+                  <section className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <Tags className="size-4 text-primary" />
+                      関連タグの問題
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
+                    <div className="space-y-3">
+                      {relatedTagGroups.map((group) => (
+                        <div key={group.tag.slug} className="space-y-2">
+                          <Link
+                            href={`/quiz/${categorySlug}?tagSlug=${group.tag.slug}`}
+                            className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-primary shadow-sm hover:bg-primary hover:text-primary-foreground"
+                          >
+                            <span className="truncate">{group.tag.name}</span>
+                            <ChevronRight className="size-3 shrink-0" />
+                          </Link>
+                          <div className="space-y-1.5">
+                            {group.quizzes.map((relatedQuiz) => (
+                              <FollowupQuizLink
+                                key={`${group.tag.slug}-${relatedQuiz.id}`}
+                                href={withOrigin(`/quiz/${categorySlug}/${relatedQuiz.id}`)}
+                                quiz={relatedQuiz}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
-            {sameCategoryQuizzes.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-bold">
-                  <Layers3 className="size-4 text-primary" />
-                  同じカテゴリの問題
-                </div>
-                <div className="space-y-1.5">
-                  {sameCategoryQuizzes.map((relatedQuiz) => (
-                    <FollowupQuizLink
-                      key={relatedQuiz.id}
-                      href={`/quiz/${categorySlug}/${relatedQuiz.id}`}
-                      quiz={relatedQuiz}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
+                {sameCategoryQuizzes.length > 0 && (
+                  <section className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <Layers3 className="size-4 text-primary" />
+                      同じカテゴリの問題
+                    </div>
+                    <div className="space-y-1.5">
+                      {sameCategoryQuizzes.map((relatedQuiz) => (
+                        <FollowupQuizLink
+                          key={relatedQuiz.id}
+                          href={withOrigin(`/quiz/${categorySlug}/${relatedQuiz.id}`)}
+                          quiz={relatedQuiz}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                )}
 
-            {hasLearningLinks && (
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-bold">
-                  <BookOpen className="size-4 text-amber-700 dark:text-amber-300" />
-                  関連の教科書
-                </div>
-                <div className="space-y-2">
-                  {relatedChapters.map((chapter) => (
-                    <BookChapterCard key={chapter.href} link={chapter} className="mt-0" />
-                  ))}
-                  {relatedBook && (
-                    <Link
-                      href={relatedBook.href}
-                      className="group flex items-center gap-3 rounded-lg border border-amber-200 bg-white p-3.5 shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50"
-                    >
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
-                        <BookOpen className="size-5" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[11px] font-bold text-muted-foreground">
-                          教科書トップ
-                        </span>
-                        <span className="block truncate text-sm font-bold text-gray-900">
-                          {relatedBook.title}
-                        </span>
-                        <span className="block text-[11px] text-muted-foreground">
-                          全{relatedBook.chapterCount}章
-                        </span>
-                      </span>
-                      <ChevronRight className="size-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-700" />
-                    </Link>
-                  )}
-                </div>
-              </section>
-            )}
+                {showLearningLinksHere && (
+                  <section className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <BookOpen className="size-4 text-amber-700 dark:text-amber-300" />
+                      関連の教科書
+                    </div>
+                    {renderLearningLinks()}
+                  </section>
+                )}
 
-            {relatedCategories.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-bold">
-                  <BookOpen className="size-4 text-blue-700 dark:text-blue-300" />
-                  関連カテゴリ
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {relatedCategories.map((relatedCategory) => (
-                    <Link
-                      key={relatedCategory.slug}
-                      href={`/quiz/${relatedCategory.slug}`}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-blue-100 bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-50"
-                    >
-                      {relatedCategory.name}
-                      <ChevronRight className="size-3.5" />
-                    </Link>
-                  ))}
-                </div>
-              </section>
+                {relatedCategories.length > 0 && (
+                  <section className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <BookOpen className="size-4 text-blue-700 dark:text-blue-300" />
+                      関連カテゴリ
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {relatedCategories.map((relatedCategory) => (
+                        <Link
+                          key={relatedCategory.slug}
+                          href={`/quiz/${relatedCategory.slug}`}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-blue-100 bg-white px-2.5 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-50"
+                        >
+                          {relatedCategory.name}
+                          <ChevronRight className="size-3.5 shrink-0" />
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
             )}
-            </div>
           </div>
         )}
-
-        <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
-          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link href={`/quiz/${categorySlug}`}>
-              <ArrowLeft className="size-4" />
-              問題一覧
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-            <Link href="/quiz/random">
-              <Shuffle className="size-4" />
-              ランダム設定
-            </Link>
-          </Button>
-        </div>
       </div>
     );
   };
@@ -846,6 +978,7 @@ export default function QuizInteraction({
       )}
       </div>
 
+      {!randomSession && isAnswered && renderDeepenBlock()}
       {!randomSession && isAnswered && renderNormalFollowupNavigation()}
 
       <Sheet open={tagSheetOpen} onOpenChange={setTagSheetOpen}>

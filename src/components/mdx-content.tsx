@@ -65,7 +65,9 @@ interface MDXContentProps {
   // Velite がビルド時に生成した MDX のコンパイル済み JavaScript 文字列
   code: string;
   // 呼び出し元から追加で渡せるカスタムコンポーネント（ページ固有のものなど）
-  components?: Record<string, React.ComponentType>;
+  // MDX 側の props は静的に分からないため any で受ける（MDX の慣例）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  components?: Record<string, React.ComponentType<any>>;
 }
 
 // MDX コンテンツをレンダリングするコンポーネント

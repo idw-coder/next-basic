@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ComponentProps } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronRight, Clock } from 'lucide-react';
@@ -10,6 +11,8 @@ import {
   getAllBooks,
 } from '@/lib/books';
 import { MDXContent } from '@/components/mdx-content';
+import QuizLink from '../../_components/QuizLink';
+import { buildChapterOriginParam } from '@/lib/quizOrigin';
 import { ChapterNav } from '../../_components/ChapterNav';
 import { ChapterTocDesktop, ChapterTocMobile } from '../../_components/TableOfContents';
 import { getChapterLabel } from '@/lib/chapter-label';
@@ -133,7 +136,15 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
       <div className="flex gap-8">
         <div className="min-w-0 flex-1">
           <div className="prose prose-gray max-w-none">
-            <MDXContent code={chapter.body} />
+            <MDXContent
+              code={chapter.body}
+              components={{
+                // 章から出るクイズリンクに流入元を付与し、解答後に章へ戻れるようにする
+                QuizLink: (props: ComponentProps<typeof QuizLink>) => (
+                  <QuizLink {...props} fromChapter={buildChapterOriginParam(bookSlug, chapterSlug)} />
+                ),
+              }}
+            />
           </div>
           <ChapterNav prev={prev} next={next} bookSlug={bookSlug} />
         </div>

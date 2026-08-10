@@ -8,6 +8,7 @@ import { getQuizCategoryQuizzes, type QuizCategoryQuiz } from '@/lib/server/quiz
 import { extractBookChapterLinks } from '@/lib/quiz-book-links';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getCategorySeoContent } from '../categoryContent';
+import { resolveQuizOrigin } from '@/lib/quizOrigin';
 import QuizInteraction from './QuizInteraction';
 
 interface Choice {
@@ -176,12 +177,16 @@ function extractPlainText(explanation: string): string {
 
 export default async function QuizDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string; quizId: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { category, quizId } = await params;
+  const { from } = await searchParams;
   const quiz = await getQuiz(quizId);
   const theme = getCategoryTheme(category);
+  const origin = resolveQuizOrigin(from);
 
   if (!quiz) {
     return (
@@ -264,6 +269,7 @@ export default async function QuizDetailPage({
             sameCategoryQuizzes={followupData.sameCategoryQuizzes}
             relatedCategories={seoContent?.relatedCategories.slice(0, 3) ?? []}
             relatedBook={relatedBookSummary}
+            origin={origin}
           />
 
           {/*
@@ -301,7 +307,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ category: string; quizId: string }>;
 }) {
-  const { quizId } = await params;
+  const { category, quizId } = await params;
   const quiz = await getQuiz(quizId);
 
   if (!quiz) {
@@ -313,5 +319,9 @@ export async function generateMetadata({
   return {
     title: `${quiz.question} | ウェブエンジニア問題集`,
     description: quiz.question,
+    // 流入元を ?from= で受け取るため、パラメータ付きURLを重複ページにしない
+    alternates: {
+      canonical: `/quiz/${category}/${quizId}`,
+    },
   };
 }

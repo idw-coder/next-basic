@@ -18,6 +18,7 @@ import { SectionHeading } from '@/components/SectionHeading';
 import QuizListClient from './QuizListClient';
 import CategoryRandomStartCard from './CategoryRandomStartCard';
 import { getCategorySeoContent, type CategorySeoContent } from './categoryContent';
+import { resolveQuizOrigin } from '@/lib/quizOrigin';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getBookTheme } from '@/lib/book-theme';
 import { getCategoryTheme } from '@/lib/categoryTheme';
@@ -190,10 +191,11 @@ export default async function CategoryQuizPage({
   searchParams,
 }: {
   params: Promise<{ category: string }>;
-  searchParams: Promise<{ q?: string; tagSlug?: string }>;
+  searchParams: Promise<{ q?: string; tagSlug?: string; from?: string }>;
 }) {
   const { category: categorySlug } = await params;
-  const { q, tagSlug } = await searchParams;
+  const { q, tagSlug, from } = await searchParams;
+  const origin = resolveQuizOrigin(from);
 
   const category = await getCategory(categorySlug);
 
@@ -247,6 +249,19 @@ export default async function CategoryQuizPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       ))}
+
+      {/* 教科書から来た場合は読んでいた章に戻れるようにする */}
+      {origin && (
+        <div className={`${contentShell} mb-3`}>
+          <Link
+            href={origin.href}
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900 transition-colors hover:bg-amber-100"
+          >
+            <ArrowLeft className="size-3.5 shrink-0" />
+            {origin.title}
+          </Link>
+        </div>
+      )}
 
       {/* パンくずリスト */}
       <nav aria-label="パンくずリスト" className={`${contentShell} mb-4 text-sm sm:mb-6`}>
@@ -417,6 +432,7 @@ export default async function CategoryQuizPage({
           currentQuery={q}
           currentTagSlug={tagSlug}
           sectionTags={sectionTags}
+          originParam={origin ? from : undefined}
         />
       </section>
 
