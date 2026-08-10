@@ -1,0 +1,86 @@
+---
+title: 'HTMLのリンクとナビゲーション — a・nav・相対パス'
+description: 'a要素、href属性、targetとrel、ページ内リンク、nav要素、相対パスと絶対URLの違いを学びます。'
+order: 4
+---
+
+リンクはWebの中心です。HTMLでは `a` 要素で別ページ、外部サイト、ページ内の位置、メールアドレスなどへ移動できます。
+
+```html
+<a href="/books/html-basics">HTML入門を読む</a>
+```
+
+## リンク要素のチートシート
+
+| 書き方 | 用途 | 注意点 |
+| ------ | ---- | ------ |
+| `<a href="/about">` | サイト内リンク | URL構造に合わせる |
+| `<a href="https://example.com">` | 外部リンク | 新しいタブなら `rel` も考える |
+| `<a href="#contact">` | ページ内リンク | 移動先に `id` が必要 |
+| `<a href="mailto:info@example.com">` | メール起動 | 迷惑メール対策も考える |
+| `<nav>` | 主要ナビゲーション | リンクのまとまりに使う |
+
+## `a` 要素の構文
+
+**構文：** `<a href="URL">リンクテキスト</a>`
+
+| 属性 | 説明 |
+| ---- | ---- |
+| `href` | 移動先URL。もっとも重要 |
+| `target` | 開き方。新しいタブなら `_blank` |
+| `rel` | リンク先との関係。`noopener noreferrer` など |
+| `download` | ファイルとしてダウンロードさせる |
+
+**戻り値：** HTML要素なので戻り値はありません。ブラウザがクリック可能なリンクとして扱います。
+
+```html
+<a href="https://developer.mozilla.org/" target="_blank" rel="noopener noreferrer">
+  MDNを見る
+</a>
+```
+
+<Marker>`target="_blank"` を使う外部リンクでは、基本的に `rel="noopener noreferrer"` も付けます。</Marker>
+
+## 相対パスと絶対URL
+
+| 種類 | 例 | 用途 |
+| ---- | -- | ---- |
+| ルート相対パス | `/about` | 同じサイト内のページ |
+| 相対パス | `../images/logo.png` | 現在のファイル位置から指定 |
+| 絶対URL | `https://example.com/about` | 外部サイト |
+| ページ内リンク | `#profile` | 同じページの特定位置 |
+
+学習中は、サイト内リンクには `/about` のようなルート相対パスを使うと理解しやすいです。
+
+## `nav` 要素
+
+主要なナビゲーションには `nav` を使います。
+
+```html
+<nav aria-label="メインナビゲーション">
+  <ul>
+    <li><a href="/">ホーム</a></li>
+    <li><a href="/books">教科書</a></li>
+    <li><a href="/quiz/html-basic">HTMLクイズ</a></li>
+  </ul>
+</nav>
+```
+
+すべてのリンク集を `nav` にする必要はありません。サイト内の主要な移動手段に使います。
+
+<Callout type="warning" title="リンクテキストは具体的にする">
+  「こちら」「詳しくはこちら」だけのリンクは、リンク先の内容が分かりにくくなります。「HTMLチートシートを見る」のように、リンク先が伝わる文言にします。
+</Callout>
+
+## 参考リンク
+
+- [MDN: a 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/a)
+- [MDN: nav 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/nav)
+
+次章では、画像、代替テキスト、動画・音声などのメディア要素を学びます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="リンク、href、target、navの使い分けをクイズで確認しよう"
+/>

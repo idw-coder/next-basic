@@ -1,0 +1,106 @@
+---
+title: 'HTMLのリストとテーブル — ul・ol・dl・tableを使い分ける'
+description: '箇条書き、番号付きリスト、説明リスト、表の基本構造と、tableをレイアウト目的に使わない理由を学びます。'
+order: 6
+---
+
+情報を並べるとき、HTMLではリストとテーブルを使い分けます。単なる見た目ではなく、情報の関係性で選びます。
+
+## リストのチートシート
+
+| タグ | 用途 | 例 |
+| ---- | ---- | -- |
+| `ul` | 順序のない箇条書き | 特徴、持ち物、メニュー |
+| `ol` | 順序のある箇条書き | 手順、ランキング |
+| `li` | リストの各項目 | `ul` / `ol` の中で使う |
+| `dl` | 説明リスト | 用語と説明、項目名と値 |
+| `dt` | 説明される用語 | 名前、項目 |
+| `dd` | 説明文 | 値、説明 |
+
+```html
+<ul>
+  <li>HTML</li>
+  <li>CSS</li>
+  <li>JavaScript</li>
+</ul>
+```
+
+```html
+<ol>
+  <li>HTMLで構造を作る</li>
+  <li>CSSで見た目を整える</li>
+  <li>JavaScriptで動きを付ける</li>
+</ol>
+```
+
+## 説明リスト
+
+用語と説明、プロフィール項目、FAQのような組み合わせには `dl` を使えます。
+
+```html
+<dl>
+  <dt>HTML</dt>
+  <dd>Webページの構造を作る言語です。</dd>
+  <dt>CSS</dt>
+  <dd>Webページの見た目を整える言語です。</dd>
+</dl>
+```
+
+## テーブルのチートシート
+
+| タグ | 用途 | 注意点 |
+| ---- | ---- | ------ |
+| `table` | 表全体 | レイアウト目的に使わない |
+| `caption` | 表の説明 | 表の内容を短く説明する |
+| `thead` | 表のヘッダー行グループ | 必須ではないが構造化に便利 |
+| `tbody` | 表の本文行グループ | データ行をまとめる |
+| `tr` | 行 | `th` / `td` を入れる |
+| `th` | 見出しセル | `scope` を付けると関係が明確 |
+| `td` | データセル | 表の値 |
+
+```html
+<table>
+  <caption>学習カテゴリ</caption>
+  <thead>
+    <tr>
+      <th scope="col">カテゴリ</th>
+      <th scope="col">役割</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>HTML</td>
+      <td>構造</td>
+    </tr>
+    <tr>
+      <td>CSS</td>
+      <td>見た目</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+<Marker>`table` は表形式のデータに使います。ページの2カラム配置など、レイアウト目的では使いません。</Marker>
+
+## よくあるミス
+
+| ミス | 問題 | 修正 |
+| ---- | ---- | ---- |
+| メニューを `div` だけで並べる | リスト構造が伝わらない | `ul` と `li` を使う |
+| 手順を `ul` にする | 順序の意味が伝わらない | `ol` を使う |
+| 表見出しに `td` を使う | セルの関係が分かりにくい | `th` と `scope` を使う |
+| レイアウトに `table` | 意味と見た目が混ざる | CSS Grid/Flexboxを使う |
+
+## 参考リンク
+
+- [MDN: ul 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/ul)
+- [MDN: ol 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/ol)
+- [MDN: table 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/table)
+
+次章では、ユーザー入力を受け取るフォームを学びます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="リスト、説明リスト、テーブルの使い分けをクイズで確認しよう"
+/>

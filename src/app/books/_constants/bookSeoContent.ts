@@ -199,6 +199,76 @@ const bookSeoContentMap: Record<string, BookSeoContent> = {
     relatedQuizSlug: 'ts-general',
   },
 
+  'html-basics': {
+    overview:
+      'HTMLはWebページの構造と意味を表すマークアップ言語で、すべてのWeb制作・フロントエンド開発の土台です。本書では、doctype・head・bodyの基本構造から、見出し、段落、リンク、画像、リスト、テーブル、フォーム、セマンティックHTML、meta情報、アクセシビリティ、バリデーションまでを体系的に解説します。終盤にはタグ・属性を素早く確認できるチートシート章も用意しています。',
+    whyLearn:
+      'HTMLを正しく理解すると、SEO、アクセシビリティ、フォーム設計、React/Next.jsでのコンポーネント設計まで品質が上がります。CSSやJavaScriptを学ぶ前にHTMLの構造を押さえることで、「見た目のためにタグを選ぶ」「divだけで画面を作る」といった初学者に多い失敗を避けられます。HTML5プロフェッショナル認定試験やWebクリエイター能力認定試験でも、HTMLの基本構造とセマンティックなマークアップは重要な範囲です。',
+    prerequisites:
+      'プログラミング経験は不要です。ブラウザでWebページを見たことがあれば読み始められます。CSS入門、JavaScript入門、React入門へ進む前の最初の教科書として使えます。',
+    topics: [
+      {
+        title: 'HTML文書の基本構造',
+        description:
+          'doctype、html、head、body、charset、viewport、titleなど、すべてのHTMLページに共通する土台を学びます。',
+      },
+      {
+        title: 'テキスト・リンク・画像',
+        description:
+          '見出し、段落、強調、a要素、img要素、alt属性、figureなど、Webページで頻出する基本要素を整理します。',
+      },
+      {
+        title: 'リスト・テーブル・フォーム',
+        description:
+          'ul/ol/dl、table、form、input、label、buttonなど、情報整理とユーザー入力に必要な要素を学びます。',
+      },
+      {
+        title: 'セマンティックHTMLとアクセシビリティ',
+        description:
+          'header、main、section、article、nav、button、aria-labelなどを使い、意味が伝わるHTMLを書く判断基準を身につけます。',
+      },
+      {
+        title: 'head・meta・SEO',
+        description:
+          'title、description、viewport、OGP、CSS/JavaScriptの読み込みなど、ページのメタ情報を実務目線で整理します。',
+      },
+      {
+        title: 'HTMLチートシート',
+        description:
+          'よく使うタグ、属性、使い分け、避けたい使い方を一覧化し、クイズ前後の復習に使える形でまとめます。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'HTML初心者でも読めますか？',
+        answer:
+          'はい。HTMLを初めて学ぶ方を想定し、文書の最小構造から順番に解説しています。各章にタグ・属性の表とコード例を入れているため、チートシートとしても使えます。',
+      },
+      {
+        question: 'CSSやJavaScriptより先にHTMLを学ぶべきですか？',
+        answer:
+          '基本的にはHTMLを先に学ぶのがおすすめです。HTMLでページの構造を作り、CSSで見た目を整え、JavaScriptで動きを加える、という役割分担が理解しやすくなります。',
+      },
+      {
+        question: '資格対策にも使えますか？',
+        answer:
+          'HTML5プロフェッショナル認定試験レベル1やWebクリエイター能力認定試験HTML5対応で重視される、基本構造、フォーム、セマンティックHTML、アクセシビリティの理解に役立つ構成です。ただし、特定試験の完全な対策問題集ではありません。',
+      },
+      {
+        question: 'ReactやNext.jsを使う人にも必要ですか？',
+        answer:
+          '必要です。JSXはHTMLに似た構文でUIを表現するため、見出し、フォーム、button/aの使い分け、アクセシビリティを理解しているほど、ReactやNext.jsのコンポーネント品質も上がります。',
+      },
+    ],
+    targetAudience: [
+      'Web制作をこれから始める方',
+      'HTMLクイズの前後に基礎を復習したい方',
+      'CSS・JavaScript・Reactへ進む前に土台を固めたい方',
+      'セマンティックHTMLやアクセシビリティを学び直したい方',
+    ],
+    relatedQuizSlug: 'html-basic',
+  },
+
   'css-basics': {
     overview:
       'CSSはHTMLで作った構造に視覚的なデザインを与えるスタイルシート言語です。本書では、セレクタとプロパティの基本から、ボックスモデル、Flexbox、Gridレイアウト、レスポンシブデザイン、アニメーションまでを段階的に解説します。「なんとなく見た目が整う」レベルから、意図通りにレイアウトをコントロールできるレベルへ引き上げることを目指します。',

@@ -76,6 +76,27 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
 
   'system-design': ['要件定義', 'DB設計', 'API設計', '認証', 'エラー設計'],
 
+  'html-basics': [
+    'doctype',
+    'head',
+    'body',
+    'meta',
+    'title',
+    'a',
+    'img',
+    'alt',
+    'form',
+    'input',
+    'label',
+    'button',
+    'table',
+    'section',
+    'article',
+    'アクセシビリティ',
+    'セマンティック',
+    'チートシート',
+  ],
+
   javascript: [
     'Promise',
     'async',

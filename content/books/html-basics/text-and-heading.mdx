@@ -1,0 +1,96 @@
+---
+title: 'HTMLのテキスト要素 — 見出し・段落・強調を正しく使う'
+description: 'h1〜h6、p、br、strong、em、small、blockquoteなど、文章構造を表すHTML要素を整理します。'
+order: 3
+---
+
+Webページの多くは文章でできています。HTMLでは、文字の大きさや太さではなく、**その文章が何の役割を持つか**でタグを選びます。
+
+```html
+<article>
+  <h1>HTMLの基本</h1>
+  <p>HTMLはWebページの構造を作る言語です。</p>
+  <p><strong>見た目ではなく意味でタグを選ぶ</strong>ことが大切です。</p>
+</article>
+```
+
+## テキスト要素のチートシート
+
+| タグ | 用途 | 注意点 |
+| ---- | ---- | ------ |
+| `h1` | ページや記事の主見出し | 1ページの主題として使う |
+| `h2`〜`h6` | 階層的な見出し | 数字を飛ばしすぎない |
+| `p` | 段落 | 箇条書きや見出しの代わりにしない |
+| `br` | 改行 | 余白調整に使わない |
+| `strong` | 重要性の強調 | 太字にしたいだけならCSS |
+| `em` | 強勢・ニュアンスの強調 | 重要警告とは分ける |
+| `small` | 注釈・細則 | 本文を小さくしたいだけならCSS |
+| `blockquote` | 引用ブロック | 引用元を示すと親切 |
+| `code` | コード片 | 長いコードはコードブロックにする |
+
+<Marker>HTMLタグは「どう見せたいか」ではなく「何を意味するか」で選びます。</Marker>
+
+## 見出しの階層
+
+見出しはページのアウトラインを作ります。
+
+```html
+<h1>サービス紹介</h1>
+
+<h2>特徴</h2>
+<h3>高速に動く</h3>
+<h3>スマートフォンに対応</h3>
+
+<h2>料金</h2>
+```
+
+`h1` の次にいきなり `h4` を使うと、構造が読み取りづらくなります。見た目を小さくしたい場合は、見出しレベルを下げるのではなくCSSで調整します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  文字を大きくしたいから `h1` を何回も使う、というのはダメですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  見た目のために見出しを選ぶと、ページ構造が崩れます。大きさはCSS、意味はHTMLで分けて考えましょう。
+</SpeechBubble>
+
+## 改行と段落
+
+文章のまとまりは `p`、住所や詩のように意味のある改行は `br` を使います。
+
+```html
+<p>HTMLは構造を作ります。</p>
+<p>CSSは見た目を整えます。</p>
+```
+
+```html
+<p>
+  〒100-0001<br>
+  東京都千代田区千代田1-1
+</p>
+```
+
+`br` を連続して余白を作るのは避けます。余白はCSSの `margin` で調整します。
+
+## よくあるミス
+
+| ミス | 問題 | 修正 |
+| ---- | ---- | ---- |
+| 太字にしたいだけで `strong` | 意味のない重要扱いになる | CSSで太字にする |
+| 余白目的で `br` を連発 | 構造と見た目が混ざる | CSSの余白を使う |
+| 見出しレベルを見た目で選ぶ | アウトラインが崩れる | 階層で選び、見た目はCSS |
+| 長文を1つの `p` に詰める | 読みにくい | 段落を分ける |
+
+## 参考リンク
+
+- [MDN: 見出し要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/Heading_Elements)
+- [MDN: p 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/p)
+- [MDN: strong 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/strong)
+
+次章では、ページ同士をつなぐリンクとナビゲーションを学びます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="見出し、段落、強調タグの使い分けをクイズで確認しよう"
+/>

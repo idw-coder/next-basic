@@ -1,0 +1,79 @@
+---
+title: 'HTMLアクセシビリティ入門 — 読み上げやキーボード操作に強い構造'
+description: 'HTMLで押さえるべきアクセシビリティの基本として、見出し、label、alt、button、aria-labelの使い方を学びます。'
+order: 10
+---
+
+アクセシビリティは、障害の有無や利用環境にかかわらず、情報や機能にアクセスしやすくする考え方です。HTMLを正しく書くことは、アクセシビリティの出発点です。
+
+<Marker>アクセシビリティ対応は、あとから特別な属性を足す作業ではありません。まず正しいHTML要素を選ぶことから始まります。</Marker>
+
+## アクセシビリティ観点のチートシート
+
+| 対象 | 良い書き方 | 避けたい書き方 |
+| ---- | ---------- | -------------- |
+| 見出し | `h1`〜`h6` を階層で使う | 見た目だけ大きい `div` |
+| ボタン | `button` を使う | `div` にクリックイベントだけ付ける |
+| リンク | リンク先が分かる文言 | 「こちら」だけ |
+| 画像 | 意味に応じた `alt` | すべて空、または長すぎる説明 |
+| フォーム | `label` と入力欄を対応 | placeholderだけ |
+| ナビゲーション | `nav aria-label="..."` | 複数navの区別がない |
+
+## buttonとaを使い分ける
+
+| やりたいこと | 使う要素 |
+| ------------ | -------- |
+| 別ページへ移動する | `a` |
+| 同じページ内で操作する | `button` |
+| フォームを送信する | `button type="submit"` |
+
+```html
+<a href="/books">教科書一覧へ</a>
+<button type="button">メニューを開く</button>
+```
+
+見た目がボタンでも、移動なら `a`、操作なら `button` です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  CSSで見た目を同じにできるなら、`a` と `button` はどちらでもよくないですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  見た目は同じでも、キーボード操作や読み上げでの意味が変わります。移動か操作かでHTMLを選びます。
+</SpeechBubble>
+
+## `aria-label` は補助として使う
+
+アイコンだけのボタンなど、見えるテキストがない場合は `aria-label` で名前を付けます。
+
+```html
+<button type="button" aria-label="メニューを開く">
+  ☰
+</button>
+```
+
+**構文：** `aria-label="支援技術に伝える名前"`
+
+| 属性 | 説明 |
+| ---- | ---- |
+| `aria-label` | 画面上のテキストでは不足する名前を補う |
+
+**戻り値：** HTML属性なので戻り値はありません。アクセシブルネームとして支援技術に利用されます。
+
+<Callout type="warning" title="ARIAより先にHTML">
+  `aria-label` は便利ですが、正しいHTML要素の代わりではありません。まず `button`、`label`、`nav` など意味のある要素を使い、それでも足りない情報をARIAで補います。
+</Callout>
+
+## 参考リンク
+
+- [MDN: アクセシビリティ](https://developer.mozilla.org/ja/docs/Web/Accessibility)
+- [MDN: ARIA](https://developer.mozilla.org/ja/docs/Web/Accessibility/ARIA)
+- [MDN: button 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/button)
+
+次章では、HTMLが正しい構文になっているかを確認するバリデーションを学びます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="alt、label、button、aria-labelの基本をクイズで確認しよう"
+/>

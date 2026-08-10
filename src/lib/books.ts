@@ -12,6 +12,7 @@ const chapters = chaptersData as Chapter[];
 const categoryToBookMap: Record<string, string> = {
   nextjs: 'next-js',
   'react-basic': 'react-learning',
+  'html-basic': 'html-basics',
   'javascript-basic': 'javascript',
   'nodejs-basic': 'node-js',
   'ts-general': 'typescript',
@@ -33,6 +34,7 @@ export const BOOK_ORDER = [
   'sql-basics',
   'integration-and-e2e-testing',
   'system-design',
+  'html-basics',
   'javascript',
   'node-js',
   'docker',
@@ -60,6 +62,7 @@ export const NEW_BOOK_SLUGS = new Set<string>([
   'system-design',
   'http-and-web-api',
   'integration-and-e2e-testing',
+  'html-basics',
 ]);
 
 function sortBooks<T extends { bookSlug: string }>(items: T[]): T[] {

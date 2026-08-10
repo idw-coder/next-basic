@@ -1,0 +1,122 @@
+---
+title: 'HTMLフォーム入門 — form・input・label・button'
+description: 'form、input、label、textarea、select、button、requiredなど、フォーム作成に必要な基本要素と属性を学びます。'
+order: 7
+---
+
+フォームは、ユーザーから入力を受け取るためのHTMLです。問い合わせ、ログイン、検索、アンケート、購入手続きなど、Webアプリの多くはフォームから始まります。
+
+```html
+<form action="/contact" method="post">
+  <label for="name">お名前</label>
+  <input id="name" name="name" type="text" required>
+
+  <button type="submit">送信</button>
+</form>
+```
+
+## フォーム要素のチートシート
+
+| タグ | 用途 | よく使う属性 | 注意点 |
+| ---- | ---- | ------------ | ------ |
+| `form` | 入力欄のまとまり | `action`, `method` | 送信先と送信方法を決める |
+| `label` | 入力欄の説明 | `for` | 対応する `input` の `id` と合わせる |
+| `input` | 1行入力や選択 | `type`, `id`, `name`, `required` | `type` で役割が変わる |
+| `textarea` | 複数行入力 | `name`, `rows` | 閉じタグが必要 |
+| `select` | 選択リスト | `name` | `option` と組み合わせる |
+| `option` | 選択肢 | `value` | 表示文と送信値を分けられる |
+| `button` | ボタン | `type` | submit/reset/buttonを明示する |
+| `fieldset` | 関連する入力のグループ | なし | radioなどのまとまりに便利 |
+| `legend` | グループの見出し | なし | `fieldset` 内で使う |
+
+## `input` のtype
+
+| `type` | 用途 |
+| ------ | ---- |
+| `text` | 1行テキスト |
+| `email` | メールアドレス |
+| `password` | パスワード |
+| `tel` | 電話番号 |
+| `url` | URL |
+| `number` | 数値 |
+| `checkbox` | 複数選択 |
+| `radio` | 単一選択 |
+| `submit` | 送信 |
+
+```html
+<label for="email">メールアドレス</label>
+<input id="email" name="email" type="email" required>
+```
+
+**構文：** `<input type="種類" name="送信名">`
+
+| 属性 | 説明 |
+| ---- | ---- |
+| `type` | 入力欄の種類 |
+| `name` | 送信時のキー |
+| `id` | `label for` と対応させる識別子 |
+| `required` | 必須入力 |
+| `placeholder` | 入力例 |
+
+**戻り値：** HTML要素なので戻り値はありません。フォーム送信時に `name=value` の形で値が送られます。
+
+<Marker>フォーム部品には、基本的に `label` と `name` をセットで付けます。</Marker>
+
+## checkboxとradio
+
+複数選択ならcheckbox、1つだけ選ぶならradioです。
+
+```html
+<fieldset>
+  <legend>学びたい内容</legend>
+
+  <label>
+    <input type="checkbox" name="topics" value="html">
+    HTML
+  </label>
+
+  <label>
+    <input type="checkbox" name="topics" value="css">
+    CSS
+  </label>
+</fieldset>
+```
+
+```html
+<fieldset>
+  <legend>経験年数</legend>
+
+  <label>
+    <input type="radio" name="experience" value="beginner">
+    未経験
+  </label>
+
+  <label>
+    <input type="radio" name="experience" value="experienced">
+    経験あり
+  </label>
+</fieldset>
+```
+
+## よくあるミス
+
+| ミス | 問題 | 修正 |
+| ---- | ---- | ---- |
+| `label` がない | 入力欄の意味が伝わりにくい | `label for` と `id` を対応 |
+| `name` がない | 送信時に値が送られない | 各入力に `name` を付ける |
+| `button` の `type` がない | 意図せずsubmitになることがある | `type` を明示する |
+| placeholderをlabel代わりにする | 入力後に説明が消える | labelを別に置く |
+
+## 参考リンク
+
+- [MDN: form 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/form)
+- [MDN: input 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/input)
+- [MDN: label 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/label)
+
+次章では、ページ全体の意味を整理するセマンティックHTMLを学びます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="form、input、label、buttonの基本をクイズで確認しよう"
+/>

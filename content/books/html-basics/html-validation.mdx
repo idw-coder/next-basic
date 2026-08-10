@@ -1,0 +1,81 @@
+---
+title: 'HTMLバリデーション — 正しい構文とよくあるエラー'
+description: 'HTMLの入れ子、閉じタグ、属性、id重複、非推奨タグなど、バリデーションで確認すべきポイントを学びます。'
+order: 11
+---
+
+HTMLは多少の間違いがあってもブラウザが補正して表示してくれることがあります。しかし、表示されるから正しいとは限りません。構文エラーは、CSSの効き方、JavaScriptのDOM操作、アクセシビリティに影響します。
+
+## よくあるHTMLエラー
+
+| エラー | 例 | 問題 |
+| ------ | -- | ---- |
+| 入れ子が壊れている | `<p><strong>重要</p></strong>` | DOM構造が意図と変わる |
+| 閉じタグ忘れ | `<li>HTML<li>CSS` | ブラウザ補正に依存する |
+| 属性値の引用符忘れ | `<a href=/about>` | 値によって壊れやすい |
+| `id` の重複 | 同じ `id="nav"` が複数 | ページ内リンクやJSが壊れる |
+| 存在しない属性 | `<img href="...">` | 意図した動作にならない |
+| 非推奨タグ | `font`, `center` | 見た目はCSSで扱う |
+
+<Marker>HTMLは「ブラウザで表示された」だけで合格にせず、構文として正しいかも確認します。</Marker>
+
+## 正しい入れ子
+
+HTML要素は、開始タグと終了タグの対応が崩れないように入れ子にします。
+
+```html
+<!-- 良い例 -->
+<p><strong>重要なお知らせ</strong>があります。</p>
+```
+
+```html
+<!-- 悪い例 -->
+<p><strong>重要なお知らせ</p></strong>
+```
+
+## `id` と `class`
+
+`id` はページ内で一意、`class` は複数要素に使えます。
+
+| 属性 | 用途 | 重複 |
+| ---- | ---- | ---- |
+| `id` | 1つの要素を特定する | 同じページ内で重複させない |
+| `class` | スタイルや分類を共有する | 複数要素に使える |
+
+```html
+<section id="profile" class="section">
+  <h2>プロフィール</h2>
+</section>
+
+<section id="skills" class="section">
+  <h2>スキル</h2>
+</section>
+```
+
+## バリデーターを使う
+
+HTMLの構文チェックには、W3CのMarkup Validation Serviceなどを使えます。
+
+```txt
+https://validator.w3.org/
+```
+
+学習中は、エラーが出たらすぐ直すより、まず「何を指摘されているか」を読みます。閉じタグ、要素の入れ子、属性名のミスは頻出です。
+
+<Callout type="note" title="警告とエラーを分けて読む">
+  バリデーターの指摘には、必ず直すべき構文エラーと、改善提案に近い警告があります。最初はエラーを優先して直し、警告は内容を確認して判断します。
+</Callout>
+
+## 参考リンク
+
+- [W3C Markup Validation Service](https://validator.w3.org/)
+- [WHATWG HTML Standard](https://html.spec.whatwg.org/dev/)
+- [MDN: HTML 要素リファレンス](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements)
+
+次章では、ここまでの知識を引ける形でまとめたHTMLチートシートを用意します。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="HTML構文、id、class、バリデーションの基本をクイズで確認しよう"
+/>

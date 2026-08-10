@@ -1,0 +1,74 @@
+---
+title: 'HTMLとは何か — Webページの構造を作る最初の言語'
+description: 'HTMLの役割、CSSやJavaScriptとの違い、資格試験やこのアプリのHTMLクイズとの関係を整理します。'
+order: 1
+---
+
+HTMLは、Webページの**構造**を作るためのマークアップ言語です。見出し、段落、リンク、画像、フォームなど、「この情報は何なのか」をブラウザや検索エンジン、支援技術に伝える役割を持ちます。
+
+CSSが見た目を整え、JavaScriptが動きを加えるのに対して、HTMLはページの土台です。ReactやNext.jsを使う場合でも、最終的にブラウザへ届くのはHTMLです。
+
+<Marker>HTMLは「見た目を作る言語」ではなく、「情報の意味と構造を伝える言語」です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  ReactやNext.jsを使うなら、HTMLを細かく覚えなくても大丈夫ですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  JSXはHTMLに似ていますが、土台の考え方はHTMLです。見出し、フォーム、アクセシビリティを理解しているほど、ReactのUIも正しく作れます。
+</SpeechBubble>
+
+## この本の位置づけ
+
+この本は、HTMLクイズカテゴリ `html-basic` のインプット教材として使えるように作ります。資格対策だけに寄せすぎず、Web制作・フロントエンド開発・React学習の前提になる知識を中心に扱います。
+
+参考にする観点は次の3つです。
+
+| 観点 | 取り入れ方 |
+| ---- | ---------- |
+| HTML5プロフェッショナル認定試験 レベル1 | Web基礎、HTML要素、フォーム、レスポンシブ前提の基礎を意識する |
+| Webクリエイター能力認定試験 HTML5対応 | 実際にページを作る流れ、画像・表・フォーム・アクセシビリティを意識する |
+| MDN / WHATWG HTML Standard | タグや属性の一次情報として参照する |
+
+<Callout type="note" title="資格対策本ではなく、資格範囲も意識した入門書">
+  この本は特定試験の問題集ではありません。試験範囲に出やすいHTMLの基本を押さえつつ、実務で間違えやすい書き方を重点的に整理します。
+</Callout>
+
+## HTML・CSS・JavaScriptの役割
+
+| 技術 | 役割 | 例 |
+| ---- | ---- | -- |
+| HTML | 構造・意味 | 見出し、段落、リンク、フォーム |
+| CSS | 見た目 | 色、余白、レイアウト、レスポンシブ |
+| JavaScript | 動き・処理 | ボタン操作、入力チェック、API通信 |
+
+```html
+<article>
+  <h1>お知らせ</h1>
+  <p>新しい記事を公開しました。</p>
+  <a href="/news">一覧を見る</a>
+</article>
+```
+
+このHTMLにCSSを当てると見た目が整い、JavaScriptを加えると操作に応じた動きを付けられます。
+
+<Figure src="/images/readingbook_woman_color.png" alt="HTMLの基礎を学ぶ人" maxWidth="150px" caption="HTMLはすべてのWebページの土台。まず構造を正しく書く" />
+
+## この本の読み方
+
+各章では、説明のあとにタグや属性のチートシートを置きます。タグを丸暗記するより、「どんな意味を持つタグか」「どの属性と一緒に使うか」「どんな使い方を避けるか」をセットで覚える方が実務で役に立ちます。
+
+## 参考リンク
+
+- [MDN: HTML](https://developer.mozilla.org/ja/docs/Web/HTML)
+- [WHATWG HTML Standard](https://html.spec.whatwg.org/dev/)
+- [HTML5プロフェッショナル認定試験 レベル1 出題範囲](https://html5exam.jp/outline/objectives_lv1.html)
+- [Webクリエイター能力認定試験 HTML5対応 出題範囲](https://www.sikaku.gr.jp/web/wc/contents/about/range/1/)
+
+次章では、HTML文書の最小構造を作り、`doctype`、`html`、`head`、`body` の役割を整理します。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="この章で学んだHTMLの役割を、4択クイズでアウトプットして定着させよう"
+/>

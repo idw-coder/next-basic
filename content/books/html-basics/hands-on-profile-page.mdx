@@ -1,0 +1,153 @@
+---
+title: 'HTMLハンズオン — プロフィールページを作って復習する'
+description: 'HTMLの基本構造、見出し、リンク、画像、リスト、表、フォーム、セマンティック要素を使ってプロフィールページを作ります。'
+order: 14
+---
+
+最後に、ここまで学んだHTMLを使ってプロフィールページを作ります。CSSは最小限にし、まずHTMLだけで意味のある構造を作ることを目標にします。
+
+## 作るページ
+
+このハンズオンでは、次の要素を含む1ページを作ります。
+
+| 内容 | 使うHTML |
+| ---- | -------- |
+| ページ全体 | `doctype`, `html`, `head`, `body` |
+| ヘッダー | `header`, `nav` |
+| 自己紹介 | `main`, `section`, `h1`, `p`, `img` |
+| スキル一覧 | `ul`, `li` |
+| 学習履歴 | `table`, `thead`, `tbody`, `th`, `td` |
+| お問い合わせ | `form`, `label`, `input`, `textarea`, `button` |
+| フッター | `footer`, `small` |
+
+## 完成コード
+
+`profile.html` を作ります。
+
+```html
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>山田太郎のプロフィール</title>
+    <meta name="description" content="Web開発を学習している山田太郎のプロフィールページです。">
+  </head>
+  <body>
+    <header>
+      <p>山田太郎</p>
+      <nav aria-label="メインナビゲーション">
+        <ul>
+          <li><a href="#profile">プロフィール</a></li>
+          <li><a href="#skills">スキル</a></li>
+          <li><a href="#contact">お問い合わせ</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <section id="profile">
+        <h1>プロフィール</h1>
+        <img src="profile.jpg" alt="山田太郎のプロフィール写真" width="240" height="240">
+        <p>Webエンジニアを目指してHTML、CSS、JavaScriptを学習しています。</p>
+      </section>
+
+      <section id="skills">
+        <h2>学習中のスキル</h2>
+        <ul>
+          <li>HTML</li>
+          <li>CSS</li>
+          <li>JavaScript</li>
+        </ul>
+      </section>
+
+      <section id="history">
+        <h2>学習履歴</h2>
+        <table>
+          <caption>今月の学習内容</caption>
+          <thead>
+            <tr>
+              <th scope="col">日付</th>
+              <th scope="col">内容</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>8月1日</td>
+              <td>HTMLの基本構造</td>
+            </tr>
+            <tr>
+              <td>8月2日</td>
+              <td>リンクと画像</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="contact">
+        <h2>お問い合わせ</h2>
+        <form action="/contact" method="post">
+          <p>
+            <label for="name">お名前</label>
+            <input id="name" name="name" type="text" required>
+          </p>
+
+          <p>
+            <label for="email">メールアドレス</label>
+            <input id="email" name="email" type="email" required>
+          </p>
+
+          <p>
+            <label for="message">メッセージ</label>
+            <textarea id="message" name="message" rows="5" required></textarea>
+          </p>
+
+          <button type="submit">送信</button>
+        </form>
+      </section>
+    </main>
+
+    <footer>
+      <small>&copy; 2026 Taro Yamada</small>
+    </footer>
+  </body>
+</html>
+```
+
+<Marker>HTMLだけでも、見出し、リスト、表、フォーム、ナビゲーションを使えば、意味のあるページ構造を作れます。</Marker>
+
+## 確認ポイント
+
+- `html` に `lang="ja"` がある
+- `head` に `charset`、`viewport`、`title`、`description` がある
+- 見出しが `h1` → `h2` の順で自然に並んでいる
+- ナビゲーションのリンク先と各 `section` の `id` が対応している
+- 画像に `alt`、`width`、`height` がある
+- 表に `caption` と `th scope="col"` がある
+- フォームに `label`、`id`、`name` がある
+- ボタンに `type="submit"` がある
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  CSSがないと見た目は地味ですが、これで大丈夫ですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  はい。まずHTMLで意味のある構造を作るのが大切です。見た目は次のCSSで整えればよいです。
+</SpeechBubble>
+
+## 次に学ぶこと
+
+このページにCSSを加えるなら、[CSS入門](/books/css-basics) のセレクタ、ボックスモデル、Flexboxの章へ進みます。動きを付けたいなら、[JavaScript入門](/books/javascript) のDOM操作やイベント処理へ進むとつながりやすいです。
+
+## 参考リンク
+
+- [MDN: HTML](https://developer.mozilla.org/ja/docs/Web/HTML)
+- [W3C Markup Validation Service](https://validator.w3.org/)
+
+これでHTML入門は完了です。チートシートを見返しながら、HTMLクイズでタグ・属性・構造の判断を定着させましょう。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="HTMLの基本構造、タグ、属性、フォーム、アクセシビリティを総復習しよう"
+/>

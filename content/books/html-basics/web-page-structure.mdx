@@ -1,0 +1,92 @@
+---
+title: 'HTMLの基本構造 — doctype・html・head・body'
+description: 'HTML文書の最小構成、doctype、html要素、head要素、body要素、文字コード、lang属性を学びます。'
+order: 2
+---
+
+HTMLファイルは、いくつかの決まった要素で文書全体を包みます。最小構成を先に覚えると、どのページでも迷わず書き始められます。
+
+```html
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>はじめてのHTML</title>
+  </head>
+  <body>
+    <h1>はじめてのHTML</h1>
+    <p>HTMLでWebページの構造を作ります。</p>
+  </body>
+</html>
+```
+
+## 基本構造のチートシート
+
+| 要素・宣言 | 役割 | よく使う属性 | 注意点 |
+| ---------- | ---- | ------------ | ------ |
+| `<!doctype html>` | HTML文書であることを宣言する | なし | 先頭に書く |
+| `html` | 文書全体のルート | `lang` | 日本語ページなら `lang="ja"` |
+| `head` | 画面に直接表示しないメタ情報 | なし | `title`、`meta`、`link` などを入れる |
+| `meta charset` | 文字コード指定 | `charset` | 基本は `utf-8` |
+| `meta viewport` | モバイル表示の基準 | `name`, `content` | レスポンシブ対応で重要 |
+| `title` | ページタイトル | なし | ブラウザタブや検索結果に使われる |
+| `body` | 画面に表示される本文 | なし | 見出し、文章、画像、フォームなどを入れる |
+
+<Marker>`head` はページの設定、`body` はユーザーに見える内容、と分けて覚えます。</Marker>
+
+## `lang` 属性
+
+`html` 要素には、ページの主な言語を示す `lang` 属性を付けます。
+
+```html
+<html lang="ja">
+```
+
+**構文：** `lang="言語コード"`
+
+| 値 | 意味 |
+| -- | ---- |
+| `ja` | 日本語 |
+| `en` | 英語 |
+| `ko` | 韓国語 |
+| `zh` | 中国語 |
+
+**戻り値：** HTML属性なので戻り値はありません。ブラウザ、検索エンジン、スクリーンリーダーが言語情報として利用します。
+
+## `meta viewport`
+
+スマートフォンでページを自然な幅で表示するために、次の指定を入れます。
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1">
+```
+
+これがないと、スマートフォンでPC向けの広いページとして縮小表示されることがあります。
+
+<Callout type="warning" title="charsetは早めに書く">
+  `meta charset` は `head` の早い位置に書きます。文字コードの判定が遅れると、文字化けや意図しない解釈の原因になります。
+</Callout>
+
+## よくあるミス
+
+| ミス | 問題 | 修正 |
+| ---- | ---- | ---- |
+| `doctype` を書かない | 古い互換モードで表示されることがある | `<!doctype html>` を先頭に書く |
+| `lang` がない | 読み上げや翻訳、検索の手がかりが減る | `<html lang="ja">` |
+| `title` が全ページ同じ | 検索結果やタブで区別しづらい | ページごとに固有のtitleにする |
+| `viewport` がない | モバイルで表示が崩れやすい | viewport metaを入れる |
+
+## 参考リンク
+
+- [MDN: HTMLでコンテンツを構造化する](https://developer.mozilla.org/ja/docs/Learn_web_development/Core/Structuring_content)
+- [MDN: meta 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/meta)
+- [MDN: viewport meta](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/meta/name/viewport)
+
+次章では、見出し、段落、強調など、文章を構造化するタグを学びます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="doctype、head、body、metaの理解をクイズで確認しよう"
+/>

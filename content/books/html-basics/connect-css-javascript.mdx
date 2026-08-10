@@ -1,0 +1,102 @@
+---
+title: 'HTMLからCSS・JavaScriptへつなぐ — link・script・class・data属性'
+description: 'HTMLにCSSとJavaScriptを読み込む方法、class/id/data属性の使い分け、DOM操作やReact学習への接続を整理します。'
+order: 13
+---
+
+HTMLは単体でもページを作れますが、見た目を整えるにはCSS、操作に応じた動きを付けるにはJavaScriptを組み合わせます。この章では、HTMLから次の学習へ進む接続点を整理します。
+
+## CSSを読み込む
+
+CSSファイルは `head` 内で `link` 要素を使って読み込みます。
+
+```html
+<link rel="stylesheet" href="/styles.css">
+```
+
+**構文：** `<link rel="stylesheet" href="CSSファイルのURL">`
+
+| 属性 | 説明 |
+| ---- | ---- |
+| `rel` | 現在の文書との関係。CSSなら `stylesheet` |
+| `href` | 読み込むCSSファイル |
+
+**戻り値：** HTML要素なので戻り値はありません。ブラウザがCSSを読み込み、HTMLにスタイルを適用します。
+
+CSSそのものは[CSS入門](/books/css-basics)で詳しく学べます。
+
+## JavaScriptを読み込む
+
+JavaScriptは `script` 要素で読み込みます。
+
+```html
+<script src="/main.js" defer></script>
+```
+
+| 属性 | 説明 |
+| ---- | ---- |
+| `src` | 読み込むJavaScriptファイル |
+| `defer` | HTML解析後に実行する |
+| `type="module"` | ES Modulesとして読み込む |
+
+```html
+<script type="module" src="/main.js"></script>
+```
+
+DOM操作は[JavaScriptのDOM操作](/books/javascript/16-dom-manipulation)で扱っています。
+
+## `class`、`id`、`data-*`
+
+| 属性 | 主な用途 | 例 |
+| ---- | -------- | -- |
+| `class` | CSSのスタイル、分類 | `class="button primary"` |
+| `id` | ページ内で一意な識別子 | `id="contact"` |
+| `data-*` | JavaScript用の独自データ | `data-user-id="42"` |
+
+```html
+<button class="button" data-action="open-menu" type="button">
+  メニューを開く
+</button>
+```
+
+<Marker>CSS用には `class`、特定位置や一意の対象には `id`、JavaScriptに渡す独自情報には `data-*` を使う、と分けると整理しやすいです。</Marker>
+
+## ReactやJSXにつながるHTML
+
+ReactではJSXを書きます。JSXはHTMLそのものではありませんが、HTMLの知識がほぼそのまま土台になります。
+
+```jsx
+function Profile() {
+  return (
+    <article>
+      <h1>プロフィール</h1>
+      <p>HTMLの構造をReactコンポーネントで表現します。</p>
+    </article>
+  );
+}
+```
+
+ただし、JSXでは `class` ではなく `className`、`for` ではなく `htmlFor` を使うなど、一部の属性名が変わります。詳しくは[ReactのJSXとコンポーネント](/books/react-learning/02-jsx-and-components)で扱っています。
+
+## よくあるミス
+
+| ミス | 問題 | 修正 |
+| ---- | ---- | ---- |
+| CSSを `script` で読む | CSSとして適用されない | `link rel="stylesheet"` |
+| JSを `head` で同期実行 | DOM取得が失敗することがある | `defer` や `type="module"` |
+| `id` をCSS目的で大量に使う | 再利用しにくい | `class` を使う |
+| 何でも `data-*` に入れる | HTMLが状態管理の置き場になる | 必要な識別情報だけにする |
+
+## 参考リンク
+
+- [MDN: link 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/link)
+- [MDN: script 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/script)
+- [MDN: data-* グローバル属性](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Global_attributes/data-%2A)
+
+次章では、HTMLだけで小さなプロフィールページを作るハンズオンに進みます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="link、script、class、id、data属性の基本をクイズで確認しよう"
+/>

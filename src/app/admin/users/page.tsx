@@ -1,6 +1,6 @@
 'use client';
 
-import api from '@/lib/api';
+import { fetchNextApiJson } from '@/lib/nextApiClient';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -59,7 +59,7 @@ export default function UserManagePage() {
     const stored = localStorage.getItem('user');
     if (stored) {
       try {
-        setCurrentUserId(JSON.parse(stored).id);
+        setCurrentUserId(String(JSON.parse(stored).id));
       } catch {
         /* ignore */
       }
@@ -67,8 +67,10 @@ export default function UserManagePage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await api.get('/api/users');
-        setUsers(res.data.users);
+        const res = await fetchNextApiJson<{ users: User[] }>('/next-api/users', {
+          auth: true,
+        });
+        setUsers(res.users);
       } catch {
         setError('ユーザーの取得に失敗しました');
       } finally {
@@ -114,8 +116,12 @@ export default function UserManagePage() {
       if (name !== editTarget.name) params.name = name;
       if (email !== editTarget.email) params.email = email;
       if (editRole !== editTarget.role) params.role = editRole;
-      const res = await api.patch(`/api/users/${editTarget.id}`, params);
-      setUsers((prev) => prev.map((u) => (u.id === editTarget.id ? res.data : u)));
+      const updated = await fetchNextApiJson<User>(`/next-api/users/${editTarget.id}`, {
+        auth: true,
+        method: 'PATCH',
+        body: params,
+      });
+      setUsers((prev) => prev.map((u) => (u.id === editTarget.id ? updated : u)));
       closeEdit();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -131,7 +137,10 @@ export default function UserManagePage() {
       return;
     }
     if (!confirm(`「${user.name}」を削除しますか？`)) return;
-    await api.delete(`/api/users/${user.id}`);
+    await fetchNextApiJson<{ message: string }>(`/next-api/users/${user.id}`, {
+      auth: true,
+      method: 'DELETE',
+    });
     setUsers((prev) => prev.filter((u) => u.id !== user.id));
   };
 

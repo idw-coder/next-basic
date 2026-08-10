@@ -1,0 +1,90 @@
+---
+title: 'HTMLの画像とメディア — img・alt・figure・video'
+description: 'img要素、alt属性、width/height、figure/figcaption、video/audioの基本を学びます。'
+order: 5
+---
+
+画像はページを分かりやすくしますが、HTMLでは「画像が表示できない人や環境にも意味が伝わるか」を考える必要があります。その中心が `alt` 属性です。
+
+```html
+<img src="/images/profile.jpg" alt="プロフィール写真" width="320" height="240">
+```
+
+## 画像・メディア要素のチートシート
+
+| タグ | 用途 | よく使う属性 | 注意点 |
+| ---- | ---- | ------------ | ------ |
+| `img` | 画像表示 | `src`, `alt`, `width`, `height`, `loading` | 意味のある画像には適切な `alt` |
+| `figure` | 図版・写真・コード例などのまとまり | なし | 本文から参照される図に向く |
+| `figcaption` | 図版のキャプション | なし | `figure` 内で使う |
+| `picture` | 画面幅や形式に応じた画像切替 | `source` と組み合わせる | レスポンシブ画像で使う |
+| `video` | 動画 | `src`, `controls`, `poster` | `controls` がないと操作しづらい |
+| `audio` | 音声 | `src`, `controls` | 自動再生は避ける |
+
+## `img` 要素の構文
+
+**構文：** `<img src="画像URL" alt="代替テキスト">`
+
+| 属性 | 説明 |
+| ---- | ---- |
+| `src` | 画像ファイルのURL |
+| `alt` | 画像の代替テキスト |
+| `width` / `height` | 画像の表示領域の基準サイズ |
+| `loading` | 遅延読み込み。`lazy` など |
+
+**戻り値：** HTML要素なので戻り値はありません。ブラウザが画像リソースを取得して表示します。
+
+## `alt` 属性の考え方
+
+`alt` は画像の説明文ではなく、画像が伝えている情報の代替です。
+
+| 画像の種類 | `alt` の例 |
+| ---------- | ---------- |
+| 商品写真 | `alt="黒いレザーバッグ"` |
+| グラフ | `alt="売上が2024年から2026年にかけて増加しているグラフ"` |
+| 装飾画像 | `alt=""` |
+| リンク画像 | リンク先が分かる文言 |
+
+<Marker>装飾画像は `alt=""`、意味のある画像は情報が伝わる `alt` にします。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  すべての画像に詳しい説明を入れれば安心ですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  装飾画像まで読み上げられると逆に邪魔になります。画像が情報を持つかどうかで判断します。
+</SpeechBubble>
+
+## `figure` と `figcaption`
+
+本文中の図や写真にキャプションを付ける場合は、`figure` と `figcaption` を使います。
+
+```html
+<figure>
+  <img src="/images/layout.png" alt="ヘッダー、メイン、フッターに分かれたページ構造">
+  <figcaption>図1: 基本的なページ構造</figcaption>
+</figure>
+```
+
+## よくあるミス
+
+| ミス | 問題 | 修正 |
+| ---- | ---- | ---- |
+| `alt` がない | 画像の意味が伝わらない | 内容に応じて書く |
+| ファイルサイズが大きすぎる | 表示が遅くなる | 適切に圧縮する |
+| 画像で文字を見せる | 翻訳・検索・読み上げに弱い | 重要な文字はHTMLテキストにする |
+| `width` / `height` がない | 読み込み時にレイアウトがずれる | サイズを指定する |
+
+## 参考リンク
+
+- [MDN: img 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/img)
+- [MDN: figure 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/figure)
+- [MDN: video 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/video)
+
+次章では、箇条書き、番号付きリスト、表を使って情報を整理する方法を学びます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="img、alt、figure、videoの基本をクイズで確認しよう"
+/>

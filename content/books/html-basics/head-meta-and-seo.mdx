@@ -1,0 +1,91 @@
+---
+title: 'head・meta・SEOの基本 — titleとdescriptionを設定する'
+description: 'head要素に書くtitle、meta description、viewport、link、OGPの基本と、検索結果に伝わるHTMLの書き方を学びます。'
+order: 9
+---
+
+`head` には、ページ本文には直接表示されない情報を書きます。検索結果、ブラウザタブ、SNSシェア、モバイル表示などに関わるため、HTMLの中でも実務で重要な領域です。
+
+```html
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HTML入門 — Webページの構造を学ぶ</title>
+  <meta name="description" content="HTMLの基本構造、タグ、属性、アクセシビリティを学ぶ入門ページです。">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+```
+
+## head内要素のチートシート
+
+| タグ | 用途 | よく使う属性 | 注意点 |
+| ---- | ---- | ------------ | ------ |
+| `title` | ページタイトル | なし | ページごとに固有にする |
+| `meta charset` | 文字コード | `charset` | 基本は `utf-8` |
+| `meta name="viewport"` | モバイル表示 | `content` | レスポンシブ対応に必要 |
+| `meta name="description"` | ページ概要 | `content` | 検索結果の説明に使われることがある |
+| `link rel="stylesheet"` | CSS読み込み | `href` | CSS本と接続する入口 |
+| `link rel="icon"` | favicon | `href` | ブラウザタブなどで使われる |
+| `meta property="og:*"` | SNS共有用情報 | `property`, `content` | OGP画像やタイトルを指定 |
+
+## `title` と `description`
+
+`title` はページの名前です。ブラウザタブや検索結果のタイトル候補になります。
+
+```html
+<title>お問い合わせ — Example Cafe</title>
+```
+
+`description` はページ内容を短く説明します。
+
+```html
+<meta name="description" content="Example Cafeへのお問い合わせフォームです。営業時間やアクセスに関するご質問はこちらから送信できます。">
+```
+
+<Marker>`title` と `description` は、全ページで同じ文言にせず、そのページ固有の内容にします。</Marker>
+
+## OGPの基本
+
+SNSで共有されたときの見え方を整えるには、Open Graph Protocolの `meta` を使います。
+
+```html
+<meta property="og:title" content="HTML入門">
+<meta property="og:description" content="HTMLの基本を学ぶ入門ページです。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://example.com/html">
+<meta property="og:image" content="https://example.com/ogp.png">
+```
+
+## CSSとJavaScriptの読み込み
+
+CSSは `link`、JavaScriptは `script` で読み込みます。
+
+```html
+<link rel="stylesheet" href="/styles.css">
+<script src="/main.js" defer></script>
+```
+
+`defer` を付けると、HTMLの解析を邪魔しにくい形でスクリプトを実行できます。詳しくは[JavaScriptのDOM操作](/books/javascript/16-dom-manipulation)や[CSS入門](/books/css-basics)と合わせて学ぶと理解しやすいです。
+
+## よくあるミス
+
+| ミス | 問題 | 修正 |
+| ---- | ---- | ---- |
+| 全ページ同じ `title` | ページの違いが伝わらない | 固有のタイトルにする |
+| `description` が長すぎる | 要点が伝わりにくい | 80〜120字程度を目安に要約 |
+| viewportなし | スマホで縮小表示される | viewport metaを入れる |
+| CSSを `script` で読む | 読み込み方法が違う | `link rel="stylesheet"` |
+
+## 参考リンク
+
+- [MDN: head 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/head)
+- [MDN: title 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/title)
+- [MDN: meta 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/meta)
+
+次章では、アクセシビリティの基礎をHTMLの書き方から整理します。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="head、meta、title、OGPの基本をクイズで確認しよう"
+/>

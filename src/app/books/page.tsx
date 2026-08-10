@@ -22,12 +22,12 @@ const BOOKS_OG_IMAGE = `${SITE_URL}/images/books-hero-editorial2.png`;
 export const metadata: Metadata = {
   title: 'プログラミング教科書一覧 — 無料で学べるWeb開発入門 | ウェブエンジニア問題集',
   description:
-    'JavaScript・React・TypeScript・CSS・AWS・SQL・Git など15冊のWeb開発教科書を無料で公開。章ごとに順番に読み進められ、クイズで理解度をチェックできます。初心者から実務経験者まで、基礎を体系的に学びたい方に最適です。',
+    'HTML・CSS・JavaScript・React・TypeScript・AWS・SQL・Git などのWeb開発教科書を無料で公開。章ごとに順番に読み進められ、クイズで理解度をチェックできます。初心者から実務経験者まで、基礎を体系的に学びたい方に最適です。',
   alternates: { canonical: '/books' },
   openGraph: {
     title: 'プログラミング教科書一覧 — 無料で学べるWeb開発入門 | ウェブエンジニア問題集',
     description:
-      'JavaScript・React・TypeScriptなど15冊のWeb開発教科書を無料で公開。章ごとに順番に学べます。',
+      'HTML・CSS・JavaScript・React・TypeScriptなどのWeb開発教科書を無料で公開。章ごとに順番に学べます。',
     type: 'website',
     locale: 'ja_JP',
     url: `${SITE_URL}/books`,
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'プログラミング教科書一覧 — 無料で学べるWeb開発入門 | ウェブエンジニア問題集',
     description:
-      'JavaScript・React・TypeScriptなど15冊のWeb開発教科書を無料で公開。章ごとに順番に学べます。',
+      'HTML・CSS・JavaScript・React・TypeScriptなどのWeb開発教科書を無料で公開。章ごとに順番に学べます。',
     images: [BOOKS_OG_IMAGE],
   },
 };
@@ -86,7 +86,7 @@ const LEARNING_PATHS = [
   {
     title: 'フロントエンド開発',
     description: 'Webサイトの見た目と操作性を作る技術を基礎から学ぶ',
-    books: ['javascript', 'css-basics', 'tailwind-css', 'typescript', 'react-learning', 'next-js'],
+    books: ['html-basics', 'css-basics', 'javascript', 'tailwind-css', 'typescript', 'react-learning', 'next-js'],
   },
   {
     title: 'バックエンド開発',
@@ -124,7 +124,7 @@ export default function BooksPage() {
       '@type': 'CollectionPage',
       name: 'プログラミング教科書一覧',
       description:
-        'JavaScript・React・TypeScript・CSS・AWS・SQLなど15冊のWeb開発教科書を無料で公開。章ごとに順番に学べます。',
+        'HTML・CSS・JavaScript・React・TypeScript・AWS・SQLなどのWeb開発教科書を無料で公開。章ごとに順番に学べます。',
       url: `${SITE_URL}/books`,
       numberOfItems: books.length,
       isPartOf: {

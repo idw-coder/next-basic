@@ -1,0 +1,105 @@
+---
+title: 'セマンティックHTML — header・main・section・articleを使い分ける'
+description: 'セマンティックHTMLの考え方と、header、footer、main、nav、section、article、asideの使い分けを学びます。'
+order: 8
+---
+
+セマンティックHTMLとは、見た目ではなく意味に合ったタグを使う書き方です。`div` だけでも画面は作れますが、ページの構造は伝わりにくくなります。
+
+```html
+<header>サイトのヘッダー</header>
+<main>
+  <article>
+    <h1>記事タイトル</h1>
+    <p>記事本文です。</p>
+  </article>
+</main>
+<footer>コピーライト</footer>
+```
+
+## セマンティック要素のチートシート
+
+| タグ | 用途 | 注意点 |
+| ---- | ---- | ------ |
+| `header` | ページやセクションの導入部分 | ページ最上部専用ではない |
+| `footer` | ページやセクションの末尾情報 | コピーライト、関連リンクなど |
+| `main` | ページの主要コンテンツ | 1ページに基本1つ |
+| `nav` | 主要なナビゲーション | すべてのリンク集に使うわけではない |
+| `section` | 見出しを持つ意味的な区切り | 見出しなしの箱にしない |
+| `article` | 独立して読める内容 | 記事、ニュース、カード型投稿など |
+| `aside` | 補足・関連情報 | サイドバー、関連記事など |
+| `div` | 意味を持たない汎用コンテナ | 意味のあるタグがない場合に使う |
+
+<Marker>`div` は便利ですが、最初に選ぶタグではありません。意味のあるタグで表せないときに使います。</Marker>
+
+## `section` と `article`
+
+`section` は、ページ内の意味的なまとまりです。基本的に見出しを持たせます。
+
+```html
+<section>
+  <h2>特徴</h2>
+  <p>このサービスの特徴を紹介します。</p>
+</section>
+```
+
+`article` は、それだけを切り出しても成立する内容に使います。
+
+```html
+<article>
+  <h2>HTMLチートシートを公開しました</h2>
+  <p>よく使うタグと属性を一覧で確認できます。</p>
+</article>
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `section` と `div` の違いがまだ曖昧です。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  見出しを付けて「このまとまりは何か」を説明できるなら `section`。見た目や配置だけの箱なら `div` と考えると判断しやすいです。
+</SpeechBubble>
+
+## よくあるページ構造
+
+```html
+<body>
+  <header>
+    <p>サイト名</p>
+    <nav aria-label="メインナビゲーション">
+      <ul>
+        <li><a href="/">ホーム</a></li>
+        <li><a href="/contact">お問い合わせ</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <h1>HTMLの学び方</h1>
+      <section>
+        <h2>まず構造を覚える</h2>
+        <p>HTMLはページの意味を表します。</p>
+      </section>
+    </article>
+  </main>
+
+  <footer>
+    <small>&copy; 2026 Example</small>
+  </footer>
+</body>
+```
+
+## 参考リンク
+
+- [MDN: HTML セクションとアウトライン](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements#content_sectioning)
+- [MDN: main 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/main)
+- [MDN: article 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/article)
+
+次章では、`head` 内の `title`、`meta`、`link` とSEOの基本を学びます。
+
+<QuizLink
+  href="/quiz/html-basic"
+  title="HTMLクイズに挑戦する"
+  description="header、main、section、articleの使い分けをクイズで確認しよう"
+/>
