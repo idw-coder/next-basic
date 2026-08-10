@@ -1,17 +1,87 @@
 ---
-title: '配列の初期化・平坦化メソッド — fill・flat・flatMap'
-description: 'JavaScriptの配列メソッド fill・flat・flatMap を、初期値つき配列、2次元配列、ネスト配列の平坦化、filter + map の置き換えパターンとともに整理します。'
+title: '配列の初期化・平坦化メソッド — Array.from・fill・flat・flatMap'
+description: 'JavaScriptの Array.from・fill・flat・flatMap を、配列風オブジェクトの変換、初期値つき配列の生成、ネスト配列の平坦化、filter + map の置き換えパターンとともに整理します。'
 order: 7.5
 chapterLabel: '配列メソッド 5'
 ---
 
-この章では、配列の初期化やネストした配列の処理で使う `fill`・`flat`・`flatMap` を扱います。
+この章では、配列の初期化やネストした配列の処理で使う `Array.from`・`fill`・`flat`・`flatMap` を扱います。
 
 | メソッド | 役割 | 注意点 |
 | -------- | ---- | ------ |
+| `Array.from` | 配列ではないものから配列を作る | 静的メソッド。第2引数で変換もできる |
 | `fill` | 配列を同じ値で埋める | 破壊的メソッド。同じ参照が入ることがある |
 | `flat` | ネストした配列を平坦化する | 深さを指定できる |
 | `flatMap` | 変換して1段階だけ平坦化する | `map().flat(1)` に近い |
+
+<a id="array-from"></a>
+
+## Array.from — 配列ではないものから配列を作る
+
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="Array.fromで変換するイメージ"
+  maxWidth="120px"
+/>
+
+`Array.from` は、配列ではないもの（配列風オブジェクトや反復可能オブジェクト）から新しい `Array` インスタンスを生成する**静的メソッド**です。
+`map` や `filter` と違い、配列のインスタンスに対して呼ぶのではなく、`Array.from(...)` のように `Array` に直接呼び出します。
+
+**構文：** `Array.from(arrayLike, mapFn?)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `arrayLike` | 配列に変換したい対象。`length` プロパティを持つオブジェクトや、`for...of` で回せるもの |
+| `mapFn`（省略可） | 各要素に適用する変換関数。`(element, index)` を受け取る |
+
+### 配列風オブジェクトを配列に変換する
+
+`document.querySelectorAll()` が返す `NodeList` や、関数の `arguments` オブジェクトは、`length` を持っていますが `Array` のインスタンスではないため、`.map()` などが使えません。
+`Array.from` で本物の配列に変換すれば、配列メソッドが使えるようになります。
+
+```js
+const nodes = document.querySelectorAll('div');
+// nodes.map(...) → TypeError: nodes.map is not a function
+
+const arr = Array.from(nodes);
+arr.map((node) => node.textContent); // OK
+```
+
+文字列も反復可能なので、1文字ずつの配列に分解できます。
+
+```js
+Array.from('hello'); // ["h", "e", "l", "l", "o"]
+```
+
+### 第2引数の mapFn — 変換しながら配列を作る
+
+第2引数に関数を渡すと、`Array.from(x).map(fn)` と同じ結果を1ステップで得られます。
+
+```js
+Array.from([1, 2, 3], (x) => x * 2); // [2, 4, 6]
+```
+
+この `mapFn` は、`{ length: n }` と組み合わせて「n個の要素を持つ初期化済み配列」を作るパターンでよく使います。
+
+```js
+// 0〜4 の連番
+Array.from({ length: 5 }, (_, i) => i);
+// [0, 1, 2, 3, 4]
+
+// 要素ごとに独立した空配列を作る
+Array.from({ length: 3 }, () => []);
+// [[], [], []]  ← 各要素が別々の配列
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `new Array(5).fill(0).map(...)` で連番を作ったことがあるけど、`Array.from` なら中間配列なしで1回で作れるんですね。
+</SpeechBubble>
+
+<Callout type="note" title="fill と Array.from の使い分け">
+  単純に同じプリミティブ値で埋めるだけなら `new Array(n).fill(value)` がシンプルです。要素ごとに異なる値を作りたいとき（連番、独立したオブジェクト・配列）は `Array.from` を使います。
+</Callout>
+
+---
 
 <a id="fill"></a>
 
@@ -87,7 +157,7 @@ console.log(rows); // [["A"], ["A"], ["A"]]
 ```
 
 これは「3つの空配列を作った」のではなく、「1つの空配列への参照を3か所に入れた」状態です。
-2次元配列やオブジェクト配列を初期化するときは、`Array.from` を使って要素ごとに新しい値を作ります。
+2次元配列やオブジェクト配列を初期化するときは、[上で紹介した `Array.from`](#array-from) を使って要素ごとに新しい値を作ります。
 
 ```js
 const rows = Array.from({ length: 3 }, () => []);
@@ -168,6 +238,8 @@ items.flatMap((i) => (i.inStock ? [i.name] : []));
 
 ## ちゃんと使うためのポイント
 
+- `Array.from` は配列風オブジェクトや `{ length: n }` から配列を作る静的メソッド
+- 第2引数の `mapFn` を使えば、連番や独立したオブジェクト配列を1ステップで生成できる
 - `fill` は元配列を変更する
 - オブジェクトや配列を `fill` すると、すべての要素に同じ参照が入る
 - 2次元配列やオブジェクト配列の初期化は `Array.from` を使う

@@ -1,0 +1,155 @@
+---
+title: 'Fastifyのルーティング — GET・POST・パスパラメータを定義する'
+description: 'FastifyでHTTPメソッド、URL、パスパラメータ、クエリ文字列を扱う基本を学びます。'
+order: 3
+---
+
+ルーティングとは、**どのHTTPメソッドとURLに、どの処理を対応させるか**を決めることです。Fastifyでは、`fastify.get()`、`fastify.post()` などのショートハンドメソッドを使うのが基本です。
+
+```js
+fastify.get('/todos', async () => {
+  return [{ id: 1, title: 'Fastifyを学ぶ', completed: false }];
+});
+```
+
+## ルート定義の構文
+
+**構文：** `fastify.METHOD(path, options, handler)`
+
+| 引数 | 型 | 説明 |
+| ---- | -- | ---- |
+| `path` | string | URLのパス。`:id` のようにパスパラメータを定義できる |
+| `options` | object | schema、hooks、ログ設定など。省略できる |
+| `handler` | function | リクエストを処理する関数 |
+
+**戻り値：** Fastifyインスタンス。通常は戻り値を意識せず、登録処理として使います。
+
+`options` を使わない場合は、第2引数にhandlerを書けます。
+
+```js
+fastify.get('/health', async () => {
+  return { ok: true };
+});
+```
+
+`schema` などを指定する場合は、第2引数にoptions、第3引数にhandlerを書きます。
+
+```js
+fastify.get('/todos', {
+  schema: {
+    response: {
+      200: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'number' },
+            title: { type: 'string' },
+            completed: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  },
+}, async () => {
+  return todos;
+});
+```
+
+## HTTPメソッドごとに処理を分ける
+
+Todo APIの入り口を作ってみます。
+
+```js
+const todos = [
+  { id: 1, title: 'Fastifyを学ぶ', completed: false },
+];
+
+fastify.get('/todos', async () => {
+  return todos;
+});
+
+fastify.post('/todos', async (request, reply) => {
+  const todo = {
+    id: todos.length + 1,
+    title: request.body.title,
+    completed: false,
+  };
+
+  todos.push(todo);
+
+  return reply.code(201).send(todo);
+});
+```
+
+| メソッド | 主な用途 | 例 |
+| -------- | -------- | -- |
+| `GET` | 取得 | Todo一覧を返す |
+| `POST` | 作成 | Todoを追加する |
+| `PUT` | 全体更新 | Todo全体を置き換える |
+| `PATCH` | 部分更新 | `completed` だけ変更する |
+| `DELETE` | 削除 | Todoを削除する |
+
+## パスパラメータ
+
+URLの一部を変数として受け取るには、`:id` のように書きます。
+
+```js
+fastify.get('/todos/:id', async (request, reply) => {
+  const id = Number(request.params.id);
+  const todo = todos.find((item) => item.id === id);
+
+  if (!todo) {
+    return reply.code(404).send({ error: 'TODO_NOT_FOUND' });
+  }
+
+  return todo;
+});
+```
+
+`GET /todos/1` にアクセスすると、`request.params.id` は `'1'` になります。
+
+<Marker>`request.params` や `request.query` の値は基本的に文字列として入ってくるため、数値として使う前に変換と検証が必要です。</Marker>
+
+## クエリ文字列
+
+`GET /todos?completed=true` のような値は、`request.query` から取り出します。
+
+```js
+fastify.get('/todos', async (request) => {
+  const completed = request.query.completed;
+
+  if (completed === 'true') {
+    return todos.filter((todo) => todo.completed);
+  }
+
+  if (completed === 'false') {
+    return todos.filter((todo) => !todo.completed);
+  }
+
+  return todos;
+});
+```
+
+このままだと `completed=yes` のような値も素通りします。Fastifyでは、次章以降で扱う `schema` を使うと、クエリやボディの形をルート単位で検証できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  じゃあ毎回 `Number()` や `if` で検証を書くんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  小さい例ではそれでも動きますが、実務では抜け漏れが出ます。Fastifyではschemaをルートに付けて、入口でまとめて検証するのが基本です。
+</SpeechBubble>
+
+## 参考リンク
+
+- [Fastify Routes](https://fastify.dev/docs/latest/Reference/Routes/)
+- [Fastify Request](https://fastify.dev/docs/latest/Reference/Request/)
+
+次章では、handlerに渡ってくる `request` と `reply` を詳しく見て、レスポンスの返し方を整理します。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="HTTPメソッドやルーティングの基本をクイズで確認しよう"
+/>

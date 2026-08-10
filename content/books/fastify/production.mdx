@@ -1,0 +1,119 @@
+---
+title: 'Fastifyの本番運用 — ログ・CORS・環境変数・終了処理を整える'
+description: 'Fastifyアプリを本番に近づけるための設定、ログ、CORS、環境変数、graceful shutdownの考え方を学びます。'
+order: 12
+---
+
+この章では、本番運用で最低限確認したいポイントを整理します。Fastifyのコードが動くだけでは、運用できるAPIとは言えません。ログ、設定、セキュリティ、終了処理まで含めて「サーバー」として見ます。
+
+## 環境変数で設定を切り替える
+
+ポート番号や外部サービスのURLは、コードに直接書かず環境変数から読みます。
+
+```js
+const port = Number(process.env.PORT ?? 3000);
+const nodeEnv = process.env.NODE_ENV ?? 'development';
+
+const app = buildApp({
+  logger: nodeEnv !== 'test',
+});
+
+await app.listen({ port, host: '0.0.0.0' });
+```
+
+<Marker>Dockerやクラウド環境へ出すAPIでは、`host: '0.0.0.0'` が必要になる場面があります。ローカルだけでなく、実行環境に合わせて確認しましょう。</Marker>
+
+環境変数の考え方は、[Node.jsの本番運用の章](/books/node-js/production)ともつながります。
+
+## ログを残す
+
+Fastifyはロガーを組み込んでいます。`logger: true` を有効にすると、リクエストログやアプリケーションログを出せます。
+
+```js
+const fastify = Fastify({
+  logger: true,
+});
+
+fastify.get('/todos', async (request) => {
+  request.log.info('fetching todos');
+  return todos;
+});
+```
+
+ログには、ユーザーのパスワード、アクセストークン、個人情報などをそのまま出さないようにします。本番では、ログの出力先、保持期間、検索方法も運用設計の一部です。
+
+## CORSを設定する
+
+ブラウザから別オリジンのAPIを呼ぶ場合、CORS設定が必要です。Fastifyでは公式エコシステムの `@fastify/cors` を使います。
+
+```bash
+npm install @fastify/cors
+```
+
+```js
+import cors from '@fastify/cors';
+
+fastify.register(cors, {
+  origin: ['https://example.com'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+});
+```
+
+<Callout type="warning" title="origin: trueを安易に本番で使わない">
+  開発中は広く許可したくなることがありますが、本番では許可するフロントエンドのURLを明示します。Cookieや認証情報を扱うAPIでは特に慎重に設定してください。
+</Callout>
+
+## graceful shutdown
+
+サーバーを停止するとき、処理中のリクエストやDB接続をできるだけきれいに閉じる必要があります。
+
+```js
+const close = async () => {
+  app.log.info('closing server');
+  await app.close();
+};
+
+process.on('SIGINT', close);
+process.on('SIGTERM', close);
+```
+
+FastifyのpluginでDB接続を開いている場合は、`onClose` hookで閉じる処理を登録できます。
+
+```js
+fastify.addHook('onClose', async () => {
+  await db.close();
+});
+```
+
+## 本番前チェックリスト
+
+- `NODE_ENV`、`PORT`、DB接続先を環境変数で渡せる
+- `logger` が有効で、機密情報を出していない
+- CORSの `origin` が本番URLに制限されている
+- schema validationで入口を守っている
+- エラーレスポンスの形式が揃っている
+- `fastify.inject()` で主要APIのテストがある
+- `SIGTERM` で安全に終了できる
+- Dockerやホスティング先で `host` とポートの扱いを確認している
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Fastifyのコードだけ分かれば、本番運用も大丈夫だと思っていました。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  フレームワークの書き方は入口です。本番では、ログ、設定、セキュリティ、終了処理、監視まで含めてAPIを育てます。
+</SpeechBubble>
+
+## 参考リンク
+
+- [Fastify Server Reference](https://fastify.dev/docs/latest/Reference/Server/)
+- [Fastify Hooks](https://fastify.dev/docs/latest/Reference/Hooks/)
+- [Fastify Ecosystem](https://fastify.dev/ecosystem/)
+
+次章では、ここまで学んだ内容を使って、小さなTodo APIを最初から組み立てます。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="Node.jsサーバー運用の基礎をクイズで確認しよう"
+/>

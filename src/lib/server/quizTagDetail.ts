@@ -1,6 +1,14 @@
-import type { RowDataPacket } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import { getMysqlPool } from '@/lib/server/mysql';
+import {
+  QuizTagConflictError,
+  QuizTagMutationResult,
+  QuizTagParamsError,
+  assertTagSlugAvailable,
+  normalizeTagPayload,
+  requestTagMutationFromExpress,
+} from '@/lib/server/quizTags';
 
 const API_BASE_URL =
   process.env.INTERNAL_API_URL ||
@@ -143,5 +151,145 @@ export async function getQuizTagDetail(
         source: 'unavailable',
       };
     }
+  }
+}
+
+async function updateTagInDb(
+  tagId: number,
+  rawPayload: unknown,
+): Promise<QuizTagMutationResult> {
+  await getTagFromDb(tagId);
+  const payload = normalizeTagPayload(rawPayload);
+
+  if (payload.slug !== undefined) {
+    await assertTagSlugAvailable(payload.slug, tagId);
+  }
+
+  await getMysqlPool().query(
+    `
+      UPDATE quiz_tag
+      SET
+        slug = COALESCE(?, slug),
+        name = COALESCE(?, name)
+      WHERE id = ?
+    `,
+    [payload.slug ?? null, payload.name ?? null, tagId],
+  );
+
+  const tag = await getTagFromDb(tagId);
+  return {
+    body: {
+      id: tag.id,
+      slug: tag.slug,
+      name: tag.name,
+    },
+    status: 200,
+    source: 'db',
+  };
+}
+
+async function deleteTagFromDb(tagId: number): Promise<QuizTagMutationResult> {
+  const connection = await getMysqlPool().getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [tagRows] = await connection.query<QuizTagDetailRow[]>(
+      `
+        SELECT id, slug, name
+        FROM quiz_tag
+        WHERE id = ?
+        LIMIT 1
+      `,
+      [tagId],
+    );
+
+    if (!tagRows[0]) {
+      throw new QuizTagDetailNotFoundError();
+    }
+
+    const [detached] = await connection.query<ResultSetHeader>(
+      `
+        DELETE FROM quiz_tagging
+        WHERE quiz_tag_id = ?
+      `,
+      [tagId],
+    );
+
+    await connection.query(
+      `
+        DELETE FROM quiz_tag
+        WHERE id = ?
+      `,
+      [tagId],
+    );
+
+    await connection.commit();
+
+    return {
+      body: {
+        message: 'Tag deleted',
+        deletedId: tagId,
+        detachedCount: Number(detached.affectedRows),
+      },
+      status: 200,
+      source: 'db',
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function updateQuizTag(
+  tagIdInput: string | number,
+  payload: unknown,
+  authorization: string | null,
+): Promise<QuizTagMutationResult> {
+  const tagId = parseTagId(tagIdInput);
+
+  try {
+    return await updateTagInDb(tagId, payload);
+  } catch (error) {
+    if (
+      error instanceof QuizTagDetailNotFoundError ||
+      error instanceof QuizTagParamsError ||
+      error instanceof QuizTagConflictError
+    ) {
+      throw error;
+    }
+
+    console.error('Failed to update tag in DB. Falling back to Express.', error);
+    return requestTagMutationFromExpress(
+      `/api/quiz/tags/${tagId}`,
+      'PUT',
+      payload,
+      authorization,
+    );
+  }
+}
+
+export async function deleteQuizTag(
+  tagIdInput: string | number,
+  authorization: string | null,
+): Promise<QuizTagMutationResult> {
+  const tagId = parseTagId(tagIdInput);
+
+  try {
+    return await deleteTagFromDb(tagId);
+  } catch (error) {
+    if (error instanceof QuizTagDetailNotFoundError || error instanceof QuizTagParamsError) {
+      throw error;
+    }
+
+    console.error('Failed to delete tag in DB. Falling back to Express.', error);
+    return requestTagMutationFromExpress(
+      `/api/quiz/tags/${tagId}`,
+      'DELETE',
+      undefined,
+      authorization,
+    );
   }
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
 import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,13 +47,17 @@ export default function QuizCategoryManagePage() {
     setError(null);
     setCreating(true);
     try {
-      const res = await api.post("/api/quiz/categories", {
-        slug: newSlug.trim(),
-        category_name: newName.trim(),
-        ...(newDescription.trim() ? { description: newDescription.trim() } : {}),
-        ...(newDisplayOrder ? { display_order: Number(newDisplayOrder) } : {}),
+      const category = await fetchNextApiJson<QuizCategory>("/next-api/quiz/categories", {
+        auth: true,
+        method: "POST",
+        body: {
+          slug: newSlug.trim(),
+          category_name: newName.trim(),
+          ...(newDescription.trim() ? { description: newDescription.trim() } : {}),
+          ...(newDisplayOrder ? { display_order: Number(newDisplayOrder) } : {}),
+        },
       });
-      setCategories((prev) => [...prev, res.data]);
+      setCategories((prev) => [...prev, category]);
       setNewSlug("");
       setNewName("");
       setNewDescription("");
@@ -81,13 +84,20 @@ export default function QuizCategoryManagePage() {
     setError(null);
     setSaving(true);
     try {
-      const res = await api.put(`/api/quiz/categories/${id}`, {
-        slug: editSlug.trim(),
-        category_name: editName.trim(),
-        description: editDescription.trim(),
-        ...(editDisplayOrder ? { display_order: Number(editDisplayOrder) } : {}),
-      });
-      setCategories((prev) => prev.map((c) => (c.id === id ? res.data : c)));
+      const category = await fetchNextApiJson<QuizCategory>(
+        `/next-api/quiz/categories/${id}`,
+        {
+          auth: true,
+          method: "PUT",
+          body: {
+            slug: editSlug.trim(),
+            category_name: editName.trim(),
+            description: editDescription.trim(),
+            ...(editDisplayOrder ? { display_order: Number(editDisplayOrder) } : {}),
+          },
+        },
+      );
+      setCategories((prev) => prev.map((c) => (c.id === id ? category : c)));
       cancelEdit();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -101,7 +111,10 @@ export default function QuizCategoryManagePage() {
     if (!confirm("このカテゴリーを削除しますか？")) return;
     setError(null);
     try {
-      await api.delete(`/api/quiz/categories/${id}`);
+      await fetchNextApiJson<{ message: string }>(`/next-api/quiz/categories/${id}`, {
+        auth: true,
+        method: "DELETE",
+      });
       setCategories((prev) => prev.filter((c) => c.id !== id));
     } catch {
       setError("削除に失敗しました");

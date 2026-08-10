@@ -121,6 +121,21 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Docker',
   ],
 
+  fastify: [
+    'route',
+    'schema',
+    'JSON Schema',
+    'request',
+    'reply',
+    'plugin',
+    'encapsulation',
+    'hook',
+    'preHandler',
+    'validation',
+    'inject',
+    'CORS',
+  ],
+
   typescript: ['ユニオン型', 'ジェネリクス', '型ガード', 'Utility Types', 'tsconfig'],
 
   'react-learning': ['useState', 'useEffect', 'useMemo', 'useCallback', '依存配列'],

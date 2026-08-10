@@ -1,0 +1,88 @@
+---
+title: 'Fastifyとは何か — Expressの次に学ぶNode.js APIフレームワーク'
+description: 'Fastifyの特徴、Expressとの違い、どのようなAPI開発に向いているかを整理します。'
+order: 1
+---
+
+Node.jsでAPIサーバーを作るとき、最初に触れるフレームワークとしてはExpressが有名です。Expressは仕組みが素直で、[Node.js入門のExpress章](/books/node-js/express-basics)で学んだように、ルーティングとミドルウェアを理解するには今でもよい教材です。
+
+一方で、実務のAPIでは「入力値を毎回検証したい」「レスポンスの形を揃えたい」「機能単位でルートや認証を分けたい」「テストしやすい構造にしたい」という要求がすぐに出てきます。**Fastify**は、このあたりをフレームワークの中心に置いたNode.js向けのWebフレームワークです。
+
+<Marker>Fastifyは「速いExpress」ではなく、schema、plugin、encapsulationを使ってAPIを設計するフレームワークです。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Expressが分かっていれば、Fastifyも同じように書けますか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  ルーティングの考え方は近いです。ただしFastifyでは「ルートにschemaを付ける」「機能をpluginとして登録する」という設計がかなり重要になります。
+</SpeechBubble>
+
+## Fastifyが得意なこと
+
+Fastifyは、JSON APIを作る場面で特に扱いやすいです。最初からログ、入力検証、レスポンスのシリアライズ、プラグインによる分割、テスト用のHTTP injectionがそろっています。
+
+| 得意なこと | 何がうれしいか |
+| ---------- | -------------- |
+| ルートごとの `schema` | リクエストの検証とレスポンス形式をルート定義の近くに置ける |
+| `register()` によるプラグイン分割 | `/api/users` や `/admin` のような単位で機能を閉じ込められる |
+| encapsulation | プラグイン内の設定、hooks、decoratorの影響範囲を制御できる |
+| `fastify.inject()` | サーバーを実際にlistenしなくてもAPIテストを書ける |
+| 組み込みロガー | `request.log` や `fastify.log` で構造化ログを出しやすい |
+
+<Figure src="/images/deta_man_color.png" alt="APIの構成要素を整理する人" maxWidth="150px" caption="FastifyはAPIの入口、検証、処理、レスポンスを1つのルート定義に集約しやすい" />
+
+## Expressとの違い
+
+Expressは「ミドルウェアを順番に並べる」感覚が中心です。Fastifyにもhooksはありますが、中心になるのはルート定義、schema、pluginです。
+
+| 観点 | Express | Fastify |
+| ---- | ------- | ------- |
+| ルート定義 | `app.get(path, handler)` | `fastify.get(path, options, handler)` |
+| 入力検証 | 自分でミドルウェアやライブラリを組み込む | ルートの `schema` にJSON Schemaを書く |
+| 機能分割 | Routerやミドルウェアで分割 | pluginを `register()` する |
+| スコープ | 基本は上から順に全体へ効く | pluginごとに影響範囲を閉じ込められる |
+| テスト | supertestなどを使うことが多い | `fastify.inject()` が組み込みで使える |
+
+どちらが常に優れている、という話ではありません。既存のExpress資産が多いチームならExpressを続ける判断も自然です。新しくJSON APIを作るなら、Fastifyのschema中心の設計はかなり強い選択肢になります。
+
+## この本で作るもの
+
+この本では、最初に小さなFastifyサーバーを作り、少しずつTodo APIへ育てていきます。最終的には、次のような要素を持つAPIを作れる状態を目指します。
+
+- `GET /todos` で一覧を返す
+- `POST /todos` で入力値を検証して作成する
+- `GET /todos/:id` で1件取得する
+- 404やバリデーションエラーを整理して返す
+- ルートをプラグインへ分割する
+- `node:test` と `fastify.inject()` でAPIテストを書く
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["リクエスト"] --> B["ルーティング"]
+    B --> C["schemaで検証"]
+    C --> D["handlerで処理"]
+    D --> E["replyで返す"]
+    E --> F["レスポンス"]
+`}
+/>
+
+## 先に知っておきたい前提
+
+この本では、Node.jsとnpmの基本を知っている前提で進めます。不安がある場合は、先に[Node.js入門](/books/node-js)のセットアップ、npm、HTTPサーバー、エラーハンドリングの章を読むとつながりやすいです。
+
+コード例はES Modulesで書きます。つまり `import Fastify from 'fastify'` の形です。CommonJSの既存コードを読む必要がある場合は、[CommonJSとES Modulesの章](/books/node-js/modules-cjs-esm)も参照してください。
+
+## 参考リンク
+
+- [Fastify Getting Started](https://fastify.dev/docs/latest/Guides/Getting-Started/)
+- [Fastify Reference](https://fastify.dev/docs/latest/Reference/)
+
+次章では、実際にFastifyをインストールして、最小のサーバーを起動します。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="Fastifyの土台になるNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

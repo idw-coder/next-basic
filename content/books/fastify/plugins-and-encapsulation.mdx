@@ -1,0 +1,136 @@
+---
+title: 'Fastifyのpluginsとencapsulation — 機能単位でAPIを分割する'
+description: 'Fastifyのregister、plugin、encapsulationを使い、ルートや設定の影響範囲を制御する方法を学びます。'
+order: 7
+---
+
+Fastifyでは、機能を分割するときにpluginを使います。pluginは「ルート、hooks、decorator、設定をまとめた部品」です。そしてFastifyのpluginには、**encapsulation** という重要な性質があります。
+
+<Marker>Fastifyのpluginは、単なるファイル分割ではありません。登録した範囲にだけ設定やhooksを効かせるための境界です。</Marker>
+
+## `register()` の構文
+
+**構文：** `fastify.register(plugin, options)`
+
+| 引数 | 型 | 説明 |
+| ---- | -- | ---- |
+| `plugin` | function | Fastifyインスタンスを受け取ってルートなどを登録する関数 |
+| `options` | object | pluginへ渡す設定。`prefix` なども指定できる |
+
+**戻り値：** Fastifyインスタンス。登録処理として使います。
+
+```js
+fastify.register(todoRoutes, { prefix: '/todos' });
+```
+
+## ルートをpluginに分ける
+
+`src/routes/todos.js` を作ります。
+
+```js
+const todos = [
+  { id: 1, title: 'Fastifyを学ぶ', completed: false },
+];
+
+export async function todoRoutes(fastify) {
+  fastify.get('/', async () => {
+    return todos;
+  });
+
+  fastify.get('/:id', async (request, reply) => {
+    const todo = todos.find((item) => item.id === Number(request.params.id));
+
+    if (!todo) {
+      return reply.code(404).send({ error: 'TODO_NOT_FOUND' });
+    }
+
+    return todo;
+  });
+}
+```
+
+`src/app.js` で登録します。
+
+```js
+import Fastify from 'fastify';
+import { todoRoutes } from './routes/todos.js';
+
+export function buildApp() {
+  const fastify = Fastify({ logger: true });
+
+  fastify.register(todoRoutes, { prefix: '/todos' });
+
+  return fastify;
+}
+```
+
+この場合、plugin内の `/` は `/todos`、`/:id` は `/todos/:id` として公開されます。
+
+## encapsulationとは
+
+Fastifyのpluginは、親子関係を持つスコープを作ります。pluginの中で登録したhookやdecoratorは、基本的にそのpluginと子pluginの中で有効になります。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["root fastify"] --> B["public routes plugin"]
+    A --> C["admin routes plugin"]
+    C --> D["admin users plugin"]
+`}
+/>
+
+たとえば、管理画面用のpluginだけに認証hookを付けたい場合、`/admin` 配下に閉じ込められます。
+
+```js
+async function adminRoutes(fastify) {
+  fastify.addHook('preHandler', async (request, reply) => {
+    if (request.headers.authorization !== 'Bearer secret') {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+  });
+
+  fastify.get('/stats', async () => {
+    return { users: 10 };
+  });
+}
+
+fastify.register(adminRoutes, { prefix: '/admin' });
+```
+
+このhookは `/admin/stats` には効きますが、別のpluginとして登録した `/todos` には効きません。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Expressの `app.use('/admin', auth)` と似ていますか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  近いですが、Fastifyではhooksやdecoratorもスコープに閉じ込められます。大きいAPIほど、この境界が効いてきます。
+</SpeechBubble>
+
+## prefixでURLをまとめる
+
+`register()` の `prefix` を使うと、plugin内のルートに共通のURLを付けられます。
+
+```js
+fastify.register(todoRoutes, { prefix: '/api/todos' });
+fastify.register(adminRoutes, { prefix: '/api/admin' });
+```
+
+| plugin内のpath | prefix | 実際のURL |
+| -------------- | ------ | -------- |
+| `/` | `/api/todos` | `/api/todos` |
+| `/:id` | `/api/todos` | `/api/todos/:id` |
+| `/stats` | `/api/admin` | `/api/admin/stats` |
+
+## 参考リンク
+
+- [Fastify Plugins](https://fastify.dev/docs/latest/Reference/Plugins/)
+- [Fastify Encapsulation](https://fastify.dev/docs/latest/Reference/Encapsulation/)
+
+次章では、リクエストのライフサイクルに処理を差し込むhooksを学びます。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="モジュール分割やHTTPサーバーの知識をクイズで確認しよう"
+/>

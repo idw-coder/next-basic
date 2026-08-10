@@ -1,0 +1,355 @@
+---
+title: 'Fastifyハンズオン — Todo APIを最初から完成させる'
+description: 'Fastifyのセットアップ、ルーティング、schema validation、エラーハンドリング、テストまでを1つのTodo APIとして通して実装します。'
+order: 13
+---
+
+この章では、ここまで学んだ内容を1つにつなげて、Todo APIを最初から組み立てます。細かい説明は前の章で扱っているため、この章は「手を動かして完成形を作る」ことに集中します。
+
+## 完成するAPI
+
+| メソッド | URL | 内容 |
+| -------- | --- | ---- |
+| `GET` | `/health` | ヘルスチェック |
+| `GET` | `/todos` | Todo一覧 |
+| `POST` | `/todos` | Todo作成 |
+| `GET` | `/todos/:id` | Todo 1件取得 |
+| `PATCH` | `/todos/:id` | Todo更新 |
+| `DELETE` | `/todos/:id` | Todo削除 |
+
+<Marker>ハンズオンでは、まずインメモリ配列でAPIの形を完成させます。DB接続は、HTTPの入口が固まってから差し替える方が学びやすいです。</Marker>
+
+## プロジェクトを作る
+
+```bash
+mkdir fastify-todo-api
+cd fastify-todo-api
+npm init -y
+npm install fastify
+```
+
+`package.json` を整えます。
+
+```json
+{
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0"
+  }
+}
+```
+
+Fastifyのバージョンは、実際にインストールされたものに合わせてください。既存プロジェクトへ入れる場合は、公式ドキュメントとリリースノートで対応Node.jsバージョンも確認します。
+
+## appとserverを分ける
+
+`src/app.js` を作ります。
+
+```js
+import Fastify from 'fastify';
+import { todoRoutes } from './routes/todos.js';
+
+export function buildApp(options = {}) {
+  const fastify = Fastify({
+    logger: options.logger ?? true,
+  });
+
+  fastify.get('/health', async () => {
+    return { ok: true };
+  });
+
+  fastify.register(todoRoutes, { prefix: '/todos' });
+
+  fastify.setNotFoundHandler((request, reply) => {
+    return reply.code(404).send({
+      error: {
+        code: 'ROUTE_NOT_FOUND',
+        message: '存在しないURLです',
+      },
+    });
+  });
+
+  fastify.setErrorHandler((error, request, reply) => {
+    if (error.validation) {
+      return reply.code(400).send({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: '入力値が正しくありません',
+        },
+      });
+    }
+
+    request.log.error(error);
+
+    return reply.code(500).send({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'サーバーエラーが発生しました',
+      },
+    });
+  });
+
+  return fastify;
+}
+```
+
+`src/server.js` を作ります。
+
+```js
+import { buildApp } from './app.js';
+
+const app = buildApp();
+const port = Number(process.env.PORT ?? 3000);
+
+try {
+  await app.listen({ port, host: '0.0.0.0' });
+} catch (err) {
+  app.log.error(err);
+  process.exit(1);
+}
+```
+
+## Todoルートを作る
+
+`src/routes/todos.js` を作ります。
+
+```js
+const todoSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'integer' },
+    title: { type: 'string' },
+    completed: { type: 'boolean' },
+  },
+};
+
+const idParamsSchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'integer', minimum: 1 },
+  },
+};
+
+export async function todoRoutes(fastify) {
+  const todos = [
+    { id: 1, title: 'Fastifyを学ぶ', completed: false },
+  ];
+  let nextId = 2;
+
+  fastify.get('/', {
+    schema: {
+      response: {
+        200: { type: 'array', items: todoSchema },
+      },
+    },
+  }, async () => {
+    return todos;
+  });
+
+  fastify.post('/', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['title'],
+        additionalProperties: false,
+        properties: {
+          title: { type: 'string', minLength: 1, maxLength: 100 },
+        },
+      },
+      response: {
+        201: todoSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const todo = {
+      id: nextId,
+      title: request.body.title,
+      completed: false,
+    };
+
+    nextId += 1;
+    todos.push(todo);
+
+    return reply.code(201).send(todo);
+  });
+}
+```
+
+## 1件取得・更新・削除を追加する
+
+同じ `todoRoutes` の中に追加します。
+
+```js
+fastify.get('/:id', {
+  schema: {
+    params: idParamsSchema,
+    response: {
+      200: todoSchema,
+    },
+  },
+}, async (request, reply) => {
+  const todo = todos.find((item) => item.id === request.params.id);
+
+  if (!todo) {
+    return reply.code(404).send({
+      error: { code: 'TODO_NOT_FOUND', message: 'Todoが見つかりません' },
+    });
+  }
+
+  return todo;
+});
+
+fastify.patch('/:id', {
+  schema: {
+    params: idParamsSchema,
+    body: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        title: { type: 'string', minLength: 1, maxLength: 100 },
+        completed: { type: 'boolean' },
+      },
+    },
+    response: {
+      200: todoSchema,
+    },
+  },
+}, async (request, reply) => {
+  const todo = todos.find((item) => item.id === request.params.id);
+
+  if (!todo) {
+    return reply.code(404).send({
+      error: { code: 'TODO_NOT_FOUND', message: 'Todoが見つかりません' },
+    });
+  }
+
+  Object.assign(todo, request.body);
+
+  return todo;
+});
+
+fastify.delete('/:id', {
+  schema: {
+    params: idParamsSchema,
+  },
+}, async (request, reply) => {
+  const index = todos.findIndex((item) => item.id === request.params.id);
+
+  if (index === -1) {
+    return reply.code(404).send({
+      error: { code: 'TODO_NOT_FOUND', message: 'Todoが見つかりません' },
+    });
+  }
+
+  todos.splice(index, 1);
+
+  return reply.code(204).send();
+});
+```
+
+<Callout type="note" title="この章の状態管理">
+  この実装では、サーバーを再起動するとTodoは初期状態に戻ります。永続化したい場合は、serviceやrepositoryを挟んでDBへ差し替えます。
+</Callout>
+
+## 動作確認する
+
+```bash
+npm run dev
+```
+
+```bash
+curl http://localhost:3000/health
+curl http://localhost:3000/todos
+curl -X POST http://localhost:3000/todos \
+  -H "content-type: application/json" \
+  -d '{"title":"テストを書く"}'
+```
+
+入力エラーも確認します。
+
+```bash
+curl -X POST http://localhost:3000/todos \
+  -H "content-type: application/json" \
+  -d '{}'
+```
+
+`400` と整理されたエラーJSONが返れば、schema validationとエラーハンドラが動いています。
+
+## テストを書く
+
+`test/todos.test.js` を作ります。
+
+```js
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { buildApp } from '../src/app.js';
+
+test('GET /health returns ok', async () => {
+  const app = buildApp({ logger: false });
+
+  const response = await app.inject({
+    method: 'GET',
+    url: '/health',
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), { ok: true });
+});
+
+test('POST /todos creates todo', async () => {
+  const app = buildApp({ logger: false });
+
+  const response = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { title: 'テストを書く' },
+  });
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(response.json().title, 'テストを書く');
+});
+
+test('POST /todos rejects invalid body', async () => {
+  const app = buildApp({ logger: false });
+
+  const response = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: {},
+  });
+
+  assert.equal(response.statusCode, 400);
+});
+```
+
+```bash
+npm test
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  ここまで作れたら、次は何を足すのがよいですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  DB接続、認証、OpenAPI出力、CIでのテスト実行が自然な次の一歩です。ただし一度に全部ではなく、1つずつテストを足しながら進めましょう。
+</SpeechBubble>
+
+## 参考リンク
+
+- [Fastify Getting Started](https://fastify.dev/docs/latest/Guides/Getting-Started/)
+- [Fastify Testing Guide](https://fastify.dev/docs/latest/Guides/Testing/)
+- [Fastify Validation and Serialization](https://fastify.dev/docs/latest/Reference/Validation-and-Serialization/)
+
+この本では、FastifyでAPIを作るための基本を一通り学びました。次に実プロジェクトへ進むときは、ここで作ったTodo APIを土台に、DB、認証、CI、本番設定を少しずつ足していきましょう。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="Fastifyの土台になるNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

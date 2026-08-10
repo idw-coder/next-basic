@@ -4,6 +4,15 @@ interface FetchNextApiJsonOptions {
   body?: unknown;
 }
 
+interface FetchNextApiError extends Error {
+  response?: {
+    status: number;
+    data?: {
+      error?: string;
+    };
+  };
+}
+
 export async function fetchNextApiJson<T>(
   path: string,
   options: FetchNextApiJsonOptions = {},
@@ -29,7 +38,19 @@ export async function fetchNextApiJson<T>(
   });
 
   if (!res.ok) {
-    throw new Error(`Next API request failed: ${res.status}`);
+    let data: { error?: string } | undefined;
+    try {
+      data = (await res.json()) as { error?: string };
+    } catch {
+      data = undefined;
+    }
+
+    const error = new Error(data?.error ?? `Next API request failed: ${res.status}`) as FetchNextApiError;
+    error.response = {
+      status: res.status,
+      data,
+    };
+    throw error;
   }
 
   return (await res.json()) as T;

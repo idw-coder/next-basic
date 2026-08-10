@@ -228,11 +228,14 @@ export default function QuizEditPage() {
     setError(null);
     setCreatingTag(true);
     try {
-      const res = await api.post('/api/quiz/tags', {
-        slug: tagSlug,
-        name: tagName,
+      const created = await fetchNextApiJson<QuizTag>('/next-api/quiz/tags', {
+        auth: true,
+        method: 'POST',
+        body: {
+          slug: tagSlug,
+          name: tagName,
+        },
       });
-      const created = res.data as QuizTag;
       setAllTags((prev) => [...prev, created].sort((a, b) => a.slug.localeCompare(b.slug, 'ja')));
       setSelectedTags((prev) => (prev.includes(created.slug) ? prev : [...prev, created.slug]));
       setNewTagSlug('');

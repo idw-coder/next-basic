@@ -1,0 +1,154 @@
+---
+title: 'Fastifyのセットアップ — npmで最小サーバーを起動する'
+description: 'Fastifyプロジェクトを作成し、ES Modules構成で最小のWebサーバーを起動します。'
+order: 2
+---
+
+この章では、Fastifyをインストールして、ブラウザやcurlからアクセスできる最小サーバーを作ります。まだDBや認証は入れません。最初は「起動する」「JSONが返る」「ログが出る」だけを確認します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  最初からTypeScriptやDBも入れた方が実務っぽくないですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  いきなり全部入れると、どの仕組みでつまずいたのか分かりにくくなります。まずFastify単体で動かしてから、部品を足していきましょう。
+</SpeechBubble>
+
+## プロジェクトを作る
+
+空のディレクトリで `package.json` を作ります。
+
+```bash
+mkdir fastify-todo-api
+cd fastify-todo-api
+npm init -y
+```
+
+ES Modulesで書くため、`package.json` に `"type": "module"` を追加します。
+
+```json
+{
+  "name": "fastify-todo-api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  }
+}
+```
+
+<Marker>`"type": "module"` を入れると、`.js` ファイルで `import` / `export` が使えるようになります。</Marker>
+
+Fastifyをインストールします。
+
+```bash
+npm install fastify
+```
+
+## 最小サーバーを書く
+
+`src/server.js` を作ります。
+
+```js
+import Fastify from 'fastify';
+
+const fastify = Fastify({
+  logger: true,
+});
+
+fastify.get('/', async () => {
+  return { message: 'Hello Fastify!' };
+});
+
+try {
+  await fastify.listen({ port: 3000 });
+} catch (err) {
+  fastify.log.error(err);
+  process.exit(1);
+}
+```
+
+起動します。
+
+```bash
+npm run dev
+```
+
+ブラウザで `http://localhost:3000` を開くか、ターミナルで次を実行します。
+
+```bash
+curl http://localhost:3000
+```
+
+次のようなJSONが返れば成功です。
+
+```json
+{
+  "message": "Hello Fastify!"
+}
+```
+
+## `Fastify()` の構文
+
+**構文：** `Fastify(options)`
+
+| 引数 | 型 | 説明 |
+| ---- | -- | ---- |
+| `options` | object | サーバー全体の設定。`logger`、`bodyLimit`、`trustProxy` などを指定できる |
+
+**戻り値：** Fastifyインスタンス。ルート登録、プラグイン登録、サーバー起動などの入口になります。
+
+```js
+const fastify = Fastify({
+  logger: true,
+});
+```
+
+`logger: true` を指定すると、Fastifyが内部で使うロガーが有効になります。リクエストのログやエラーを追いやすくなるため、学習中も本番でも基本的に有効にしておくとよいです。
+
+## `listen()` の構文
+
+**構文：** `fastify.listen(options)`
+
+| 引数 | 型 | 説明 |
+| ---- | -- | ---- |
+| `options.port` | number | 待ち受けるポート番号 |
+| `options.host` | string | 待ち受けるホスト。ローカル確認なら省略でよい |
+
+**戻り値：** Promise。起動に成功すると解決し、失敗するとrejectされます。
+
+```js
+await fastify.listen({ port: 3000 });
+```
+
+Dockerや外部からアクセスする環境では、`host: '0.0.0.0'` を指定することがあります。ただしローカル学習では、まず省略したままで十分です。
+
+<Callout type="warning" title="ポートが使用中の場合">
+  `EADDRINUSE` が出たら、すでに別のプロセスが同じポートを使っています。別のポートに変えるか、起動中のサーバーを停止してください。
+</Callout>
+
+## ファイル分割の準備
+
+今は `server.js` にすべて書いていますが、テストしやすくするには「アプリを作る関数」と「listenする処理」を分けます。後の章で次のような形へ変えていきます。
+
+```txt
+src/
+├── app.js       # Fastifyインスタンスを作ってルートを登録する
+└── server.js    # appを起動する
+```
+
+この分割は、[テストの章](/books/fastify/testing)で `fastify.inject()` を使うときに効いてきます。
+
+## 参考リンク
+
+- [Fastify Getting Started](https://fastify.dev/docs/latest/Guides/Getting-Started/)
+- [Fastify Server Reference](https://fastify.dev/docs/latest/Reference/Server/)
+
+次章では、`GET` や `POST` のルートを増やし、URLとHTTPメソッドで処理を分ける方法を学びます。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="npm、ES Modules、サーバー起動の知識をクイズで確認しよう"
+/>

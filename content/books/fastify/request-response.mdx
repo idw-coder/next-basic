@@ -1,0 +1,127 @@
+---
+title: 'Fastifyのrequestとreply — リクエストを読み、レスポンスを返す'
+description: 'Fastifyのhandlerで使うrequestとreplyの役割、戻り値で返す方法、reply.sendで返す方法を解説します。'
+order: 4
+---
+
+Fastifyのルートハンドラには、`request` と `reply` が渡されます。`request` は受け取ったHTTPリクエスト、`reply` は返すHTTPレスポンスを組み立てるためのオブジェクトです。
+
+```js
+fastify.get('/profile', async (request, reply) => {
+  return { name: 'Taro' };
+});
+```
+
+## `request` で読める主な値
+
+| プロパティ | 説明 | 例 |
+| ---------- | ---- | -- |
+| `request.params` | パスパラメータ | `/todos/:id` の `id` |
+| `request.query` | クエリ文字列 | `/todos?page=2` の `page` |
+| `request.body` | リクエストボディ | `POST` のJSON |
+| `request.headers` | HTTPヘッダー | `authorization` |
+| `request.log` | リクエスト単位のロガー | 処理中のログ出力 |
+
+```js
+fastify.post('/todos', async (request) => {
+  const title = request.body.title;
+  request.log.info({ title }, 'creating todo');
+
+  return { title, completed: false };
+});
+```
+
+FastifyはJSONリクエストを標準で扱えます。ただし、どんな形のJSONでもよいわけではありません。入力値の形は[schema validationの章](/books/fastify/schema-validation)で制限します。
+
+## 戻り値でレスポンスを返す
+
+async handlerでは、オブジェクトを `return` するだけでJSONレスポンスになります。
+
+```js
+fastify.get('/health', async () => {
+  return { ok: true };
+});
+```
+
+**構文：** `return value`
+
+| 値 | 説明 |
+| -- | ---- |
+| object / array | JSONとして返される |
+| string | 文字列として返される |
+| Errorをthrow | エラーハンドラへ渡る |
+
+**戻り値：** handlerの戻り値がHTTPレスポンスの本文になります。
+
+<Marker>Fastifyでは、async handlerなら `return { ... }` でJSONを返す書き方が自然です。</Marker>
+
+## `reply` でステータスやヘッダーを指定する
+
+作成成功の `201` や、認証失敗の `401` のようにステータスコードを変えたい場合は `reply` を使います。
+
+```js
+fastify.post('/todos', async (request, reply) => {
+  const todo = createTodo(request.body);
+  return reply.code(201).send(todo);
+});
+```
+
+**構文：** `reply.code(statusCode).send(payload)`
+
+| メソッド | 引数 | 説明 |
+| -------- | ---- | ---- |
+| `reply.code()` | number | HTTPステータスコードを設定する |
+| `reply.header()` | string, value | レスポンスヘッダーを設定する |
+| `reply.send()` | any | レスポンス本文を送信する |
+
+**戻り値：** `reply` オブジェクト。メソッドチェーンできます。
+
+```js
+return reply
+  .code(201)
+  .header('location', `/todos/${todo.id}`)
+  .send(todo);
+```
+
+<Callout type="warning" title="async handlerでreply.sendだけを書く場合">
+  async handlerで `reply.send()` を使う場合は、`return reply.send(...)` のようにreturnする形にしておくと、処理の流れが読みやすくなります。
+</Callout>
+
+## 404を返す
+
+存在しないデータを返すときは、`404 Not Found` を明示します。
+
+```js
+fastify.get('/todos/:id', async (request, reply) => {
+  const id = Number(request.params.id);
+  const todo = todos.find((item) => item.id === id);
+
+  if (!todo) {
+    return reply.code(404).send({
+      error: {
+        code: 'TODO_NOT_FOUND',
+        message: 'Todoが見つかりません',
+      },
+    });
+  }
+
+  return todo;
+});
+```
+
+エラー時のレスポンス形式は、API全体で揃えるとクライアント側が扱いやすくなります。詳しくは[エラーハンドリングの章](/books/fastify/error-handling)で扱います。
+
+<Figure src="/images/plan_selection_man_color.png" alt="返す情報を選択する人" maxWidth="150px" caption="正常系と異常系で、返すステータスとJSONの形を分けて考える" />
+
+## 参考リンク
+
+- [Fastify Request](https://fastify.dev/docs/latest/Reference/Request/)
+- [Fastify Reply](https://fastify.dev/docs/latest/Reference/Reply/)
+
+次章では、Fastifyらしさの中心であるJSON Schemaによる入力検証とレスポンス定義を学びます。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="リクエスト、レスポンス、ステータスコードの基本をクイズで確認しよう"
+/>

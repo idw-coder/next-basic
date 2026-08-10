@@ -1,0 +1,166 @@
+---
+title: 'Fastifyのschema validation — JSON Schemaで入力値を検証する'
+description: 'Fastifyのschemaを使い、body、params、querystring、responseの型と制約をルート単位で定義します。'
+order: 5
+---
+
+Fastifyを学ぶうえで、`schema` は最重要ポイントです。ルートごとに「どんなリクエストを受け取るか」「どんなレスポンスを返すか」をJSON Schemaで定義できます。
+
+<Marker>Fastifyのschemaは、バリデーションのためだけでなく、APIの契約をルート定義の近くに置くための仕組みです。</Marker>
+
+## bodyを検証する
+
+Todo作成APIにschemaを付けます。
+
+```js
+fastify.post('/todos', {
+  schema: {
+    body: {
+      type: 'object',
+      required: ['title'],
+      additionalProperties: false,
+      properties: {
+        title: { type: 'string', minLength: 1, maxLength: 100 },
+      },
+    },
+  },
+}, async (request, reply) => {
+  const todo = {
+    id: todos.length + 1,
+    title: request.body.title,
+    completed: false,
+  };
+
+  todos.push(todo);
+
+  return reply.code(201).send(todo);
+});
+```
+
+`title` がない、空文字、長すぎる、余計なプロパティがある、といったリクエストはhandlerに届く前に弾かれます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  handlerの中で `if (!title)` って書かなくてよくなるんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  入口の形のチェックはschemaに寄せられます。handlerは「正しい形で届いた値をどう処理するか」に集中できます。
+</SpeechBubble>
+
+## schemaの構文
+
+**構文：** `schema: { body, params, querystring, response }`
+
+| キー | 検証対象 | 例 |
+| ---- | -------- | -- |
+| `body` | リクエストボディ | `POST /todos` のJSON |
+| `params` | パスパラメータ | `/todos/:id` の `id` |
+| `querystring` | クエリ文字列 | `?completed=true` |
+| `response` | レスポンス本文 | `200` や `201` で返すJSON |
+
+**戻り値：** schema自体に戻り値はありません。Fastifyがルート登録時にschemaを読み取り、リクエスト処理時に検証します。
+
+## paramsとquerystringを検証する
+
+`/todos/:id` の `id` を整数として扱いたい場合、`params` にschemaを書きます。
+
+```js
+fastify.get('/todos/:id', {
+  schema: {
+    params: {
+      type: 'object',
+      required: ['id'],
+      properties: {
+        id: { type: 'integer', minimum: 1 },
+      },
+    },
+  },
+}, async (request, reply) => {
+  const todo = todos.find((item) => item.id === request.params.id);
+
+  if (!todo) {
+    return reply.code(404).send({ error: 'TODO_NOT_FOUND' });
+  }
+
+  return todo;
+});
+```
+
+Fastifyはschemaに基づいて値を変換できるため、`id` は数値として扱えます。ただし、変換や検証の挙動は設定にも影響されるため、複雑な入力ではテストで確認しましょう。
+
+クエリ文字列も同じです。
+
+```js
+fastify.get('/todos', {
+  schema: {
+    querystring: {
+      type: 'object',
+      properties: {
+        completed: { type: 'boolean' },
+      },
+    },
+  },
+}, async (request) => {
+  if (typeof request.query.completed === 'boolean') {
+    return todos.filter((todo) => todo.completed === request.query.completed);
+  }
+
+  return todos;
+});
+```
+
+## response schemaを書く
+
+`response` を書くと、Fastifyはレスポンスのシリアライズにもschemaを使います。返す形が明確になり、不要なプロパティを外に出しにくくなります。
+
+```js
+const todoSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'integer' },
+    title: { type: 'string' },
+    completed: { type: 'boolean' },
+  },
+};
+
+fastify.get('/todos', {
+  schema: {
+    response: {
+      200: {
+        type: 'array',
+        items: todoSchema,
+      },
+    },
+  },
+}, async () => {
+  return todos;
+});
+```
+
+<Callout type="warning" title="schemaはアプリケーションコードとして扱う">
+  Fastifyのバリデーションとシリアライズは、schemaをもとに高速な関数を生成します。ユーザーが送ってきた任意のschemaをそのまま使う設計にはしないでください。
+</Callout>
+
+## よく使うJSON Schema
+
+| 目的 | 例 |
+| ---- | -- |
+| 文字列 | `{ type: 'string', minLength: 1 }` |
+| 数値 | `{ type: 'integer', minimum: 1 }` |
+| 真偽値 | `{ type: 'boolean' }` |
+| 必須 | `{ required: ['title'] }` |
+| 余計なキーを禁止 | `{ additionalProperties: false }` |
+| 配列 | `{ type: 'array', items: itemSchema }` |
+
+## 参考リンク
+
+- [Fastify Validation and Serialization](https://fastify.dev/docs/latest/Reference/Validation-and-Serialization/)
+- [JSON Schema](https://json-schema.org/)
+
+次章では、schemaで弾けない業務エラーや予期しない例外を、API全体でどう整えるかを学びます。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="JSON、HTTP、エラー処理の基礎をクイズで確認しよう"
+/>

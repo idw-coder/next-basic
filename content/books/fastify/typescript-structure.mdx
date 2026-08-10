@@ -1,0 +1,141 @@
+---
+title: 'FastifyのTypeScriptとディレクトリ構成 — 実務で育てやすい形にする'
+description: 'FastifyアプリをTypeScript化するときの考え方、ルート分割、service層、schemaの置き場所を整理します。'
+order: 11
+---
+
+ここまでの例はJavaScriptで進めました。Fastifyの概念をつかむにはJavaScriptで十分ですが、実務ではTypeScriptで書くことが多いです。この章では、いきなり高度な型テクニックへ行かず、まず育てやすい構成を整理します。
+
+## まず分ける責務
+
+Fastifyアプリでは、次の4つを混ぜすぎないことが大切です。
+
+| 層 | 役割 |
+| -- | ---- |
+| app | Fastifyインスタンス作成、plugin登録、共通エラー設定 |
+| routes | HTTPの入口。request/reply、schema、status code |
+| services | 業務ロジック。Todoを作る、完了にするなど |
+| repositories | DBアクセス。SQLやORMの詳細 |
+
+```txt
+src/
+├── app.ts
+├── server.ts
+├── routes/
+│   └── todos.ts
+├── services/
+│   └── todoService.ts
+└── repositories/
+    └── todoRepository.ts
+```
+
+<Marker>FastifyのhandlerはHTTPの入口に留め、業務判断はserviceへ逃がすと、テストしやすく変更にも強くなります。</Marker>
+
+## TypeScript化の最小セット
+
+TypeScriptで始めるなら、まず必要なパッケージを入れます。
+
+```bash
+npm install fastify
+npm install -D typescript @types/node tsx
+```
+
+`package.json` のscriptsは、学習中なら `tsx` を使うと簡単です。
+
+```json
+{
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "test": "node --test --import tsx"
+  }
+}
+```
+
+`tsconfig.json` はまず標準的な設定で始めます。
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  }
+}
+```
+
+## requestの型を付ける
+
+Fastifyでは、ルートごとに `Body`、`Params`、`Querystring` などの型を指定できます。
+
+```ts
+type CreateTodoBody = {
+  title: string;
+};
+
+fastify.post<{ Body: CreateTodoBody }>('/todos', async (request, reply) => {
+  const title = request.body.title;
+  return reply.code(201).send({ title, completed: false });
+});
+```
+
+**構文：** `fastify.METHOD<RouteGeneric>(path, options, handler)`
+
+| 型パラメータ | 説明 |
+| ------------ | ---- |
+| `Body` | `request.body` の型 |
+| `Params` | `request.params` の型 |
+| `Querystring` | `request.query` の型 |
+| `Reply` | 返すレスポンスの型 |
+
+**戻り値：** ルート登録の結果としてFastifyインスタンスを返します。
+
+<Callout type="note" title="schemaと型は別物">
+  TypeScriptの型は開発中の補助で、実行時には消えます。外部から届くリクエストを守るのはschemaです。型だけで入力検証をしたつもりにならないようにしましょう。
+</Callout>
+
+## schemaと型の二重管理
+
+TypeScriptでFastifyを書くと、JSON SchemaとTypeScript型を両方書く場面があります。
+
+```ts
+type CreateTodoBody = {
+  title: string;
+};
+
+const createTodoBodySchema = {
+  type: 'object',
+  required: ['title'],
+  additionalProperties: false,
+  properties: {
+    title: { type: 'string', minLength: 1, maxLength: 100 },
+  },
+} as const;
+```
+
+小さいうちはこの形で十分です。規模が大きくなったら、TypeBoxやZodなど、型と実行時schemaの重複を減らす選択肢も検討します。ただし、最初から道具を増やしすぎるより、Fastify標準のschemaを理解してから導入した方が判断しやすいです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  TypeScriptを使えばschemaは不要になりますか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  不要にはなりません。TypeScriptは書く人を助ける仕組みで、APIに来たJSONを実行時に止めるのはschemaの役割です。
+</SpeechBubble>
+
+## 参考リンク
+
+- [Fastify TypeScript](https://fastify.dev/docs/latest/Reference/TypeScript/)
+- [TypeScript入門](/books/typescript)
+
+次章では、ログ、CORS、環境変数、終了処理など、本番運用前に確認するポイントをまとめます。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="TypeScript化の土台になるNode.jsとnpmの知識をクイズで確認しよう"
+/>

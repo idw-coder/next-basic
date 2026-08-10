@@ -188,8 +188,11 @@ export default function QuizInteraction({
     setCreatingTag(true);
     setTagError(null);
     try {
-      const res = await api.post('/api/quiz/tags', { slug, name });
-      const created = res.data as QuizTag;
+      const created = await fetchNextApiJson<QuizTag>('/next-api/quiz/tags', {
+        auth: true,
+        method: 'POST',
+        body: { slug, name },
+      });
       setAllTags((prev) => [...prev, created].sort((a, b) => a.slug.localeCompare(b.slug, 'ja')));
       setSelectedTagSlugs((prev) => (prev.includes(created.slug) ? prev : [...prev, created.slug]));
       setNewTagSlug('');

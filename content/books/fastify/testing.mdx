@@ -1,0 +1,158 @@
+---
+title: 'Fastifyのテスト — fastify.injectとnode:testでAPIを確認する'
+description: 'Fastify組み込みのinjectを使い、サーバーをlistenせずにAPIテストを書く方法を学びます。'
+order: 10
+---
+
+Fastifyには、HTTPリクエストを疑似的に送る `fastify.inject()` が用意されています。実際にポートを開かずにルートを呼べるため、APIテストが書きやすいです。
+
+<Marker>`fastify.inject()` を使うと、サーバーをlistenしなくてもルート、schema、hooks、エラーハンドラをまとめて確認できます。</Marker>
+
+## テストしやすい構成
+
+まず、listenする処理とアプリ作成を分けておきます。
+
+```js
+// src/app.js
+import Fastify from 'fastify';
+import { todoRoutes } from './routes/todos.js';
+
+export function buildApp() {
+  const fastify = Fastify({ logger: false });
+  fastify.register(todoRoutes, { prefix: '/todos' });
+  return fastify;
+}
+```
+
+```js
+// src/server.js
+import { buildApp } from './app.js';
+
+const app = buildApp();
+await app.listen({ port: 3000 });
+```
+
+テストでは `server.js` ではなく `buildApp()` を使います。
+
+## `inject()` の構文
+
+**構文：** `fastify.inject(options)`
+
+| 引数 | 型 | 説明 |
+| ---- | -- | ---- |
+| `options.method` | string | HTTPメソッド |
+| `options.url` | string | リクエストURL |
+| `options.payload` | any | リクエストボディ |
+| `options.headers` | object | HTTPヘッダー |
+
+**戻り値：** Promise。解決値はレスポンスオブジェクトで、`statusCode`、`body`、`json()` などを使えます。
+
+```js
+const response = await app.inject({
+  method: 'GET',
+  url: '/todos',
+});
+```
+
+## node:testでGETを確認する
+
+Node.js標準の `node:test` と `node:assert/strict` を使います。
+
+```js
+// test/todos.test.js
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { buildApp } from '../src/app.js';
+
+test('GET /todos returns todo list', async () => {
+  const app = buildApp();
+
+  const response = await app.inject({
+    method: 'GET',
+    url: '/todos',
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json(), [
+    { id: 1, title: 'Fastifyを学ぶ', completed: false },
+  ]);
+});
+```
+
+`package.json` にテストコマンドを追加します。
+
+```json
+{
+  "scripts": {
+    "test": "node --test"
+  }
+}
+```
+
+## POSTとvalidation errorを確認する
+
+作成成功と入力エラーを両方テストします。
+
+```js
+test('POST /todos creates todo', async () => {
+  const app = buildApp();
+
+  const response = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: { title: 'テストを書く' },
+  });
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(response.json().title, 'テストを書く');
+});
+
+test('POST /todos rejects invalid body', async () => {
+  const app = buildApp();
+
+  const response = await app.inject({
+    method: 'POST',
+    url: '/todos',
+    payload: {},
+  });
+
+  assert.equal(response.statusCode, 400);
+});
+```
+
+schema validationも実際に通るため、「handlerのテスト」だけでなく「APIの入口として正しいか」を確認できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `curl` で手動確認しているだけではダメですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  手動確認は最初の動作確認には便利です。ただ、修正のたびに同じ確認を繰り返すなら、自動テストにした方が安心です。
+</SpeechBubble>
+
+## テストごとの状態に注意
+
+インメモリ配列を使う場合、テストごとに状態が共有されると結果が不安定になります。`buildApp()` の中、またはpluginの中で初期データを作るようにすると、テストごとに独立しやすくなります。
+
+```js
+export async function todoRoutes(fastify) {
+  const todos = [
+    { id: 1, title: 'Fastifyを学ぶ', completed: false },
+  ];
+
+  fastify.get('/', async () => todos);
+}
+```
+
+## 参考リンク
+
+- [Fastify Testing Guide](https://fastify.dev/docs/latest/Guides/Testing/)
+- [Node.js Test Runner](https://nodejs.org/api/test.html)
+
+次章では、実務プロジェクトで使いやすいディレクトリ構成とTypeScript化の考え方を整理します。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="node:testや非同期処理の基本をクイズで確認しよう"
+/>

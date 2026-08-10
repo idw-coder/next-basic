@@ -1,0 +1,219 @@
+---
+title: 'FastifyでCRUD APIを作る — Todo APIを組み立てる'
+description: 'FastifyでTodoの一覧取得、作成、1件取得、更新、削除を実装し、APIの基本形を完成させます。'
+order: 9
+---
+
+ここまで学んだルーティング、request/reply、schema、エラーハンドリングを使って、Todo APIを組み立てます。この章ではDBには接続せず、インメモリ配列で進めます。DB接続は後から差し替えられるよう、まずAPIの形を固めます。
+
+<Figure src="/images/pc-work-woman01.png" alt="APIを実装する開発者" maxWidth="180px" caption="最初は配列で動かし、HTTP APIの設計を先に確認する" />
+
+## アプリの入口
+
+`src/app.js` でFastifyインスタンスを作ります。
+
+```js
+import Fastify from 'fastify';
+import { todoRoutes } from './routes/todos.js';
+
+export function buildApp() {
+  const fastify = Fastify({ logger: true });
+
+  fastify.register(todoRoutes, { prefix: '/todos' });
+
+  fastify.setNotFoundHandler((request, reply) => {
+    return reply.code(404).send({
+      error: { code: 'ROUTE_NOT_FOUND', message: '存在しないURLです' },
+    });
+  });
+
+  return fastify;
+}
+```
+
+`src/server.js` はlistenだけを担当します。
+
+```js
+import { buildApp } from './app.js';
+
+const app = buildApp();
+
+try {
+  await app.listen({ port: 3000 });
+} catch (err) {
+  app.log.error(err);
+  process.exit(1);
+}
+```
+
+この分割にしておくと、[テストの章](/books/fastify/testing)で `buildApp()` を直接呼べます。
+
+## Todoルート
+
+`src/routes/todos.js` を作ります。
+
+```js
+const todos = [
+  { id: 1, title: 'Fastifyを学ぶ', completed: false },
+];
+
+const todoSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'integer' },
+    title: { type: 'string' },
+    completed: { type: 'boolean' },
+  },
+};
+
+const idParamsSchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'integer', minimum: 1 },
+  },
+};
+
+const createTodoBodySchema = {
+  type: 'object',
+  required: ['title'],
+  additionalProperties: false,
+  properties: {
+    title: { type: 'string', minLength: 1, maxLength: 100 },
+  },
+};
+```
+
+schemaを変数に分けると、ルート定義が読みやすくなります。
+
+## 一覧取得と作成
+
+```js
+export async function todoRoutes(fastify) {
+  fastify.get('/', {
+    schema: {
+      response: {
+        200: {
+          type: 'array',
+          items: todoSchema,
+        },
+      },
+    },
+  }, async () => {
+    return todos;
+  });
+
+  fastify.post('/', {
+    schema: {
+      body: createTodoBodySchema,
+      response: {
+        201: todoSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const todo = {
+      id: todos.length + 1,
+      title: request.body.title,
+      completed: false,
+    };
+
+    todos.push(todo);
+
+    return reply.code(201).send(todo);
+  });
+}
+```
+
+## 1件取得、更新、削除
+
+同じ `todoRoutes` の中に追加します。
+
+```js
+fastify.get('/:id', {
+  schema: {
+    params: idParamsSchema,
+    response: {
+      200: todoSchema,
+    },
+  },
+}, async (request, reply) => {
+  const todo = todos.find((item) => item.id === request.params.id);
+
+  if (!todo) {
+    return reply.code(404).send({ error: 'TODO_NOT_FOUND' });
+  }
+
+  return todo;
+});
+
+fastify.patch('/:id', {
+  schema: {
+    params: idParamsSchema,
+    body: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        title: { type: 'string', minLength: 1, maxLength: 100 },
+        completed: { type: 'boolean' },
+      },
+    },
+    response: {
+      200: todoSchema,
+    },
+  },
+}, async (request, reply) => {
+  const todo = todos.find((item) => item.id === request.params.id);
+
+  if (!todo) {
+    return reply.code(404).send({ error: 'TODO_NOT_FOUND' });
+  }
+
+  Object.assign(todo, request.body);
+
+  return todo;
+});
+
+fastify.delete('/:id', {
+  schema: {
+    params: idParamsSchema,
+  },
+}, async (request, reply) => {
+  const index = todos.findIndex((item) => item.id === request.params.id);
+
+  if (index === -1) {
+    return reply.code(404).send({ error: 'TODO_NOT_FOUND' });
+  }
+
+  todos.splice(index, 1);
+
+  return reply.code(204).send();
+});
+```
+
+## DBに差し替えるときの考え方
+
+今は配列を直接操作していますが、実務ではDBやRepository層に置き換えます。重要なのは、HTTPの入口とデータ保存の詳細を混ぜすぎないことです。
+
+```txt
+route handler
+  ↓
+todo service
+  ↓
+database
+```
+
+<Marker>ルートハンドラはHTTPの入口です。DBの細かいSQLや複雑な業務ルールを詰め込みすぎると、テストも変更も難しくなります。</Marker>
+
+## 参考リンク
+
+- [Fastify Routes](https://fastify.dev/docs/latest/Reference/Routes/)
+- [Fastify Validation and Serialization](https://fastify.dev/docs/latest/Reference/Validation-and-Serialization/)
+- [Fastify Database Guide](https://fastify.dev/docs/latest/Guides/Database/)
+
+次章では、このTodo APIを `fastify.inject()` でテストします。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="API、JSON、非同期処理の基礎をクイズで確認しよう"
+/>

@@ -49,6 +49,7 @@ flowchart TB
 />
 
 配列っぽく見えるが `Array` インスタンスではないもの（例: `document.querySelectorAll()` の戻り値である `NodeList`）では、そのままでは `.map()` が使えません。
+[`Array.from`](/books/javascript/07-arrays5-fill-flat-methods#array-from) を使えば、配列風オブジェクトを本物の配列に変換できます。
 
 ```js
 const nodes = document.querySelectorAll('div');
@@ -77,6 +78,7 @@ Array.from(nodes).map((node) => node.textContent);
 | 値が含まれるか確認したい | `includes` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#includes) |
 | 配列の一部を取り出したい | `slice` | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#slice) |
 | 配列を結合したい | `concat` / スプレッド構文 | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#concat) |
+| 配列ではないものから配列を作りたい | `Array.from` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#array-from) |
 | 同じ値で埋めたい | `fill` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#fill) |
 | ネストした配列を平坦化したい | `flat` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flat) |
 | 変換して平坦化したい | `flatMap` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flatmap) |

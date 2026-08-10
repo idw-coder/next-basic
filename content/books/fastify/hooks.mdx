@@ -1,0 +1,121 @@
+---
+title: 'Fastifyのhooks — 認証・ログ・前処理をライフサイクルに差し込む'
+description: 'FastifyのaddHookを使い、onRequest、preHandler、onResponseなどの代表的なhooksを学びます。'
+order: 8
+---
+
+hooksは、リクエスト処理の途中に共通処理を差し込む仕組みです。Expressのミドルウェアに近い役割もありますが、Fastifyでは「どのタイミングに差し込むか」が名前で分かれています。
+
+```js
+fastify.addHook('preHandler', async (request, reply) => {
+  if (!request.headers.authorization) {
+    return reply.code(401).send({ error: 'UNAUTHORIZED' });
+  }
+});
+```
+
+## `addHook()` の構文
+
+**構文：** `fastify.addHook(name, handler)`
+
+| 引数 | 型 | 説明 |
+| ---- | -- | ---- |
+| `name` | string | hook名。`onRequest`、`preHandler` など |
+| `handler` | function | 指定したタイミングで実行される関数 |
+
+**戻り値：** Fastifyインスタンス。登録処理として使います。
+
+## よく使うhooks
+
+| hook | 実行タイミング | 使い道 |
+| ---- | -------------- | ------ |
+| `onRequest` | リクエストを受け取った直後 | リクエストID、簡単なログ |
+| `preValidation` | schema validationの前 | 入力検証前に値を整える |
+| `preHandler` | handlerの直前 | 認証、認可、DBから共通情報を読む |
+| `onSend` | レスポンス送信前 | ヘッダー追加、レスポンス加工 |
+| `onResponse` | レスポンス送信後 | アクセスログ、計測 |
+| `onError` | エラー発生時 | エラーログ |
+
+<Callout type="warning" title="onRequestではbodyを読めない">
+  `onRequest` はボディのパースより前に実行されるため、`request.body` はまだ使えません。bodyを前提にした処理は `preValidation` 以降を検討します。
+</Callout>
+
+## 認証をpreHandlerに置く
+
+管理APIだけに認証をかける例です。plugin内にhookを書くことで、影響範囲を `/admin` 配下に閉じ込めます。
+
+```js
+async function adminRoutes(fastify) {
+  fastify.addHook('preHandler', async (request, reply) => {
+    const token = request.headers.authorization;
+
+    if (token !== 'Bearer secret') {
+      return reply.code(401).send({
+        error: {
+          code: 'UNAUTHORIZED',
+          message: '認証が必要です',
+        },
+      });
+    }
+  });
+
+  fastify.get('/stats', async () => {
+    return { todos: 12 };
+  });
+}
+
+fastify.register(adminRoutes, { prefix: '/admin' });
+```
+
+`/admin/stats` には認証がかかりますが、別pluginの `/todos` には影響しません。このスコープ制御は、[pluginsとencapsulationの章](/books/fastify/plugins-and-encapsulation)で学んだ通りです。
+
+## route level hooks
+
+特定のルートだけにhookを付けたい場合は、ルートのoptionsに書きます。
+
+```js
+fastify.get('/me', {
+  preHandler: async (request, reply) => {
+    if (!request.headers.authorization) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+  },
+}, async () => {
+  return { id: 1, name: 'Taro' };
+});
+```
+
+小さいAPIならこれでも十分です。複数ルートに同じ認証が必要になったら、plugin単位のhookへ移すと重複を減らせます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  hookでレスポンスを返したら、handlerも実行されますか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  `reply.send()` や `return reply.code(...).send(...)` で返した場合、通常はそこで処理を終えます。認証失敗のようにhandlerへ進ませたくない場面で使います。
+</SpeechBubble>
+
+## callback形式とasync形式を混ぜない
+
+Fastifyのhooksには、`done` を呼ぶcallback形式と、Promiseを返すasync形式があります。新しく書くならasync形式に寄せるのが分かりやすいです。
+
+```js
+fastify.addHook('preHandler', async (request) => {
+  request.log.info('before handler');
+});
+```
+
+<Marker>async hookでは `done` callbackを使いません。asyncとcallbackを混ぜると、処理が二重に進むなど読みにくいバグの原因になります。</Marker>
+
+## 参考リンク
+
+- [Fastify Hooks](https://fastify.dev/docs/latest/Reference/Hooks/)
+- [Fastify Lifecycle](https://fastify.dev/docs/latest/Reference/Lifecycle/)
+
+次章では、ここまでの知識を使って、Todo APIを小さなCRUDとして組み立てます。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="非同期処理やHTTPリクエスト処理の知識をクイズで確認しよう"
+/>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import api from "@/lib/api";
 import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,11 +86,15 @@ export default function QuizTagManagePage() {
     setError(null);
     setCreating(true);
     try {
-      const res = await api.post("/api/quiz/tags", {
-        slug: newSlug.trim(),
-        name: newName.trim(),
+      const tag = await fetchNextApiJson<QuizTag>("/next-api/quiz/tags", {
+        auth: true,
+        method: "POST",
+        body: {
+          slug: newSlug.trim(),
+          name: newName.trim(),
+        },
       });
-      setTags((prev) => [...prev, res.data]);
+      setTags((prev) => [...prev, tag]);
       setNewSlug("");
       setNewName("");
     } catch (e: unknown) {
@@ -131,8 +134,12 @@ export default function QuizTagManagePage() {
         inputSlugs.add(tag.slug);
 
         try {
-          const res = await api.post("/api/quiz/tags", tag);
-          created.push(res.data);
+          const createdTag = await fetchNextApiJson<QuizTag>("/next-api/quiz/tags", {
+            auth: true,
+            method: "POST",
+            body: tag,
+          });
+          created.push(createdTag);
           existingSlugs.add(tag.slug);
         } catch (e: unknown) {
           const msg = (e as { response?: { data?: { error?: string } } })
@@ -165,11 +172,15 @@ export default function QuizTagManagePage() {
     setError(null);
     setSaving(true);
     try {
-      const res = await api.put(`/api/quiz/tags/${id}`, {
-        slug: editSlug.trim(),
-        name: editName.trim(),
+      const tag = await fetchNextApiJson<QuizTag>(`/next-api/quiz/tags/${id}`, {
+        auth: true,
+        method: "PUT",
+        body: {
+          slug: editSlug.trim(),
+          name: editName.trim(),
+        },
       });
-      setTags((prev) => prev.map((t) => (t.id === id ? res.data : t)));
+      setTags((prev) => prev.map((t) => (t.id === id ? tag : t)));
       cancelEdit();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })
@@ -200,7 +211,13 @@ export default function QuizTagManagePage() {
 
       if (!confirmed) return;
 
-      await api.delete(`/api/quiz/tags/${tag.id}`);
+      await fetchNextApiJson<{ message: string; deletedId: number; detachedCount: number }>(
+        `/next-api/quiz/tags/${tag.id}`,
+        {
+          auth: true,
+          method: "DELETE",
+        },
+      );
       setTags((prev) => prev.filter((t) => t.id !== tag.id));
     } catch (e: unknown) {
       const status = (e as { response?: { status?: number } })?.response?.status;
