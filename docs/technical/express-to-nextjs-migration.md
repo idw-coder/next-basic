@@ -1,17 +1,16 @@
 # Express → Next.js API 移行メモ
 
-> 状態（2026-08-11 更新）: 主要APIは Next.js Route Handler へ移行済み。`/next-api/*` は Next.js 側でDB/外部サービスを直接処理し、Express fallback は削除済み。`/api/*` 全体rewriteも削除済みで、Expressへ転送するのは未移行の notes/upload など一部だけ。
+> 状態（2026-08-11 更新）: 主要APIは Next.js Route Handler へ移行済み。`/next-api/*` は Next.js 側でDB/外部サービスを直接処理し、Express fallback は削除済み。`next.config.ts` の Express 向け rewrite は全削除済み。本番Nginxも `localhost:8888` へproxyしないため、ユーザー向けリクエスト経路から Express は外れている。
 
 ## 現在の前提
 
 ### ルーティング
 
-- `next.config.ts` で Express に残す一部パスだけを `INTERNAL_API_URL` または `http://localhost:8888` へ rewrite している。
-- そのため、Next.js 側で独自に持つAPIは `src/app/next-api/...` に置く。
+- Next.js 側で独自に持つAPIは `src/app/next-api/...` に置く。
 - 本番で `/next-api/*` から `x-next-api-fallback` ヘッダーは返さない。DBや外部サービス処理に失敗した場合は、Expressへ戻さずNext.js側のエラーとして返す。
-- Next.jsに届いた `/api/quiz/*`, `/api/users`, `/api/auth/login`, `/api/payment/*`, `/api/webhook/stripe` は Express へ rewrite しない。
-- Express へ残している rewrite は `/api/notes/*`, `/api/upload/*`, `/api/auth/test-mail`, `/api-docs`, `/api-docs.json`, `/uploads/*`。
-- `X-Powered-By: Express` が出れば Express 側で処理されている。
+- Next.jsに届いた `/api/*`, `/api-docs`, `/api-docs.json`, `/uploads/*` は Express へ rewrite しない。
+- 本番Nginxからも `location ^~ /api/`, `/api-docs`, `/uploads/` などの Express 向け設定は削除済み。
+- 旧Express系URLは基本的に Next.js の `404` を返す。`502` が出る場合は、NginxまたはNext.js内に Express 向けproxy/rewriteが残っている可能性がある。
 
 ### フロントエンドからのAPI呼び出し
 
@@ -28,20 +27,24 @@
 - Google OAuth は `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` が必要。callback URL は `NEXT_GOOGLE_CALLBACK_URL` を優先し、未設定時は `GOOGLE_CALLBACK_URL` の `/api/auth/google/callback` を `/next-api/auth/google/callback` に読み替える。
 - Stripe 決済は `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` が必要。Stripe Dashboard の Webhook URL は `https://study.ntorelabo.com/next-api/webhook/stripe`。
 
-### Express 側コード
+### Express 側コード・プロセス
 
 - この `next-basic` リポジトリ内には Express の routes / controllers / entities は含まれていない。
 - Express 側を確認する場合は `/Users/tida/dev/personal/express-mysql-docker/backend` を見る。
 - Express 側の移行済みAPIには「Next.jsへ移行済み、Expressはlegacy/fallback用」というコメントを追加済み。
+- 現在の本番リクエスト経路では Express を使っていない。
+- 本番の Express は Docker コンテナ `backend` として稼働していたが、2026-08-11 に `docker stop backend` で停止済み。
+- 停止後も `/next-api/quiz/categories` は `200`、旧Express系URLは `404`、`study.ntorelabo.com:8888` は timeout で、ユーザー向け経路への影響がないことを確認済み。
+- 残作業は急ぎではない。次回メンテナンス時に `backend` コンテナ削除、compose/Actions/関連env/health check の整理を行う。
 
-## 現在 `/api` に残っている主な役割
+## 旧 `/api` の扱い
 
 | 領域 | 主なエンドポイント | 状態 |
 |---|---|---|
-| legacy API | `/api/quiz/*`, `/api/users`, `/api/auth/*`, `/api/payment/*`, `/api/webhook/stripe` | Next.js 側は `/next-api/*` で本番稼働済み。Next.jsのrewrite対象からは削除済み |
-| ノート | `/api/notes` | 未移行。管理画面の notes ページは現状プレースホルダー。今回対応対象外 |
-| アップロード | `/api/upload/*`, `/uploads/*` | 未移行。今回対応対象外 |
-| 補助/開発 | `/api/auth/test-mail`, `/api-docs`, `/api-docs.json` | Express 側に残存 |
+| legacy API | `/api/quiz/*`, `/api/users`, `/api/auth/*`, `/api/payment/*`, `/api/webhook/stripe` | Next.js 側は `/next-api/*` で本番稼働済み。旧 `/api/*` はExpressへ流さず `404` |
+| ノート | `/api/notes` | Next.js化しない方針。Expressへも流さず `404` |
+| アップロード | `/api/upload/*`, `/uploads/*` | 不要と判断済み。Nginxの `/uploads/` alias と実ファイルは削除済み。Expressへも流さず `404` |
+| 補助/開発 | `/api/auth/test-mail`, `/api-docs`, `/api-docs.json` | Expressへ流さず `404` |
 
 ## 移行済み
 
@@ -89,13 +92,13 @@
 |---|---|---|---|---|
 | 現時点なし | - | - | - | 主要APIと決済/Stripe Webhookまで本番確認済み |
 
-## 未移行
+## 廃止した旧Express領域
 
 | 領域 | 状態 |
 |---|---|
-| ノート | `/api/notes` は Express 側に残存。今回対応対象外 |
-| アップロード | `/api/upload/*`, `/uploads/*` は Express 側に残存。今回対応対象外 |
-| 補助/開発 | `/api/auth/test-mail`, `/api-docs`, `/api-docs.json` は Express 側に残存 |
+| ノート | `/api/notes` はNext.js化せず、Expressへも流さない |
+| アップロード | `/api/upload/*`, `/uploads/*` は不要と判断済み。`/var/www/app/backend/uploads` も削除済み |
+| 補助/開発 | `/api/auth/test-mail`, `/api-docs`, `/api-docs.json` はExpressへ流さない |
 
 ## 引き継ぎメモ
 
@@ -103,7 +106,9 @@
 - 実装したが本番確認前のものは「実装済み・デプロイ待ち」に置き、本番確認後に「移行済み」へ移す。
 - 本番確認は最低限、対象の `/next-api/...` が 200 OK を返すことと、対応する画面がそのAPIを呼んでいることを確認する。
 - Next.js 側の Express fallback は削除済み。今後は `/next-api/*` のレスポンスに `x-next-api-fallback` ヘッダーが出ない前提。
-- 残存rewriteが Express 側で処理されているか確認したい場合は、レスポンスヘッダーの `X-Powered-By: Express` が参考になる。
+- 旧Express系URLは `404` が期待値。`502` が出る場合は、どこかに Express 向けproxy/rewriteが残っている。
+- Expressコンテナ `backend` は停止済み。サイトがExpressへ依存していないことは確認済み。
+- `backend` コンテナの削除や compose/Actions/関連env の整理は急ぎではなく、次回メンテナンス時に対応する。
 
 ## 認証・権限マップ
 
@@ -133,31 +138,31 @@ Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`
 
 ## 当面の方針
 
-1. notes/upload は今回対応しない。
-2. `/api/notes/*`, `/api/upload/*`, `/uploads/*` を残すか削除するかを別途決める。
-3. Express を完全に消す段階で、`backend` サービス、関連env、Nginx/docker-compose、health check、ロールバック手順を更新する。
+1. 本番の `/next-api/*` を継続監視する。
+2. Expressコンテナ `backend` は停止済みのため、急ぎの追加対応は不要。
+3. 次回メンテナンス時に `backend` コンテナ削除、関連env、docker-compose、GitHub Actions、health check、ロールバック手順を更新する。
 
 ## Express 廃止を再開する場合の進め方
 
-### Phase 1: 残存Express APIの棚卸し
+### Phase 1: 残存プロセスの棚卸し
 
-- `/api/notes`, `/api/upload/*`, `/uploads/*`, `/api/auth/test-mail`, `/api-docs`, `/api-docs.json` の扱いを決める。
-- Express 側に残っている legacy API を削除してよいか、本番アクセスログや管理画面操作で確認する。
+- Express は Docker コンテナ `backend` として起動していた。
+- 2026-08-11 に `docker stop backend` で停止済み。
+- 停止後に `/next-api/quiz/categories` が `200`、旧Express系URLが `404`、`:8888` が timeout、`502` が出ないことを確認済み。
 
 ### Phase 2: `/api` の所有者変更
 
-- Next.js 側の `/api/*` 全体rewriteは削除済み。残っている個別rewriteを削除または別パスへ分離する。
-- Express に残すAPIがある場合は `/legacy-api/...` などに分離する。
-- 本番の Nginx / docker-compose / health check / 環境変数を更新する。
+- Next.js 側の `/api/*` 全体rewriteと個別rewriteは削除済み。
+- 本番Nginxの `localhost:8888` 向けproxyと `/uploads/` alias は削除済み。
+- 残作業は docker-compose / GitHub Actions / health check / 環境変数など、Expressサービス定義の整理。
 
 ### Phase 3: Express コンテナ廃止
 
 - `backend` サービスを docker-compose から削除する。
-- uploads の保存先をExpress外へ移す場合は、参照URLと配信方法も合わせて更新する。
 - 本番デプロイ手順とロールバック手順を更新する。
 
 ## 注意点
 
 - 旧メモにあった「TypeORM 1.0.0 追加」「`app/api/quiz/search/route.ts` 作成」「`lib/datasource.ts` 作成」は、現在のコードでは確認できない。
 - Next.js側はORMなし。TypeORM用デコレータ設定も削除済み。
-- 本番側のリバースプロキシが `/api/*` をExpressへ直接流している場合、Next.jsのrewrite変更だけでは `/api` の本番到達先は変わらない。本番Nginx設定も別途確認する。
+- 本番側のリバースプロキシが `/api/*` をExpressへ直接流している場合、Next.jsのrewrite変更だけでは `/api` の本番到達先は変わらない。本番Nginx設定も別途確認する。2026-08-11時点では本番NginxのExpress向けproxyは削除済み。

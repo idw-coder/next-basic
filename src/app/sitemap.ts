@@ -1,9 +1,14 @@
 import { MetadataRoute } from "next";
+import { unstable_cache } from "next/cache";
 import { getAllBooks, getChaptersByBook } from "@/lib/books";
 import { getQuizCategoryQuizzes } from "@/lib/server/quizCategoryQuizzes";
 import { getQuizCategories } from "@/lib/server/quizCategories";
 
 import { SITE_URL } from '@/lib/site';
+
+// DBへ直接アクセスするため、ビルド時プリレンダの対象から外す。
+// 静的化されるとビルド環境（DB到達不可）の結果が固定され、クイズURLが永久に欠落する。
+export const dynamic = 'force-dynamic';
 
 interface Category {
   id: number;
@@ -17,33 +22,37 @@ interface Quiz {
   question: string;
 }
 
-async function getCategories(): Promise<Category[]> {
-  try {
-    const { categories } = await getQuizCategories();
-    return categories;
-  } catch {
-    return [];
-  }
+interface CategoryWithQuizzes {
+  category: Category;
+  quizzes: Quiz[];
 }
 
-async function getQuizzesByCategory(categoryId: number): Promise<Quiz[]> {
-  try {
-    const { quizzes } = await getQuizCategoryQuizzes(categoryId);
-    return quizzes;
-  } catch {
-    return [];
-  }
-}
+// 例外はキャッシュさせたくないので、try/catchはキャッシュの外側に置く。
+// 途中で失敗した場合に部分的なsitemapを配信しないよう、全カテゴリ分をまとめて取得する。
+const fetchQuizzesByCategory = unstable_cache(
+  async (): Promise<CategoryWithQuizzes[]> => {
+    const { categories } = await getQuizCategories();
+
+    return Promise.all(
+      categories.map(async (category) => ({
+        category,
+        quizzes: (await getQuizCategoryQuizzes(category.id)).quizzes,
+      }))
+    );
+  },
+  ['sitemap-quizzes-by-category'],
+  { revalidate: 3600 },
+);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const categories = await getCategories();
+  let quizzesByCategory: CategoryWithQuizzes[] = [];
+  try {
+    quizzesByCategory = await fetchQuizzesByCategory();
+  } catch (error) {
+    console.error('Failed to fetch quizzes for sitemap:', error);
+  }
 
-  const quizzesByCategory = await Promise.all(
-    categories.map(async (cat) => ({
-      category: cat,
-      quizzes: await getQuizzesByCategory(cat.id),
-    }))
-  );
+  const categories = quizzesByCategory.map(({ category }) => category);
 
   const staticPages: MetadataRoute.Sitemap = [
     {

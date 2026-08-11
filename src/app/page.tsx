@@ -34,12 +34,17 @@ import {
   UserCircle,
   type LucideIcon,
 } from 'lucide-react';
+import { unstable_cache } from 'next/cache';
 import Image from 'next/image';
 import Link from 'next/link';
 
-async function getQuizCountsBySlugs(slugs: string[]): Promise<Record<string, number>> {
-  const out: Record<string, number> = {};
-  try {
+// DBへ直接アクセスするため、ビルド時プリレンダの対象から外す。
+// 静的化されるとビルド環境（DB到達不可）の結果がHTMLに焼き込まれてしまう。
+export const dynamic = 'force-dynamic';
+
+// 例外はキャッシュさせたくないので、try/catchはキャッシュの外側に置く。
+const fetchQuizCountsBySlugs = unstable_cache(
+  async (slugs: string[]): Promise<Record<string, number>> => {
     const { categories } = await getQuizCategories();
 
     const counts = await Promise.all(
@@ -50,12 +55,21 @@ async function getQuizCountsBySlugs(slugs: string[]): Promise<Record<string, num
         return { slug, count: quizzes.length };
       }),
     );
-    counts.forEach(({ slug, count }) => (out[slug] = count));
+
+    return Object.fromEntries(counts.map(({ slug, count }) => [slug, count]));
+  },
+  ['home-quiz-counts'],
+  { revalidate: 3600 },
+);
+
+async function getQuizCountsBySlugs(slugs: string[]): Promise<Record<string, number>> {
+  try {
+    return await fetchQuizCountsBySlugs(slugs);
   } catch (error) {
-    console.error('Failed to fetch quiz counts:', error);
-    slugs.forEach((s) => (out[s] = 0));
+    // 失敗時はトップの問題数表示ごと消える。ログはこの1行だけが手がかりになる。
+    console.error('[home] Failed to fetch quiz counts; hiding quiz stats.', error);
+    return Object.fromEntries(slugs.map((s) => [s, 0]));
   }
-  return out;
 }
 
 const CATEGORY_SLUGS = [
@@ -432,21 +446,26 @@ export default async function Home() {
                 <Link href="/books">教科書を読む</Link>
               </Button>
             </div>
-            <div className="mt-4 grid max-w-sm grid-cols-3 rounded-[1.25rem] border border-white/80 bg-white/90 px-3 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:mt-5">
+            {/* 問題数は取得できたときだけ出す。取得失敗時に固定値を出すと障害に気づけないため。 */}
+            <div
+              className={`mt-4 grid max-w-sm ${totalCount > 0 ? 'grid-cols-3' : 'grid-cols-2'} rounded-[1.25rem] border border-white/80 bg-white/90 px-3 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:mt-5`}
+            >
               <div className="text-center">
                 <p className="text-2xl font-black leading-none text-brand-red sm:text-3xl">16</p>
                 <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
                   カテゴリ
                 </p>
               </div>
-              <div className="border-x border-ink/10 text-center">
-                <p className="text-2xl font-black leading-none text-ink sm:text-3xl">
-                  {totalCount > 0 ? totalCount : 500}
-                  <span className="text-sm font-bold text-ink-muted">+</span>
-                </p>
-                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">問</p>
-              </div>
-              <div className="text-center">
+              {totalCount > 0 && (
+                <div className="border-l border-ink/10 text-center">
+                  <p className="text-2xl font-black leading-none text-ink sm:text-3xl">
+                    {totalCount}
+                    <span className="text-sm font-bold text-ink-muted">+</span>
+                  </p>
+                  <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">問</p>
+                </div>
+              )}
+              <div className="border-l border-ink/10 text-center">
                 <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">0円</p>
                 <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
                   すべて無料
@@ -523,7 +542,11 @@ export default async function Home() {
             </div>
             <SectionHeading
               className="mb-8 md:mb-10"
-              subtitle={`${CATEGORIES.length}カテゴリ・全${totalCount > 0 ? totalCount : 500}問以上から挑戦しよう`}
+              subtitle={
+                totalCount > 0
+                  ? `${CATEGORIES.length}カテゴリ・全${totalCount}問以上から挑戦しよう`
+                  : `${CATEGORIES.length}カテゴリから挑戦しよう`
+              }
             >
               クイズカテゴリ
             </SectionHeading>
