@@ -9,11 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const authUser = verifyAuth(request);
-    const result = await getMe(authUser.userId, request.headers.get('authorization'));
+    const result = await getMe(authUser.userId);
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError || error instanceof AuthAccountError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -27,15 +25,9 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const authUser = verifyAuth(request);
-    const result = await updateMe(
-      authUser.userId,
-      request.headers.get('authorization'),
-      await request.json(),
-    );
+    const result = await updateMe(authUser.userId, await request.json());
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError || error instanceof AuthAccountError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

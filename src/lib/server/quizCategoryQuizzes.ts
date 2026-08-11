@@ -2,11 +2,6 @@ import type { RowDataPacket } from 'mysql2';
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 interface QuizCategoryExistsRow extends RowDataPacket {
   id: number;
 }
@@ -48,7 +43,7 @@ export interface QuizCategoryQuizzesParams {
 
 export interface QuizCategoryQuizzesResult {
   quizzes: QuizCategoryQuiz[];
-  source: 'db' | 'express-fallback' | 'unavailable';
+  source: 'db';
 }
 
 export class QuizCategoryQuizzesParamsError extends Error {
@@ -74,32 +69,8 @@ function parseCategoryId(categoryId: string | number): number {
   return parsed;
 }
 
-function buildSearchParams(params: QuizCategoryQuizzesParams): URLSearchParams {
-  const searchParams = new URLSearchParams();
-  if (params.q) searchParams.set('q', params.q);
-  if (params.tagSlug) searchParams.set('tagSlug', params.tagSlug);
-  return searchParams;
-}
-
 function serializeTimestamp(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value;
-}
-
-async function fetchQuizzesFromExpress(
-  categoryId: number,
-  params: QuizCategoryQuizzesParams,
-): Promise<QuizCategoryQuiz[]> {
-  const searchParams = buildSearchParams(params);
-  const suffix = searchParams.size ? `?${searchParams.toString()}` : '';
-  const res = await fetch(`${API_BASE_URL}/api/quiz/category/${categoryId}/quizzes${suffix}`, {
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    throw new Error(`Express category quizzes fallback failed: ${res.status}`);
-  }
-
-  return (await res.json()) as QuizCategoryQuiz[];
 }
 
 async function assertCategoryExists(categoryId: number): Promise<void> {
@@ -220,20 +191,7 @@ export async function getQuizCategoryQuizzes(
       throw error;
     }
 
-    console.error('Failed to fetch category quizzes from DB. Falling back to Express.', error);
-
-    try {
-      return {
-        quizzes: await fetchQuizzesFromExpress(categoryId, params),
-        source: 'express-fallback',
-      };
-    } catch (fallbackError) {
-      console.error('Failed to fetch category quizzes from Express fallback.', fallbackError);
-
-      return {
-        quizzes: [],
-        source: 'unavailable',
-      };
-    }
+    console.error('Failed to fetch category quizzes from DB.', error);
+    throw error;
   }
 }

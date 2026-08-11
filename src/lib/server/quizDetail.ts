@@ -2,11 +2,6 @@ import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/prom
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 interface QuizDetailRow extends RowDataPacket {
   id: number;
   slug: string;
@@ -53,13 +48,13 @@ export interface QuizDetail {
 
 export interface QuizDetailResult {
   quiz: QuizDetail | null;
-  source: 'db' | 'express-fallback' | 'unavailable';
+  source: 'db';
 }
 
 export interface QuizMutationResult {
   body: QuizDetail | { message: string };
   status: 200 | 201;
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export class QuizDetailParamsError extends Error {
@@ -113,51 +108,6 @@ function parsePositiveQuizId(quizId: string | number): number {
   }
 
   return parsed;
-}
-
-async function fetchQuizFromExpress(quizId: number): Promise<QuizDetail> {
-  const res = await fetch(`${API_BASE_URL}/api/quiz/${quizId}`, {
-    cache: 'no-store',
-  });
-
-  if (res.status === 404) {
-    throw new QuizDetailNotFoundError();
-  }
-
-  if (!res.ok) {
-    throw new Error(`Express quiz detail fallback failed: ${res.status}`);
-  }
-
-  return (await res.json()) as QuizDetail;
-}
-
-async function requestQuizMutationFromExpress(
-  path: string,
-  method: 'POST' | 'PUT' | 'DELETE',
-  payload: unknown,
-  authorization: string | null,
-): Promise<QuizMutationResult> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authorization ? { authorization } : {}),
-    },
-    body: method === 'DELETE' ? undefined : JSON.stringify(payload),
-  });
-
-  const body = await res.json();
-
-  if (!res.ok) {
-    throw new Error(`Express quiz mutation fallback failed: ${res.status}`);
-  }
-
-  return {
-    body,
-    status: res.status === 201 ? 201 : 200,
-    source: 'express-fallback',
-  };
 }
 
 async function getQuizFromDb(quizId: number): Promise<QuizDetail> {
@@ -570,42 +520,15 @@ async function deleteQuizFromDb(quizId: number): Promise<QuizMutationResult> {
 export async function getQuizDetail(quizIdInput: string | number): Promise<QuizDetailResult> {
   const quizId = parseQuizId(quizIdInput);
 
-  try {
-    return {
-      quiz: await getQuizFromDb(quizId),
-      source: 'db',
-    };
-  } catch (error) {
-    if (error instanceof QuizDetailNotFoundError) {
-      throw error;
-    }
-
-    console.error('Failed to fetch quiz detail from DB. Falling back to Express.', error);
-
-    try {
-      return {
-        quiz: await fetchQuizFromExpress(quizId),
-        source: 'express-fallback',
-      };
-    } catch (fallbackError) {
-      if (fallbackError instanceof QuizDetailNotFoundError) {
-        throw fallbackError;
-      }
-
-      console.error('Failed to fetch quiz detail from Express fallback.', fallbackError);
-
-      return {
-        quiz: null,
-        source: 'unavailable',
-      };
-    }
-  }
+  return {
+    quiz: await getQuizFromDb(quizId),
+    source: 'db',
+  };
 }
 
 export async function createQuiz(
   userId: number,
   payload: unknown,
-  authorization: string | null,
 ): Promise<QuizMutationResult> {
   try {
     return await createQuizInDb(userId, payload);
@@ -619,15 +542,14 @@ export async function createQuiz(
       throw error;
     }
 
-    console.error('Failed to create quiz in DB. Falling back to Express.', error);
-    return requestQuizMutationFromExpress('/api/quiz', 'POST', payload, authorization);
+    console.error('Failed to create quiz in DB.', error);
+    throw error;
   }
 }
 
 export async function updateQuiz(
   quizIdInput: string | number,
   payload: unknown,
-  authorization: string | null,
 ): Promise<QuizMutationResult> {
   const quizId = parsePositiveQuizId(quizIdInput);
 
@@ -644,14 +566,13 @@ export async function updateQuiz(
       throw error;
     }
 
-    console.error('Failed to update quiz in DB. Falling back to Express.', error);
-    return requestQuizMutationFromExpress(`/api/quiz/${quizId}`, 'PUT', payload, authorization);
+    console.error('Failed to update quiz in DB.', error);
+    throw error;
   }
 }
 
 export async function deleteQuiz(
   quizIdInput: string | number,
-  authorization: string | null,
 ): Promise<QuizMutationResult> {
   const quizId = parsePositiveQuizId(quizIdInput);
 
@@ -662,12 +583,7 @@ export async function deleteQuiz(
       throw error;
     }
 
-    console.error('Failed to delete quiz in DB. Falling back to Express.', error);
-    return requestQuizMutationFromExpress(
-      `/api/quiz/${quizId}`,
-      'DELETE',
-      undefined,
-      authorization,
-    );
+    console.error('Failed to delete quiz in DB.', error);
+    throw error;
   }
 }

@@ -2,11 +2,6 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 interface QuizCategoryRow extends RowDataPacket {
   id: number;
   slug: string;
@@ -27,13 +22,13 @@ export interface QuizCategory {
 
 export interface QuizCategoriesResult {
   categories: QuizCategory[];
-  source: 'db' | 'express-fallback' | 'unavailable';
+  source: 'db';
 }
 
 export interface QuizCategoryMutationResult {
   body: QuizCategory | { message: string };
   status: 200 | 201;
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export class QuizCategoryParamsError extends Error {
@@ -64,47 +59,6 @@ function parseCategoryId(categoryId: string | number): number {
   }
 
   return parsed;
-}
-
-async function fetchCategoriesFromExpress(): Promise<QuizCategory[]> {
-  const res = await fetch(`${API_BASE_URL}/api/quiz/categories`, {
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    throw new Error(`Express categories fallback failed: ${res.status}`);
-  }
-
-  return (await res.json()) as QuizCategory[];
-}
-
-async function requestCategoryMutationFromExpress(
-  path: string,
-  method: 'POST' | 'PUT' | 'DELETE',
-  payload: unknown,
-  authorization: string | null,
-): Promise<QuizCategoryMutationResult> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authorization ? { authorization } : {}),
-    },
-    body: method === 'DELETE' ? undefined : JSON.stringify(payload),
-  });
-
-  const body = await res.json();
-
-  if (!res.ok) {
-    throw new Error(`Express category mutation fallback failed: ${res.status}`);
-  }
-
-  return {
-    body,
-    status: res.status === 201 ? 201 : 200,
-    source: 'express-fallback',
-  };
 }
 
 async function getCategoriesFromDb(): Promise<QuizCategory[]> {
@@ -304,34 +258,15 @@ async function deleteCategoryInDb(categoryId: number): Promise<QuizCategoryMutat
 }
 
 export async function getQuizCategories(): Promise<QuizCategoriesResult> {
-  try {
-    return {
-      categories: await getCategoriesFromDb(),
-      source: 'db',
-    };
-  } catch (error) {
-    console.error('Failed to fetch categories from DB. Falling back to Express.', error);
-
-    try {
-      return {
-        categories: await fetchCategoriesFromExpress(),
-        source: 'express-fallback',
-      };
-    } catch (fallbackError) {
-      console.error('Failed to fetch categories from Express fallback.', fallbackError);
-
-      return {
-        categories: [],
-        source: 'unavailable',
-      };
-    }
-  }
+  return {
+    categories: await getCategoriesFromDb(),
+    source: 'db',
+  };
 }
 
 export async function createQuizCategory(
   userId: number,
   payload: unknown,
-  authorization: string | null,
 ): Promise<QuizCategoryMutationResult> {
   try {
     return await createCategoryInDb(userId, payload);
@@ -343,15 +278,14 @@ export async function createQuizCategory(
       throw error;
     }
 
-    console.error('Failed to create category in DB. Falling back to Express.', error);
-    return requestCategoryMutationFromExpress('/api/quiz/categories', 'POST', payload, authorization);
+    console.error('Failed to create category in DB.', error);
+    throw error;
   }
 }
 
 export async function updateQuizCategory(
   categoryIdInput: string | number,
   payload: unknown,
-  authorization: string | null,
 ): Promise<QuizCategoryMutationResult> {
   const categoryId = parseCategoryId(categoryIdInput);
 
@@ -366,19 +300,13 @@ export async function updateQuizCategory(
       throw error;
     }
 
-    console.error('Failed to update category in DB. Falling back to Express.', error);
-    return requestCategoryMutationFromExpress(
-      `/api/quiz/categories/${categoryId}`,
-      'PUT',
-      payload,
-      authorization,
-    );
+    console.error('Failed to update category in DB.', error);
+    throw error;
   }
 }
 
 export async function deleteQuizCategory(
   categoryIdInput: string | number,
-  authorization: string | null,
 ): Promise<QuizCategoryMutationResult> {
   const categoryId = parseCategoryId(categoryIdInput);
 
@@ -389,12 +317,7 @@ export async function deleteQuizCategory(
       throw error;
     }
 
-    console.error('Failed to delete category in DB. Falling back to Express.', error);
-    return requestCategoryMutationFromExpress(
-      `/api/quiz/categories/${categoryId}`,
-      'DELETE',
-      undefined,
-      authorization,
-    );
+    console.error('Failed to delete category in DB.', error);
+    throw error;
   }
 }

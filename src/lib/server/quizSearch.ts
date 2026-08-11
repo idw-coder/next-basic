@@ -2,11 +2,6 @@ import type { RowDataPacket } from 'mysql2';
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 interface QuizSearchRow extends RowDataPacket {
   id: number;
   slug: string;
@@ -48,7 +43,7 @@ export interface QuizSearchParams {
 
 export interface QuizSearchResult {
   quizzes: QuizSearchItem[];
-  source: 'db' | 'express-fallback' | 'unavailable';
+  source: 'db';
 }
 
 export class QuizSearchParamsError extends Error {
@@ -78,28 +73,6 @@ function parseCategoryId(categoryId: string | undefined): number | null {
   }
 
   return parsed;
-}
-
-function buildSearchParams(params: QuizSearchParams): URLSearchParams {
-  const searchParams = new URLSearchParams();
-  if (params.q) searchParams.set('q', params.q);
-  if (params.categoryId) searchParams.set('categoryId', params.categoryId);
-  if (params.tagSlug) searchParams.set('tagSlug', params.tagSlug);
-  if (params.ids) searchParams.set('ids', params.ids);
-  return searchParams;
-}
-
-async function fetchSearchFromExpress(params: QuizSearchParams): Promise<QuizSearchItem[]> {
-  const searchParams = buildSearchParams(params);
-  const res = await fetch(`${API_BASE_URL}/api/quiz/search?${searchParams.toString()}`, {
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    throw new Error(`Express search fallback failed: ${res.status}`);
-  }
-
-  return (await res.json()) as QuizSearchItem[];
 }
 
 async function getSearchFromDb(params: QuizSearchParams): Promise<QuizSearchItem[]> {
@@ -206,20 +179,7 @@ export async function searchQuizzes(params: QuizSearchParams): Promise<QuizSearc
       throw error;
     }
 
-    console.error('Failed to search quizzes from DB. Falling back to Express.', error);
-
-    try {
-      return {
-        quizzes: await fetchSearchFromExpress(params),
-        source: 'express-fallback',
-      };
-    } catch (fallbackError) {
-      console.error('Failed to search quizzes from Express fallback.', fallbackError);
-
-      return {
-        quizzes: [],
-        source: 'unavailable',
-      };
-    }
+    console.error('Failed to search quizzes from DB.', error);
+    throw error;
   }
 }

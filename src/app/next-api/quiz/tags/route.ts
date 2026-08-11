@@ -13,10 +13,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { tags, source } = await getQuizTags();
-    return NextResponse.json(tags, {
-      headers: source !== 'db' ? { 'x-next-api-fallback': source } : undefined,
-    });
+    const { tags } = await getQuizTags();
+    return NextResponse.json(tags);
   } catch (error) {
     console.error('Failed to fetch tags.', error);
     return NextResponse.json([], { status: 200 });
@@ -28,14 +26,10 @@ export async function POST(request: Request) {
     const user = verifyAuth(request);
     requireRole(user, 'editor');
 
-    const result = await createQuizTag(
-      await request.json(),
-      request.headers.get('authorization'),
-    );
+    const result = await createQuizTag(await request.json());
 
     return NextResponse.json(result.body, {
       status: result.status,
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
     });
   } catch (error) {
     if (error instanceof AuthError) {

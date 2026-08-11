@@ -3,11 +3,6 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 interface UserRow extends RowDataPacket {
   id: number | string;
   name: string;
@@ -38,13 +33,13 @@ export interface AdminUser {
 
 export interface UsersListResult {
   users: AdminUser[];
-  source: 'db' | 'express-fallback' | 'unavailable';
+  source: 'db';
 }
 
 export interface UserMutationResult {
   body: AdminUser | { message: string };
   status: 200;
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export interface RegisterUserResult {
@@ -54,7 +49,7 @@ export interface RegisterUserResult {
     emailVerified: false;
   };
   status: 201;
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export class UserParamsError extends Error {
@@ -116,70 +111,6 @@ function mapUserRow(row: UserRow): AdminUser {
     createdAt: toIsoString(row.createdAt),
     updatedAt: toIsoString(row.updatedAt),
     role: row.role || 'user',
-  };
-}
-
-async function fetchUsersFromExpress(authorization: string | null): Promise<AdminUser[]> {
-  const res = await fetch(`${API_BASE_URL}/api/users`, {
-    cache: 'no-store',
-    headers: authorization ? { authorization } : undefined,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Express users fallback failed: ${res.status}`);
-  }
-
-  const body = (await res.json()) as { users: AdminUser[] };
-  return body.users;
-}
-
-async function registerUserFromExpress(payload: unknown): Promise<RegisterUserResult> {
-  const res = await fetch(`${API_BASE_URL}/api/users`, {
-    method: 'POST',
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const body = await res.json();
-  if (!res.ok) {
-    throw new Error(`Express user registration fallback failed: ${res.status}`);
-  }
-
-  return {
-    body,
-    status: 201,
-    source: 'express-fallback',
-  };
-}
-
-async function requestUserMutationFromExpress(
-  path: string,
-  method: 'PATCH' | 'DELETE',
-  payload: unknown,
-  authorization: string | null,
-): Promise<UserMutationResult> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authorization ? { authorization } : {}),
-    },
-    body: method === 'DELETE' ? undefined : JSON.stringify(payload),
-  });
-
-  const body = await res.json();
-  if (!res.ok) {
-    throw new Error(`Express user mutation fallback failed: ${res.status}`);
-  }
-
-  return {
-    body,
-    status: 200,
-    source: 'express-fallback',
   };
 }
 
@@ -444,40 +375,21 @@ export async function registerUser(payload: unknown): Promise<RegisterUserResult
       throw error;
     }
 
-    console.error('Failed to register user in DB. Falling back to Express.', error);
-    return registerUserFromExpress(payload);
+    console.error('Failed to register user in DB.', error);
+    throw error;
   }
 }
 
-export async function getAdminUsers(authorization: string | null): Promise<UsersListResult> {
-  try {
-    return {
-      users: await getUsersFromDb(),
-      source: 'db',
-    };
-  } catch (error) {
-    console.error('Failed to fetch users from DB. Falling back to Express.', error);
-
-    try {
-      return {
-        users: await fetchUsersFromExpress(authorization),
-        source: 'express-fallback',
-      };
-    } catch (fallbackError) {
-      console.error('Failed to fetch users from Express fallback.', fallbackError);
-
-      return {
-        users: [],
-        source: 'unavailable',
-      };
-    }
-  }
+export async function getAdminUsers(): Promise<UsersListResult> {
+  return {
+    users: await getUsersFromDb(),
+    source: 'db',
+  };
 }
 
 export async function updateAdminUser(
   userIdInput: string | number,
   payload: unknown,
-  authorization: string | null,
 ): Promise<UserMutationResult> {
   const userId = parseUserId(userIdInput);
 
@@ -492,15 +404,14 @@ export async function updateAdminUser(
       throw error;
     }
 
-    console.error('Failed to update user in DB. Falling back to Express.', error);
-    return requestUserMutationFromExpress(`/api/users/${userId}`, 'PATCH', payload, authorization);
+    console.error('Failed to update user in DB.', error);
+    throw error;
   }
 }
 
 export async function deleteAdminUser(
   userIdInput: string | number,
   currentUserId: number,
-  authorization: string | null,
 ): Promise<UserMutationResult> {
   const userId = parseUserId(userIdInput);
 
@@ -511,12 +422,7 @@ export async function deleteAdminUser(
       throw error;
     }
 
-    console.error('Failed to delete user in DB. Falling back to Express.', error);
-    return requestUserMutationFromExpress(
-      `/api/users/${userId}`,
-      'DELETE',
-      undefined,
-      authorization,
-    );
+    console.error('Failed to delete user in DB.', error);
+    throw error;
   }
 }

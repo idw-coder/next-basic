@@ -5,11 +5,6 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 interface AuthUserRow extends RowDataPacket {
   id: number | string;
   name: string;
@@ -58,7 +53,7 @@ export interface LoginResult {
     };
   };
   status: 200;
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export interface MeResult {
@@ -67,7 +62,7 @@ export interface MeResult {
     role?: string;
   };
   status: 200;
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export class AuthAccountError extends Error {
@@ -422,55 +417,6 @@ async function getAuthUserFromDb(userId: number | string): Promise<AuthUserRow> 
   return user;
 }
 
-async function requestLoginFromExpress(payload: unknown): Promise<LoginResult> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-    method: 'POST',
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const body = await res.json();
-  if (!res.ok) {
-    throw new Error(`Express login fallback failed: ${res.status}`);
-  }
-
-  return {
-    body,
-    status: 200,
-    source: 'express-fallback',
-  };
-}
-
-async function requestMeFromExpress(
-  method: 'GET' | 'PATCH',
-  authorization: string | null,
-  payload?: unknown,
-): Promise<MeResult> {
-  const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
-    method,
-    cache: 'no-store',
-    headers: {
-      ...(payload !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(authorization ? { authorization } : {}),
-    },
-    body: payload !== undefined ? JSON.stringify(payload) : undefined,
-  });
-
-  const body = await res.json();
-  if (!res.ok) {
-    throw new Error(`Express me fallback failed: ${res.status}`);
-  }
-
-  return {
-    body,
-    status: 200,
-    source: 'express-fallback',
-  };
-}
-
 async function loginWithDb(payload: unknown): Promise<LoginResult> {
   const body = payload as { email?: unknown; password?: unknown };
   const email = typeof body.email === 'string' ? body.email : '';
@@ -653,12 +599,12 @@ export async function login(payload: unknown): Promise<LoginResult> {
       throw error;
     }
 
-    console.error('Failed to login with DB. Falling back to Express.', error);
-    return requestLoginFromExpress(payload);
+    console.error('Failed to login with DB.', error);
+    throw error;
   }
 }
 
-export async function getMe(userId: number, authorization: string | null): Promise<MeResult> {
+export async function getMe(userId: number): Promise<MeResult> {
   try {
     return await getMeFromDb(userId);
   } catch (error) {
@@ -666,14 +612,13 @@ export async function getMe(userId: number, authorization: string | null): Promi
       throw error;
     }
 
-    console.error('Failed to fetch current user from DB. Falling back to Express.', error);
-    return requestMeFromExpress('GET', authorization);
+    console.error('Failed to fetch current user from DB.', error);
+    throw error;
   }
 }
 
 export async function updateMe(
   userId: number,
-  authorization: string | null,
   payload: unknown,
 ): Promise<MeResult> {
   try {
@@ -683,7 +628,7 @@ export async function updateMe(
       throw error;
     }
 
-    console.error('Failed to update current user in DB. Falling back to Express.', error);
-    return requestMeFromExpress('PATCH', authorization, payload);
+    console.error('Failed to update current user in DB.', error);
+    throw error;
   }
 }

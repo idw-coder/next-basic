@@ -17,14 +17,12 @@ export async function GET(
   const { searchParams } = new URL(request.url);
 
   try {
-    const { quizzes, source } = await getQuizCategoryQuizzes(categoryId, {
+    const { quizzes } = await getQuizCategoryQuizzes(categoryId, {
       q: searchParams.get('q') ?? undefined,
       tagSlug: searchParams.get('tagSlug') ?? undefined,
     });
 
-    return NextResponse.json(quizzes, {
-      headers: source !== 'db' ? { 'x-next-api-fallback': source } : undefined,
-    });
+    return NextResponse.json(quizzes);
   } catch (error) {
     if (error instanceof QuizCategoryQuizzesParamsError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

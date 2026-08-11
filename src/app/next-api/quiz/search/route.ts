@@ -9,16 +9,14 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
   try {
-    const { quizzes, source } = await searchQuizzes({
+    const { quizzes } = await searchQuizzes({
       q: searchParams.get('q') ?? undefined,
       categoryId: searchParams.get('categoryId') ?? undefined,
       tagSlug: searchParams.get('tagSlug') ?? undefined,
       ids: searchParams.get('ids') ?? undefined,
     });
 
-    return NextResponse.json(quizzes, {
-      headers: source !== 'db' ? { 'x-next-api-fallback': source } : undefined,
-    });
+    return NextResponse.json(quizzes);
   } catch (error) {
     if (error instanceof QuizSearchParamsError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

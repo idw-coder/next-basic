@@ -22,17 +22,13 @@ export async function GET(
   const { quizId } = await params;
 
   try {
-    const { quiz, source } = await getQuizDetail(quizId);
+    const { quiz } = await getQuizDetail(quizId);
 
     if (!quiz) {
-      return NextResponse.json(null, {
-        headers: { 'x-next-api-fallback': source },
-      });
+      return NextResponse.json(null);
     }
 
-    return NextResponse.json(quiz, {
-      headers: source !== 'db' ? { 'x-next-api-fallback': source } : undefined,
-    });
+    return NextResponse.json(quiz);
   } catch (error) {
     if (error instanceof QuizDetailParamsError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
@@ -60,12 +56,10 @@ export async function PUT(
     const result = await updateQuiz(
       quizId,
       await request.json(),
-      request.headers.get('authorization'),
     );
 
     return NextResponse.json(result.body, {
       status: result.status,
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
     });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -99,11 +93,10 @@ export async function DELETE(
     const user = verifyAuth(request);
     requireRole(user, 'editor');
 
-    const result = await deleteQuiz(quizId, request.headers.get('authorization'));
+    const result = await deleteQuiz(quizId);
 
     return NextResponse.json(result.body, {
       status: result.status,
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
     });
   } catch (error) {
     if (error instanceof AuthError) {

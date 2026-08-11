@@ -15,10 +15,8 @@ export async function GET(
   const { categoryId } = await params;
 
   try {
-    const { tags, source } = await getQuizTagsByCategory(categoryId);
-    return NextResponse.json(tags, {
-      headers: source !== 'db' ? { 'x-next-api-fallback': source } : undefined,
-    });
+    const { tags } = await getQuizTagsByCategory(categoryId);
+    return NextResponse.json(tags);
   } catch (error) {
     if (error instanceof QuizCategoryTagsParamsError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

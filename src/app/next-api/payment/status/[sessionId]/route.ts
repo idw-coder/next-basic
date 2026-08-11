@@ -14,15 +14,9 @@ export async function GET(
 
   try {
     const user = verifyAuth(request);
-    const result = await getPaymentStatus(
-      user.userId,
-      sessionId,
-      request.headers.get('authorization'),
-    );
+    const result = await getPaymentStatus(user.userId, sessionId);
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError || error instanceof PaymentError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

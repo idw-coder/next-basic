@@ -2,11 +2,6 @@ import type { RowDataPacket } from 'mysql2';
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 interface QuizCategoryTagRow extends RowDataPacket {
   id: number;
   slug: string;
@@ -21,7 +16,7 @@ export interface QuizCategoryTag {
 
 export interface QuizCategoryTagsResult {
   tags: QuizCategoryTag[];
-  source: 'db' | 'express-fallback' | 'unavailable';
+  source: 'db';
 }
 
 export class QuizCategoryTagsParamsError extends Error {
@@ -38,18 +33,6 @@ function parseCategoryId(categoryId: string | number): number {
   }
 
   return parsed;
-}
-
-async function fetchTagsFromExpress(categoryId: number): Promise<QuizCategoryTag[]> {
-  const res = await fetch(`${API_BASE_URL}/api/quiz/category/${categoryId}/tags`, {
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    throw new Error(`Express category tags fallback failed: ${res.status}`);
-  }
-
-  return (await res.json()) as QuizCategoryTag[];
 }
 
 async function getTagsFromDb(categoryId: number): Promise<QuizCategoryTag[]> {
@@ -81,26 +64,8 @@ export async function getQuizTagsByCategory(
 ): Promise<QuizCategoryTagsResult> {
   const categoryId = parseCategoryId(categoryIdInput);
 
-  try {
-    return {
-      tags: await getTagsFromDb(categoryId),
-      source: 'db',
-    };
-  } catch (error) {
-    console.error('Failed to fetch category tags from DB. Falling back to Express.', error);
-
-    try {
-      return {
-        tags: await fetchTagsFromExpress(categoryId),
-        source: 'express-fallback',
-      };
-    } catch (fallbackError) {
-      console.error('Failed to fetch category tags from Express fallback.', fallbackError);
-
-      return {
-        tags: [],
-        source: 'unavailable',
-      };
-    }
-  }
+  return {
+    tags: await getTagsFromDb(categoryId),
+    source: 'db',
+  };
 }

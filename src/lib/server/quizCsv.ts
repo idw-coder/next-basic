@@ -2,11 +2,6 @@ import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/prom
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 const CSV_HEADERS = [
   'category_slug',
   'quiz_slug',
@@ -62,7 +57,7 @@ interface QuizTagSlugRow extends RowDataPacket {
 export interface QuizCsvExportResult {
   csv: string;
   filename: string;
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export interface QuizCsvImportResult {
@@ -77,7 +72,7 @@ export interface QuizCsvImportResult {
     errors: string[];
     created_tags: string[];
   };
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export class QuizCsvParamsError extends Error {
@@ -232,56 +227,6 @@ export function createSampleQuizCsv(): string {
       'es6|functions',
     ],
   ])}`;
-}
-
-async function fetchExportFromExpress(
-  categoryId: number | null,
-  authorization: string | null,
-): Promise<QuizCsvExportResult> {
-  const searchParams = new URLSearchParams();
-  if (categoryId != null) {
-    searchParams.set('category_id', String(categoryId));
-  }
-  const suffix = searchParams.size > 0 ? `?${searchParams.toString()}` : '';
-  const res = await fetch(`${API_BASE_URL}/api/quiz/csv/export${suffix}`, {
-    cache: 'no-store',
-    headers: authorization ? { authorization } : undefined,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Express quiz CSV export fallback failed: ${res.status}`);
-  }
-
-  return {
-    csv: await res.text(),
-    filename: `quizzes_${Date.now()}.csv`,
-    source: 'express-fallback',
-  };
-}
-
-async function requestImportFromExpress(
-  csv: string,
-  authorization: string | null,
-): Promise<QuizCsvImportResult> {
-  const res = await fetch(`${API_BASE_URL}/api/quiz/csv/import`, {
-    method: 'POST',
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authorization ? { authorization } : {}),
-    },
-    body: JSON.stringify({ csv }),
-  });
-
-  const body = await res.json();
-  if (!res.ok) {
-    throw new Error(`Express quiz CSV import fallback failed: ${res.status}`);
-  }
-
-  return {
-    body,
-    source: 'express-fallback',
-  };
 }
 
 async function exportCsvFromDb(categoryId: number | null): Promise<QuizCsvExportResult> {
@@ -586,7 +531,6 @@ async function importCsvToDb(userId: number, rawCsv: string): Promise<QuizCsvImp
 
 export async function exportQuizCsv(
   categoryIdInput: string | null,
-  authorization: string | null,
 ): Promise<QuizCsvExportResult> {
   const categoryId = parseCategoryId(categoryIdInput);
 
@@ -597,15 +541,14 @@ export async function exportQuizCsv(
       throw error;
     }
 
-    console.error('Failed to export quiz CSV from DB. Falling back to Express.', error);
-    return fetchExportFromExpress(categoryId, authorization);
+    console.error('Failed to export quiz CSV from DB.', error);
+    throw error;
   }
 }
 
 export async function importQuizCsv(
   userId: number,
   csv: string,
-  authorization: string | null,
 ): Promise<QuizCsvImportResult> {
   try {
     return await importCsvToDb(userId, csv);
@@ -614,7 +557,7 @@ export async function importQuizCsv(
       throw error;
     }
 
-    console.error('Failed to import quiz CSV to DB. Falling back to Express.', error);
-    return requestImportFromExpress(csv, authorization);
+    console.error('Failed to import quiz CSV to DB.', error);
+    throw error;
   }
 }

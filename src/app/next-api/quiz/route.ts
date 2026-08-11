@@ -18,12 +18,10 @@ export async function POST(request: Request) {
     const result = await createQuiz(
       user.userId,
       await request.json(),
-      request.headers.get('authorization'),
     );
 
     return NextResponse.json(result.body, {
       status: result.status,
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
     });
   } catch (error) {
     if (error instanceof AuthError) {

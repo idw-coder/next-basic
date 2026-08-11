@@ -9,9 +9,7 @@ export async function POST(request: Request) {
   try {
     const result = await login(await request.json());
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthAccountError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

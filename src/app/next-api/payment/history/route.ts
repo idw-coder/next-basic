@@ -9,15 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const user = verifyAuth(request);
-    const result = await getPaymentHistory(
-      user.userId,
-      request.url,
-      request.headers.get('authorization'),
-    );
+    const result = await getPaymentHistory(user.userId, request.url);
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

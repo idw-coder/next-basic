@@ -25,12 +25,9 @@ export async function PUT(
     const result = await updateQuizCategory(
       categoryId,
       await request.json(),
-      request.headers.get('authorization'),
     );
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -63,11 +60,9 @@ export async function DELETE(
     const user = verifyAuth(request);
     requireRole(user, 'editor');
 
-    const result = await deleteQuizCategory(categoryId, request.headers.get('authorization'));
+    const result = await deleteQuizCategory(categoryId);
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

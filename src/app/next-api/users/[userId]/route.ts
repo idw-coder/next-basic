@@ -22,15 +22,9 @@ export async function PATCH(
     const user = verifyAuth(request);
     requireRole(user, 'admin');
 
-    const result = await updateAdminUser(
-      userId,
-      await request.json(),
-      request.headers.get('authorization'),
-    );
+    const result = await updateAdminUser(userId, await request.json());
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -63,15 +57,9 @@ export async function DELETE(
     const user = verifyAuth(request);
     requireRole(user, 'admin');
 
-    const result = await deleteAdminUser(
-      userId,
-      user.userId,
-      request.headers.get('authorization'),
-    );
+    const result = await deleteAdminUser(userId, user.userId);
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

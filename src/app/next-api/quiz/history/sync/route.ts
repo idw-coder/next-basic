@@ -12,15 +12,9 @@ export async function POST(request: Request) {
     const result = await syncQuizHistory(
       user.userId,
       await request.json(),
-      request.headers.get('authorization'),
     );
 
-    return NextResponse.json(
-      { synced: result.synced },
-      {
-        headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-      },
-    );
+    return NextResponse.json({ synced: result.synced });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

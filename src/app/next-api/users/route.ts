@@ -16,14 +16,9 @@ export async function GET(request: Request) {
     const user = verifyAuth(request);
     requireRole(user, 'admin');
 
-    const result = await getAdminUsers(request.headers.get('authorization'));
+    const result = await getAdminUsers();
 
-    return NextResponse.json(
-      { users: result.users },
-      {
-        headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-      },
-    );
+    return NextResponse.json({ users: result.users });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -40,7 +35,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result.body, {
       status: result.status,
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
     });
   } catch (error) {
     if (error instanceof UserParamsError) {

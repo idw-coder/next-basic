@@ -3,11 +3,6 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
-
 interface PaymentUserRow extends RowDataPacket {
   id: number | string;
   name: string;
@@ -39,7 +34,7 @@ type StripeInvoiceWithPaymentIntent = Stripe.Invoice & {
 export interface PaymentResult {
   body: unknown;
   status: 200;
-  source: 'db' | 'express-fallback';
+  source: 'db';
 }
 
 export class PaymentError extends Error {
@@ -87,34 +82,6 @@ function mapPayment(row: PaymentRow) {
     ...(row.description ? { description: row.description } : {}),
     createdAt: toIsoString(row.createdAt),
     updatedAt: toIsoString(row.updatedAt),
-  };
-}
-
-async function requestPaymentFromExpress(
-  path: string,
-  method: 'GET' | 'POST',
-  authorization: string | null,
-  payload?: unknown,
-): Promise<PaymentResult> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    cache: 'no-store',
-    headers: {
-      ...(payload !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(authorization ? { authorization } : {}),
-    },
-    body: payload !== undefined ? JSON.stringify(payload) : undefined,
-  });
-
-  const body = await res.json();
-  if (!res.ok) {
-    throw new Error(`Express payment fallback failed: ${res.status}`);
-  }
-
-  return {
-    body,
-    status: 200,
-    source: 'express-fallback',
   };
 }
 
@@ -321,73 +288,63 @@ async function getPaymentStatusFromDb(
 export async function createCheckoutSession(
   userId: number,
   payload: unknown,
-  authorization: string | null,
 ): Promise<PaymentResult> {
   try {
     return await createCheckoutSessionInDb(userId, payload, 'payment');
   } catch (error) {
     if (error instanceof PaymentError) throw error;
-    console.error('Failed to create checkout session in DB. Falling back to Express.', error);
-    return requestPaymentFromExpress('/api/payment/checkout', 'POST', authorization, payload);
+    console.error('Failed to create checkout session in DB.', error);
+    throw error;
   }
 }
 
 export async function createSubscriptionSession(
   userId: number,
   payload: unknown,
-  authorization: string | null,
 ): Promise<PaymentResult> {
   try {
     return await createCheckoutSessionInDb(userId, payload, 'subscription');
   } catch (error) {
     if (error instanceof PaymentError) throw error;
-    console.error('Failed to create subscription session in DB. Falling back to Express.', error);
-    return requestPaymentFromExpress('/api/payment/subscription', 'POST', authorization, payload);
+    console.error('Failed to create subscription session in DB.', error);
+    throw error;
   }
 }
 
 export async function createPortalSession(
   userId: number,
-  authorization: string | null,
 ): Promise<PaymentResult> {
   try {
     return await createPortalSessionInDb(userId);
   } catch (error) {
     if (error instanceof PaymentError) throw error;
-    console.error('Failed to create portal session in DB. Falling back to Express.', error);
-    return requestPaymentFromExpress('/api/payment/portal', 'POST', authorization);
+    console.error('Failed to create portal session in DB.', error);
+    throw error;
   }
 }
 
 export async function getPaymentHistory(
   userId: number,
   requestUrl: string,
-  authorization: string | null,
 ): Promise<PaymentResult> {
   try {
     return await getPaymentHistoryFromDb(userId, requestUrl);
   } catch (error) {
-    console.error('Failed to fetch payment history from DB. Falling back to Express.', error);
-    const url = new URL(requestUrl);
-    return requestPaymentFromExpress(
-      `/api/payment/history${url.search}`,
-      'GET',
-      authorization,
-    );
+    console.error('Failed to fetch payment history from DB.', error);
+    throw error;
   }
 }
 
 export async function getPaymentStatus(
   userId: number,
   sessionId: string,
-  authorization: string | null,
 ): Promise<PaymentResult> {
   try {
     return await getPaymentStatusFromDb(userId, sessionId);
   } catch (error) {
     if (error instanceof PaymentError) throw error;
-    console.error('Failed to fetch payment status from DB. Falling back to Express.', error);
-    return requestPaymentFromExpress(`/api/payment/status/${sessionId}`, 'GET', authorization);
+    console.error('Failed to fetch payment status from DB.', error);
+    throw error;
   }
 }
 

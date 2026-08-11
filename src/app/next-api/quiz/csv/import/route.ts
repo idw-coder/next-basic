@@ -14,12 +14,9 @@ export async function POST(request: Request) {
     const result = await importQuizCsv(
       user.userId,
       typeof body.csv === 'string' ? body.csv : '',
-      request.headers.get('authorization'),
     );
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

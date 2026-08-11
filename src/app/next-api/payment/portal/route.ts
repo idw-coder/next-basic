@@ -9,11 +9,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const user = verifyAuth(request);
-    const result = await createPortalSession(user.userId, request.headers.get('authorization'));
+    const result = await createPortalSession(user.userId);
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError || error instanceof PaymentError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

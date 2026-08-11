@@ -13,14 +13,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const user = verifyAuth(request);
-    const { answers, source } = await getQuizHistory(
-      user.userId,
-      request.headers.get('authorization'),
-    );
+    const { answers } = await getQuizHistory(user.userId);
 
-    return NextResponse.json(answers, {
-      headers: source !== 'db' ? { 'x-next-api-fallback': source } : undefined,
-    });
+    return NextResponse.json(answers);
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -37,12 +32,10 @@ export async function POST(request: Request) {
     const result = await addQuizHistoryAnswer(
       user.userId,
       await request.json(),
-      request.headers.get('authorization'),
     );
 
     return NextResponse.json(result.body, {
       status: result.status,
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
     });
   } catch (error) {
     if (error instanceof AuthError) {

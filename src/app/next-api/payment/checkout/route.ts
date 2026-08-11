@@ -12,12 +12,9 @@ export async function POST(request: Request) {
     const result = await createCheckoutSession(
       user.userId,
       await request.json(),
-      request.headers.get('authorization'),
     );
 
-    return NextResponse.json(result.body, {
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
-    });
+    return NextResponse.json(result.body);
   } catch (error) {
     if (error instanceof AuthError || error instanceof PaymentError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

@@ -7,13 +7,7 @@ import {
   QuizTagParamsError,
   assertTagSlugAvailable,
   normalizeTagPayload,
-  requestTagMutationFromExpress,
 } from '@/lib/server/quizTags';
-
-const API_BASE_URL =
-  process.env.INTERNAL_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8888';
 
 interface QuizTagDetailRow extends RowDataPacket {
   id: number;
@@ -34,7 +28,7 @@ export interface QuizTagDetail {
 
 export interface QuizTagDetailResult {
   tag: QuizTagDetail | null;
-  source: 'db' | 'express-fallback' | 'unavailable';
+  source: 'db';
 }
 
 export class QuizTagDetailParamsError extends Error {
@@ -58,26 +52,6 @@ function parseTagId(tagId: string | number): number {
   }
 
   return parsed;
-}
-
-async function fetchTagFromExpress(
-  tagId: number,
-  authorization: string | null,
-): Promise<QuizTagDetail> {
-  const res = await fetch(`${API_BASE_URL}/api/quiz/tags/${tagId}`, {
-    cache: 'no-store',
-    headers: authorization ? { authorization } : undefined,
-  });
-
-  if (res.status === 404) {
-    throw new QuizTagDetailNotFoundError();
-  }
-
-  if (!res.ok) {
-    throw new Error(`Express tag detail fallback failed: ${res.status}`);
-  }
-
-  return (await res.json()) as QuizTagDetail;
 }
 
 async function getTagFromDb(tagId: number): Promise<QuizTagDetail> {
@@ -118,40 +92,13 @@ async function getTagFromDb(tagId: number): Promise<QuizTagDetail> {
 
 export async function getQuizTagDetail(
   tagIdInput: string | number,
-  authorization: string | null,
 ): Promise<QuizTagDetailResult> {
   const tagId = parseTagId(tagIdInput);
 
-  try {
-    return {
-      tag: await getTagFromDb(tagId),
-      source: 'db',
-    };
-  } catch (error) {
-    if (error instanceof QuizTagDetailNotFoundError) {
-      throw error;
-    }
-
-    console.error('Failed to fetch tag detail from DB. Falling back to Express.', error);
-
-    try {
-      return {
-        tag: await fetchTagFromExpress(tagId, authorization),
-        source: 'express-fallback',
-      };
-    } catch (fallbackError) {
-      if (fallbackError instanceof QuizTagDetailNotFoundError) {
-        throw fallbackError;
-      }
-
-      console.error('Failed to fetch tag detail from Express fallback.', fallbackError);
-
-      return {
-        tag: null,
-        source: 'unavailable',
-      };
-    }
-  }
+  return {
+    tag: await getTagFromDb(tagId),
+    source: 'db',
+  };
 }
 
 async function updateTagInDb(
@@ -246,7 +193,6 @@ async function deleteTagFromDb(tagId: number): Promise<QuizTagMutationResult> {
 export async function updateQuizTag(
   tagIdInput: string | number,
   payload: unknown,
-  authorization: string | null,
 ): Promise<QuizTagMutationResult> {
   const tagId = parseTagId(tagIdInput);
 
@@ -261,19 +207,13 @@ export async function updateQuizTag(
       throw error;
     }
 
-    console.error('Failed to update tag in DB. Falling back to Express.', error);
-    return requestTagMutationFromExpress(
-      `/api/quiz/tags/${tagId}`,
-      'PUT',
-      payload,
-      authorization,
-    );
+    console.error('Failed to update tag in DB.', error);
+    throw error;
   }
 }
 
 export async function deleteQuizTag(
   tagIdInput: string | number,
-  authorization: string | null,
 ): Promise<QuizTagMutationResult> {
   const tagId = parseTagId(tagIdInput);
 
@@ -284,12 +224,7 @@ export async function deleteQuizTag(
       throw error;
     }
 
-    console.error('Failed to delete tag in DB. Falling back to Express.', error);
-    return requestTagMutationFromExpress(
-      `/api/quiz/tags/${tagId}`,
-      'DELETE',
-      undefined,
-      authorization,
-    );
+    console.error('Failed to delete tag in DB.', error);
+    throw error;
   }
 }

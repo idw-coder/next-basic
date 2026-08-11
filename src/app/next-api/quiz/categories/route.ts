@@ -13,10 +13,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { categories, source } = await getQuizCategories();
-    return NextResponse.json(categories, {
-      headers: source !== 'db' ? { 'x-next-api-fallback': source } : undefined,
-    });
+    const { categories } = await getQuizCategories();
+    return NextResponse.json(categories);
   } catch (error) {
     console.error('Failed to fetch categories.', error);
     return NextResponse.json([], { status: 200 });
@@ -31,12 +29,10 @@ export async function POST(request: Request) {
     const result = await createQuizCategory(
       user.userId,
       await request.json(),
-      request.headers.get('authorization'),
     );
 
     return NextResponse.json(result.body, {
       status: result.status,
-      headers: result.source !== 'db' ? { 'x-next-api-fallback': result.source } : undefined,
     });
   } catch (error) {
     if (error instanceof AuthError) {

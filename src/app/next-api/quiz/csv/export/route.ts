@@ -11,16 +11,12 @@ export async function GET(request: Request) {
     verifyAuth(request);
 
     const url = new URL(request.url);
-    const result = await exportQuizCsv(
-      url.searchParams.get('category_id'),
-      request.headers.get('authorization'),
-    );
+    const result = await exportQuizCsv(url.searchParams.get('category_id'));
 
     return new NextResponse(result.csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="${result.filename}"`,
-        ...(result.source !== 'db' ? { 'x-next-api-fallback': result.source } : {}),
       },
     });
   } catch (error) {
