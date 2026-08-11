@@ -1,6 +1,6 @@
 # Express → Next.js API 移行メモ
 
-> 状態（2026-08-09 更新）: 現在は Express バックエンドを維持しつつ、一部の読み取りAPIを Next.js 側へ移行中。`/api/*` は Next.js から Express へプロキシし、Next.js 自身の Route Handler は `/next-api/*` に置く。
+> 状態（2026-08-11 更新）: 現在は Express バックエンドを維持しつつ、一部のAPIを Next.js 側へ移行中。`/api/*` は Next.js から Express へプロキシし、Next.js 自身の Route Handler は `/next-api/*` に置く。
 
 ## 現在の前提
 
@@ -9,8 +9,8 @@
 - `next.config.ts` で `/api/:path*` を `INTERNAL_API_URL` または `http://localhost:8888` へ rewrite している。
 - そのため、`src/app/api/...` に Route Handler を追加しても `/api/...` としては扱いにくい。
 - Next.js 側で独自に持つAPIは `src/app/next-api/...` に置く方針。
-- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts`, `src/app/next-api/quiz/route.ts`, `src/app/next-api/quiz/categories/route.ts`, `src/app/next-api/quiz/categories/[categoryId]/route.ts`, `src/app/next-api/quiz/tags/route.ts`, `src/app/next-api/quiz/tags/[tagId]/route.ts`, `src/app/next-api/quiz/history/route.ts`, `src/app/next-api/quiz/history/sync/route.ts`, `src/app/next-api/quiz/search/route.ts`, `src/app/next-api/quiz/category/[categoryId]/tags/route.ts`, `src/app/next-api/quiz/category/[categoryId]/quizzes/route.ts`, `src/app/next-api/quiz/[quizId]/route.ts`, `src/app/next-api/quiz/csv/sample/route.ts`, `src/app/next-api/quiz/csv/export/route.ts`, `src/app/next-api/quiz/csv/import/route.ts`, `src/app/next-api/users/route.ts`, `src/app/next-api/users/[userId]/route.ts`。
-- 本番 `https://study.ntorelabo.com/next-api/site-search`, `/next-api/quiz/categories`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history`, `/next-api/quiz/history/sync`, `/next-api/quiz/search`, `/next-api/quiz/category/:categoryId/tags`, `/next-api/quiz/category/:categoryId/quizzes`, `/next-api/quiz/:quizId`, `/next-api/quiz`, `/next-api/quiz/csv/*` で 200 OK / JSON またはCSV応答を確認済み。
+- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts`, `src/app/next-api/quiz/route.ts`, `src/app/next-api/quiz/categories/route.ts`, `src/app/next-api/quiz/categories/[categoryId]/route.ts`, `src/app/next-api/quiz/tags/route.ts`, `src/app/next-api/quiz/tags/[tagId]/route.ts`, `src/app/next-api/quiz/history/route.ts`, `src/app/next-api/quiz/history/sync/route.ts`, `src/app/next-api/quiz/search/route.ts`, `src/app/next-api/quiz/category/[categoryId]/tags/route.ts`, `src/app/next-api/quiz/category/[categoryId]/quizzes/route.ts`, `src/app/next-api/quiz/[quizId]/route.ts`, `src/app/next-api/quiz/csv/sample/route.ts`, `src/app/next-api/quiz/csv/export/route.ts`, `src/app/next-api/quiz/csv/import/route.ts`, `src/app/next-api/users/route.ts`, `src/app/next-api/users/[userId]/route.ts`, `src/app/next-api/auth/login/route.ts`, `src/app/next-api/auth/me/route.ts`。
+- 本番 `https://study.ntorelabo.com/next-api/site-search`, `/next-api/quiz/categories`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history`, `/next-api/quiz/history/sync`, `/next-api/quiz/search`, `/next-api/quiz/category/:categoryId/tags`, `/next-api/quiz/category/:categoryId/quizzes`, `/next-api/quiz/:quizId`, `/next-api/quiz`, `/next-api/quiz/csv/*`, `/next-api/users`, `/next-api/users/:userId` で 200 OK / JSON またはCSV応答を確認済み。
 
 ### フロントエンドからのAPI呼び出し
 
@@ -39,8 +39,8 @@
 |---|---|---|
 | クイズ公開ページ | ~~`GET /api/quiz/categories`~~（移行済み: `/next-api/quiz/categories`）, ~~`GET /api/quiz/tags`~~（移行済み: `/next-api/quiz/tags`）, ~~`GET /api/quiz/category/:id/quizzes`~~（移行済み: `/next-api/quiz/category/:id/quizzes`）, ~~`GET /api/quiz/category/:id/tags`~~（移行済み: `/next-api/quiz/category/:id/tags`）, ~~`GET /api/quiz/:quizId`~~（移行済み: `/next-api/quiz/:quizId`）, ~~`GET /api/quiz/search`~~（移行済み: `/next-api/quiz/search`） | トップ、検索、カテゴリ、個別クイズ、サイト内検索 |
 | クイズ履歴 | ~~`GET /api/quiz/history`~~（移行済み: `/next-api/quiz/history`）, ~~`POST /api/quiz/history`~~（移行済み: `/next-api/quiz/history`）, ~~`POST /api/quiz/history/sync`~~（移行済み: `/next-api/quiz/history/sync`） | 学習履歴、プロフィール、復習 |
-| 認証 | `/api/auth/login`, `/api/auth/me`, `/api/auth/google` | ログイン、登録、プロフィール |
-| ユーザー管理 | ~~`POST /api/users`~~（実装済み・本番未確認: `/next-api/users`）, ~~`GET /api/users`~~（本番稼働済み: `/next-api/users`）, ~~`PATCH /api/users/:id`~~（本番稼働済み: `/next-api/users/:userId`）, ~~`DELETE /api/users/:id`~~（実装済み・本番は自分自身削除保護のみ確認: `/next-api/users/:userId`） | 管理画面、登録 |
+| 認証 | ~~`POST /api/auth/login`~~（実装済み・本番未確認: `/next-api/auth/login`）, ~~`GET/PATCH /api/auth/me`~~（実装済み・本番未確認: `/next-api/auth/me`）, `/api/auth/google` | ログイン、登録、プロフィール |
+| ユーザー管理 | ~~`POST /api/users`~~（本番稼働済み: `/next-api/users`）, ~~`GET /api/users`~~（本番稼働済み: `/next-api/users`）, ~~`PATCH /api/users/:id`~~（本番稼働済み: `/next-api/users/:userId`）, ~~`DELETE /api/users/:id`~~（本番稼働済み: `/next-api/users/:userId`） | 管理画面、登録 |
 | クイズ管理 | ~~`POST /api/quiz`~~（本番稼働済み: `/next-api/quiz`）, ~~`PUT/DELETE /api/quiz/:id`~~（本番稼働済み: `/next-api/quiz/:quizId`）, ~~`GET /api/quiz/categories`~~（移行済み: `/next-api/quiz/categories`）, ~~`POST /api/quiz/categories`~~（本番稼働済み: `/next-api/quiz/categories`）, ~~`PUT/DELETE /api/quiz/categories/:id`~~（本番稼働済み: `/next-api/quiz/categories/:categoryId`）, ~~`GET /api/quiz/tags`~~（移行済み: `/next-api/quiz/tags`）, ~~`GET /api/quiz/tags/:id`~~（移行済み: `/next-api/quiz/tags/:id`）, ~~`POST /api/quiz/tags`~~（本番稼働済み: `/next-api/quiz/tags`）, ~~`PUT/DELETE /api/quiz/tags/:id`~~（本番稼働済み: `/next-api/quiz/tags/:tagId`）, ~~`/api/quiz/csv/*`~~（本番稼働済み: `/next-api/quiz/csv/*`） | 管理画面 |
 | 決済 | `/api/payment/subscription`, `/api/payment/portal`, `/api/payment/status/:sessionId`, `/api/webhook/stripe` | サブスクリプション画面、Stripe |
 
@@ -70,8 +70,10 @@
 | クイズ本体 作成POST | `/next-api/quiz` | `src/app/next-api/quiz/route.ts`, `src/lib/server/quizDetail.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | Bearer JWT が必須。Express現状に合わせて `role` 制限は付けない。`quiz`, `quiz_choice`, `quiz_tagging` をトランザクションで追加する。DB書き込みに失敗した場合はExpressの `POST /api/quiz` へ一時フォールバックする |
 | クイズ本体 更新/削除 | `/next-api/quiz/:quizId` | `src/app/next-api/quiz/[quizId]/route.ts`, `src/lib/server/quizDetail.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | Bearer JWT の `role` が `editor` 以上の場合のみ、クイズ更新とsoft deleteを行う。更新時は `quiz`, `quiz_choice`, `quiz_tagging` をトランザクションで更新する。管理画面の作成/更新/削除と個別クイズ画面のタグ更新はNext.js側へ切り替え済み。DB書き込みに失敗した場合はExpressの `PUT/DELETE /api/quiz/:quizId` へ一時フォールバックする |
 | クイズCSV サンプル/出力/取込 | `/next-api/quiz/csv/sample`, `/next-api/quiz/csv/export`, `/next-api/quiz/csv/import` | `src/app/next-api/quiz/csv/sample/route.ts`, `src/app/next-api/quiz/csv/export/route.ts`, `src/app/next-api/quiz/csv/import/route.ts`, `src/lib/server/quizCsv.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | sampleは認証なし。export/importはBearer JWT必須でExpress現状に合わせてeditor制限なし。管理画面のサンプルリンク、CSV出力、CSV取込をNext.js側へ切り替え済み。DB処理に失敗した場合はExpressの `/api/quiz/csv/*` へ一時フォールバックする |
+| ユーザー登録POST | `/next-api/users` | `src/app/next-api/users/route.ts`, `src/lib/server/users.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | 認証なし。`name`, `email`, `password` 必須。bcrypt互換のハッシュを保存し、`user_meta` に `role=user` を追加する。登録画面はNext.js側へ切り替え済み。検証ユーザー作成後、既存 `/api/auth/login` でログインできることを確認済み。`x-next-api-fallback` ヘッダーなし |
 | ユーザー管理 一覧GET | `/next-api/users` | `src/app/next-api/users/route.ts`, `src/lib/server/users.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | Bearer JWT の `role` が `admin` の場合のみ、`user` と `user_meta` をMySQLから直接読み、パスワードを返さず `role` を付与する。`GET https://study.ntorelabo.com/next-api/users` は 200 OK / `x-next-api-fallback` ヘッダーなしで確認済み |
 | ユーザー管理 更新PATCH | `/next-api/users/:userId` | `src/app/next-api/users/[userId]/route.ts`, `src/lib/server/users.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | Bearer JWT の `role` が `admin` の場合のみ、ユーザーの名前/メール/role更新を行う。空更新の `PATCH https://study.ntorelabo.com/next-api/users/3` は 200 OK / `x-next-api-fallback` ヘッダーなしで確認済み |
+| ユーザー管理 削除DELETE | `/next-api/users/:userId` | `src/app/next-api/users/[userId]/route.ts`, `src/lib/server/users.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 本番稼働済み | Bearer JWT の `role` が `admin` の場合のみ、ユーザー削除を行う。検証用に作成したユーザーを `DELETE https://study.ntorelabo.com/next-api/users/:userId` で削除し、200 OK / `{"message":"User deleted"}` / `x-next-api-fallback` ヘッダーなしを確認済み |
 
 確認済み:
 
@@ -100,14 +102,17 @@
 - `https://study.ntorelabo.com/next-api/quiz/csv/sample` は 200 OK / CSV を返す。`x-next-api-fallback` ヘッダーなし。
 - `https://study.ntorelabo.com/next-api/quiz/csv/export?category_id=1` は Bearer JWT 付きで 200 OK / CSV を返す。`x-next-api-fallback` ヘッダーなし。
 - `POST https://study.ntorelabo.com/next-api/quiz/csv/import` は Bearer JWT 付きで 200 OK / `created_count: 1` を返す。`x-next-api-fallback` ヘッダーなし。確認用に作成したクイズは削除済み。
+- `POST https://study.ntorelabo.com/next-api/users` は 201 Created / JSON を返す。`x-next-api-fallback` ヘッダーなし。確認用に作成したユーザーは削除済み。
+- `POST https://study.ntorelabo.com/api/auth/login` は `/next-api/users` で作成した確認用ユーザーで 200 OK / JWT を返す。
+- `DELETE https://study.ntorelabo.com/next-api/users/:userId` は Bearer JWT 付きで 200 OK / `{"message":"User deleted"}` を返す。`x-next-api-fallback` ヘッダーなし。
 - `src/components/HeaderSearch.tsx` は `/next-api/site-search` を呼ぶ。
 
 ### 実装済み・デプロイ待ち
 
 | 機能 | Next.js 側エンドポイント | 実装 | 状態 | 備考 |
 |---|---|---|---|---|
-| ユーザー登録POST | `/next-api/users` | `src/app/next-api/users/route.ts`, `src/lib/server/users.ts`, `src/lib/server/mysql.ts` | ローカル実装済み / 本番未確認 | 認証なし。`name`, `email`, `password` 必須。bcrypt互換のハッシュを保存し、`user_meta` に `role=user` を追加する。登録画面はNext.js側へ切り替え済み。DB処理に失敗した場合はExpressの `POST /api/users` へ一時フォールバックする |
-| ユーザー管理 削除DELETE | `/next-api/users/:userId` | `src/app/next-api/users/[userId]/route.ts`, `src/lib/server/users.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | 実装済み / 本番は保護動作のみ確認 | Bearer JWT の `role` が `admin` の場合のみ、ユーザー削除を行う。自分自身の削除は禁止する。`DELETE https://study.ntorelabo.com/next-api/users/3` は 400 / `自分自身は削除できません` を確認済み。実削除は本番データ保護のため未実行 |
+| 認証 ログインPOST | `/next-api/auth/login` | `src/app/next-api/auth/login/route.ts`, `src/lib/server/authAccount.ts`, `src/lib/server/mysql.ts` | ローカル実装済み / 本番未確認 | 認証なし。メール/パスワードを検証し、Expressと同じ `JWT_SECRET` で7日有効のJWTを発行する。ログイン画面と登録直後ログインはNext.js側へ切り替え済み。DB処理に失敗した場合はExpressの `POST /api/auth/login` へ一時フォールバックする |
+| 認証 自分の情報GET/更新PATCH | `/next-api/auth/me` | `src/app/next-api/auth/me/route.ts`, `src/lib/server/authAccount.ts`, `src/lib/server/auth.ts`, `src/lib/server/mysql.ts` | ローカル実装済み / 本番未確認 | Bearer JWT必須。プロフィール画面のユーザー取得、名前/メール/パスワード更新をNext.js側へ切り替え済み。DB処理に失敗した場合はExpressの `GET/PATCH /api/auth/me` へ一時フォールバックする |
 
 ### 部分移行
 
@@ -121,7 +126,8 @@
 | クイズ詳細/本体CRUD | `/next-api/quiz/:quizId` を追加し、公開の個別クイズページ取得と管理画面の編集GETをNext.js側へ切り替え。本番稼働確認済み。クイズ本体のPOST/PUT/DELETEもNext.js側に実装し、管理画面の作成/更新/削除と個別クイズ画面のタグ更新を切り替え済み。本番稼働確認済み | Express側クイズ本体APIは一時フォールバックとして残す | フォールバック削除前の利用確認 |
 | クイズ履歴 | `/next-api/quiz/history` と `/next-api/quiz/history/sync` を追加し、プロフィール画面の履歴取得GET、回答履歴追加POST、ローカル履歴同期POSTをNext.js側へ切り替え。本番稼働確認済み | Express側GET/POST/syncは一時フォールバックとして残す | 次はフォールバック削除前の利用確認、または別APIへ進む |
 | クイズCSV | `/next-api/quiz/csv/sample`, `/next-api/quiz/csv/export`, `/next-api/quiz/csv/import` を追加し、管理画面のCSVサンプル、出力、取込をNext.js側へ切り替え済み。本番稼働確認済み | Express側CSV APIは一時フォールバックとして残す | フォールバック削除前の利用確認 |
-| ユーザー管理 | `/next-api/users`, `/next-api/users/:userId` を追加し、登録画面と管理画面のユーザー一覧、更新、削除をNext.js側へ切り替え済み。GET/PATCHは本番稼働確認済み。DELETEは自分自身削除保護まで本番確認済み | POSTは本番確認前。DELETEの実削除は本番データ保護のため未実行 | POST本番確認後に移行済みへ更新する。DELETE実削除を確認する場合は検証用ユーザーを用意する |
+| ユーザー管理 | `/next-api/users`, `/next-api/users/:userId` を追加し、登録画面と管理画面のユーザー一覧、更新、削除をNext.js側へ切り替え済み。POST/GET/PATCH/DELETEは本番稼働確認済み | Express側ユーザーAPIは一時フォールバックとして残す | フォールバック削除前の利用確認 |
+| 認証 | `/next-api/auth/login`, `/next-api/auth/me` を追加し、ログイン画面、登録直後ログイン、プロフィール取得/更新をNext.js側へ切り替え済み | Google OAuth (`/api/auth/google`, `/api/auth/google/callback`) はExpressのまま。Express側login/meは一時フォールバックとして残す | 本番確認後、login/meを移行済みに更新する。Google OAuthの移行方式を別途決める |
 
 ### 未移行
 
@@ -129,8 +135,8 @@
 |---|---|
 | クイズ公開API | カテゴリ一覧GET・タグ一覧GET・クイズ検索GET・カテゴリ別タグ一覧GET・カテゴリ別クイズ一覧GET・クイズ詳細GETはNext.js側で本番稼働済み。その他は Express の `/api/quiz/...` を利用中 |
 | クイズ履歴API | 履歴取得GET、履歴追加POST、ローカル履歴同期POSTはNext.js側で本番稼働済み |
-| 認証API | Express の `/api/auth/...` を利用中 |
-| ユーザー管理API | 登録POSTは実装済み・本番未確認。管理画面のGET/PATCHはNext.js側で本番稼働済み。DELETEは実装済みで自分自身削除保護のみ本番確認済み |
+| 認証API | login/meは実装済み・本番未確認。Google OAuthは Express の `/api/auth/google...` を利用中 |
+| ユーザー管理API | 登録POST・管理画面GET/PATCH/DELETEはNext.js側で本番稼働済み |
 | クイズ管理API | 一覧・カテゴリGET/POST/PUT/DELETE・タグGET/POST/PUT/DELETE・タグ詳細GET・編集GET・クイズ本体POST/PUT/DELETE・CSVはNext.js側へ切り替え済み |
 | 決済API / Stripe Webhook | Express の `/api/payment...` / `/api/webhook/stripe` を利用中 |
 
@@ -160,8 +166,11 @@ Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`
 | `POST /api/quiz` | `authMiddleware` | `/next-api/quiz` で `verifyAuth()`。Express現状に合わせてeditor制限なし。本番稼働確認済み |
 | `/api/quiz/csv/sample` | 認証なし | `/next-api/quiz/csv/sample` で認証なし。本番稼働確認済み |
 | `/api/quiz/csv/export`, `/api/quiz/csv/import` | `authMiddleware` | `/next-api/quiz/csv/export`, `/next-api/quiz/csv/import` で `verifyAuth()`。Express現状に合わせてeditor制限なし。本番稼働確認済み |
-| `POST /api/users` | 認証なし | `/next-api/users` で認証なし。ローカル実装済み / 本番未確認 |
-| `/api/users` GET/PATCH/DELETE | `authMiddleware` + `adminMiddleware` | `/next-api/users`, `/next-api/users/:userId` で `verifyAuth()` + `requireRole(user, 'admin')`。GET/PATCHは本番稼働確認済み。DELETEは自分自身削除保護のみ本番確認済み |
+| `POST /api/users` | 認証なし | `/next-api/users` で認証なし。本番稼働確認済み |
+| `/api/users` GET/PATCH/DELETE | `authMiddleware` + `adminMiddleware` | `/next-api/users`, `/next-api/users/:userId` で `verifyAuth()` + `requireRole(user, 'admin')`。本番稼働確認済み |
+| `POST /api/auth/login` | 認証なし | `/next-api/auth/login` で認証なし。ローカル実装済み / 本番未確認 |
+| `GET/PATCH /api/auth/me` | `authMiddleware` | `/next-api/auth/me` で `verifyAuth()`。ローカル実装済み / 本番未確認 |
+| `/api/auth/google`, `/api/auth/google/callback` | Passport Google OAuth | 未移行。OAuthリダイレクトとcallback URL設計が必要なため後回し |
 | `/api/payment/...` | `authMiddleware` | 未移行。Stripe連携はraw bodyや外部API影響があるため後回し |
 
 注: `requireRole('editor')` は `editor` と `admin` を許可する。Expressの定義は `backend/src/middleware/requireRole.ts`、Next.jsの定義は `src/lib/server/auth.ts`。
@@ -200,7 +209,7 @@ Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`
   - `/api/quiz/:quizId`
 - 最初は Next.js 側の `/next-api/...` として並行実装し、画面単位で呼び出し先を切り替える。
 - DBアクセス方式は Express 側の実装に合わせて決める。TypeORM 前提で始めない。
-- 2026-08-10 時点で `/next-api/quiz/categories`, `/next-api/quiz/categories/:categoryId`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history` GET/POST, `/next-api/quiz/history/sync`, `/next-api/quiz/search`, `/next-api/quiz/category/:id/tags`, `/next-api/quiz/category/:id/quizzes`, `/next-api/quiz/:quizId`, `/next-api/quiz`, `/next-api/quiz/csv/*`, `/next-api/users` GET, `/next-api/users/:userId` PATCH は本番稼働済み。カテゴリCRUD、タグCRUD、クイズ本体CRUD、クイズCSV、ユーザー管理GET/PATCHも本番curlで確認済み。
+- 2026-08-11 時点で `/next-api/quiz/categories`, `/next-api/quiz/categories/:categoryId`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history` GET/POST, `/next-api/quiz/history/sync`, `/next-api/quiz/search`, `/next-api/quiz/category/:id/tags`, `/next-api/quiz/category/:id/quizzes`, `/next-api/quiz/:quizId`, `/next-api/quiz`, `/next-api/quiz/csv/*`, `/next-api/users`, `/next-api/users/:userId` は本番稼働済み。カテゴリCRUD、タグCRUD、クイズ本体CRUD、クイズCSV、ユーザー管理POST/GET/PATCH/DELETEも本番curlで確認済み。
 
 ### Phase 2: 認証・ユーザー系APIの移行
 

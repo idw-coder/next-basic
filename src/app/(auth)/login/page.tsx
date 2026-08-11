@@ -13,13 +13,23 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import api from "@/lib/api";
+import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { syncLocalHistoryToServer } from "@/hooks/useQuizHistory";
 import { Separator } from "@/components/ui/separator";
 
 interface LoginForm {
   email: string;
   password: string;
+}
+
+interface LoginResponse {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
 }
 
 export default function LoginPage() {
@@ -34,9 +44,12 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     try {
       setErrorMsg("");
-      const res = await api.post("/api/auth/login", data);
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      const res = await fetchNextApiJson<LoginResponse>("/next-api/auth/login", {
+        method: "POST",
+        body: data,
+      });
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("user", JSON.stringify(res.user));
       await syncLocalHistoryToServer();
       router.push("/");
     } catch (error: unknown) {

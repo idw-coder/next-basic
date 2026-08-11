@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import api from '@/lib/api';
 import { fetchNextApiJson } from '@/lib/nextApiClient';
 import { createAvatar } from '@dicebear/core';
 import { identicon } from '@dicebear/collection';
@@ -20,6 +19,11 @@ interface User {
   name: string;
   email: string;
   createdAt: string;
+}
+
+interface MeResponse {
+  user: User;
+  role?: string;
 }
 
 interface EditForm {
@@ -172,10 +176,12 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await api.get('/api/auth/me');
-        setUser(res.data.user);
-        setRole(res.data.role ?? 'user');
-        localStorage.setItem('user', JSON.stringify(res.data.user));
+        const res = await fetchNextApiJson<MeResponse>('/next-api/auth/me', {
+          auth: true,
+        });
+        setUser(res.user);
+        setRole(res.role ?? 'user');
+        localStorage.setItem('user', JSON.stringify(res.user));
       } catch (error) {
         console.error('Failed to fetch user:', error);
         handleLogout();
@@ -274,8 +280,12 @@ export default function ProfilePage() {
         payload.newPassword = form.newPassword;
       }
 
-      const res = await api.patch('/api/auth/me', payload);
-      const updated: User = res.data.user;
+      const res = await fetchNextApiJson<MeResponse>('/next-api/auth/me', {
+        auth: true,
+        method: 'PATCH',
+        body: payload,
+      });
+      const updated: User = res.user;
       setUser(updated);
       localStorage.setItem('user', JSON.stringify(updated));
       setSuccess('プロフィールを更新しました');

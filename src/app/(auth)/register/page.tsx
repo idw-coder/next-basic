@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import api from "@/lib/api";
 import { fetchNextApiJson } from "@/lib/nextApiClient";
 import { Separator } from "@/components/ui/separator";
 
@@ -17,6 +16,16 @@ interface RegisterForm {
   name: string;
   email: string;
   password: string;
+}
+
+interface LoginResponse {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
 }
 
 export default function RegisterPage() {
@@ -39,13 +48,16 @@ export default function RegisterPage() {
         },
       });
 
-      const loginRes = await api.post("/api/auth/login", {
-        email: data.email,
-        password: data.password,
+      const loginRes = await fetchNextApiJson<LoginResponse>("/next-api/auth/login", {
+        method: "POST",
+        body: {
+          email: data.email,
+          password: data.password,
+        },
       });
 
-      localStorage.setItem("token", loginRes.data.token);
-      localStorage.setItem("user", JSON.stringify(loginRes.data.user));
+      localStorage.setItem("token", loginRes.token);
+      localStorage.setItem("user", JSON.stringify(loginRes.user));
       window.location.href = "/";
     } catch (error: unknown) {
       const msg = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
