@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
-import type { RowDataPacket } from 'mysql2/promise';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 import { getMysqlPool } from '@/lib/server/mysql';
 
@@ -25,6 +26,13 @@ interface AuthUserRow extends RowDataPacket {
 
 interface IdRow extends RowDataPacket {
   id: number | string;
+}
+
+interface GoogleProfile {
+  sub: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
 }
 
 export interface AccountUser {
@@ -72,6 +80,13 @@ export class AuthAccountError extends Error {
   }
 }
 
+export class GoogleAuthError extends Error {
+  constructor(message = 'Google login failed') {
+    super(message);
+    this.name = 'GoogleAuthError';
+  }
+}
+
 function toIsoString(value: Date | string): string {
   if (value instanceof Date) {
     return value.toISOString();
@@ -101,6 +116,276 @@ function signToken(user: AuthUserRow, role: string): string {
     process.env.JWT_SECRET || 'your-super-secret-key',
     { expiresIn: '7d' },
   );
+}
+
+function getFrontendUrl(request: Request): string {
+  return process.env.FRONTEND_URL || new URL(request.url).origin;
+}
+
+function getGoogleCallbackUrl(request: Request): string {
+  const configuredCallbackUrl =
+    process.env.NEXT_GOOGLE_CALLBACK_URL || process.env.GOOGLE_CALLBACK_URL;
+
+  if (configuredCallbackUrl?.includes('/next-api/auth/google/callback')) {
+    return configuredCallbackUrl;
+  }
+
+  if (configuredCallbackUrl?.includes('/api/auth/google/callback')) {
+    return configuredCallbackUrl.replace(
+      '/api/auth/google/callback',
+      '/next-api/auth/google/callback',
+    );
+  }
+
+  return new URL('/next-api/auth/google/callback', request.url).toString();
+}
+
+function getGoogleOAuthConfig(request: Request): {
+  clientId: string;
+  clientSecret: string;
+  callbackUrl: string;
+} {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new GoogleAuthError('Google OAuth environment variables are not configured');
+  }
+
+  return {
+    clientId,
+    clientSecret,
+    callbackUrl: getGoogleCallbackUrl(request),
+  };
+}
+
+export function createGoogleAuthorization(request: Request): {
+  url: string;
+  state: string;
+} {
+  const { clientId, callbackUrl } = getGoogleOAuthConfig(request);
+  const state = randomUUID();
+  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+
+  url.searchParams.set('client_id', clientId);
+  url.searchParams.set('redirect_uri', callbackUrl);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('scope', 'email profile');
+  url.searchParams.set('state', state);
+
+  return {
+    url: url.toString(),
+    state,
+  };
+}
+
+async function exchangeGoogleCodeForAccessToken(
+  request: Request,
+  code: string,
+): Promise<string> {
+  const { clientId, clientSecret, callbackUrl } = getGoogleOAuthConfig(request);
+  const params = new URLSearchParams({
+    code,
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: callbackUrl,
+    grant_type: 'authorization_code',
+  });
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params,
+  });
+
+  const body = (await res.json()) as { access_token?: string };
+  if (!res.ok || !body.access_token) {
+    throw new GoogleAuthError();
+  }
+
+  return body.access_token;
+}
+
+async function fetchGoogleProfile(accessToken: string): Promise<GoogleProfile> {
+  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const profile = (await res.json()) as GoogleProfile;
+  if (!res.ok || !profile.sub || !profile.email) {
+    throw new GoogleAuthError();
+  }
+
+  return profile;
+}
+
+async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<AuthUserRow> {
+  const email = profile.email;
+  if (!email) {
+    throw new GoogleAuthError('Google account does not have an email address');
+  }
+
+  const connection = await getMysqlPool().getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [googleRows] = await connection.query<AuthUserRow[]>(
+      `
+        SELECT
+          u.id,
+          u.name,
+          u.email,
+          u.password,
+          u.googleId,
+          u.emailVerified,
+          u.stripeCustomerId,
+          u.createdAt,
+          u.updatedAt,
+          u.deletedAt,
+          role_meta.metaValue AS role
+        FROM \`user\` u
+        LEFT JOIN user_meta role_meta
+          ON role_meta.userId = u.id
+         AND role_meta.metaKey = 'role'
+        WHERE u.googleId = ?
+          AND u.deletedAt IS NULL
+        LIMIT 1
+      `,
+      [profile.sub],
+    );
+
+    let user = googleRows[0];
+
+    if (!user) {
+      const [emailRows] = await connection.query<AuthUserRow[]>(
+        `
+          SELECT
+            u.id,
+            u.name,
+            u.email,
+            u.password,
+            u.googleId,
+            u.emailVerified,
+            u.stripeCustomerId,
+            u.createdAt,
+            u.updatedAt,
+            u.deletedAt,
+            role_meta.metaValue AS role
+          FROM \`user\` u
+          LEFT JOIN user_meta role_meta
+            ON role_meta.userId = u.id
+           AND role_meta.metaKey = 'role'
+          WHERE u.email = ?
+            AND u.deletedAt IS NULL
+          LIMIT 1
+        `,
+        [email],
+      );
+
+      user = emailRows[0];
+    }
+
+    if (!user) {
+      const [insertResult] = await connection.query<ResultSetHeader>(
+        `
+          INSERT INTO \`user\`
+            (name, email, password, googleId, emailVerified, createdAt, updatedAt)
+          VALUES (?, ?, NULL, ?, TRUE, NOW(), NOW())
+        `,
+        [profile.name || email, email, profile.sub],
+      );
+
+      const userId = Number(insertResult.insertId);
+
+      await connection.query(
+        `
+          INSERT INTO user_meta
+            (userId, metaKey, metaValue, createdAt, updatedAt)
+          VALUES (?, 'role', 'user', NOW(), NOW())
+        `,
+        [userId],
+      );
+    } else if (!user.googleId) {
+      await connection.query(
+        `
+          UPDATE \`user\`
+          SET googleId = ?,
+              emailVerified = TRUE,
+              updatedAt = NOW()
+          WHERE id = ?
+            AND deletedAt IS NULL
+        `,
+        [profile.sub, user.id],
+      );
+    }
+
+    await connection.commit();
+
+    return getAuthUserByGoogleId(profile.sub);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function getAuthUserByGoogleId(googleId: string): Promise<AuthUserRow> {
+  const [rows] = await getMysqlPool().query<AuthUserRow[]>(
+    `
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.password,
+        u.googleId,
+        u.emailVerified,
+        u.stripeCustomerId,
+        u.createdAt,
+        u.updatedAt,
+        u.deletedAt,
+        role_meta.metaValue AS role
+      FROM \`user\` u
+      LEFT JOIN user_meta role_meta
+        ON role_meta.userId = u.id
+       AND role_meta.metaKey = 'role'
+      WHERE u.googleId = ?
+        AND u.deletedAt IS NULL
+      LIMIT 1
+    `,
+    [googleId],
+  );
+
+  const user = rows[0];
+  if (!user) {
+    throw new GoogleAuthError();
+  }
+
+  return user;
+}
+
+export function getGoogleFailureRedirect(request: Request): URL {
+  return new URL('/login?error=google', getFrontendUrl(request));
+}
+
+export async function handleGoogleCallback(
+  request: Request,
+  code: string,
+): Promise<URL> {
+  const accessToken = await exchangeGoogleCodeForAccessToken(request, code);
+  const profile = await fetchGoogleProfile(accessToken);
+  const user = await findOrCreateGoogleUser(profile);
+  const token = signToken(user, user.role || 'user');
+  const redirectUrl = new URL('/auth/callback', getFrontendUrl(request));
+
+  redirectUrl.searchParams.set('token', token);
+
+  return redirectUrl;
 }
 
 async function getAuthUserFromDb(userId: number | string): Promise<AuthUserRow> {

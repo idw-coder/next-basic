@@ -933,7 +933,9 @@ export default function QuizInteraction({
         </Button>
       ) : (
         // 回答した後のフォームは回答前段階ではDOMに含まれないため、sr-onlyで解説テキストを常にDOMに常駐させるよう修正。
-        <div className="space-y-4">
+        // pt-2 は選択肢との区切り用。親の space-y-4 だけだと選択肢どうしの間隔とほぼ同じで、
+        // 判定が選択肢の続きに見えてしまうため、下の解説との間隔（24px）に合わせる。
+        <div className="space-y-4 pt-2">
           <Alert
             variant={isCorrect ? 'default' : 'destructive'}
             className={cn(

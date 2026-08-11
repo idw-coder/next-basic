@@ -130,7 +130,7 @@ export default function RegisterPage() {
               variant="outline"
               className="w-full"
               onClick={() => {
-                window.location.href = process.env.NEXT_PUBLIC_GOOGLE_AUTH_URL || "http://localhost:8888/api/auth/google";
+                window.location.href = "/next-api/auth/google";
               }}
             >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
