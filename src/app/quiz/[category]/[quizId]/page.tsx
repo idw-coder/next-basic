@@ -245,7 +245,8 @@ export default async function QuizDetailPage({
           <span className="size-2 rounded-full bg-white/70" />
         </span>
 
-        <CardHeader className="gap-3 bg-white/95 px-3 py-4 sm:gap-4 sm:px-6 sm:py-6 dark:bg-white/[0.96]">
+        {/* 問題文は白地を敷かずテーマ色の上に置く（白カードは選択肢・解説・次の学習だけに使う） */}
+        <CardHeader className="gap-3 px-4 py-4 sm:gap-4 sm:px-6 sm:py-6">
           <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${theme.badgeClass}`}
@@ -258,7 +259,7 @@ export default async function QuizDetailPage({
             {quiz.question}
           </h1>
         </CardHeader>
-        <CardContent className="px-3 sm:px-6">
+        <CardContent className="px-4 sm:px-6">
           {/* インタラクション部分をClient Componentに委譲 */}
           <QuizInteraction
             quiz={quiz}

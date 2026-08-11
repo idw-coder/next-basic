@@ -570,7 +570,7 @@ export default function QuizInteraction({
     const renderAction = (action: FollowupAction, level: 'primary' | 'secondary') => {
       const isPrimary = level === 'primary';
       const className = isPrimary
-        ? 'h-12 w-full text-base font-bold shadow-sm'
+        ? 'h-11 w-full text-sm font-bold'
         : 'h-9 w-full text-muted-foreground';
 
       if (action.type === 'random') {
@@ -578,7 +578,9 @@ export default function QuizInteraction({
           <Button
             type="button"
             size={isPrimary ? 'lg' : 'sm'}
-            variant={isPrimary ? 'default' : 'ghost'}
+            // ランダムは「他に出せるものが無いとき」の受け皿なので、
+            // 主導線の位置に来ても塗りつぶしにはせず outline に留める
+            variant={isPrimary ? 'outline' : 'ghost'}
             className={className}
             disabled={quickStartLoading !== null}
             onClick={() => handleQuickRandomStart()}
@@ -602,7 +604,7 @@ export default function QuizInteraction({
         >
           <Link href={action.href}>
             {action.label}
-            {isPrimary && <ArrowRight className="size-4" />}
+            {isPrimary && <ArrowRight className="size-3.5" />}
           </Link>
         </Button>
       );
@@ -623,7 +625,7 @@ export default function QuizInteraction({
 
     return (
       // 選択肢カードと同じ白面に載せる。テーマ色の上に直接置くと本文の可読性が落ちるため
-      <div className="min-w-0 space-y-4 rounded-xl border border-black/10 bg-white/95 p-3 shadow-sm sm:p-5 dark:border-white/10 dark:bg-white/[0.96]">
+      <div className="min-w-0 space-y-4 rounded-xl border border-black/10 bg-white/95 p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-white/[0.96]">
         <div className="min-w-0">
           <h2 className="break-words text-base font-extrabold leading-snug text-foreground sm:text-lg">
             {heading}
@@ -837,7 +839,7 @@ export default function QuizInteraction({
         </div>
       )}
 
-      <div className="min-w-0 rounded-xl border border-black/10 bg-white/95 p-3 shadow-sm sm:p-5 dark:border-white/10 dark:bg-white/[0.96]">
+      <div className="min-w-0 rounded-xl border border-black/10 bg-white/95 p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-white/[0.96]">
       {/* ブックマークボタン */}
       <div className="flex justify-end">
         <button
@@ -872,7 +874,7 @@ export default function QuizInteraction({
               onClick={() => !isAnswered && setSelectedChoice(choice.id)}
               disabled={isAnswered}
               className={cn(
-                'group w-full text-left px-2.5 py-3 sm:p-4 rounded-md border-2 transition-all duration-150',
+                'group w-full text-left px-3 py-3 sm:p-4 rounded-md border-2 transition-all duration-150',
                 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800',
                 isAnswered && 'cursor-not-allowed',
                 !isAnswered &&

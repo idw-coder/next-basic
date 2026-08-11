@@ -298,9 +298,15 @@
 
 .prose .mdx-table-scroll table {
   margin: 0;
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   border-style: hidden;
+}
+
+@media (max-width: 640px) {
+  .prose .mdx-table-scroll table:has(tr > :nth-child(3)) {
+    min-width: 36rem;
+  }
 }
 
 .prose .scroll-hint-shadow-wrap {
@@ -344,12 +350,14 @@
   text-align: left;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
+  overflow-wrap: break-word;
 }
 
 .prose table td {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
   vertical-align: top;
+  overflow-wrap: break-word;
 }
 
 .prose table tr:nth-child(even) td {
