@@ -1,11 +1,11 @@
 # サブスクリプション決済機能 仕様書
 
-最終確認日: 2026-08-08
+最終確認日: 2026-08-11
 
 ## 概要
 
 Stripe Checkout を利用したサブスクリプション決済機能のフロントエンド実装。
-バックエンドの `/api/payment/*` エンドポイントと連携し、プラン選択 → Stripe Checkout → 結果表示の一連のフローを提供する。
+Next.js Route Handler の `/next-api/payment/*` エンドポイントと連携し、プラン選択 → Stripe Checkout → 結果表示の一連のフローを提供する。
 
 > **現在のステータス: 準備中（Feature Flag で制御）**
 > デフォルトでは Pro プランのボタンは disabled。`?mode=stripeActive` で有効化可能。
@@ -19,7 +19,7 @@ Stripe Checkout を利用したサブスクリプション決済機能のフロ�
 | `@stripe/stripe-js` | ^9.0.0 | Stripe.js クライアントSDK |
 | `@stripe/react-stripe-js` | ^6.0.0 | React用Stripeコンポーネント |
 | Next.js (App Router) | 15.5.x | ルーティング・SSR |
-| Axios (`src/lib/api.ts`) | ^1.13.x | バックエンドAPI通信 |
+| `fetchNextApiJson` (`src/lib/nextApiClient.ts`) | - | Next.js API通信 |
 
 ---
 
@@ -103,8 +103,8 @@ Stripe Checkout を利用したサブスクリプション決済機能のフロ�
 | フリー「問題を解く」クリック | なし | `/#categories` へ遷移 |
 | Pro プランのボタン | 準備中フラグ ON | disabled（クリック不可） |
 | Pro プランのボタン | 準備中フラグ OFF & 未ログイン | `/login` へリダイレクト |
-| Pro プランのボタン | 準備中フラグ OFF & ログイン済 | `POST /api/payment/subscription` → Stripe Checkout URL へリダイレクト |
-| 「管理ポータルを開く」 | ログイン済 | `POST /api/payment/portal` → Stripe Billing Portal URL へリダイレクト |
+| Pro プランのボタン | 準備中フラグ OFF & ログイン済 | `POST /next-api/payment/subscription` → Stripe Checkout URL へリダイレクト |
+| 「管理ポータルを開く」 | ログイン済 | `POST /next-api/payment/portal` → Stripe Billing Portal URL へリダイレクト |
 
 #### 準備中フラグの制御（Feature Flag）
 
@@ -144,7 +144,7 @@ const isPreparingPlan = !isFree && !stripeActive; // 有料プランボタンの
 #### データ取得
 
 - URL パラメータ `session_id` を使用
-- `GET /api/payment/status/{session_id}` でステータスを確認
+- `GET /next-api/payment/status/{session_id}` でステータスを確認
 - 取得失敗でもエラー表示はしない（Stripe 側で成功しているため）
 
 ---
@@ -167,16 +167,16 @@ const isPreparingPlan = !isFree && !stripeActive; // 有料プランボタンの
 
 | API | メソッド | 認証 | フロントからの呼び出し箇所 | 説明 |
 |---|---|---|---|---|
-| `/api/payment/subscription` | POST | Bearer | SubscriptionClient `handleSubscribe` | サブスクリプション Checkout Session を作成 |
-| `/api/payment/portal` | POST | Bearer | SubscriptionClient `handlePortal` | Stripe Billing Portal セッションを作成 |
-| `/api/payment/status/:sessionId` | GET | Bearer | success/page.tsx | 決済ステータスを確認 |
+| `/next-api/payment/subscription` | POST | Bearer | SubscriptionClient `handleSubscribe` | サブスクリプション Checkout Session を作成 |
+| `/next-api/payment/portal` | POST | Bearer | SubscriptionClient `handlePortal` | Stripe Billing Portal セッションを作成 |
+| `/next-api/payment/status/:sessionId` | GET | Bearer | success/page.tsx | 決済ステータスを確認 |
 
 ### リクエスト・レスポンス
 
 #### サブスクリプション開始
 
 ```
-POST /api/payment/subscription
+POST /next-api/payment/subscription
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -195,7 +195,7 @@ Response (200):
 #### ポータル表示
 
 ```
-POST /api/payment/portal
+POST /next-api/payment/portal
 Authorization: Bearer <token>
 
 Response (200):
@@ -207,7 +207,7 @@ Response (200):
 #### 決済ステータス確認
 
 ```
-GET /api/payment/status/:sessionId
+GET /next-api/payment/status/:sessionId
 Authorization: Bearer <token>
 
 Response (200):
@@ -227,7 +227,7 @@ Response (200):
 ## 決済フロー（シーケンス）
 
 ```
-[ユーザー]          [Next.js フロント]         [Express バックエンド]         [Stripe]
+[ユーザー]          [Next.js フロント]         [Next.js Route Handler]       [Stripe]
     |                      |                          |                        |
     |  プランを選択         |                          |                        |
     |--------------------->|                          |                        |
@@ -366,9 +366,9 @@ pending ──(payment_intent.payment_failed)──> failed
 
 3. 各 Price の詳細画面に表示される **Price ID**（`price_xxxxxxxx`）をメモ
 
-### 2. バックエンドの環境変数を設定
+### 2. Next.js の環境変数を設定
 
-`backend/.env` に以下を設定:
+`next-basic/.env.local` に以下を設定:
 
 ```env
 STRIPE_SECRET_KEY=sk_test_xxxxxxxx        # Stripe Dashboard → Developers → API keys → Secret key
@@ -383,7 +383,6 @@ FRONTEND_URL=http://localhost:3000
 ```env
 NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID=price_xxxxxxxx   # 手順 1 の月額 Price ID
 NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID=price_xxxxxxxx    # 手順 1 の年額 Price ID
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8888
 ```
 
 ### 4. Stripe CLI でローカル Webhook を転送
@@ -397,24 +396,21 @@ brew install stripe/stripe-cli/stripe
 # Stripe にログイン
 stripe login
 
-# Webhook イベントをローカルのバックエンドに転送
-stripe listen --forward-to localhost:8888/api/webhook/stripe
+# Webhook イベントをローカルのNext.jsに転送
+stripe listen --forward-to localhost:3000/next-api/webhook/stripe
 ```
 
-ターミナルに表示される `whsec_xxxxxxxx` を `backend/.env` の `STRIPE_WEBHOOK_SECRET` に設定する。
+ターミナルに表示される `whsec_xxxxxxxx` を `next-basic/.env.local` の `STRIPE_WEBHOOK_SECRET` に設定する。
 
 ### 5. 起動
 
 3つのターミナルで以下を起動:
 
 ```bash
-# ターミナル 1: バックエンド
-cd backend && npm run dev
-
-# ターミナル 2: フロントエンド
+# ターミナル 1: Next.js
 cd next-basic && npm run dev
 
-# ターミナル 3: Stripe CLI（手順 4 で起動済み）
+# ターミナル 2: Stripe CLI（手順 4 で起動済み）
 ```
 
 ### 6. 動作確認
@@ -493,8 +489,10 @@ const isPreparingBanner = false;
 
 Stripe Dashboard → **Developers** → **Webhooks** でエンドポイントを追加:
 
-- URL: `https://<本番ドメイン>/api/webhook/stripe`
+- URL: `https://<本番ドメイン>/next-api/webhook/stripe`
 - 監視イベント: `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`
+
+発行された署名シークレットを本番 Next.js コンテナの `STRIPE_WEBHOOK_SECRET` に設定し、コンテナを再作成する。
 
 ### 8. テストカードで動作確認
 

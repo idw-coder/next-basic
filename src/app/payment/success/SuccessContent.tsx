@@ -6,12 +6,16 @@ import Link from "next/link";
 import { CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import api from "@/lib/api";
+import { fetchNextApiJson } from "@/lib/nextApiClient";
 
 interface PaymentStatus {
   status: string;
   amount: number;
   currency: string;
+}
+
+interface PaymentStatusResponse {
+  payment: PaymentStatus;
 }
 
 export default function SuccessContent() {
@@ -25,8 +29,11 @@ export default function SuccessContent() {
 
     const fetchStatus = async () => {
       try {
-        const res = await api.get(`/api/payment/status/${sessionId}`);
-        setPayment(res.data.payment);
+        const res = await fetchNextApiJson<PaymentStatusResponse>(
+          `/next-api/payment/status/${sessionId}`,
+          { auth: true },
+        );
+        setPayment(res.payment);
       } catch {
         // 決済状態が取得できなくても、Stripe側で成功しているため問題ない
       } finally {

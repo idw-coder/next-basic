@@ -16,7 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import api from '@/lib/api';
+import { fetchNextApiJson } from '@/lib/nextApiClient';
 
 interface Plan {
   id: string;
@@ -28,6 +28,15 @@ interface Plan {
   popular?: boolean;
   color: string;
   icon: typeof Star;
+}
+
+interface CheckoutSessionResponse {
+  url?: string;
+  sessionId?: string;
+}
+
+interface PortalSessionResponse {
+  url?: string;
 }
 
 const PLANS: Plan[] = [
@@ -103,11 +112,15 @@ export default function SubscriptionClient() {
 
     try {
       setLoadingPlan(plan.id);
-      const res = await api.post('/api/payment/subscription', {
-        priceId: plan.priceId,
+      const res = await fetchNextApiJson<CheckoutSessionResponse>('/next-api/payment/subscription', {
+        auth: true,
+        method: 'POST',
+        body: {
+          priceId: plan.priceId,
+        },
       });
-      if (res.data.url) {
-        window.location.href = res.data.url;
+      if (res.url) {
+        window.location.href = res.url;
       }
     } catch (err: unknown) {
       const msg =
@@ -123,9 +136,12 @@ export default function SubscriptionClient() {
     setError(null);
     try {
       setPortalLoading(true);
-      const res = await api.post('/api/payment/portal');
-      if (res.data.url) {
-        window.location.href = res.data.url;
+      const res = await fetchNextApiJson<PortalSessionResponse>('/next-api/payment/portal', {
+        auth: true,
+        method: 'POST',
+      });
+      if (res.url) {
+        window.location.href = res.url;
       }
     } catch (err: unknown) {
       const msg =

@@ -9,8 +9,8 @@
 - `next.config.ts` で `/api/:path*` を `INTERNAL_API_URL` または `http://localhost:8888` へ rewrite している。
 - そのため、`src/app/api/...` に Route Handler を追加しても `/api/...` としては扱いにくい。
 - Next.js 側で独自に持つAPIは `src/app/next-api/...` に置く方針。
-- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts`, `src/app/next-api/quiz/route.ts`, `src/app/next-api/quiz/categories/route.ts`, `src/app/next-api/quiz/categories/[categoryId]/route.ts`, `src/app/next-api/quiz/tags/route.ts`, `src/app/next-api/quiz/tags/[tagId]/route.ts`, `src/app/next-api/quiz/history/route.ts`, `src/app/next-api/quiz/history/sync/route.ts`, `src/app/next-api/quiz/search/route.ts`, `src/app/next-api/quiz/category/[categoryId]/tags/route.ts`, `src/app/next-api/quiz/category/[categoryId]/quizzes/route.ts`, `src/app/next-api/quiz/[quizId]/route.ts`, `src/app/next-api/quiz/csv/sample/route.ts`, `src/app/next-api/quiz/csv/export/route.ts`, `src/app/next-api/quiz/csv/import/route.ts`, `src/app/next-api/users/route.ts`, `src/app/next-api/users/[userId]/route.ts`, `src/app/next-api/auth/login/route.ts`, `src/app/next-api/auth/me/route.ts`, `src/app/next-api/auth/google/route.ts`, `src/app/next-api/auth/google/callback/route.ts`。
-- 本番 `https://study.ntorelabo.com/next-api/site-search`, `/next-api/quiz/categories`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history`, `/next-api/quiz/history/sync`, `/next-api/quiz/search`, `/next-api/quiz/category/:categoryId/tags`, `/next-api/quiz/category/:categoryId/quizzes`, `/next-api/quiz/:quizId`, `/next-api/quiz`, `/next-api/quiz/csv/*`, `/next-api/users`, `/next-api/users/:userId`, `/next-api/auth/login`, `/next-api/auth/me` で 200 OK / JSON またはCSV応答を確認済み。
+- このリポジトリ上で確認できる Next.js Route Handler は `src/app/next-api/site-search/route.ts`, `src/app/next-api/quiz/route.ts`, `src/app/next-api/quiz/categories/route.ts`, `src/app/next-api/quiz/categories/[categoryId]/route.ts`, `src/app/next-api/quiz/tags/route.ts`, `src/app/next-api/quiz/tags/[tagId]/route.ts`, `src/app/next-api/quiz/history/route.ts`, `src/app/next-api/quiz/history/sync/route.ts`, `src/app/next-api/quiz/search/route.ts`, `src/app/next-api/quiz/category/[categoryId]/tags/route.ts`, `src/app/next-api/quiz/category/[categoryId]/quizzes/route.ts`, `src/app/next-api/quiz/[quizId]/route.ts`, `src/app/next-api/quiz/csv/sample/route.ts`, `src/app/next-api/quiz/csv/export/route.ts`, `src/app/next-api/quiz/csv/import/route.ts`, `src/app/next-api/users/route.ts`, `src/app/next-api/users/[userId]/route.ts`, `src/app/next-api/auth/login/route.ts`, `src/app/next-api/auth/me/route.ts`, `src/app/next-api/auth/google/route.ts`, `src/app/next-api/auth/google/callback/route.ts`, `src/app/next-api/payment/checkout/route.ts`, `src/app/next-api/payment/subscription/route.ts`, `src/app/next-api/payment/portal/route.ts`, `src/app/next-api/payment/history/route.ts`, `src/app/next-api/payment/status/[sessionId]/route.ts`, `src/app/next-api/webhook/stripe/route.ts`。
+- 本番 `https://study.ntorelabo.com/next-api/site-search`, `/next-api/quiz/categories`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history`, `/next-api/quiz/history/sync`, `/next-api/quiz/search`, `/next-api/quiz/category/:categoryId/tags`, `/next-api/quiz/category/:categoryId/quizzes`, `/next-api/quiz/:quizId`, `/next-api/quiz`, `/next-api/quiz/csv/*`, `/next-api/users`, `/next-api/users/:userId`, `/next-api/auth/login`, `/next-api/auth/me`, `/next-api/auth/google` で 200 OK / JSON またはCSV応答、またはOAuthログイン成功を確認済み。
 
 ### フロントエンドからのAPI呼び出し
 
@@ -28,6 +28,7 @@
 - DB接続は `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_CONNECTION_LIMIT` を使う。
 - 認証つきRoute HandlerはExpressと同じ `JWT_SECRET` が必要。Next.jsコンテナにもExpressと同じ値を環境変数で渡す。
 - Google OAuth をNext.js側で処理する場合は、Next.jsコンテナにも `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` が必要。callback URL は `NEXT_GOOGLE_CALLBACK_URL` を優先し、未設定時は `GOOGLE_CALLBACK_URL` の `/api/auth/google/callback` を `/next-api/auth/google/callback` に読み替える。
+- Stripe 決済をNext.js側で処理する場合は、Next.jsコンテナにも `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` が必要。Stripe Dashboard の Webhook URL は `https://study.ntorelabo.com/next-api/webhook/stripe` に切り替える。
 
 ### Express 側コード
 
@@ -40,10 +41,10 @@
 |---|---|---|
 | クイズ公開ページ | ~~`GET /api/quiz/categories`~~（移行済み: `/next-api/quiz/categories`）, ~~`GET /api/quiz/tags`~~（移行済み: `/next-api/quiz/tags`）, ~~`GET /api/quiz/category/:id/quizzes`~~（移行済み: `/next-api/quiz/category/:id/quizzes`）, ~~`GET /api/quiz/category/:id/tags`~~（移行済み: `/next-api/quiz/category/:id/tags`）, ~~`GET /api/quiz/:quizId`~~（移行済み: `/next-api/quiz/:quizId`）, ~~`GET /api/quiz/search`~~（移行済み: `/next-api/quiz/search`） | トップ、検索、カテゴリ、個別クイズ、サイト内検索 |
 | クイズ履歴 | ~~`GET /api/quiz/history`~~（移行済み: `/next-api/quiz/history`）, ~~`POST /api/quiz/history`~~（移行済み: `/next-api/quiz/history`）, ~~`POST /api/quiz/history/sync`~~（移行済み: `/next-api/quiz/history/sync`） | 学習履歴、プロフィール、復習 |
-| 認証 | ~~`POST /api/auth/login`~~（本番稼働済み: `/next-api/auth/login`）, ~~`GET/PATCH /api/auth/me`~~（本番稼働済み: `/next-api/auth/me`）, ~~`/api/auth/google`~~（実装済み・本番未確認: `/next-api/auth/google`） | ログイン、登録、プロフィール |
+| 認証 | ~~`POST /api/auth/login`~~（本番稼働済み: `/next-api/auth/login`）, ~~`GET/PATCH /api/auth/me`~~（本番稼働済み: `/next-api/auth/me`）, ~~`/api/auth/google`~~（本番稼働済み: `/next-api/auth/google`） | ログイン、登録、プロフィール |
 | ユーザー管理 | ~~`POST /api/users`~~（本番稼働済み: `/next-api/users`）, ~~`GET /api/users`~~（本番稼働済み: `/next-api/users`）, ~~`PATCH /api/users/:id`~~（本番稼働済み: `/next-api/users/:userId`）, ~~`DELETE /api/users/:id`~~（本番稼働済み: `/next-api/users/:userId`） | 管理画面、登録 |
 | クイズ管理 | ~~`POST /api/quiz`~~（本番稼働済み: `/next-api/quiz`）, ~~`PUT/DELETE /api/quiz/:id`~~（本番稼働済み: `/next-api/quiz/:quizId`）, ~~`GET /api/quiz/categories`~~（移行済み: `/next-api/quiz/categories`）, ~~`POST /api/quiz/categories`~~（本番稼働済み: `/next-api/quiz/categories`）, ~~`PUT/DELETE /api/quiz/categories/:id`~~（本番稼働済み: `/next-api/quiz/categories/:categoryId`）, ~~`GET /api/quiz/tags`~~（移行済み: `/next-api/quiz/tags`）, ~~`GET /api/quiz/tags/:id`~~（移行済み: `/next-api/quiz/tags/:id`）, ~~`POST /api/quiz/tags`~~（本番稼働済み: `/next-api/quiz/tags`）, ~~`PUT/DELETE /api/quiz/tags/:id`~~（本番稼働済み: `/next-api/quiz/tags/:tagId`）, ~~`/api/quiz/csv/*`~~（本番稼働済み: `/next-api/quiz/csv/*`） | 管理画面 |
-| 決済 | `/api/payment/subscription`, `/api/payment/portal`, `/api/payment/status/:sessionId`, `/api/webhook/stripe` | サブスクリプション画面、Stripe |
+| 決済 | ~~`/api/payment/subscription`~~（実装済み: `/next-api/payment/subscription`）, ~~`/api/payment/portal`~~（実装済み: `/next-api/payment/portal`）, ~~`/api/payment/status/:sessionId`~~（実装済み: `/next-api/payment/status/:sessionId`）, ~~`/api/payment/history`~~（実装済み: `/next-api/payment/history`）, ~~`/api/webhook/stripe`~~（実装済み: `/next-api/webhook/stripe`） | サブスクリプション画面、Stripe |
 
 注: ~~取り消し線~~ の `/api` は Next.js 側へ移行済み、または実装済みで本番確認待ち。Express 側の同名APIは、既存クライアント・管理画面・Next.jsフォールバック用として当面残す。ただし最終目標は Express 廃止のため、フォールバックも移行完了後に削除対象とする。
 
@@ -111,13 +112,14 @@
 - `POST https://study.ntorelabo.com/next-api/auth/login` は検証ユーザーで 200 OK / JWT を返す。`x-next-api-fallback` ヘッダーなし。
 - `GET https://study.ntorelabo.com/next-api/auth/me` は Bearer JWT 付きで 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。
 - `PATCH https://study.ntorelabo.com/next-api/auth/me` は Bearer JWT 付きで 200 OK / JSON を返す。`x-next-api-fallback` ヘッダーなし。確認用に作成したユーザーは削除済み。
+- `https://study.ntorelabo.com/next-api/auth/google` からGoogleログインし、`/auth/callback?token=...` 経由でログイン完了することを本番ブラウザで確認済み。
 - `src/components/HeaderSearch.tsx` は `/next-api/site-search` を呼ぶ。
 
 ### 実装済み・デプロイ待ち
 
 | 機能 | Next.js 側エンドポイント | 実装 | 状態 | 備考 |
 |---|---|---|---|---|
-| Google OAuth | `/next-api/auth/google`, `/next-api/auth/google/callback` | `src/app/next-api/auth/google/route.ts`, `src/app/next-api/auth/google/callback/route.ts`, `src/lib/server/authAccount.ts`, `src/lib/server/mysql.ts` | ローカル実装済み / 本番未確認 | Google認可URLへリダイレクトし、callbackでアクセストークン取得、ユーザー作成/連携、JWT発行、`/auth/callback?token=...` へ戻す。ログイン/登録画面のGoogleボタンはNext.js側へ切り替え済み。本番確認にはNext.jsコンテナの `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` と、Google Consoleの承認済みリダイレクトURI `https://study.ntorelabo.com/next-api/auth/google/callback` が必要 |
+| 決済API / Stripe Webhook | `/next-api/payment/checkout`, `/next-api/payment/subscription`, `/next-api/payment/portal`, `/next-api/payment/history`, `/next-api/payment/status/:sessionId`, `/next-api/webhook/stripe` | `src/app/next-api/payment/*`, `src/app/next-api/webhook/stripe/route.ts`, `src/lib/server/payments.ts` | ローカル実装済み / 本番確認待ち | Bearer JWT 必須の決済APIと、raw body + Stripe署名検証のWebhookをNext.js側へ追加。サブスクリプション画面と決済成功画面は `/next-api/payment/*` 呼び出しへ切り替え済み。決済APIはDB/Stripe処理に失敗した場合、Expressへ一時フォールバックする。WebhookはStripe Dashboard側で送信先を `/next-api/webhook/stripe` に切り替えて確認する |
 
 ### 部分移行
 
@@ -132,7 +134,8 @@
 | クイズ履歴 | `/next-api/quiz/history` と `/next-api/quiz/history/sync` を追加し、プロフィール画面の履歴取得GET、回答履歴追加POST、ローカル履歴同期POSTをNext.js側へ切り替え。本番稼働確認済み | Express側GET/POST/syncは一時フォールバックとして残す | 次はフォールバック削除前の利用確認、または別APIへ進む |
 | クイズCSV | `/next-api/quiz/csv/sample`, `/next-api/quiz/csv/export`, `/next-api/quiz/csv/import` を追加し、管理画面のCSVサンプル、出力、取込をNext.js側へ切り替え済み。本番稼働確認済み | Express側CSV APIは一時フォールバックとして残す | フォールバック削除前の利用確認 |
 | ユーザー管理 | `/next-api/users`, `/next-api/users/:userId` を追加し、登録画面と管理画面のユーザー一覧、更新、削除をNext.js側へ切り替え済み。POST/GET/PATCH/DELETEは本番稼働確認済み | Express側ユーザーAPIは一時フォールバックとして残す | フォールバック削除前の利用確認 |
-| 認証 | `/next-api/auth/login`, `/next-api/auth/me`, `/next-api/auth/google`, `/next-api/auth/google/callback` を追加し、ログイン画面、登録直後ログイン、プロフィール取得/更新、GoogleボタンをNext.js側へ切り替え済み。login/meは本番稼働確認済み | Google OAuthは本番確認前。Express側認証APIは一時フォールバック/legacyとして残す | Google OAuthの本番envとGoogle Console設定を反映してブラウザ確認する |
+| 認証 | `/next-api/auth/login`, `/next-api/auth/me`, `/next-api/auth/google`, `/next-api/auth/google/callback` を追加し、ログイン画面、登録直後ログイン、プロフィール取得/更新、GoogleボタンをNext.js側へ切り替え済み。login/meとGoogle OAuthは本番稼働確認済み | Express側認証APIは一時フォールバック/legacyとして残す | フォールバック削除前の利用確認 |
+| 決済 | `/next-api/payment/checkout`, `/next-api/payment/subscription`, `/next-api/payment/portal`, `/next-api/payment/history`, `/next-api/payment/status/:sessionId`, `/next-api/webhook/stripe` を追加し、サブスクリプション画面と決済成功画面をNext.js側へ切り替え済み | Express側決済API/Webhookは一時フォールバック/legacyとして残す | Next.jsコンテナのStripe環境変数設定、Stripe DashboardのWebhook URL切り替え、デプロイ後のCheckout/Webhook確認 |
 
 ### 未移行
 
@@ -140,10 +143,10 @@
 |---|---|
 | クイズ公開API | カテゴリ一覧GET・タグ一覧GET・クイズ検索GET・カテゴリ別タグ一覧GET・カテゴリ別クイズ一覧GET・クイズ詳細GETはNext.js側で本番稼働済み。その他は Express の `/api/quiz/...` を利用中 |
 | クイズ履歴API | 履歴取得GET、履歴追加POST、ローカル履歴同期POSTはNext.js側で本番稼働済み |
-| 認証API | login/meはNext.js側で本番稼働済み。Google OAuthは実装済み・本番未確認 |
+| 認証API | login/meとGoogle OAuthはNext.js側で本番稼働済み |
 | ユーザー管理API | 登録POST・管理画面GET/PATCH/DELETEはNext.js側で本番稼働済み |
 | クイズ管理API | 一覧・カテゴリGET/POST/PUT/DELETE・タグGET/POST/PUT/DELETE・タグ詳細GET・編集GET・クイズ本体POST/PUT/DELETE・CSVはNext.js側へ切り替え済み |
-| 決済API / Stripe Webhook | Express の `/api/payment...` / `/api/webhook/stripe` を利用中 |
+| 決済API / Stripe Webhook | Next.js側へ実装済み。本番確認前のため、Express の `/api/payment...` / `/api/webhook/stripe` はlegacy/fallbackとして残す |
 
 ## 引き継ぎメモ
 
@@ -175,8 +178,9 @@ Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`
 | `/api/users` GET/PATCH/DELETE | `authMiddleware` + `adminMiddleware` | `/next-api/users`, `/next-api/users/:userId` で `verifyAuth()` + `requireRole(user, 'admin')`。本番稼働確認済み |
 | `POST /api/auth/login` | 認証なし | `/next-api/auth/login` で認証なし。本番稼働確認済み |
 | `GET/PATCH /api/auth/me` | `authMiddleware` | `/next-api/auth/me` で `verifyAuth()`。本番稼働確認済み |
-| `/api/auth/google`, `/api/auth/google/callback` | Passport Google OAuth | `/next-api/auth/google`, `/next-api/auth/google/callback` で自前OAuth処理。ローカル実装済み / 本番未確認 |
-| `/api/payment/...` | `authMiddleware` | 未移行。Stripe連携はraw bodyや外部API影響があるため後回し |
+| `/api/auth/google`, `/api/auth/google/callback` | Passport Google OAuth | `/next-api/auth/google`, `/next-api/auth/google/callback` で自前OAuth処理。本番稼働確認済み |
+| `/api/payment/...` | `authMiddleware` | `/next-api/payment/...` で `verifyAuth()`。ローカル実装済み / 本番確認待ち |
+| `/api/webhook/stripe` | Stripe署名検証 | `/next-api/webhook/stripe` で raw body + Stripe署名検証。ローカル実装済み / 本番確認待ち |
 
 注: `requireRole('editor')` は `editor` と `admin` を許可する。Expressの定義は `backend/src/middleware/requireRole.ts`、Next.jsの定義は `src/lib/server/auth.ts`。
 
@@ -214,12 +218,12 @@ Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`
   - `/api/quiz/:quizId`
 - 最初は Next.js 側の `/next-api/...` として並行実装し、画面単位で呼び出し先を切り替える。
 - DBアクセス方式は Express 側の実装に合わせて決める。TypeORM 前提で始めない。
-- 2026-08-11 時点で `/next-api/quiz/categories`, `/next-api/quiz/categories/:categoryId`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history` GET/POST, `/next-api/quiz/history/sync`, `/next-api/quiz/search`, `/next-api/quiz/category/:id/tags`, `/next-api/quiz/category/:id/quizzes`, `/next-api/quiz/:quizId`, `/next-api/quiz`, `/next-api/quiz/csv/*`, `/next-api/users`, `/next-api/users/:userId`, `/next-api/auth/login`, `/next-api/auth/me` は本番稼働済み。カテゴリCRUD、タグCRUD、クイズ本体CRUD、クイズCSV、ユーザー管理POST/GET/PATCH/DELETE、認証login/meも本番curlで確認済み。
+- 2026-08-11 時点で `/next-api/quiz/categories`, `/next-api/quiz/categories/:categoryId`, `/next-api/quiz/tags`, `/next-api/quiz/tags/:tagId`, `/next-api/quiz/history` GET/POST, `/next-api/quiz/history/sync`, `/next-api/quiz/search`, `/next-api/quiz/category/:id/tags`, `/next-api/quiz/category/:id/quizzes`, `/next-api/quiz/:quizId`, `/next-api/quiz`, `/next-api/quiz/csv/*`, `/next-api/users`, `/next-api/users/:userId`, `/next-api/auth/login`, `/next-api/auth/me`, `/next-api/auth/google` は本番稼働済み。カテゴリCRUD、タグCRUD、クイズ本体CRUD、クイズCSV、ユーザー管理POST/GET/PATCH/DELETE、認証login/me/Google OAuthも本番確認済み。`/next-api/payment/*` と `/next-api/webhook/stripe` はローカル実装済みで本番確認待ち。
 
 ### Phase 2: 認証・ユーザー系APIの移行
 
 - JWT の発行・検証・期限・保存場所を整理する。
-- Google OAuth は自前OAuth処理として `/next-api/auth/google` と `/next-api/auth/google/callback` に実装済み。本番ではNext.jsコンテナのGoogle OAuth envとGoogle Consoleのcallback URL設定を確認する。
+- Google OAuth は自前OAuth処理として `/next-api/auth/google` と `/next-api/auth/google/callback` に実装済み。本番稼働確認済み。
 - 管理画面の権限判定は admin / editor の境界を先に固定する。
 
 ### Phase 3: 更新系・管理系APIの移行
@@ -231,7 +235,7 @@ Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`
 ### Phase 4: 外部連携APIの移行
 
 - ファイルアップロードは `multer` 依存を Web API の `formData()` ベースへ置き換える。
-- Stripe Webhook は raw body と署名検証を先に検証する。
+- Stripe Webhook は raw body と署名検証をNext.js Route Handler側で実装済み。本番では Stripe Dashboard の Webhook URL と `STRIPE_WEBHOOK_SECRET` を切り替えてから検証する。
 - メール送信は postfix 前提を維持するか、別サービスへ移すか決める。
 
 ### Phase 5: `/api` の所有者変更
@@ -252,7 +256,7 @@ Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`
 - Next.js側はORMなし。TypeORM用デコレータ設定も削除済み。
 - `/next-api/site-search` は Next.js 内部API。カテゴリ一覧は `src/lib/server/quizCategories.ts`、タグ一覧は `src/lib/server/quizTags.ts`、クイズ検索は `src/lib/server/quizSearch.ts` 経由でNext.js側取得へ切り替え済み。
 - 本番 `https://study.ntorelabo.com/api/quiz/categories` は `X-Powered-By: Express` 付きで 200 OK を返すため、本番でも `/api` は Express 側で処理されている。
-- Stripe Webhook は raw body と署名検証が必要なため、単純な Route Handler 移植で済ませない。
+- Stripe Webhook は raw body と署名検証をNext.js側へ実装済み。本番確認前はExpress側もlegacy/fallbackとして残す。
 - 認証・決済・CSV import は移行時の事故影響が大きいため、読み取り系APIより後に扱う。
 
 ## 次にやるなら
