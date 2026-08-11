@@ -514,8 +514,16 @@ export default function QuizInteraction({
    * 「最後の問題です」のような位置由来の例外表示が要らない。
    */
   const renderNormalFollowupNavigation = () => {
-    const progress = quizQueue ? getQuizQueueProgress(quizQueue, quiz.id, answeredIds) : null;
+    // 復習リストやブックマークは集めた意図が既にあるので、タグでさらに絞らない
+    const tagPreference =
+      quizQueue?.source === 'category' ? currentTags.map((tag) => tag.slug) : [];
+    const progress = quizQueue
+      ? getQuizQueueProgress(quizQueue, quiz.id, answeredIds, tagPreference)
+      : null;
     const nextItem = progress?.next ?? null;
+    const matchedTagName = progress?.matchedTagSlug
+      ? currentTags.find((tag) => tag.slug === progress.matchedTagSlug)?.name
+      : undefined;
     // 検索は探し物が見つかった時点で終わることが多いので、続けるより戻るを主導線にする
     const preferReturn = quizQueue?.source === 'search';
 
@@ -537,7 +545,7 @@ export default function QuizInteraction({
       };
 
       // 見出しは「どこから何問残っているか」だけ。動詞はボタン側が持つので繰り返さない
-      heading = `${quizQueue.label}　残り${progress.remaining}問`;
+      heading = `${matchedTagName ? `${matchedTagName}の問題` : quizQueue.label}　残り${progress.remaining}問`;
       subline = `次: ${nextItem.question}`;
       primary = preferReturn ? returnAction : continueAction;
       // 一覧への戻りはページ上部に常設されているので、
@@ -839,7 +847,7 @@ export default function QuizInteraction({
         </div>
       )}
 
-      <div className="min-w-0 rounded-xl border border-black/10 bg-white/95 p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-white/[0.96]">
+      <div className="min-w-0 space-y-4 rounded-xl border border-black/10 bg-white/95 p-4 shadow-sm sm:p-5 dark:border-white/10 dark:bg-white/[0.96]">
       {/* ブックマークボタン */}
       <div className="flex justify-end">
         <button

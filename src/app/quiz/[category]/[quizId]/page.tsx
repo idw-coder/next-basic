@@ -175,6 +175,43 @@ function extractPlainText(explanation: string): string {
   }
 }
 
+function explanationPlainText(explanation: string | undefined): string {
+  if (!explanation) return '';
+  return isStructuredExplanation(explanation) ? extractPlainText(explanation) : explanation;
+}
+
+// Googleの「教育系Q&A（練習問題）」リッチリザルト向けのQuizスキーマ
+// https://developers.google.com/search/docs/appearance/structured-data/practice-problems
+function buildQuizJsonLd(quiz: QuizDetail, categoryLabel: string): Record<string, unknown> | null {
+  const correct = quiz.choices.find((c) => c.is_correct);
+  if (!correct) return null;
+
+  const explanationText = explanationPlainText(quiz.explanation);
+  return {
+    '@context': 'https://schema.org/',
+    '@type': 'Quiz',
+    about: { '@type': 'Thing', name: categoryLabel },
+    hasPart: [
+      {
+        '@type': 'Question',
+        eduQuestionType: 'Multiple choice',
+        learningResourceType: 'Practice problem',
+        text: quiz.question,
+        suggestedAnswer: quiz.choices
+          .filter((c) => !c.is_correct)
+          .map((c) => ({ '@type': 'Answer', text: c.choice_text })),
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: correct.choice_text,
+          ...(explanationText
+            ? { answerExplanation: { '@type': 'Comment', text: explanationText } }
+            : {}),
+        },
+      },
+    ],
+  };
+}
+
 export default async function QuizDetailPage({
   params,
   searchParams,
@@ -219,10 +256,17 @@ export default async function QuizDetailPage({
         chapterCount: getChaptersByBook(relatedBook.bookSlug).length,
       }
     : null;
+  const quizJsonLd = buildQuizJsonLd(quiz, theme.label);
 
   return (
     // スマホでは外側の余白を持たず、テーマ色のカードを画面全幅に伸ばして内容の幅を稼ぐ
     <div className="max-w-4xl mx-auto px-0 sm:px-4 py-8 md:py-12">
+      {quizJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(quizJsonLd) }}
+        />
+      )}
       <div className="mb-4 px-3 sm:mb-6 sm:px-0">
         <Button asChild variant="link" className="px-0 -ml-2">
           <Link href={`/quiz/${category}`} className="inline-flex items-center gap-2">
@@ -233,7 +277,8 @@ export default async function QuizDetailPage({
       </div>
 
       <Card
-        className={`relative overflow-hidden border-0 rounded-none sm:rounded-xl shadow-lg py-4 sm:py-6 ${theme.cardBgClass}`}
+        // 全幅・角丸なしのスマホでは影が横一本の帯に見えてしまうので、影は画面幅が広いときだけ
+        className={`relative overflow-hidden border-0 rounded-none shadow-none sm:rounded-xl sm:shadow-lg py-4 sm:py-6 ${theme.cardBgClass}`}
       >
         {/* 装飾: 右上のドット */}
         <span
@@ -291,11 +336,7 @@ export default async function QuizDetailPage({
           {quiz.explanation && (
             <div className="sr-only" aria-hidden="true">
               <h2>解説</h2>
-              <p>
-                {isStructuredExplanation(quiz.explanation)
-                  ? extractPlainText(quiz.explanation)
-                  : quiz.explanation}
-              </p>
+              <p>{explanationPlainText(quiz.explanation)}</p>
             </div>
           )}
         </CardContent>

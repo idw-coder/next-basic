@@ -6,6 +6,8 @@ export interface QuizQueueItem {
   id: number;
   categorySlug: string;
   question: string;
+  /** カテゴリ一覧から作ったキューのみ持つ。同じタグの問題を優先して続けるために使う */
+  tagSlugs?: string[];
 }
 
 export interface QuizQueueSession {
@@ -102,6 +104,8 @@ export interface QuizQueueProgress {
   remaining: number;
   /** 一覧の総問題数 */
   total: number;
+  /** 同じタグで絞って続けている場合、そのタグ。カテゴリ全体で続ける場合は null */
+  matchedTagSlug: string | null;
 }
 
 /**
@@ -119,6 +123,8 @@ export function getQuizQueueProgress(
   session: QuizQueueSession,
   currentQuizId: number,
   answeredIds: ReadonlySet<number>,
+  /** 今解いた問題のタグ。同じタグの問題が残っていればそちらを優先して続ける */
+  currentTagSlugs: readonly string[] = [],
 ): QuizQueueProgress {
   const { items } = session;
   const isUnanswered = (item: QuizQueueItem) =>
@@ -126,13 +132,29 @@ export function getQuizQueueProgress(
 
   const currentIndex = items.findIndex((item) => item.id === currentQuizId);
   const startIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+  // 現在位置より後ろを優先し、無ければ先頭に折り返す（一覧の並び順の体感を保つ）
+  const ordered = [...items.slice(startIndex), ...items.slice(0, startIndex)];
+  const unanswered = ordered.filter(isUnanswered);
 
-  const next =
-    items.slice(startIndex).find(isUnanswered) ?? items.slice(0, startIndex).find(isUnanswered) ?? null;
+  // カテゴリ全体より「同じタグで続ける」ほうが学習の流れが途切れにくいので先に探す。
+  // 同じタグの問題が残っていなければカテゴリ全体の並びにそのまま落ちる。
+  const tagCounts = new Map<string, QuizQueueItem[]>();
+  for (const slug of currentTagSlugs) {
+    const matches = unanswered.filter((item) => item.tagSlugs?.includes(slug));
+    if (matches.length > 0) tagCounts.set(slug, matches);
+  }
+  // 複数タグを持つ場合は、残りが最も多いタグを選んで長く続けられるようにする
+  const bestTag = [...tagCounts.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+
+  if (bestTag) {
+    const [slug, matches] = bestTag;
+    return { next: matches[0], remaining: matches.length, total: items.length, matchedTagSlug: slug };
+  }
 
   return {
-    next,
-    remaining: items.filter(isUnanswered).length,
+    next: unanswered[0] ?? null,
+    remaining: unanswered.length,
     total: items.length,
+    matchedTagSlug: null,
   };
 }

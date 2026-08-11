@@ -126,7 +126,11 @@ function escapeHtmlInCodeBlocks(html: string): string {
   });
 }
 
-function buildPrompt(topic: string): string {
+function buildPrompt(topic: string, existingTagSlugs: string[]): string {
+  const tagRule =
+    existingTagSlugs.length > 0
+      ? `- tags は次の一覧に存在するslugのみを1〜3個選ぶ（該当がなければ空配列にする）: ${existingTagSlugs.join(', ')}`
+      : '- tags は英語のケバブケースで1〜3個出力';
   return `「${topic}」に関する4択クイズを1問作成してください。
 
 以下のJSON形式のみを出力してください:
@@ -140,14 +144,23 @@ function buildPrompt(topic: string): string {
     { "choice_text": "選択肢4", "is_correct": false }
   ],
   "explanation": "<p>解説文。<code>コード</code>や<strong>強調</strong>、<pre><code>コードブロック</code></pre>、<ul><li>リスト</li></ul>等を活用</p>",
-  "tags": ["関連タグをケバブケースで"]
+  "tags": ["タグのslug"]
 }
 
 条件:
-- is_correct が true の選択肢は必ず1つだけ
-- question と choice_text はプレーンテキストのみ
-- slug・tags は英語のケバブケースで出力
-- 解説は600〜1000文字程度のHTMLリッチテキスト（<p>, <strong>, <code>, <pre><code>, <ul><li> 等を積極的に使い、読みやすく構造化する）`;
+- 対象読者は初学者〜中級のウェブエンジニア。専門用語には短い補足を添え、初学者でも読み進められるようにする。全体をですます調で統一する
+- question はプレーンテキストで30〜70文字程度。トピックの技術名・機能名などの固有名詞を含め、問題文単体で何を問うているか分かる自己完結した文にする（「次のうち正しいものはどれですか？」のような文脈がないと意味が取れない文は禁止）
+- choice_text はプレーンテキストのみ
+- is_correct が true の選択肢は必ず1つだけ。正解の位置は毎回ランダムにする（上記の例の位置をなぞらない）
+- 誤答の選択肢も一見もっともらしい内容にする（明らかに間違いとわかるものは避ける）
+- 「上記すべて」「どれも正しくない」のような選択肢は禁止
+- slug は英語のケバブケースで出力
+${tagRule}
+- 解説は600〜1000文字程度のHTMLリッチテキスト。最初の段落で正解と要点を簡潔に述べ、その後で詳細に入る
+- 解説は <h3> の小見出し（例:「なぜ正解か」「他の選択肢が誤りの理由」「補足」）で構造化し、<p>, <strong>, <code>, <pre><code>, <ul><li> を活用して読みやすくする。各誤答がなぜ誤りかに必ず触れる
+- 解説に「よくある誤解」または「実務での注意点」を1つ含める
+- コード例を含める場合は最小限で動くものにし、重要な行にはコメントで挙動を補足する
+- 解説の末尾に「参考」として、公式ドキュメント・一次情報へのリンクを <p>参考: <a href="URL">タイトル</a></p> の形式で1〜2件含める。日本語版のページがあれば日本語版を優先する。URLが正確だと確信できる場合のみ記載し、少しでも不確かなら省略してよい（存在しないURLの創作は厳禁）`;
 }
 
 export default function QuizEditPage() {
@@ -308,7 +321,12 @@ export default function QuizEditPage() {
 
   const copyPrompt = async () => {
     if (!aiTopic.trim()) return;
-    await navigator.clipboard.writeText(buildPrompt(aiTopic.trim()));
+    await navigator.clipboard.writeText(
+      buildPrompt(
+        aiTopic.trim(),
+        allTags.map((t) => t.slug),
+      ),
+    );
     showToast('プロンプトをコピーしました');
   };
 

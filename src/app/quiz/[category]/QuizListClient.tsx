@@ -175,9 +175,11 @@ function SectionGroup({
   categorySlug: string;
   getLatestAnswer: (quizId: number) => { isCorrect: boolean } | null;
   isBookmarked: (quizId: number) => boolean;
-  onOpen: (items: Quiz[]) => void;
+  onOpen: (items: Quiz[], sectionLabel?: string) => void;
   originParam?: string;
 }) {
+  // 「その他」はタグでまとまっていないので、カテゴリ既定のラベルに任せる
+  const queueLabel = section.slug === '_other' ? undefined : `${section.label}の問題`;
   return (
     <div>
       <div className="flex items-center gap-2 border-b-2 border-blue-500 pb-1.5 mb-3">
@@ -196,7 +198,7 @@ function SectionGroup({
             getLatestAnswer={getLatestAnswer}
             isBookmarked={isBookmarked(quiz.id)}
             hiddenTagSlugs={section.tagSlugs}
-            onOpen={() => onOpen(section.quizzes)}
+            onOpen={() => onOpen(section.quizzes, queueLabel)}
             originParam={originParam}
           />
         ))}
@@ -248,15 +250,23 @@ export default function QuizListClient({
   if (currentQuery) returnParams.set('q', currentQuery);
   if (currentTagSlug) returnParams.set('tagSlug', currentTagSlug);
   const returnHref = `/quiz/${categorySlug}${returnParams.size ? `?${returnParams.toString()}` : ''}`;
-  const saveCategoryQueue = (quizzes: Quiz[]) => {
+  /**
+   * 開いた問題と同じ並びをキューとして保存する。
+   *
+   * セクション表示ではその見出し（タグ）の問題だけが渡されるので、
+   * ラベルもセクション名にする。カテゴリ名のままだと
+   * 解答後に「このカテゴリの問題 残りN問」と出て実際の範囲と食い違う。
+   */
+  const saveCategoryQueue = (quizzes: Quiz[], sectionLabel?: string) => {
     const items: QuizQueueItem[] = quizzes.map((quiz) => ({
       id: quiz.id,
       categorySlug,
       question: quiz.question,
+      tagSlugs: quiz.tags.map((tag) => tag.slug),
     }));
     saveQuizQueueSession({
       source: 'category',
-      label: queueLabel,
+      label: sectionLabel ?? queueLabel,
       returnHref,
       items,
     });
