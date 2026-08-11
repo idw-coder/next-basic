@@ -221,8 +221,9 @@ export default async function QuizDetailPage({
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-8 md:py-12">
-      <div className="mb-4 sm:mb-6">
+    // スマホでは外側の余白を持たず、テーマ色のカードを画面全幅に伸ばして内容の幅を稼ぐ
+    <div className="max-w-4xl mx-auto px-0 sm:px-4 py-8 md:py-12">
+      <div className="mb-4 px-3 sm:mb-6 sm:px-0">
         <Button asChild variant="link" className="px-0 -ml-2">
           <Link href={`/quiz/${category}`} className="inline-flex items-center gap-2">
             <ArrowLeft className="size-4 shrink-0" />
@@ -232,7 +233,7 @@ export default async function QuizDetailPage({
       </div>
 
       <Card
-        className={`relative overflow-hidden border-0 shadow-lg py-4 sm:py-6 ${theme.cardBgClass}`}
+        className={`relative overflow-hidden border-0 rounded-none sm:rounded-xl shadow-lg py-4 sm:py-6 ${theme.cardBgClass}`}
       >
         {/* 装飾: 右上のドット */}
         <span

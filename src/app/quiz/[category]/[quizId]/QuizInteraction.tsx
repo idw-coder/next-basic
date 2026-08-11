@@ -152,22 +152,12 @@ function FollowupQuizLink({
       href={href}
       className="group flex items-center gap-2 rounded-md border border-gray-100 bg-white px-3 py-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.04] dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-primary/10"
     >
-      <span className="min-w-0 flex-1">
-        <span className="line-clamp-2 text-xs font-semibold leading-relaxed text-foreground sm:text-sm">
-          {quiz.question}
-        </span>
-        {quiz.tags.length > 0 && (
-          <span className="mt-1 flex flex-wrap gap-1">
-            {quiz.tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag.slug}
-                className="max-w-24 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-              >
-                {tag.name}
-              </span>
-            ))}
-          </span>
-        )}
+      {/*
+        タグは truncate されて意味を成さないうえ、有無でカードの高さが揃わなくなるので出さない。
+        問題文も1行と2行が混ざると同じ理由で不揃いになるため、常に2行分（1.625em × 2）を確保する。
+      */}
+      <span className="line-clamp-2 min-h-[3.25em] min-w-0 flex-1 text-xs font-semibold leading-relaxed text-foreground sm:text-sm">
+        {quiz.question}
       </span>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
     </Link>
@@ -490,23 +480,27 @@ export default function QuizInteraction({
     </div>
   );
 
+  /** 解説から特定の章が引けるか。教科書トップへのリンクしか無い場合は含めない */
+  const hasSpecificChapter = relatedChapters.length > 0;
+
   /**
-   * 不正解のときだけ、次に進む導線より前に置く復習ブロック。
-   * 間違えた直後に最も必要なのは次の問題ではなく理解の手当てなので、
-   * 教科書リンクを「学習を広げる」から引き上げて先頭に出す。
+   * 間違えた問題の手当てを、次に進む導線のすぐ下に添える。
+   *
+   * 主目的はクイズを解くことなので主導線より前には置かない。
+   * また教科書トップへのリンクしか無いときは手当てとして弱いため出さず、
+   * 解説から特定の章が引けた場合だけ表示する。
    */
+  const showDeepenBlock = !isCorrect && hasSpecificChapter;
+
   const renderDeepenBlock = () => {
-    if (isCorrect || !hasLearningLinks) return null;
+    if (!showDeepenBlock) return null;
 
     return (
-      <div className="space-y-3 border-t border-black/10 pt-5 dark:border-white/10">
-        <div className="min-w-0">
-          <p className="text-xs font-bold text-muted-foreground">まず理解する</p>
-          <h2 className="mt-1 flex items-center gap-2 text-base font-extrabold leading-snug text-foreground sm:text-lg">
-            <Lightbulb className="size-4 shrink-0 text-amber-600" />
-            教科書で確認する
-          </h2>
-        </div>
+      <div className="space-y-2 rounded-lg bg-amber-50/70 p-3 dark:bg-amber-500/10">
+        <p className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-200">
+          <Lightbulb className="size-3.5 shrink-0" />
+          教科書で確認する
+        </p>
         {renderLearningLinks()}
       </div>
     );
@@ -542,8 +536,9 @@ export default function QuizInteraction({
         label: getReturnLabel(quizQueue.source),
       };
 
-      heading = preferReturn ? `${quizQueue.label}に戻る` : `${quizQueue.label}を続ける`;
-      subline = `残り${progress.remaining}問　次: ${nextItem.question}`;
+      // 見出しは「どこから何問残っているか」だけ。動詞はボタン側が持つので繰り返さない
+      heading = `${quizQueue.label}　残り${progress.remaining}問`;
+      subline = `次: ${nextItem.question}`;
       primary = preferReturn ? returnAction : continueAction;
       // 一覧への戻りはページ上部に常設されているので、
       // 教科書から来ている場合は副導線を章へ戻る側に譲る
@@ -554,8 +549,7 @@ export default function QuizInteraction({
           : returnAction;
     } else if (quizQueue && progress) {
       // 一覧に未回答が残っていない状態。区切りではあるが「完了」とは呼ばない
-      heading = `${quizQueue.label}をすべて解きました`;
-      subline = `全${progress.total}問`;
+      heading = `${quizQueue.label}　全${progress.total}問クリア`;
       primary = origin
         ? { type: 'link', href: origin.href, label: origin.actionLabel }
         : { type: 'link', href: quizQueue.returnHref, label: getReturnLabel(quizQueue.source) };
@@ -564,14 +558,12 @@ export default function QuizInteraction({
         : { type: 'random', label: 'ランダムで5問復習する' };
     } else if (origin) {
       heading = origin.title;
-      subline = 'このカテゴリの問題は一覧からいつでも解けます';
       primary = { type: 'link', href: origin.href, label: origin.actionLabel };
       secondary = { type: 'link', href: `/quiz/${categorySlug}`, label: '問題一覧を見る' };
     } else {
       // 関連問題や検索エンジンからの単発アクセス。ここから始める提案をする
-      heading = 'このカテゴリの問題を解く';
-      subline = 'ランダムに5問出題します';
-      primary = { type: 'random', label: 'このカテゴリを5問解く' };
+      heading = 'このカテゴリの問題';
+      primary = { type: 'random', label: 'ランダムに5問解く' };
       secondary = { type: 'link', href: `/quiz/${categorySlug}`, label: '問題一覧を見る' };
     }
 
@@ -617,8 +609,8 @@ export default function QuizInteraction({
     };
 
     const hasTagQuizzes = relatedTagGroups.some((group) => group.quizzes.length > 0);
-    // 不正解時は教科書リンクを「まず理解する」として上に出すので、下では重複させない
-    const showLearningLinksHere = hasLearningLinks && isCorrect;
+    // 主導線の下の復習ブロックで既に出しているなら、ここでは重複させない
+    const showLearningLinksHere = hasLearningLinks && !showDeepenBlock;
     // ランダムは1画面に1つだけ。主導線・副導線で既に出しているならここには出さない
     const showRandomInExplore = primary?.type !== 'random' && secondary?.type !== 'random';
     const hasExploreSections =
@@ -630,10 +622,10 @@ export default function QuizInteraction({
     const isExploreOpen = exploreOpen ?? !isCorrect;
 
     return (
-      <div className="space-y-4 border-t border-black/10 pt-5 dark:border-white/10">
+      // 選択肢カードと同じ白面に載せる。テーマ色の上に直接置くと本文の可読性が落ちるため
+      <div className="min-w-0 space-y-4 rounded-xl border border-black/10 bg-white/95 p-3 shadow-sm sm:p-5 dark:border-white/10 dark:bg-white/[0.96]">
         <div className="min-w-0">
-          <p className="text-xs font-bold text-muted-foreground">次の学習</p>
-          <h2 className="mt-1 break-words text-base font-extrabold leading-snug text-foreground sm:text-lg">
+          <h2 className="break-words text-base font-extrabold leading-snug text-foreground sm:text-lg">
             {heading}
           </h2>
           {subline && (
@@ -645,6 +637,8 @@ export default function QuizInteraction({
           {primary && renderAction(primary, 'primary')}
           {secondary && renderAction(secondary, 'secondary')}
         </div>
+
+        {renderDeepenBlock()}
 
         {quickStartError && (
           <Alert variant="destructive">
@@ -978,7 +972,6 @@ export default function QuizInteraction({
       )}
       </div>
 
-      {!randomSession && isAnswered && renderDeepenBlock()}
       {!randomSession && isAnswered && renderNormalFollowupNavigation()}
 
       <Sheet open={tagSheetOpen} onOpenChange={setTagSheetOpen}>
