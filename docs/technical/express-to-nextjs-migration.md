@@ -1,6 +1,6 @@
 # Express → Next.js API 移行メモ
 
-> 状態（2026-08-11 更新）: 主要APIは Next.js Route Handler へ移行済み。`/next-api/*` は Next.js 側でDB/外部サービスを直接処理し、Express fallback は削除済み。`next.config.ts` の Express 向け rewrite は全削除済み。本番Nginxも `localhost:8888` へproxyしないため、ユーザー向けリクエスト経路から Express は外れている。
+> 状態（2026-08-12 更新）: 主要APIは Next.js Route Handler へ移行済み。`/next-api/*` は Next.js 側でDB/外部サービスを直接処理し、Express fallback は削除済み。`next.config.ts` の Express 向け rewrite と本番Nginxの `localhost:8888` 向けproxyは全削除済み。本番Dockerの `backend` / `mailserver` コンテナも停止・削除済みで、ユーザー向けリクエスト経路から Express / mailserver は外れている。
 
 ## 現在の前提
 
@@ -27,15 +27,18 @@
 - Google OAuth は `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` が必要。callback URL は `NEXT_GOOGLE_CALLBACK_URL` を優先し、未設定時は `GOOGLE_CALLBACK_URL` の `/api/auth/google/callback` を `/next-api/auth/google/callback` に読み替える。
 - Stripe 決済は `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `FRONTEND_URL` が必要。Stripe Dashboard の Webhook URL は `https://study.ntorelabo.com/next-api/webhook/stripe`。
 
-### Express 側コード・プロセス
+### Express / mailserver 側コード・プロセス
 
 - この `next-basic` リポジトリ内には Express の routes / controllers / entities は含まれていない。
 - Express 側を確認する場合は `/Users/tida/dev/personal/express-mysql-docker/backend` を見る。
 - Express 側の移行済みAPIには「Next.jsへ移行済み、Expressはlegacy/fallback用」というコメントを追加済み。
 - 現在の本番リクエスト経路では Express を使っていない。
-- 本番の Express は Docker コンテナ `backend` として稼働していたが、2026-08-11 に `docker stop backend` で停止済み。
-- 停止後も `/next-api/quiz/categories` は `200`、旧Express系URLは `404`、`study.ntorelabo.com:8888` は timeout で、ユーザー向け経路への影響がないことを確認済み。
-- 残作業は急ぎではない。次回メンテナンス時に `backend` コンテナ削除、compose/Actions/関連env/health check の整理を行う。
+- 本番の Express は Docker コンテナ `backend` として稼働していたが、停止後に削除済み。
+- 本番の `mailserver` コンテナも停止後に削除済み。今後の本番ユーザー向け経路では使わない。
+- 現在の本番Dockerコンテナは `nextjs` と `mysql` のみ。`mysql` は healthy。
+- `docker-compose.prod.yml` から `backend` サービス、`mailserver` サービス、`nextjs` の `INTERNAL_API_URL=http://backend:8888` は削除済み。
+- `backend` / `mailserver` 削除後も `/next-api/quiz/categories` は `200`、旧Express系URLは `404`、`study.ntorelabo.com:8888` は timeout で、ユーザー向け経路への影響がないことを確認済み。
+- ローカルの `docker-compose.prod.yml` 整理は完了。本番サーバー上の `/var/www/app/docker-compose.prod.yml` にも同じ変更を反映する必要がある。
 
 ## 旧 `/api` の扱い
 
@@ -64,6 +67,19 @@
 | 決済 / Stripe Webhook | `/next-api/payment/checkout`, `/next-api/payment/subscription`, `/next-api/payment/portal`, `/next-api/payment/history`, `/next-api/payment/status/:sessionId`, `/next-api/webhook/stripe` | `src/app/next-api/payment/*`, `src/app/next-api/webhook/stripe/route.ts`, `src/lib/server/payments.ts` | 本番稼働済み | Checkout、Portal、決済履歴、決済状態、WebhookをNext.js側で処理 |
 
 ## 本番確認済み
+
+### Express / mailserver 削除後の疎通確認
+
+- `https://study.ntorelabo.com/` -> `200`
+- `https://study.ntorelabo.com/next-api/quiz/categories` -> `200`
+- `https://study.ntorelabo.com/next-api/auth/google` -> `307`
+- `https://study.ntorelabo.com/api/quiz/categories` -> `404`
+- `https://study.ntorelabo.com/api/notes` -> `404`
+- `https://study.ntorelabo.com/api-docs` -> `404`
+- `http://study.ntorelabo.com:8888/api/quiz/categories` -> timeout
+- `/next-api/quiz/categories` に `x-next-api-fallback` ヘッダーが出ないことを確認済み。
+
+### 移行API
 
 - `/next-api/site-search`
 - `GET/POST /next-api/quiz/categories`
@@ -107,8 +123,9 @@
 - 本番確認は最低限、対象の `/next-api/...` が 200 OK を返すことと、対応する画面がそのAPIを呼んでいることを確認する。
 - Next.js 側の Express fallback は削除済み。今後は `/next-api/*` のレスポンスに `x-next-api-fallback` ヘッダーが出ない前提。
 - 旧Express系URLは `404` が期待値。`502` が出る場合は、どこかに Express 向けproxy/rewriteが残っている。
-- Expressコンテナ `backend` は停止済み。サイトがExpressへ依存していないことは確認済み。
-- `backend` コンテナの削除や compose/Actions/関連env の整理は急ぎではなく、次回メンテナンス時に対応する。
+- Expressコンテナ `backend` と `mailserver` コンテナは削除済み。サイトが Express / mailserver へ依存していないことは確認済み。
+- ローカルの `docker-compose.prod.yml` は `nextjs` と `mysql` のみの構成へ整理済み。本番サーバー上の `/var/www/app/docker-compose.prod.yml` に同じ変更を反映する。
+- GitHub Actions の通常デプロイは `nextjs` の pull / up のみなので、現在の workflow から `backend` / `mailserver` が復活する可能性は低い。
 
 ## 認証・権限マップ
 
@@ -139,26 +156,29 @@ Express 側は `backend/src/routes/*.ts` の `authMiddleware`, `adminMiddleware`
 ## 当面の方針
 
 1. 本番の `/next-api/*` を継続監視する。
-2. Expressコンテナ `backend` は停止済みのため、急ぎの追加対応は不要。
-3. 次回メンテナンス時に `backend` コンテナ削除、関連env、docker-compose、GitHub Actions、health check、ロールバック手順を更新する。
+2. 本番サーバー上の `/var/www/app/docker-compose.prod.yml` に、ローカルの `docker-compose.prod.yml` と同じ `backend` / `mailserver` 削除を反映する。
+3. 関連env、health check、ロールバック手順に Express / mailserver 前提が残っていないか確認する。
 
 ## Express 廃止を再開する場合の進め方
 
 ### Phase 1: 残存プロセスの棚卸し
 
 - Express は Docker コンテナ `backend` として起動していた。
-- 2026-08-11 に `docker stop backend` で停止済み。
-- 停止後に `/next-api/quiz/categories` が `200`、旧Express系URLが `404`、`:8888` が timeout、`502` が出ないことを確認済み。
+- `backend` は停止後に削除済み。
+- `mailserver` も停止後に削除済み。
+- 削除後に `/next-api/quiz/categories` が `200`、旧Express系URLが `404`、`:8888` が timeout、`502` が出ないことを確認済み。
 
 ### Phase 2: `/api` の所有者変更
 
 - Next.js 側の `/api/*` 全体rewriteと個別rewriteは削除済み。
 - 本番Nginxの `localhost:8888` 向けproxyと `/uploads/` alias は削除済み。
-- 残作業は docker-compose / GitHub Actions / health check / 環境変数など、Expressサービス定義の整理。
+- ローカルの `docker-compose.prod.yml` から Express / mailserver 関連定義は削除済み。
+- 残作業は、本番サーバー上の compose 反映と、health check / 環境変数 / ロールバック手順の最終確認。
 
 ### Phase 3: Express コンテナ廃止
 
-- `backend` サービスを docker-compose から削除する。
+- `backend` サービスは `docker-compose.prod.yml` から削除済み。
+- `mailserver` サービスも `docker-compose.prod.yml` から削除済み。
 - 本番デプロイ手順とロールバック手順を更新する。
 
 ## 注意点
