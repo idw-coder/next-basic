@@ -15,7 +15,7 @@
 ### フロントエンドからのAPI呼び出し
 
 - 移行済み画面の呼び出し先は `/next-api/*` へ切り替え済み。
-- `src/lib/api.ts` は残っているが、現時点の `src` 配下では実API呼び出し元としては使われていない。
+- 旧Express向けの `src/lib/api.ts` は未使用だったため削除済み。
 - ブラウザ上では `localStorage` の `token` を Bearer トークンとして付与する。
 
 ### DBアクセス
