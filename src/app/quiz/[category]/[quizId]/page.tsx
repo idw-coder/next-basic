@@ -6,6 +6,7 @@ import { getCategoryTheme } from '@/lib/categoryTheme';
 import { getQuizDetail } from '@/lib/server/quizDetail';
 import { getQuizCategoryQuizzes, type QuizCategoryQuiz } from '@/lib/server/quizCategoryQuizzes';
 import { extractBookChapterLinks } from '@/lib/quiz-book-links';
+import { toPlainText } from '@/lib/quizContent';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getCategorySeoContent } from '../categoryContent';
 import { resolveQuizOrigin } from '@/lib/quizOrigin';
@@ -111,82 +112,13 @@ function buildFollowupData(quiz: QuizDetail, categoryQuizzes: QuizCategoryQuiz[]
   };
 }
 
-// Vue管理画面 リッチテキストエディタ
-function isTiptapFormat(explanation: string): boolean {
-  const trimmed = explanation.trim();
-  if (!trimmed.startsWith('{')) return false;
-  try {
-    const parsed = JSON.parse(trimmed);
-    return parsed?.type === 'doc' && Array.isArray(parsed?.content);
-  } catch {
-    return false;
-  }
-}
-
-// React管理画面 リッチテキストエディタ（現在使用していない）
-function isBlockNoteFormat(explanation: string): boolean {
-  const trimmed = explanation.trim();
-  if (!trimmed.startsWith('[')) return false;
-  try {
-    const parsed = JSON.parse(explanation);
-    if (!Array.isArray(parsed)) return false;
-    return parsed.every(
-      (b: Record<string, unknown>) =>
-        b !== null && typeof b === 'object' && 'type' in b && typeof b.type === 'string',
-    );
-  } catch {
-    return false;
-  }
-}
-
-function isStructuredExplanation(explanation: string): boolean {
-  return isTiptapFormat(explanation) || isBlockNoteFormat(explanation);
-}
-
-// TipTapのノード配列の中のテキストだけを抽出
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractTextFromNodes(nodes: any[]): string {
-  const texts: string[] = [];
-  for (const node of nodes) {
-    if (!node || typeof node !== 'object') continue;
-    if (node.type === 'text' && typeof node.text === 'string') {
-      texts.push(node.text);
-    }
-    if (Array.isArray(node.content)) {
-      texts.push(extractTextFromNodes(node.content));
-    }
-  }
-  return texts.join('');
-}
-
-function extractPlainText(explanation: string): string {
-  try {
-    const parsed = JSON.parse(explanation);
-    // TipTap のドキュメント形式
-    if (parsed?.type === 'doc' && Array.isArray(parsed?.content)) {
-      return extractTextFromNodes(parsed.content);
-    }
-    if (Array.isArray(parsed)) {
-      return extractTextFromNodes(parsed);
-    }
-    return '';
-  } catch {
-    return '';
-  }
-}
-
-function explanationPlainText(explanation: string | undefined): string {
-  if (!explanation) return '';
-  return isStructuredExplanation(explanation) ? extractPlainText(explanation) : explanation;
-}
-
 // Googleの「教育系Q&A（練習問題）」リッチリザルト向けのQuizスキーマ
 // https://developers.google.com/search/docs/appearance/structured-data/practice-problems
 function buildQuizJsonLd(quiz: QuizDetail, categoryLabel: string): Record<string, unknown> | null {
   const correct = quiz.choices.find((c) => c.is_correct);
   if (!correct) return null;
 
-  const explanationText = explanationPlainText(quiz.explanation);
+  const explanationText = toPlainText(quiz.explanation);
   return {
     '@context': 'https://schema.org/',
     '@type': 'Quiz',
@@ -336,7 +268,7 @@ export default async function QuizDetailPage({
           {quiz.explanation && (
             <div className="sr-only" aria-hidden="true">
               <h2>解説</h2>
-              <p>{explanationPlainText(quiz.explanation)}</p>
+              <p>{toPlainText(quiz.explanation)}</p>
             </div>
           )}
         </CardContent>

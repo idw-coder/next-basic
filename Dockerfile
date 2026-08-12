@@ -25,10 +25,6 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/package*.json ./
-# データ移行スクリプト。サーバーにはリポジトリを配置していないため、
-# 本番でスクリプトを流すにはイメージに同梱する必要がある。
-# 実行例: docker compose -f docker-compose.prod.yml exec nextjs node scripts/<name>.mjs
-COPY --from=builder /app/scripts ./scripts
 
 RUN npm ci --only=production
 
