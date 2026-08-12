@@ -1,6 +1,6 @@
 ---
 title: '制御構文 — if・switch・for・whileの実務パターン'
-description: 'if文・switch文・for系ループ・while文の基本と、break・continue・return・throwの使いどころを実務パターンで解説します。'
+description: 'if文・switch文の分岐、for・while・do...whileループの使い分け、break・continue・return・throwの使いどころを実務パターンで解説します。'
 order: 4
 ---
 
@@ -186,9 +186,9 @@ for (const key in user) {
   `for...in` はプロトタイプチェーン上のプロパティも列挙する可能性があります。配列の反復には `for...of` または `forEach` を使いましょう。
 </Callout>
 
-### while / do...while
+### while
 
-条件が満たされる間、繰り返し実行します。
+条件が満たされる**間**、繰り返し実行します。ループに入る前に条件を判定するため、最初から条件を満たしていなければ本体は一度も実行されません。
 
 ```js
 let count = 0;
@@ -196,14 +196,172 @@ while (count < 3) {
   console.log(count); // 0, 1, 2
   count++;
 }
+```
 
-// do...while は最低1回は実行される
+### do...while
+
+本体を**先に1回実行してから**条件を判定します。そのため、条件を満たしていなくても最低1回は実行されます。
+
+```js
 let n = 10;
 do {
-  console.log(n); // 10（条件を満たさなくても1回実行）
+  console.log(n); // 10（条件を満たさなくても1回実行される）
   n++;
 } while (n < 5);
 ```
+
+---
+
+## for・while・do...while の使い分け
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`for` と `do...while` って、どっちを使えばいいのか毎回迷います…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+実はその2つ、比べる相手が違うんです。まず「`while` か `do...while` か」で**判定のタイミング**を決めて、そのあと「`for` か `while` か」で**書き方**を決める。この2段階で考えると迷わなくなりますよ。
+</SpeechBubble>
+
+<Marker>`for` と `do...while` は対立する選択肢ではありません。</Marker>
+
+比較すべきなのは `while` と `do...while` です。この2つの違いは**条件判定が本体の前か後か**という1点だけです。一方 `for` は、初期化・条件・更新をひとまとめに書けるようにした `while` の書きやすい形（糖衣構文）という位置づけで、判定タイミングは `while` と同じ「前」です。
+
+```js
+// この for と…
+for (let i = 0; i < 5; i++) {
+  console.log(i);
+}
+
+// この while は、ほぼ同じことをしている
+let i = 0;
+while (i < 5) {
+  console.log(i);
+  i++;
+}
+```
+
+つまり、`for` と `while` は「同じタイミングで判定するループの、書き方違い」です。`do...while` だけが判定タイミングそのものが違います。
+
+### 判断は2段階で考える
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef q fill:#6366f1,color:#fff,stroke:#4f46e5
+    classDef ans fill:#0ea5e9,color:#fff,stroke:#0284c7
+    classDef alt fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A{"ループに入る前に\n終了条件を判定できる？"}
+    A -- "いいえ\n（1回やってみないと分からない）" --> B["do...while\n（または while true + break）"]
+    A -- "はい" --> C{"カウンタや\n反復対象がある？"}
+    C -- "ある" --> D["for / for...of"]
+    C -- "ない\n（それ以外の継続条件）" --> E["while"]
+
+    class A,C q
+    class D,E ans
+    class B alt
+
+`}
+/>
+
+#### ステップ1：ループに入る前に条件を判定できるか
+
+判定できないなら `do...while` 系で確定です。「まず1回やってみないと、続けるかどうかが決められない」ケースがこれにあたります。
+
+```js
+// 入力を受け取ってみないと、有効かどうか判定できない
+let input;
+do {
+  input = prompt('1〜10の数字を入力してください');
+} while (!isValid(input));
+```
+
+#### ステップ2：カウンタや反復対象があるか
+
+判定できるなら、次は書き方の選択です。**回数やインデックス、反復する対象がある**なら `for`（配列などのイテラブルなら `for...of`）、**そうではない継続条件**なら `while` を使います。
+
+```js
+// 回数が決まっている → for
+for (let i = 0; i < retryCount; i++) { /* ... */ }
+
+// 反復対象がある → for...of
+for (const user of users) { /* ... */ }
+
+// 「キューが空になるまで」など、カウンタではない継続条件 → while
+while (queue.length > 0) {
+  const task = queue.shift();
+  run(task);
+}
+```
+
+| 状況 | 使うもの |
+| ---- | -------- |
+| 事前に条件判定できない（必ず1回は実行したい） | `do...while` / `while (true) + break` |
+| 回数・インデックスが決まっている | `for` |
+| 配列などイテラブルを順に処理する | `for...of` |
+| カウンタではない継続条件がある | `while` |
+
+### do...while を実務であまり見かけない理由
+
+<Marker>JavaScriptの実務コードで `do...while` が登場することは、実はほとんどありません。</Marker>
+
+`do...while` の使いどころだった「必ず1回は実行する」パターンの多くは、`while (true)` と `break` の組み合わせで書かれることが多いためです。
+
+```js
+// do...while で書いた場合
+let input;
+do {
+  input = prompt('入力してください');
+} while (!isValid(input));
+
+// while (true) + break で書いた場合
+while (true) {
+  const input = prompt('入力してください');
+  if (isValid(input)) break;
+  if (cancelled) break; // 脱出条件を増やしやすい
+}
+```
+
+`while (true) + break` が選ばれやすいのは、次の2点が理由です。
+
+1. **脱出条件が読みやすい位置にある** — 判定が本体の中にあるので、「どこで抜けるのか」を上から読み下すだけで追えます
+2. **脱出条件を複数書ける** — 「有効な入力が来たら」「キャンセルされたら」のように、抜ける理由が複数あるケースに素直に対応できます
+
+逆に `do...while` の実務上の難点は、**条件が末尾にあること**です。本体が長くなると、条件までスクロールしないと「何のループなのか」が分かりません。
+
+<Callout type="info" title="do...while を使うなら">
+本体が数行に収まり、脱出条件が1つだけのときは `do...while` の方が簡潔です。
+本体が長い、または抜ける理由が複数あるなら `while (true) + break` を選びましょう。
+</Callout>
+
+<Callout type="column" title="厳密には for は while の完全な言い換えではない">
+「`for` は `while` の糖衣構文」という理解は使い分けを考えるうえでは十分ですが、機械的に書き換えると挙動が変わるケースが2つあります。
+
+**1. `continue` したときの更新式**
+
+`for` の更新式は `continue` してもきちんと実行されますが、`while` に素朴に書き換えると更新がスキップされて無限ループになります。
+
+```js
+// for なら i++ は continue しても実行される
+for (let i = 0; i < 5; i++) {
+  if (i === 2) continue;
+  console.log(i); // 0, 1, 3, 4
+}
+
+// while に素朴に書き換えると i++ に到達せず無限ループ
+let i = 0;
+while (i < 5) {
+  if (i === 2) continue; // ここで i++ を飛ばしてしまう
+  console.log(i);
+  i++;
+}
+```
+
+**2. `let` の束縛**
+
+`for (let i = ...)` は反復ごとに新しい `i` が作られます。`while` の外側で `let i` を宣言した場合は1つの変数を共有するため、クロージャで捕まえたときの結果が変わります（詳細は5章「関数とスコープ」で扱います）。
+
+</Callout>
 
 ---
 
@@ -246,7 +404,7 @@ for (let i = 0; i < 5; i++) {
 flowchart TD
     classDef start fill:#6366f1,color:#fff,stroke:#4f46e5
     classDef stmt fill:#0ea5e9,color:#fff,stroke:#0284c7
-    classDef end fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef done fill:#22c55e,color:#fff,stroke:#16a34a
     classDef err fill:#ef4444,color:#fff,stroke:#dc2626
 
     A["関数の実行"] --> B{"条件チェック"}
@@ -258,7 +416,7 @@ flowchart TD
 
     class A start
     class B stmt
-    class D,F end
+    class D,F done
     class E,G err
 
 `}
@@ -394,8 +552,9 @@ flowchart TD
     A --> C["switch: 1つの値と複数の候補を比較\nbreak 忘れに注意"]
 
     D["ループ"] --> E["for...of: 配列の反復（推奨）"]
-    D --> F["for: インデックスが必要なとき"]
-    D --> G["while: 終了条件が動的なとき"]
+    D --> F["for: 回数・インデックスが決まっているとき"]
+    D --> G["while: カウンタ以外の継続条件のとき"]
+    D --> M["do...while: 事前に判定できないとき\n（実務では while true + break が多い）"]
 
     H["中断・終了"] --> I["break: ループ・switchを抜ける"]
     H --> J["continue: イテレーションをスキップ"]
@@ -403,7 +562,7 @@ flowchart TD
     H --> L["throw: 例外を投げて処理を中断"]
 
     class A,D,H topic
-    class B,C,E,F,G,I,J,K,L rule
+    class B,C,E,F,G,M,I,J,K,L rule
 
 `}
 />
@@ -414,7 +573,8 @@ flowchart TD
 | `switch` | 単一値の多分岐（`break` 必須） |
 | `for...of` | イテラブルの反復 |
 | `for...in` | オブジェクトのキー列挙（配列には使わない） |
-| `while` | 条件が真の間繰り返す |
+| `while` | 条件が真の間繰り返す（判定は本体の前） |
+| `do...while` | 先に1回実行してから判定（判定は本体の後） |
 | `break` | ループ・switch を抜ける |
 | `continue` | 今のイテレーションをスキップ |
 | `return` | 関数を終了して値を返す（制御フロー文） |
