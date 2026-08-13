@@ -52,6 +52,15 @@ interface RelatedBookSummary {
   chapterCount: number;
 }
 
+function shuffleChoices(choices: readonly Choice[]): Choice[] {
+  const shuffled = [...choices];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 async function getQuiz(quizId: string): Promise<QuizDetail | null> {
   try {
     const { quiz } = await getQuizDetail(quizId);
@@ -178,6 +187,10 @@ export default async function QuizDetailPage({
   }
 
   const [categoryQuizzes] = await Promise.all([getCategoryQuizzes(quiz.category_id)]);
+  const quizForRender = {
+    ...quiz,
+    choices: shuffleChoices(quiz.choices),
+  };
   const followupData = buildFollowupData(quiz, categoryQuizzes);
   const seoContent = getCategorySeoContent(category);
   const relatedBook = getBookForCategory(category);
@@ -188,7 +201,7 @@ export default async function QuizDetailPage({
         chapterCount: getChaptersByBook(relatedBook.bookSlug).length,
       }
     : null;
-  const quizJsonLd = buildQuizJsonLd(quiz, theme.label);
+  const quizJsonLd = buildQuizJsonLd(quizForRender, theme.label);
 
   return (
     // スマホでは外側の余白を持たず、テーマ色のカードを画面全幅に伸ばして内容の幅を稼ぐ
@@ -239,7 +252,7 @@ export default async function QuizDetailPage({
         <CardContent className="px-4 sm:px-6">
           {/* インタラクション部分をClient Componentに委譲 */}
           <QuizInteraction
-            quiz={quiz}
+            quiz={quizForRender}
             categorySlug={category}
             relatedChapters={
               quiz.explanation ? extractBookChapterLinks(quiz.explanation) : []

@@ -127,7 +127,7 @@ interface QuizInteractionProps {
   origin?: QuizOrigin | null;
 }
 
-function shuffleArray<T>(array: T[]): T[] {
+function shuffleArray<T>(array: readonly T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -241,8 +241,6 @@ export default function QuizInteraction({
       }
     })();
   }, [allTags.length, isAdmin, tagSheetOpen]);
-
-  const shuffledChoices = useMemo(() => shuffleArray(quiz.choices), [quiz.choices]);
 
   /**
    * 一覧の中で「もう解いた」とみなす問題のID。
@@ -869,7 +867,7 @@ export default function QuizInteraction({
 
       {/* 選択肢 */}
       <div className="space-y-2.5 sm:space-y-3">
-        {shuffledChoices.map((choice, index) => {
+        {quiz.choices.map((choice, index) => {
           const isSelected = selectedChoice === choice.id;
           const showCorrect = isAnswered && choice.is_correct;
           const showWrong = isAnswered && isSelected && !choice.is_correct;

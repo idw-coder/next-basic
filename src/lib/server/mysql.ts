@@ -1,5 +1,19 @@
 import mysql, { type Pool } from 'mysql2/promise';
 
+// このファイルは process.env しか見ない。.env ファイルは直接読まない。
+// 環境変数がどこから来るかは実行環境ごとに異なる。
+//
+//   本番   : docker compose が env_file: ./nextjs/.env を読み、
+//            コンテナの環境変数として渡す（DB_USER / DB_PASSWORD）。
+//            DB_HOST などは docker-compose.prod.yml の environment: 側。
+//   ローカル: Next.js が .env.local を自動で読み込む。
+//
+// つまり .env →（compose または Next.js）→ process.env → ここ、という流れ。
+// 経路が違うだけで結果は同じなので、このコードは両方の環境で共通に動く。
+//
+// 認証情報を compose に直書きしないのは、それが git 追跡下に入るため。
+// 詳細は docs/technical/todo.md を参照。
+
 const globalForMysql = globalThis as typeof globalThis & {
   mysqlPool?: Pool;
 };

@@ -1,32 +1,57 @@
 # 技術的な積み残し
 
-最終更新: 2026-08-12
+最終更新: 2026-08-13
 
 すぐに壊れるものではないが、放置すると効いてくる項目。着手順は上から。
 
 ---
 
-## 1. 本番DBの認証情報がリポジトリに直書き
+## 1. 本番DBの認証情報がリポジトリに直書き ✅ 完了（2026-08-13）
 
-**場所**: `express-mysql-docker/docker-compose.prod.yml` の `nextjs` サービス `environment:` ブロック
+**だった問題**: `express-mysql-docker/docker-compose.prod.yml` の `nextjs` サービスに
+`DB_USER=root` / `DB_PASSWORD=rootpassword` が平文で書かれ、git に追跡されていた。
+しかもその値は**本番で実際に使われている現役のパスワード**だった（`db/.env` の
+`MYSQL_ROOT_PASSWORD` と一致することを確認）。パスワードは `3cdb710` で履歴に混入。
 
-`DB_USER` と `DB_PASSWORD` が平文で書かれたまま、gitに追跡されている。イメージは公開レジストリ（ghcr.io）へ push しているため、露出範囲が読みにくい状態。
+### やったこと
 
-**一般的なやり方**
+**ファイル側**（親リポジトリ `75f3d22`）
 
-1. 認証情報は compose ファイルに書かず、gitignore された `.env` に置いて `env_file:` で読ませる
-2. アプリ用のDBユーザーを作り、必要最小限の権限だけ与える（`root` を使わない）
-3. 既にgit履歴に入っているパスワードは、ファイルから消しても履歴に残るので**ローテーションが必要**
+- `docker-compose.prod.yml` の `environment:` から `DB_USER` / `DB_PASSWORD` を削除。
+  `env_file: ./nextjs/.env` は元々あったので、2行消すだけで `.env` 側から供給される
+- `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_CONNECTION_LIMIT` は秘匿情報ではないので compose に残した
+- `nextjs/.env.example` を新規追加（サーバー側 `.env` が未追跡でキーが不明だったため）
 
-**この構成で楽なこと**
+**本番側**
 
-`docker-compose.prod.yml` は既に `env_file: ./nextjs/.env` と `env_file: ./db/.env` を使っている。つまり仕組みは出来ていて、`environment:` に重複して直書きしているだけ。`environment:` から DB_* を削り `.env` 側へ移すだけで済む。
+- `appuser` は既に実在した（`db/.env` の `MYSQL_USER`）。パスワードを新規発行して設定
+- 権限は `GRANT SELECT, INSERT, UPDATE, DELETE ON myapp.*` のみ。
+  アプリのSQLは DML だけで DDL を投げないため、これで足りる
+- `/var/www/app/nextjs/.env` に `DB_USER` / `DB_PASSWORD` を追記
+- **`root` のパスワードをローテーション**。`root@localhost` と `root@%` の2アカウントが
+  存在したので両方に `ALTER USER`。`password_last_changed` が2行とも更新済みなのを確認
+- `/var/www/app/db/.env` も新しい値に更新（既存ボリュームには効かないが再構築時の食い違い防止）
 
-**確認すること**
+これにより、git履歴に残る `rootpassword` はどのアカウントでも通らなくなった。
 
-- `./nextjs/.env` と `./db/.env` が gitignore されているか
-- `git log -p --all -- docker-compose.prod.yml` で履歴に残っていないか（残っていればMySQLのパスワード変更まで実施）
-- 変更後、`src/lib/server/mysql.ts` が `DB_HOST` / `DB_USER` / `DB_NAME` 必須なので、起動して接続できるか
+### 学んだこと（次に似た作業をするとき用）
+
+- `environment:` は `env_file:` より優先される。`.env` に書いても `environment:` に
+  同じキーがあると無視されるので、**消す側の作業が必須**
+- MySQL の `MYSQL_ROOT_PASSWORD` などは**データ領域の初回作成時にしか読まれない**。
+  既存DBのパスワード変更は `ALTER USER` でしか行えず、`.env` の書き換えは効かない
+- MySQL のアカウントは「ユーザー名 + 接続元ホスト」の組。`root@localhost` と
+  `root@%` は別アカウントで、パスワードも別管理。片方だけ変えても意味がない
+- デプロイ前に `.env` の値で実際に接続できるか試せば（`mysql -uappuser -p"$(grep ...)"`）、
+  切り替え失敗のリスクをゼロにできる
+
+### 残っている軽い課題
+
+- ローカルの `next-basic/.env.local` に GHCR の PAT が平文コメントで残っている。
+  git 履歴には**入っていないことを確認済み**（両リポジトリで `-S` 検索）。
+  緊急ではないが、有効なトークンなら GitHub 側で失効させたい
+- `root@%` は「どのホストからでも root で入れる」設定。今回は残したが、
+  アプリが `appuser` に移行済みなので、将来的には削除を検討してよい
 
 ---
 
