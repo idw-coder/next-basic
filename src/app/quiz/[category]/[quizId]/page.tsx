@@ -193,7 +193,7 @@ export default async function QuizDetailPage({
 
   return (
     // スマホでは外側の余白を持たず、テーマ色のカードを画面全幅に伸ばして内容の幅を稼ぐ
-    <div className="max-w-4xl mx-auto px-0 sm:px-4 py-8 md:py-12">
+    <div className="max-w-4xl mx-auto px-0 sm:px-4 py-2 md:py-4">
       {quizJsonLd && (
         <script
           type="application/ld+json"

@@ -50,7 +50,7 @@ export default function BookmarksPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-4xl mx-auto px-4 py-2 md:py-4">
       {/* パンくず */}
       <nav aria-label="パンくずリスト" className="mb-4 text-sm sm:mb-6">
         <ol className="flex items-center gap-1 text-muted-foreground">

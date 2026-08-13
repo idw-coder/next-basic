@@ -189,7 +189,7 @@ export default async function SearchPage({
   const jsonLdList = buildJsonLd(trimmed || undefined, trimmed ? totalCount : undefined);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-4xl mx-auto px-4 py-2 md:py-4">
       {jsonLdList.map((jsonLd, i) => (
         <script
           key={i}

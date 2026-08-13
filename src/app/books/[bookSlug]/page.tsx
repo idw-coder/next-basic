@@ -183,25 +183,25 @@ export default async function BookPage({ params }: BookPageProps) {
           </p>
 
           {/* スタッツ */}
-          <div className="mt-5 grid max-w-sm grid-cols-3 rounded-[1.25rem] border border-white/80 bg-white/90 px-3 py-2.5 shadow-sm">
+          <div className="mt-5 grid max-w-sm grid-cols-3 rounded-[0.2rem] border border-white/80 bg-white/90 px-3 py-1.5 shadow-sm">
             <div className="text-center">
               <p className={cn('text-2xl font-black leading-none sm:text-3xl', theme.accent)}>
                 {chapters.length}
               </p>
-              <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">章</p>
+              <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">章</p>
             </div>
             <div className="border-x border-ink/10 text-center">
               <p className="text-2xl font-black leading-none text-ink sm:text-3xl">
                 {estimatedMinutes}
                 <span className="text-sm font-bold text-ink-muted">分</span>
               </p>
-              <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
+              <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
                 読了目安
               </p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">0円</p>
-              <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
+              <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
                 すべて無料
               </p>
             </div>
@@ -213,7 +213,7 @@ export default async function BookPage({ params }: BookPageProps) {
               <Button
                 size="default"
                 className={cn(
-                  'h-11 rounded-full px-5 text-sm font-black shadow-md hover:opacity-90 sm:px-7 sm:text-base',
+                  'h-8 rounded-full px-5 text-sm font-black tracking-[0.08em] shadow-md hover:opacity-90 sm:h-11 sm:px-7 sm:text-base',
                   theme.accentBg,
                   'text-white',
                 )}
@@ -231,7 +231,7 @@ export default async function BookPage({ params }: BookPageProps) {
                 <Button
                   variant="outline"
                   size="default"
-                  className="h-11 rounded-full border-ink/20 bg-white/86 px-5 text-sm font-black text-ink shadow-sm hover:bg-white sm:px-7 sm:text-base"
+                  className="h-8 rounded-full border-ink/20 bg-white/86 px-5 text-sm font-black tracking-[0.08em] text-ink shadow-sm hover:bg-white sm:h-11 sm:px-7 sm:text-base"
                   asChild
                 >
                   <Link href={`/quiz/${seoContent.relatedQuizSlug}`}>クイズで腕試し</Link>

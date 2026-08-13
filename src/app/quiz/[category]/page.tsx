@@ -1,30 +1,30 @@
-import Link from 'next/link';
-import Image from 'next/image';
-import { Metadata } from 'next';
+import { SectionHeading } from '@/components/SectionHeading';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getBookTheme } from '@/lib/book-theme';
+import { getBookForCategory, getChaptersByBook } from '@/lib/books';
+import { getCategoryTheme } from '@/lib/categoryTheme';
+import { resolveQuizOrigin } from '@/lib/quizOrigin';
+import { getQuizCategories } from '@/lib/server/quizCategories';
+import { getQuizCategoryQuizzes } from '@/lib/server/quizCategoryQuizzes';
+import { getQuizTagsByCategory } from '@/lib/server/quizCategoryTags';
 import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
   BookOpenCheck,
   ChevronRight,
+  HelpCircle,
   Lightbulb,
   Target,
   Users,
-  HelpCircle,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { SectionHeading } from '@/components/SectionHeading';
-import QuizListClient from './QuizListClient';
+import { Metadata } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
 import CategoryRandomStartCard from './CategoryRandomStartCard';
+import QuizListClient from './QuizListClient';
 import { getCategorySeoContent, type CategorySeoContent } from './categoryContent';
-import { resolveQuizOrigin } from '@/lib/quizOrigin';
-import { getBookForCategory, getChaptersByBook } from '@/lib/books';
-import { getBookTheme } from '@/lib/book-theme';
-import { getCategoryTheme } from '@/lib/categoryTheme';
-import { getQuizCategoryQuizzes } from '@/lib/server/quizCategoryQuizzes';
-import { getQuizTagsByCategory } from '@/lib/server/quizCategoryTags';
-import { getQuizCategories } from '@/lib/server/quizCategories';
 import { getSectionTags } from './sectionTagMap';
 
 import { SITE_URL } from '@/lib/site';
@@ -209,7 +209,7 @@ export default async function CategoryQuizPage({
 
   if (!category) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
+      <div className="max-w-4xl mx-auto px-4 py-2 md:py-4">
         <Card>
           <CardHeader>
             <CardTitle>カテゴリが見つかりません</CardTitle>
@@ -239,9 +239,7 @@ export default async function CategoryQuizPage({
   const sectionTags = getSectionTags(categorySlug);
   const theme = getCategoryTheme(categorySlug);
   const relatedBook = getBookForCategory(categorySlug);
-  const relatedBookChapterCount = relatedBook
-    ? getChaptersByBook(relatedBook.bookSlug).length
-    : 0;
+  const relatedBookChapterCount = relatedBook ? getChaptersByBook(relatedBook.bookSlug).length : 0;
   const relatedBookTheme = relatedBook ? getBookTheme(relatedBook.bookSlug) : null;
   const heroTitleMain = category.category_name.replace(/基礎・実践$/, '');
   const heroTitleSub = category.category_name.endsWith('基礎・実践')
@@ -250,7 +248,7 @@ export default async function CategoryQuizPage({
   const contentShell = 'mx-auto max-w-6xl px-4 sm:px-6';
 
   return (
-    <div className="overflow-x-hidden py-8 text-ink md:py-12">
+    <div className="overflow-x-hidden py-2 text-ink md:py-4">
       {/* 構造化データ */}
       {jsonLdList.map((jsonLd, i) => (
         <script
@@ -289,7 +287,7 @@ export default async function CategoryQuizPage({
       </nav>
 
       {/* ファーストビュー */}
-      <section className="relative left-1/2 mb-6 min-h-[520px] w-screen -translate-x-1/2 overflow-hidden border-y border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:mb-8 sm:min-h-[560px]">
+      <section className="relative left-1/2 mb-6 min-h-[440px] w-screen -translate-x-1/2 overflow-hidden border-y border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:mb-8 sm:min-h-[460px]">
         <Image
           src="/images/top-hero-editorial.png"
           alt=""
@@ -312,7 +310,9 @@ export default async function CategoryQuizPage({
         >
           CATEGORY
         </div>
-        <div className={`${contentShell} relative z-10 flex min-h-[520px] items-center py-8 sm:min-h-[560px]`}>
+        <div
+          className={`${contentShell} relative z-10 flex min-h-[400px] items-center py-4 sm:min-h-[440px]`}
+        >
           <div className="min-w-0 w-full max-w-[36rem]">
             <p className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-brand-red/25 bg-white/82 px-3 py-1 text-[10px] font-extrabold tracking-[0.14em] text-brand-red-deep shadow-[0_10px_30px_rgba(47,48,47,0.08)] sm:text-xs">
               <span className="size-2 rounded-full bg-brand-lime" />
@@ -322,7 +322,9 @@ export default async function CategoryQuizPage({
               <span className="block text-[2.42rem] sm:text-[4.8rem] lg:text-[5.7rem]">
                 {heroTitleMain}
               </span>
-              <span className={`block text-[1.68rem] sm:text-[3.6rem] lg:text-[4.1rem] ${theme.accentClass}`}>
+              <span
+                className={`block text-[1.48rem] sm:text-[3.2rem] lg:text-[4rem] ${theme.accentClass}`}
+              >
                 {heroTitleSub}
               </span>
             </h1>
@@ -339,7 +341,7 @@ export default async function CategoryQuizPage({
             <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3">
               <Button
                 size="default"
-                className="h-11 rounded-full bg-brand-blue px-5 text-sm font-black shadow-[0_12px_28px_rgba(9,103,201,0.24)] hover:bg-brand-blue-deep sm:h-11 sm:px-7 sm:text-base"
+                className="h-8 rounded-full bg-brand-blue px-5 text-sm font-black tracking-[0.08em] shadow-[0_12px_28px_rgba(9,103,201,0.24)] hover:bg-brand-blue-deep sm:h-11 sm:px-7 sm:text-base"
                 asChild
               >
                 <Link href="#quiz-list" className="inline-flex items-center gap-1.5 sm:gap-2">
@@ -351,37 +353,29 @@ export default async function CategoryQuizPage({
                 <Button
                   variant="outline"
                   size="default"
-                  className="h-11 rounded-full border-ink/20 bg-white/86 px-5 text-sm font-black text-ink shadow-[0_12px_28px_rgba(47,48,47,0.08)] hover:bg-white sm:h-11 sm:px-7 sm:text-base"
+                  className="h-8 rounded-full border-ink/20 bg-white/86 px-5 text-sm font-black tracking-[0.08em] text-ink shadow-[0_12px_28px_rgba(47,48,47,0.08)] hover:bg-white sm:h-11 sm:px-7 sm:text-base"
                   asChild
                 >
                   <Link href={`/books/${relatedBook.bookSlug}`}>教科書で復習</Link>
                 </Button>
               )}
             </div>
-            <div className="mt-5 grid w-full max-w-[340px] min-w-0 grid-cols-3 overflow-hidden rounded-[1.25rem] border border-white/80 bg-white/90 px-2 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:max-w-md sm:px-3">
+            <div className="mt-5 grid w-full max-w-[340px] min-w-0 grid-cols-3 overflow-hidden rounded-[0.2rem] border border-white/80 bg-white/90 px-2 py-1.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:max-w-md sm:px-3">
               <div className="min-w-0 text-center">
                 <p className="text-2xl font-black leading-none text-brand-red sm:text-3xl">
                   {quizCountLabel}
                 </p>
-                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
-                  問題
-                </p>
+                <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">問題</p>
               </div>
               <div className="min-w-0 border-x border-ink/10 text-center">
                 <p className="text-2xl font-black leading-none text-ink sm:text-3xl">
                   {tags.length}
                 </p>
-                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
-                  タグ
-                </p>
+                <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">タグ</p>
               </div>
               <div className="min-w-0 text-center">
-                <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">
-                  0円
-                </p>
-                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
-                  無料
-                </p>
+                <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">0円</p>
+                <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">無料</p>
               </div>
             </div>
           </div>
@@ -585,15 +579,11 @@ export default async function CategoryQuizPage({
             {seoContent.relatedCategories.map((related) => {
               return (
                 <Link key={related.slug} href={`/quiz/${related.slug}`} className="group">
-                  <div
-                    className="flex items-center rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm pr-3 group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200"
-                  >
+                  <div className="flex items-center rounded-md bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm pr-3 group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all duration-200">
                     <span className="flex-1 font-bold text-sm text-foreground py-3 pl-4 truncate">
                       {related.name}
                     </span>
-                    <div
-                      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary group-hover:scale-110 transition-transform duration-200"
-                    >
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary group-hover:scale-110 transition-transform duration-200">
                       <ChevronRight className="size-4 text-white" />
                     </div>
                   </div>

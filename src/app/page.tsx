@@ -4,8 +4,8 @@ import { SectionHeading } from '@/components/SectionHeading';
 import { NewsList } from '@/components/news-list';
 import { Button } from '@/components/ui/button';
 import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
-import { getQuizCategoryQuizzes } from '@/lib/server/quizCategoryQuizzes';
 import { getQuizCategories } from '@/lib/server/quizCategories';
+import { getQuizCategoryQuizzes } from '@/lib/server/quizCategoryQuizzes';
 import {
   ArrowRight,
   Atom,
@@ -389,7 +389,7 @@ export default async function Home() {
   return (
     <div className="bg-cream text-ink">
       {/* ヒーロー */}
-      <section className="relative min-h-[calc(100svh-8.5rem)] overflow-hidden bg-cream px-4 py-4 md:min-h-[calc(100svh-9rem)] md:px-6 md:py-6">
+      <section className="relative min-h-[calc(100svh-12rem)] overflow-hidden bg-cream px-4 py-4 md:min-h-[calc(100svh-14rem)] md:px-6 md:py-6">
         <Image
           src="/images/top-hero-editorial.png"
           alt=""
@@ -407,7 +407,7 @@ export default async function Home() {
           BOOK / CODE
         </div>
 
-        <div className="relative mx-auto flex min-h-[calc(100svh-11rem)] max-w-6xl items-center md:min-h-[calc(100svh-13rem)]">
+        <div className="relative mx-auto flex min-h-[calc(100svh-14rem)] max-w-6xl items-center md:min-h-[calc(100svh-16rem)]">
           <div className="w-full max-w-[34rem] pt-2">
             <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-red/25 bg-white/80 px-3 py-1 text-[10px] font-extrabold tracking-[0.14em] text-brand-red-deep shadow-[0_10px_30px_rgba(47,48,47,0.08)] sm:text-xs">
               <span className="size-2 rounded-full bg-brand-lime" />
@@ -429,7 +429,7 @@ export default async function Home() {
             <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-5 sm:gap-3">
               <Button
                 size="default"
-                className="h-11 rounded-full bg-brand-blue px-5 text-sm font-black shadow-[0_12px_28px_rgba(9,103,201,0.24)] hover:bg-brand-blue-deep sm:h-11 sm:px-7 sm:text-base"
+                className="h-8 rounded-full bg-brand-blue px-5 text-sm font-black tracking-[0.08em] shadow-[0_12px_28px_rgba(9,103,201,0.24)] hover:bg-brand-blue-deep sm:h-11 sm:px-7 sm:text-base"
                 asChild
               >
                 <Link href="#categories" className="inline-flex items-center gap-1.5 sm:gap-2">
@@ -440,7 +440,7 @@ export default async function Home() {
               <Button
                 variant="outline"
                 size="default"
-                className="h-11 rounded-full border-ink/20 bg-white/85 px-5 text-sm font-black text-ink shadow-[0_12px_28px_rgba(47,48,47,0.08)] hover:bg-white sm:h-11 sm:px-7 sm:text-base"
+                className="h-8 rounded-full border-ink/20 bg-white/85 px-5 text-sm font-black tracking-[0.08em] text-ink shadow-[0_12px_28px_rgba(47,48,47,0.08)] hover:bg-white sm:h-11 sm:px-7 sm:text-base"
                 asChild
               >
                 <Link href="/books">教科書を読む</Link>
@@ -448,11 +448,11 @@ export default async function Home() {
             </div>
             {/* 問題数は取得できたときだけ出す。取得失敗時に固定値を出すと障害に気づけないため。 */}
             <div
-              className={`mt-4 grid max-w-sm ${totalCount > 0 ? 'grid-cols-3' : 'grid-cols-2'} rounded-[1.25rem] border border-white/80 bg-white/90 px-3 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:mt-5`}
+              className={`mt-4 grid max-w-sm ${totalCount > 0 ? 'grid-cols-3' : 'grid-cols-2'} rounded-[0.2rem] border border-white/80 bg-white/90 px-3 py-1.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:mt-5`}
             >
               <div className="text-center">
                 <p className="text-2xl font-black leading-none text-brand-red sm:text-3xl">16</p>
-                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
+                <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
                   カテゴリ
                 </p>
               </div>
@@ -462,12 +462,12 @@ export default async function Home() {
                     {totalCount}
                     <span className="text-sm font-bold text-ink-muted">+</span>
                   </p>
-                  <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">問</p>
+                  <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">問</p>
                 </div>
               )}
               <div className="border-l border-ink/10 text-center">
                 <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">0円</p>
-                <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
+                <p className="mt-0.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
                   すべて無料
                 </p>
               </div>
