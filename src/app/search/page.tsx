@@ -58,22 +58,30 @@ async function getTags(): Promise<Tag[]> {
   return tags;
 }
 
-async function searchQuizzes(q: string): Promise<SearchQuiz[]> {
-  if (!q.trim()) return [];
+/**
+ * 教科書検索はローカルのMDXなので落ちない。クイズ側だけが落ちたときに
+ * 「0件」と出すと利用者は検索語が悪いと誤解するため、失敗したことを伝える。
+ */
+async function searchQuizzes(q: string): Promise<{ quizzes: SearchQuiz[]; failed: boolean }> {
+  if (!q.trim()) return { quizzes: [], failed: false };
 
   try {
     const { quizzes } = await searchQuizzesFromServer({ q });
-    return quizzes.map((quiz) => ({
-      id: quiz.id,
-      slug: quiz.slug,
-      question: quiz.question,
-      tags: quiz.tags,
-      categoryId: quiz.category_id,
-      categorySlug: quiz.category_slug ?? '',
-      categoryName: quiz.category_name ?? '',
-    }));
-  } catch {
-    return [];
+    return {
+      quizzes: quizzes.map((quiz) => ({
+        id: quiz.id,
+        slug: quiz.slug,
+        question: quiz.question,
+        tags: quiz.tags,
+        categoryId: quiz.category_id,
+        categorySlug: quiz.category_slug ?? '',
+        categoryName: quiz.category_name ?? '',
+      })),
+      failed: false,
+    };
+  } catch (error) {
+    console.error('[search] Failed to search quizzes:', error);
+    return { quizzes: [], failed: true };
   }
 }
 
@@ -168,12 +176,13 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const trimmed = q?.trim() ?? '';
-  const [categories, tags, quizResults, bookResults] = await Promise.all([
+  const [categories, tags, quizSearch, bookResults] = await Promise.all([
     getCategories(),
     getTags(),
-    trimmed ? searchQuizzes(trimmed) : Promise.resolve([]),
+    searchQuizzes(trimmed),
     trimmed ? Promise.resolve(searchBooks(trimmed)) : Promise.resolve([]),
   ]);
+  const { quizzes: quizResults, failed: quizSearchFailed } = quizSearch;
   const books = getAllBooks().map((b) => ({ bookSlug: b.bookSlug, title: b.title }));
   const suggestedKeywords = buildSuggestedKeywords(tags);
   const totalCount = quizResults.length + bookResults.length;
@@ -230,6 +239,7 @@ export default async function SearchPage({
         books={books}
         currentQuery={trimmed}
         suggestedKeywords={suggestedKeywords}
+        quizSearchFailed={quizSearchFailed}
       />
     </div>
   );

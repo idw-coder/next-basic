@@ -83,6 +83,13 @@ export default function RootLayout({
           />
         )}
         <HideAdsForEntry />
+        {/* ヘッダーにロゴ・検索・ナビが並ぶため、キーボード操作では本文まで到達するのに手数がかかる */}
+        <a
+          href="#main"
+          className="sr-only rounded-md bg-brand-blue px-4 py-2 text-sm font-bold text-white focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60]"
+        >
+          本文へスキップ
+        </a>
         <header className="sticky top-0 z-50 border-b border-cream-line bg-cream-deep/88 backdrop-blur-xl">
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-ink/10" />
           <div className="relative mx-auto flex h-14 max-w-7xl items-center gap-1 px-4 md:h-16 md:gap-2 md:px-6">
@@ -103,7 +110,9 @@ export default function RootLayout({
             </Suspense>
           </div>
         </header>
-        <main className="min-h-screen">{children}</main>
+        <main id="main" tabIndex={-1} className="min-h-screen focus:outline-none">
+          {children}
+        </main>
         <footer className="bg-cream-deep border-t border-cream-line px-4 py-6 mt-10 md:px-6 md:py-8 md:mt-16">
           <div className="max-w-6xl mx-auto">
             <div className="max-w-[280px] mx-auto mb-4 md:max-w-[468px] md:mb-6 min-h-[80px] md:min-h-[100px] overflow-hidden">

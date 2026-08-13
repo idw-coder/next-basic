@@ -334,9 +334,10 @@ export default function RandomQuizClient({
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             <button
               type="button"
+              aria-pressed={selectedCategoryId === 'all'}
               onClick={() => setSelectedCategoryId('all')}
               className={cn(
-                'rounded-md border-2 px-2 py-2.5 text-xs sm:text-sm font-semibold transition-all text-center',
+                'min-h-11 rounded-md border-2 px-2 py-2.5 text-center text-xs font-semibold transition-colors sm:text-sm',
                 selectedCategoryId === 'all'
                   ? 'border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20 scale-[1.02]'
                   : 'border-blue-100 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-500/5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10',
@@ -350,9 +351,10 @@ export default function RandomQuizClient({
                 <button
                   key={cat.id}
                   type="button"
+                  aria-pressed={selectedCategoryId === cat.id}
                   onClick={() => setSelectedCategoryId(cat.id)}
                   className={cn(
-                    'rounded-md border-2 px-2 py-2.5 text-xs sm:text-sm font-semibold transition-all text-center',
+                    'min-h-11 rounded-md border-2 px-2 py-2.5 text-center text-xs font-semibold transition-colors sm:text-sm',
                     selectedCategoryId === cat.id
                       ? `${color.border} ${color.bg} ${color.text} shadow-sm scale-[1.02]`
                       : `border-transparent ${color.bg} ${color.text} opacity-70 hover:opacity-100`,
@@ -378,9 +380,10 @@ export default function RandomQuizClient({
                 <button
                   key={count}
                   type="button"
+                  aria-pressed={quizCount === count}
                   onClick={() => setQuizCount(count)}
                   className={cn(
-                    'relative rounded-md border-2 p-2.5 sm:p-4 text-center transition-all',
+                    'relative min-h-11 rounded-md border-2 p-2.5 text-center transition-colors sm:p-4',
                     style.bg,
                     quizCount === count
                       ? `${style.border} shadow-sm scale-[1.02]`

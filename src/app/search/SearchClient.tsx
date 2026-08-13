@@ -45,6 +45,8 @@ interface SearchClientProps {
   books: BookSummary[];
   currentQuery: string;
   suggestedKeywords: string[];
+  /** クイズ検索だけが失敗した状態。教科書の結果は有効なので0件表示と区別する */
+  quizSearchFailed?: boolean;
 }
 
 type ContentFilter = 'all' | 'quiz' | 'book';
@@ -160,6 +162,7 @@ export default function SearchClient({
   books,
   currentQuery,
   suggestedKeywords,
+  quizSearchFailed = false,
 }: SearchClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -271,7 +274,8 @@ export default function SearchClient({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7 rounded-full"
+              aria-label="検索キーワードを消す"
+              className="size-9 rounded-full"
               onClick={clearInput}
             >
               <X className="size-4" />
@@ -287,6 +291,16 @@ export default function SearchClient({
             isPending && 'opacity-60 pointer-events-none transition-opacity',
           )}
         >
+          {/* 教科書の結果は出ているのにクイズだけ欠けている状態を黙って見せない */}
+          {quizSearchFailed && visibleCount > 0 && (
+            <p
+              role="status"
+              className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-foreground"
+            >
+              クイズの検索に失敗したため、教科書の結果のみ表示しています
+            </p>
+          )}
+
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
@@ -484,17 +498,34 @@ export default function SearchClient({
               </div>
             )}
 
-            {visibleCount === 0 && (
-              <div className="text-center py-16 border-2 border-dashed rounded-md">
-                <Search className="size-10 text-muted-foreground/40 mx-auto mb-4" />
-                <p className="text-muted-foreground font-medium mb-1">
-                  該当するコンテンツが見つかりませんでした
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  別のキーワードで検索してみてください
-                </p>
-              </div>
-            )}
+            {visibleCount === 0 &&
+              (quizSearchFailed ? (
+                <div className="rounded-md border-2 border-dashed border-destructive/40 py-16 text-center">
+                  <p className="mb-1 font-medium text-foreground">
+                    クイズの検索に失敗しました
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    一時的な不具合の可能性があります。時間をおいて試してください
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-4 min-h-11"
+                    onClick={() => router.refresh()}
+                  >
+                    再読み込み
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-md border-2 border-dashed py-16 text-center">
+                  <Search className="mx-auto mb-4 size-10 text-muted-foreground/40" />
+                  <p className="mb-1 font-medium text-muted-foreground">
+                    該当するコンテンツが見つかりませんでした
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    別のキーワードで検索してみてください
+                  </p>
+                </div>
+              ))}
           </div>
         </div>
       )}
@@ -583,7 +614,7 @@ export default function SearchClient({
                     key={keyword}
                     onClick={() => handleKeywordClick(keyword)}
                     className={cn(
-                      'inline-flex items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer hover:scale-105 hover:shadow-sm active:scale-100',
+                      'inline-flex min-h-9 cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors duration-200 hover:shadow-sm',
                       TAG_COLORS[i % TAG_COLORS.length],
                     )}
                   >
@@ -593,8 +624,10 @@ export default function SearchClient({
                 ))}
                 {suggestedKeywords.length > VISIBLE_TAG_COUNT && (
                   <button
+                    type="button"
+                    aria-expanded={showAllTags}
                     onClick={() => setShowAllTags((v) => !v)}
-                    className="inline-flex items-center rounded-full border border-dashed px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors cursor-pointer hover:bg-muted/50 hover:text-foreground"
+                    className="inline-flex min-h-9 cursor-pointer items-center rounded-full border border-dashed px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                   >
                     {showAllTags ? (
                       <>

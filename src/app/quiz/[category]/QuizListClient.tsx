@@ -24,6 +24,8 @@ interface QuizListClientProps {
   sectionTags?: SectionTagConfig[];
   /** 教科書などの流入元。各問題のリンクに引き継いで解答後の戻り導線に使う */
   originParam?: string;
+  /** 取得に失敗したのか、条件に合う問題が無いだけなのかを空表示で区別するため */
+  loadError?: boolean;
 }
 
 interface QuizSection {
@@ -107,7 +109,7 @@ function QuizCard({
     <Link
       href={`/quiz/${categorySlug}/${quiz.id}${originParam ? `?from=${encodeURIComponent(originParam)}` : ''}`}
       onClick={onOpen}
-      className="flex items-center gap-3 rounded-md border border-transparent px-2 py-1.5 transition-colors hover:border-blue-500/30 hover:bg-blue-400/5"
+      className="flex min-h-11 items-center gap-3 rounded-md border border-transparent px-2 py-2 transition-colors hover:border-blue-500/30 hover:bg-blue-400/5"
     >
       <span
         className={cn(
@@ -209,7 +211,7 @@ function SectionGroup({
             <Link
               key={`${link.bookSlug}/${link.chapterSlug}`}
               href={`/books/${link.bookSlug}/${link.chapterSlug}`}
-              className="inline-flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 text-xs text-amber-900 transition-colors"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 transition-colors hover:bg-amber-100"
             >
               <BookOpen className="size-3 shrink-0" />
               <span className="line-clamp-1">{link.title}</span>
@@ -230,6 +232,7 @@ export default function QuizListClient({
   currentTagSlug = '',
   sectionTags = [],
   originParam,
+  loadError = false,
 }: QuizListClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -313,6 +316,7 @@ export default function QuizListClient({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            aria-label="問題をキーワードで絞り込む"
             placeholder="問題を検索..."
             className="pl-10"
             value={inputValue}
@@ -320,22 +324,27 @@ export default function QuizListClient({
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Badge
-            variant={!currentTagSlug ? 'default' : 'outline'}
-            className="cursor-pointer"
-            onClick={() => updateFilters(inputValue, '')}
-          >
-            すべて
+        <div className="flex flex-wrap gap-2" role="group" aria-label="タグで絞り込む">
+          <Badge asChild variant={!currentTagSlug ? 'default' : 'outline'}>
+            <button
+              type="button"
+              aria-pressed={!currentTagSlug}
+              className="min-h-9 cursor-pointer px-3"
+              onClick={() => updateFilters(inputValue, '')}
+            >
+              すべて
+            </button>
           </Badge>
           {tags.map((tag) => (
-            <Badge
-              key={tag.id}
-              variant={currentTagSlug === tag.slug ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => updateFilters(inputValue, tag.slug)}
-            >
-              {tag.name}
+            <Badge key={tag.id} asChild variant={currentTagSlug === tag.slug ? 'default' : 'outline'}>
+              <button
+                type="button"
+                aria-pressed={currentTagSlug === tag.slug}
+                className="min-h-9 cursor-pointer px-3"
+                onClick={() => updateFilters(inputValue, tag.slug)}
+              >
+                {tag.name}
+              </button>
             </Badge>
           ))}
         </div>
@@ -359,7 +368,7 @@ export default function QuizListClient({
           <Button
             variant="ghost"
             size="sm"
-            className="text-muted-foreground hover:text-destructive h-8 px-2"
+            className="min-h-9 px-2 text-muted-foreground hover:text-destructive"
             onClick={() => {
               if (window.confirm('解答履歴をすべてクリアしますか？')) {
                 clearHistory();
@@ -374,7 +383,10 @@ export default function QuizListClient({
 
       {/* 結果表示 */}
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground flex items-center gap-2">
+        <p
+          aria-live="polite"
+          className="flex min-h-6 items-center gap-2 text-sm text-muted-foreground"
+        >
           {isPending ? (
             '読み込み中...'
           ) : (
@@ -414,9 +426,31 @@ export default function QuizListClient({
               />
             ))
           )
+        ) : loadError ? (
+          <div className="rounded-md border-2 border-dashed border-destructive/40 py-12 text-center">
+            <p className="font-semibold text-foreground">問題を読み込めませんでした</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              一時的な不具合の可能性があります。時間をおいて試してください
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => router.refresh()}>
+              再読み込み
+            </Button>
+          </div>
         ) : (
-          <div className="text-center py-12 border-2 border-dashed rounded-md">
+          <div className="rounded-md border-2 border-dashed py-12 text-center">
             <p className="text-muted-foreground">該当する問題がありません</p>
+            {(currentQuery || currentTagSlug) && (
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => {
+                  setInputValue('');
+                  updateFilters('', '');
+                }}
+              >
+                絞り込みを解除する
+              </Button>
+            )}
           </div>
         )}
       </div>

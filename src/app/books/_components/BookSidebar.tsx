@@ -107,7 +107,7 @@ function SidebarSearch({
           type="text"
           value={query}
           autoFocus={false}
-          tabIndex={-1}
+          aria-label="この本の中を検索"
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onChange={(e) => {
@@ -123,8 +123,10 @@ function SidebarSearch({
         />
         {query && (
           <button
+            type="button"
+            aria-label="検索条件をクリア"
             onClick={clearAll}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-gray-400 hover:text-gray-600"
           >
             <X className="h-3.5 w-3.5" />
           </button>

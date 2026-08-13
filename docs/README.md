@@ -25,7 +25,8 @@
 | `operations/subscription-payment.md` | サブスクリプション決済仕様 | 準備中機能。Feature Flag で動作確認可 |
 | `operations/google-adsense.md` | AdSense設定メモ | 現行 |
 | `operations/x-operation-summary.md` | X運用メモ | 運用メモ。最新数値は要確認 |
-| `technical/todo.md` | 技術的な積み残し | 現行。本番DB認証情報の直書きとhydrationエラー |
+| `technical/todo.md` | 技術的な積み残し（個別の不具合・タスク） | 現行。DB認証情報の直書きは完了済み。hydrationエラーとUI/UX指摘が未対応 |
+| `technical/code-debt.md` | 横断的なコード負債と再発防止 | 現行。着手は「規約の明文化 → lint → 掃除」の順 |
 | `technical/mui-progress.md` | MUI導入メモ | 管理画面限定の実験メモ |
 | `technical/express-to-nextjs-migration.md` | Express移行メモ | 現行の `/api` プロキシ方針と、Express廃止を再開する場合の整理メモ |
 

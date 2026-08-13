@@ -1,9 +1,14 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { ArrowLeft, HelpCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getCategoryTheme } from '@/lib/categoryTheme';
-import { getQuizDetail } from '@/lib/server/quizDetail';
+import {
+  getQuizDetail,
+  QuizDetailNotFoundError,
+  QuizDetailParamsError,
+} from '@/lib/server/quizDetail';
 import { getQuizCategoryQuizzes, type QuizCategoryQuiz } from '@/lib/server/quizCategoryQuizzes';
 import { extractBookChapterLinks } from '@/lib/quiz-book-links';
 import { toPlainText } from '@/lib/quizContent';
@@ -61,13 +66,16 @@ function shuffleChoices(choices: readonly Choice[]): Choice[] {
   return shuffled;
 }
 
-async function getQuiz(quizId: string): Promise<QuizDetail | null> {
+async function getQuiz(quizId: string): Promise<QuizDetail> {
   try {
     const { quiz } = await getQuizDetail(quizId);
     return quiz;
   } catch (error) {
-    console.error('Failed to fetch quiz:', error);
-    return null;
+    if (error instanceof QuizDetailNotFoundError || error instanceof QuizDetailParamsError) {
+      notFound();
+    }
+
+    throw error;
   }
 }
 
@@ -165,26 +173,6 @@ export default async function QuizDetailPage({
   const quiz = await getQuiz(quizId);
   const theme = getCategoryTheme(category);
   const origin = resolveQuizOrigin(from);
-
-  if (!quiz) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
-        <Card>
-          <CardHeader>
-            <CardTitle>問題が見つかりません</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="link" className="px-0">
-              <Link href={`/quiz/${category}`} className="inline-flex items-center gap-2">
-                <ArrowLeft className="size-4 shrink-0" />
-                問題一覧に戻る
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   const [categoryQuizzes] = await Promise.all([getCategoryQuizzes(quiz.category_id)]);
   const quizForRender = {
@@ -297,12 +285,6 @@ export async function generateMetadata({
 }) {
   const { category, quizId } = await params;
   const quiz = await getQuiz(quizId);
-
-  if (!quiz) {
-    return {
-      title: '問題が見つかりません | ウェブエンジニア問題集',
-    };
-  }
 
   return {
     title: `${quiz.question} | ウェブエンジニア問題集`,

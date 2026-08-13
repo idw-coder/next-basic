@@ -52,7 +52,7 @@ import { useQuizBookmarks } from '@/hooks/useQuizBookmarks';
 import BookChapterCard from './BookChapterCard';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ExplanationView from './ExplanationView';
 
 interface Choice {
@@ -198,6 +198,8 @@ export default function QuizInteraction({
   const { addAnswer, answers } = useQuizHistory();
   const { isBookmarked, toggleBookmark } = useQuizBookmarks();
   const router = useRouter();
+  const choiceRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const resultRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -264,8 +266,8 @@ export default function QuizInteraction({
   const isCorrect =
     selectedChoice !== null && quiz.choices.find((c) => c.id === selectedChoice)?.is_correct;
 
-  const handleAnswer = () => {
-    if (selectedChoice === null) return;
+  const handleAnswer = useCallback(() => {
+    if (selectedChoice === null || isAnswered) return;
     setIsAnswered(true);
     const correct = quiz.choices.find((c) => c.id === selectedChoice)?.is_correct ?? false;
     addAnswer(quiz.id, quiz.category_id, correct);
@@ -284,6 +286,80 @@ export default function QuizInteraction({
       };
       saveQuizQueueSession(updated);
       setQuizQueue(updated);
+    }
+  }, [
+    addAnswer,
+    isAnswered,
+    quiz.category_id,
+    quiz.choices,
+    quiz.id,
+    quizQueue,
+    randomSession,
+    selectedChoice,
+  ]);
+
+  /**
+   * 回答すると「回答する」ボタンがDOMから消え、選択肢もdisabledになるため、
+   * 何もしないとフォーカスがbodyへ落ちてキーボード操作の位置を見失う。判定結果へ移す。
+   */
+  useEffect(() => {
+    if (!isAnswered) return;
+    resultRef.current?.focus();
+  }, [isAnswered]);
+
+  const focusChoice = useCallback(
+    (index: number) => {
+      const total = quiz.choices.length;
+      if (total === 0) return;
+      const target = ((index % total) + total) % total;
+      setSelectedChoice(quiz.choices[target].id);
+      choiceRefs.current[target]?.focus();
+    },
+    [quiz.choices],
+  );
+
+  /** 1〜9キーで選択、Enterで回答。反復して解くため、マウスに手を戻さず進めるようにする */
+  useEffect(() => {
+    if (isAnswered) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      // ヘッダー検索(⌘K)やタグ編集シートが開いている間に選択肢へフォーカスを奪わせない
+      if (document.querySelector('[role="dialog"]')) return;
+
+      if (event.key >= '1' && event.key <= '9') {
+        const index = Number(event.key) - 1;
+        if (index >= quiz.choices.length) return;
+        event.preventDefault();
+        focusChoice(index);
+        return;
+      }
+
+      // ボタンやリンク上のEnterはネイティブの活性化に任せる（選択肢側で個別に処理する）
+      if (event.key === 'Enter' && !target?.closest('button, a')) {
+        event.preventDefault();
+        handleAnswer();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusChoice, handleAnswer, isAnswered, quiz.choices.length]);
+
+  /** radiogroupの規約どおり、矢印キーで選択を移動する */
+  const handleChoiceKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      focusChoice(index + 1);
+    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      focusChoice(index - 1);
+    } else if (event.key === 'Enter') {
+      // radioのEnterは選択ではなく確定。Spaceは押下扱いのままにしておく
+      event.preventDefault();
+      handleAnswer();
     }
   };
 
@@ -830,7 +906,7 @@ export default function QuizInteraction({
               <button
                 type="button"
                 onClick={handleExitRandom}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                className="inline-flex min-h-11 items-center px-1 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
               >
                 終了する
               </button>
@@ -850,9 +926,10 @@ export default function QuizInteraction({
       <div className="flex justify-end">
         <button
           type="button"
+          aria-pressed={isBookmarked(quiz.id)}
           onClick={() => toggleBookmark(quiz.id, quiz.category_id, categorySlug, quiz.question)}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all',
+            'inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-xs font-medium transition-colors',
             isBookmarked(quiz.id)
               ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:hover:bg-amber-500/30'
               : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
@@ -866,7 +943,12 @@ export default function QuizInteraction({
       </div>
 
       {/* 選択肢 */}
-      <div className="space-y-2.5 sm:space-y-3">
+      <div
+        role="radiogroup"
+        aria-label="選択肢"
+        aria-disabled={isAnswered || undefined}
+        className="space-y-2.5 sm:space-y-3"
+      >
         {quiz.choices.map((choice, index) => {
           const isSelected = selectedChoice === choice.id;
           const showCorrect = isAnswered && choice.is_correct;
@@ -877,14 +959,22 @@ export default function QuizInteraction({
             <button
               key={choice.id}
               type="button"
+              role="radio"
+              aria-checked={isSelected}
+              // radiogroupはTab1回で通過し、中の移動は矢印キーに任せる
+              tabIndex={isSelected || (selectedChoice === null && index === 0) ? 0 : -1}
+              ref={(node) => {
+                choiceRefs.current[index] = node;
+              }}
               onClick={() => !isAnswered && setSelectedChoice(choice.id)}
+              onKeyDown={(event) => !isAnswered && handleChoiceKeyDown(event, index)}
               disabled={isAnswered}
               className={cn(
-                'group w-full text-left px-3 py-3 sm:p-4 rounded-md border-2 transition-all duration-150',
+                'group w-full text-left px-3 py-3 sm:p-4 rounded-md border-2 transition-colors duration-150',
                 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800',
+                'focus-visible:outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
                 isAnswered && 'cursor-not-allowed',
-                !isAnswered &&
-                  'cursor-pointer hover:border-primary/60 hover:shadow-md hover:-translate-y-0.5',
+                !isAnswered && 'cursor-pointer hover:border-primary/60 hover:shadow-md',
                 isSelected && !isAnswered && 'border-primary bg-primary/5 shadow-md',
                 showCorrect && 'border-green-500 bg-green-50 dark:bg-green-500/10 shadow-md',
                 showWrong && 'border-destructive bg-red-50 dark:bg-destructive/10 shadow-md',
@@ -921,23 +1011,37 @@ export default function QuizInteraction({
       </div>
 
       {!isAnswered ? (
-        <Button
-          onClick={handleAnswer}
-          disabled={selectedChoice === null}
-          className="w-full h-12 text-base font-black tracking-wide shadow-md bg-foreground text-background hover:bg-foreground/90"
-          size="lg"
-        >
-          回答する
-        </Button>
+        <div className="space-y-2">
+          <Button
+            onClick={handleAnswer}
+            disabled={selectedChoice === null}
+            className="w-full h-12 text-base font-black tracking-wide shadow-md bg-foreground text-background hover:bg-foreground/90"
+            size="lg"
+          >
+            回答する
+          </Button>
+          {/* ショートカットは知らせないと使われない。物理キーボードのある環境にだけ出す */}
+          <p className="hidden text-center text-xs text-muted-foreground [@media(hover:hover)]:block">
+            <kbd className="rounded border px-1 py-0.5 font-sans text-[11px]">1</kbd>〜
+            <kbd className="rounded border px-1 py-0.5 font-sans text-[11px]">
+              {quiz.choices.length}
+            </kbd>
+            キーで選択、
+            <kbd className="rounded border px-1 py-0.5 font-sans text-[11px]">Enter</kbd>
+            で回答できます
+          </p>
+        </div>
       ) : (
         // 回答した後のフォームは回答前段階ではDOMに含まれないため、sr-onlyで解説テキストを常にDOMに常駐させるよう修正。
         // pt-2 は選択肢との区切り用。親の space-y-4 だけだと選択肢どうしの間隔とほぼ同じで、
         // 判定が選択肢の続きに見えてしまうため、下の解説との間隔（24px）に合わせる。
         <div className="space-y-4 pt-2">
           <Alert
+            ref={resultRef}
+            tabIndex={-1}
             variant={isCorrect ? 'default' : 'destructive'}
             className={cn(
-              'mb-6',
+              'mb-6 focus:outline-none',
               isCorrect
                 ? 'border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 [&_div]:text-current'
                 : 'bg-red-50 dark:bg-red-950',

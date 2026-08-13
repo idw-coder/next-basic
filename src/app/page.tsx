@@ -520,7 +520,7 @@ export default async function Home() {
                   <f.icon className={`mt-0.5 size-4 ${f.color} shrink-0 sm:size-5`} />
                   <div>
                     <p className="mb-0.5 text-xs font-bold text-ink sm:text-sm">{f.title}</p>
-                    <p className="text-[10px] leading-relaxed text-ink-muted sm:text-xs">
+                    <p className="text-[11px] leading-relaxed text-ink-muted sm:text-xs">
                       {f.desc}
                     </p>
                   </div>
@@ -580,15 +580,14 @@ export default async function Home() {
                         <h3 className={`text-sm font-bold sm:text-base ${cat.color}`}>
                           {cat.name}
                         </h3>
+                        {/* opacity を掛けると背景に溶けてコントラスト比が3:1を切るため、色そのままで出す */}
                         {count > 0 && (
-                          <span
-                            className={`text-[10px] tabular-nums sm:text-[11px] ${cat.badgeText} opacity-60`}
-                          >
+                          <span className={`text-[11px] tabular-nums sm:text-xs ${cat.badgeText}`}>
                             {count}問
                           </span>
                         )}
                       </div>
-                      <p className="line-clamp-1 text-[10px] leading-relaxed text-ink-muted sm:text-xs">
+                      <p className="line-clamp-1 text-[11px] leading-relaxed text-ink-muted sm:text-xs">
                         {cat.description}
                       </p>
                     </div>
@@ -697,7 +696,7 @@ export default async function Home() {
                   <f.icon className={`mt-0.5 size-3.5 ${f.color} shrink-0 sm:size-4`} />
                   <div>
                     <p className="text-xs font-bold text-ink sm:text-sm">{f.title}</p>
-                    <p className="text-[10px] text-ink-muted sm:text-xs">{f.desc}</p>
+                    <p className="text-[11px] text-ink-muted sm:text-xs">{f.desc}</p>
                   </div>
                 </div>
               ))}
@@ -726,12 +725,12 @@ export default async function Home() {
                 <h2 className="mb-0.5 text-xs font-extrabold text-ink sm:mb-1.5 sm:text-lg">
                   ランダムクイズ
                 </h2>
-                <p className="mb-2 text-[10px] leading-relaxed text-ink-muted sm:mb-4 sm:text-sm">
+                <p className="mb-2 text-[11px] leading-relaxed text-ink-muted sm:mb-4 sm:text-sm">
                   全カテゴリから出題
                   <br className="sm:hidden" />
                   <span className="hidden sm:inline">、</span>サクッと力試し
                 </p>
-                <span className="mx-auto inline-flex items-center justify-center gap-1 rounded-full bg-brand-blue px-3.5 py-1 text-[10px] font-bold text-white transition-colors group-hover:bg-brand-blue-deep sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
+                <span className="mx-auto inline-flex min-h-8 items-center justify-center gap-1 rounded-full bg-brand-blue px-3.5 py-1 text-[11px] font-bold text-white transition-colors group-hover:bg-brand-blue-deep sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
                   挑戦する
                   <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform sm:size-4" />
                 </span>
@@ -752,12 +751,12 @@ export default async function Home() {
                 <h2 className="mb-0.5 text-xs font-extrabold text-ink sm:mb-1.5 sm:text-lg">
                   キーワード検索
                 </h2>
-                <p className="mb-2 text-[10px] leading-relaxed text-ink-muted sm:mb-4 sm:text-sm">
+                <p className="mb-2 text-[11px] leading-relaxed text-ink-muted sm:mb-4 sm:text-sm">
                   クイズも教科書も
                   <br className="sm:hidden" />
                   <span className="hidden sm:inline">、</span>横断検索
                 </p>
-                <span className="mx-auto inline-flex items-center justify-center gap-1 rounded-full bg-brand-red px-3.5 py-1 text-[10px] font-bold text-white transition-colors group-hover:bg-brand-red-deep sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
+                <span className="mx-auto inline-flex min-h-8 items-center justify-center gap-1 rounded-full bg-brand-red px-3.5 py-1 text-[11px] font-bold text-white transition-colors group-hover:bg-brand-red-deep sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
                   検索する
                   <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform sm:size-4" />
                 </span>

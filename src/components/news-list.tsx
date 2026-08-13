@@ -21,7 +21,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
 
   return (
     <>
-      <div className="divide-y divide-border">
+      <div id="news-list-items" className="divide-y divide-border">
         {visible.map((item, i) => {
           const content = (
             <div
@@ -59,8 +59,11 @@ export function NewsList({ items }: { items: NewsItem[] }) {
 
       {hasMore && (
         <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls="news-list-items"
           onClick={() => setExpanded(!expanded)}
-          className="mt-2 w-full flex items-center justify-center gap-1 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
+          className="mt-2 flex min-h-11 w-full items-center justify-center gap-1 rounded-md py-2 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
         >
           <ChevronDown
             className={`size-3.5 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}

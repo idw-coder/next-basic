@@ -224,13 +224,17 @@ export default function BookmarksPage() {
                           <ChevronRight className="size-4 text-muted-foreground" />
                         </div>
                       </Link>
+                      {/*
+                        以前はデスクトップでホバー時のみ表示していたが、
+                        キーボード操作では見えないまま到達してしまうためフォーカスでも出す。
+                      */}
                       <button
                         type="button"
                         onClick={() => removeBookmark(bm.quizId)}
-                        className="shrink-0 p-1.5 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-red-50 dark:hover:bg-red-500/10 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
-                        title="ブックマークを解除"
+                        className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground/60 transition-opacity hover:bg-red-50 hover:text-destructive focus-visible:opacity-100 dark:hover:bg-red-500/10 sm:opacity-0 sm:group-hover:opacity-100"
+                        aria-label={`「${bm.question}」のブックマークを解除`}
                       >
-                        <Trash2 className="size-3.5" />
+                        <Trash2 className="size-4" />
                       </button>
                     </div>
                   );

@@ -51,23 +51,30 @@ interface Category {
   description?: string | null;
 }
 
+/**
+ * カテゴリが引けないとページの骨格が作れないので、失敗は握りつぶさず error.tsx に投げる。
+ * 「見つからない」(null) と「取得できなかった」(throw) は利用者への説明が違う。
+ */
 async function getCategory(categorySlug: string): Promise<Category | null> {
-  try {
-    const { categories } = await getQuizCategories();
-    return categories.find((c) => c.slug === categorySlug) || null;
-  } catch (error) {
-    console.error('Failed to fetch category:', error);
-    return null;
-  }
+  const { categories } = await getQuizCategories();
+  return categories.find((c) => c.slug === categorySlug) || null;
 }
 
-async function getQuizzes(categoryId: number, q?: string, tagSlug?: string): Promise<Quiz[]> {
+/**
+ * 問題一覧だけが落ちた場合はページ全体を潰さず、一覧の枠内にエラーと再読み込みを出す。
+ * 空配列を返すだけだと「該当する問題がありません」と表示され、障害に気づけない。
+ */
+async function getQuizzes(
+  categoryId: number,
+  q?: string,
+  tagSlug?: string,
+): Promise<{ quizzes: Quiz[]; failed: boolean }> {
   try {
     const { quizzes } = await getQuizCategoryQuizzes(categoryId, { q, tagSlug });
-    return quizzes;
+    return { quizzes, failed: false };
   } catch (error) {
     console.error('Failed to fetch quizzes:', error);
-    return [];
+    return { quizzes: [], failed: true };
   }
 }
 
@@ -87,7 +94,8 @@ export async function generateMetadata({
   params: Promise<{ category: string }>;
 }): Promise<Metadata> {
   const { category: categorySlug } = await params;
-  const category = await getCategory(categorySlug);
+  // メタデータの失敗でページ本体まで落とさない
+  const category = await getCategory(categorySlug).catch(() => null);
 
   if (!category) {
     return { title: 'カテゴリが見つかりません' };
@@ -219,11 +227,13 @@ export default async function CategoryQuizPage({
     );
   }
 
-  const [quizzes, tags] = await Promise.all([
+  const [{ quizzes, failed: quizzesFailed }, tags] = await Promise.all([
     getQuizzes(category.id, q, tagSlug),
     getTagsByCategory(category.id),
   ]);
 
+  // 取得に失敗したときに 0 と出すと「問題が無いカテゴリ」に見えてしまう
+  const quizCountLabel = quizzesFailed ? '—' : String(quizzes.length);
   const seoContent = getCategorySeoContent(categorySlug);
   const jsonLdList = buildJsonLd(category, quizzes, categorySlug, seoContent);
   const sectionTags = getSectionTags(categorySlug);
@@ -306,7 +316,7 @@ export default async function CategoryQuizPage({
           <div className="min-w-0 w-full max-w-[36rem]">
             <p className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-brand-red/25 bg-white/82 px-3 py-1 text-[10px] font-extrabold tracking-[0.14em] text-brand-red-deep shadow-[0_10px_30px_rgba(47,48,47,0.08)] sm:text-xs">
               <span className="size-2 rounded-full bg-brand-lime" />
-              {theme.label} / {quizzes.length} QUESTIONS
+              {theme.label} / {quizCountLabel} QUESTIONS
             </p>
             <h1 className="w-full max-w-full font-black leading-[0.92] tracking-normal text-ink">
               <span className="block text-[2.42rem] sm:text-[4.8rem] lg:text-[5.7rem]">
@@ -351,7 +361,7 @@ export default async function CategoryQuizPage({
             <div className="mt-5 grid w-full max-w-[340px] min-w-0 grid-cols-3 overflow-hidden rounded-[1.25rem] border border-white/80 bg-white/90 px-2 py-2.5 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur sm:max-w-md sm:px-3">
               <div className="min-w-0 text-center">
                 <p className="text-2xl font-black leading-none text-brand-red sm:text-3xl">
-                  {quizzes.length}
+                  {quizCountLabel}
                 </p>
                 <p className="mt-1.5 text-[10px] font-bold tracking-[0.08em] text-ink-body">
                   問題
@@ -433,6 +443,7 @@ export default async function CategoryQuizPage({
           currentTagSlug={tagSlug}
           sectionTags={sectionTags}
           originParam={origin ? from : undefined}
+          loadError={quizzesFailed}
         />
       </section>
 

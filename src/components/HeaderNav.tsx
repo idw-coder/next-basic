@@ -101,6 +101,16 @@ export default function HeaderNav({ books }: HeaderNavProps) {
     }
   }, [pathname]);
 
+  // モバイルメニューはオーバーレイなので、Escで閉じられないと閉じ方が分からなくなる
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
   const avatarSvg = useMemo(() => {
     if (!userEmail) return null;
     const svg = createAvatar(identicon, { seed: userEmail, size: 32 }).toString();
@@ -127,13 +137,16 @@ export default function HeaderNav({ books }: HeaderNavProps) {
         variant="ghost"
         size="icon"
         className="rounded-none text-ink hover:bg-transparent hover:text-brand-blue sm:hidden"
-        aria-label="メニュー"
+        aria-label={open ? 'メニューを閉じる' : 'メニューを開く'}
+        aria-expanded={open}
+        aria-controls="header-nav"
         onClick={() => setOpen((v) => !v)}
       >
         {open ? <X className="size-5" /> : <Menu className="size-5" />}
       </Button>
 
       <nav
+        id="header-nav"
         className={`
           fixed inset-x-0 top-14 z-50 border-b border-cream-line bg-cream-deep/96 shadow-[0_18px_40px_rgba(35,35,35,0.08)] backdrop-blur-xl
           sm:static sm:flex sm:items-center sm:gap-1 sm:border-0 sm:bg-transparent sm:shadow-none sm:backdrop-blur-none

@@ -47,7 +47,7 @@ export interface QuizDetail {
 }
 
 export interface QuizDetailResult {
-  quiz: QuizDetail | null;
+  quiz: QuizDetail;
   source: 'db';
 }
 

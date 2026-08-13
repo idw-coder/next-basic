@@ -55,6 +55,8 @@ export default function ReviewClient({ isCompleted }: { isCompleted: boolean }) 
 
   const [quizzes, setQuizzes] = useState<ReviewQuiz[] | null>(null);
   const [fetchError, setFetchError] = useState(false);
+  /** 再試行のたびに増やして取得のeffectを回す */
+  const [retryCount, setRetryCount] = useState(0);
   const [completedResult, setCompletedResult] = useState<{
     total: number;
     correct: number;
@@ -133,7 +135,13 @@ export default function ReviewClient({ isCompleted }: { isCompleted: boolean }) 
       aborted = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wrongIdsKey]);
+  }, [wrongIdsKey, retryCount]);
+
+  const handleRetryFetch = () => {
+    setFetchError(false);
+    setQuizzes(null);
+    setRetryCount((count) => count + 1);
+  };
 
   const grouped = useMemo(() => {
     const map = new Map<string, { categoryName: string; quizzes: ReviewQuiz[] }>();
@@ -258,10 +266,15 @@ export default function ReviewClient({ isCompleted }: { isCompleted: boolean }) 
           <p className="text-muted-foreground">復習リストを準備中...</p>
         </div>
       ) : fetchError ? (
-        <div className="text-center py-16 rounded-2xl border border-dashed border-rose-300/50">
-          <p className="text-sm text-muted-foreground">
-            復習リストの取得に失敗しました。時間をおいて再読み込みしてください
+        <div className="rounded-2xl border border-dashed border-rose-300/50 py-16 text-center">
+          <p className="font-semibold text-foreground">復習リストを読み込めませんでした</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            一時的な不具合の可能性があります。回答履歴は端末に残っているので消えていません
           </p>
+          <Button variant="outline" className="mt-4 min-h-11" onClick={handleRetryFetch}>
+            <RotateCcw className="size-4" aria-hidden="true" />
+            再試行
+          </Button>
         </div>
       ) : totalWrong === 0 ? (
         <div className="relative text-center py-16 rounded-2xl border border-dashed border-rose-300/50 bg-gradient-to-br from-rose-50/30 to-transparent dark:from-rose-500/5">
@@ -352,7 +365,7 @@ export default function ReviewClient({ isCompleted }: { isCompleted: boolean }) 
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-7 px-2.5 text-xs"
+                      className="min-h-9 px-2.5 text-xs"
                       onClick={() => startRedoSession(group.quizzes)}
                     >
                       <Play className="size-3 mr-1" />
@@ -366,7 +379,7 @@ export default function ReviewClient({ isCompleted }: { isCompleted: boolean }) 
                       key={quiz.id}
                       href={`/quiz/${quiz.categorySlug}/${quiz.id}`}
                       onClick={saveReviewQueue}
-                      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-rose-50/50 dark:hover:bg-rose-500/5"
+                      className="flex min-h-11 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-rose-50/50 dark:hover:bg-rose-500/5"
                     >
                       <span
                         className={cn(
