@@ -8,7 +8,11 @@ JavaScriptで最も触る機会が多いデータ構造は配列です。
 APIのレスポンスを加工する、フォームの入力値をまとめる、UIにリストを表示する——ほぼすべての場面で配列が登場します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-  `map` とか `filter` とか、名前は聞くけど…結局どれをいつ使えばいいのか毎回迷っちゃう。
+  `map` とか `filter` とか、色々あってなかなか覚えられない。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  全部そらで覚える必要はないよ。**「やりたいこと」から引ければ十分**。実務でもみんな調べながら書いているからね。
 </SpeechBubble>
 
 このページは、配列メソッドを**やりたいことから逆引きする入口**です。
@@ -16,73 +20,35 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 
 ---
 
-<a id="array-methods-overview"></a>
-
-## 配列メソッドとは — Array インスタンスのメソッドという意味
-
-`[1, 2, 3].map(...)` のように配列に対して `.map()` を呼べるのは、配列が **`Array` コンストラクタのインスタンス**だからです。
-
-```js
-const arr = [1, 2, 3];
-
-console.log(arr instanceof Array); // true
-console.log(typeof arr); // "object"（配列もオブジェクトの一種）
-```
-
-JavaScriptでは、`[]` というリテラルで配列を作ると、内部的には `new Array()` と同等のオブジェクトが生成されます。
-そして、すべての `Array` インスタンスは **`Array.prototype`** というオブジェクトからメソッドを継承しています。
-
-```js
-console.log(arr.hasOwnProperty('map')); // false
-console.log(Array.prototype.hasOwnProperty('map')); // true
-```
-
-<MermaidDiagram
-  chart={`
-flowchart TB
-    A["arr = [1, 2, 3]"] -->|"__proto__"| B["Array.prototype"]
-    B -->|".map()"| B
-    B -->|".filter()"| B
-    B -->|".reduce()"| B
-    B -->|"__proto__"| C["Object.prototype"]
-`}
-/>
-
-配列っぽく見えるが `Array` インスタンスではないもの（例: `document.querySelectorAll()` の戻り値である `NodeList`）では、そのままでは `.map()` が使えません。
-[`Array.from`](/books/javascript/07-arrays5-fill-flat-methods#array-from) を使えば、配列風オブジェクトを本物の配列に変換できます。
-
-```js
-const nodes = document.querySelectorAll('div');
-// nodes.map(...) → TypeError: nodes.map is not a function
-
-Array.from(nodes).map((node) => node.textContent);
-```
-
-<Callout type="note" title="コールバックの基本形">
-  配列メソッドの多くは `(element, index, array)` の3つの引数を受け取れるコールバック関数を使います。実務では第1引数だけ使うケースが多く、`index`・`array` は必要なときだけ書けば十分です。
-</Callout>
-
 <a id="cheatsheet"></a>
 
 ## やりたいことから選ぶ早見表
 
-| やりたいこと | 使うメソッド | 詳細 |
-| ------------ | ------------ | ---- |
-| 各要素を別の形に変換したい | `map` | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#map) |
-| 条件に合う要素だけ残したい | `filter` | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#filter) |
-| 配列全体を1つの値にまとめたい | `reduce` | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#reduce) |
-| 最初の1件を探したい | `find` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#find) |
-| 最初のインデックスを探したい | `findIndex` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#findindex) |
-| 1つでも条件を満たすか確認したい | `some` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#some) |
-| すべて条件を満たすか確認したい | `every` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#every) |
-| 値が含まれるか確認したい | `includes` | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#includes) |
-| 配列の一部を取り出したい | `slice` | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#slice) |
-| 配列を結合したい | `concat` / スプレッド構文 | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#concat) |
-| 配列ではないものから配列を作りたい | `Array.from` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#array-from) |
-| 同じ値で埋めたい | `fill` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#fill) |
-| ネストした配列を平坦化したい | `flat` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flat) |
-| 変換して平坦化したい | `flatMap` | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flatmap) |
-| 元の配列を直接変更したい | `push` / `splice` / `sort` など | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods) |
+| やりたいこと                       | 使うメソッド              | 詳細                                                                                          |
+| ---------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| 各要素を別の形に変換したい         | `map`                     | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#map)                      |
+| 条件に合う要素だけ残したい         | `filter`                  | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#filter)                   |
+| 配列全体を1つの値にまとめたい      | `reduce`                  | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#reduce)                   |
+| 複数の加工をつなげたい             | メソッドチェーン          | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#chaining)                 |
+| 最初の1件を探したい                | `find`                    | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#find)                  |
+| 最初のインデックスを探したい       | `findIndex` / `indexOf`   | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#findindex)             |
+| 1つでも条件を満たすか確認したい    | `some`                    | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#some)                  |
+| すべて条件を満たすか確認したい     | `every`                   | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#every)                 |
+| 値が含まれるか確認したい           | `includes`                | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#includes)              |
+| 配列の一部を取り出したい           | `slice`                   | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#slice)               |
+| 配列を結合したい                   | `concat`                  | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#concat)              |
+| コピーしつつ要素を足したい         | スプレッド構文            | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#spread)              |
+| 配列を文字列にしたい               | `join`                    | [文字列操作と正規表現](/books/javascript/08-string-methods#section-8)                         |
+| 配列ではないものから配列を作りたい | `Array.from`              | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#array-from)     |
+| 同じ値で埋めたい                   | `fill`                    | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#fill)           |
+| ネストした配列を平坦化したい       | `flat`                    | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flat)           |
+| 変換して平坦化したい               | `flatMap`                 | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flatmap)        |
+| 並び替えたい                       | `sort` / `toSorted`       | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#sort)                    |
+| 逆順にしたい                       | `reverse` / `toReversed`  | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#reverse)                 |
+| 末尾に追加・削除したい             | `push` / `pop`            | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#push-pop)                |
+| 先頭に追加・削除したい             | `unshift` / `shift`       | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#shift-unshift)           |
+| 途中を挿入・削除・置換したい       | `splice` / `toSpliced`    | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#splice)                  |
+| 1要素だけ差し替えたい（非破壊）    | `with`                    | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#with)                    |
 
 <a id="recommended-pages"></a>
 
@@ -135,14 +101,14 @@ ReactなどのUI実装では、状態を直接変更しないために非破壊�
 
 配列メソッドは「何を返すか」で見ると整理しやすくなります。
 
-| 戻り値 | メソッド | 例 |
-| ------ | -------- | -- |
-| 新しい配列 | `map` / `filter` / `slice` / `concat` / `flat` / `flatMap` | 元配列を壊さず加工する |
-| 1つの値 | `reduce` | 合計、集計、グルーピング |
-| 要素 or `undefined` | `find` | ID一致の1件を探す |
-| 数値 | `findIndex` / `indexOf` | 位置を探す |
-| `boolean` | `some` / `every` / `includes` | 条件チェック |
-| 変更後の元配列 | `push` / `splice` / `sort` / `reverse` / `fill` | 破壊的操作 |
+| 戻り値              | メソッド                                                   | 例                       |
+| ------------------- | ---------------------------------------------------------- | ------------------------ |
+| 新しい配列          | `map` / `filter` / `slice` / `concat` / `flat` / `flatMap` | 元配列を壊さず加工する   |
+| 1つの値             | `reduce`                                                   | 合計、集計、グルーピング |
+| 要素 or `undefined` | `find`                                                     | ID一致の1件を探す        |
+| 数値                | `findIndex` / `indexOf`                                    | 位置を探す               |
+| `boolean`           | `some` / `every` / `includes`                              | 条件チェック             |
+| 変更後の元配列      | `push` / `splice` / `sort` / `reverse` / `fill`            | 破壊的操作               |
 
 <a id="mutating-vs-non-mutating"></a>
 
@@ -150,15 +116,70 @@ ReactなどのUI実装では、状態を直接変更しないために非破壊�
 
 配列メソッドは、**元の配列を直接変更する「破壊的メソッド」**と、**元の配列はそのままに新しい配列や値を返す「非破壊メソッド」**に分けられます。
 
-| 種類 | メソッド |
-| ---- | -------- |
-| 破壊的 | `push` / `pop` / `shift` / `unshift` / `splice` / `sort` / `reverse` / `fill` / `copyWithin` |
-| 非破壊 | `map` / `filter` / `reduce` / `find` / `findIndex` / `some` / `every` / `slice` / `concat` / `flat` / `flatMap` / `includes` / `join` |
-| ES2023の非破壊代替 | `toSorted` / `toReversed` / `toSpliced` / `with` |
+| 種類               | メソッド                                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 破壊的             | `push` / `pop` / `shift` / `unshift` / `splice` / `sort` / `reverse` / `fill` / `copyWithin`                                          |
+| 非破壊             | `map` / `filter` / `reduce` / `find` / `findIndex` / `some` / `every` / `slice` / `concat` / `flat` / `flatMap` / `includes` / `join` |
+| ES2023の非破壊代替 | `toSorted` / `toReversed` / `toSpliced` / `with`                                                                                      |
+
+破壊的メソッドとES2023の非破壊代替の対応は、[配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#overview) に一覧があります。
 
 <Callout type="warning" title="非破壊でも中身のオブジェクトは共有される">
   `map`・`filter`・`slice`・`concat`・スプレッド構文が返す新しい配列は、基本的に浅いコピーです。配列の中にオブジェクトが入っている場合、オブジェクトの中身を書き換えると元配列側にも影響します。
 </Callout>
+
+<a id="array-methods-overview"></a>
+
+## 補足: なぜ配列は `.map()` を呼べるのか
+
+`[1, 2, 3].map(...)` のように配列に対して `.map()` を呼べるのは、配列が **`Array` コンストラクタのインスタンス**だからです。
+
+```js
+const arr = [1, 2, 3];
+
+console.log(arr.hasOwnProperty('map')); // false
+console.log(Array.prototype.hasOwnProperty('map')); // true
+```
+
+`hasOwnProperty` は「**そのオブジェクト自身が直接持っているプロパティか**」だけを調べるメソッドで、継承元まではさかのぼりません。
+`arr` 自身が持っているのは、要素のインデックスと `length` だけです。
+
+```js
+console.log(Object.getOwnPropertyNames(arr)); // ['0', '1', '2', 'length']
+```
+
+では、なぜ持っていない `map` を呼べるのか。
+`arr.map(...)` と書くと、JavaScriptは `arr` 自身 → `Array.prototype` → `Object.prototype` の順にプロパティを探しにいき、`Array.prototype` で見つけた `map` を呼び出します。
+この「探しにいく道筋」が**プロトタイプチェーン**です。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["arr = [1, 2, 3]"] -->|"__proto__"| B["Array.prototype"]
+    B -->|".map()"| B
+    B -->|".filter()"| B
+    B -->|".reduce()"| B
+    B -->|"__proto__"| C["Object.prototype"]
+`}
+/>
+
+つまり配列メソッドは、配列ひとつひとつにコピーされているわけではなく、`Array.prototype` に1セットだけ存在し、すべての配列がそれを共有しています。
+配列を1000個作ってもメソッドの実体は増えません。
+
+<Callout type="note" title="hasOwnProperty 自体もプロトタイプ由来">
+  上のコードで使っている `arr.hasOwnProperty` も、`arr` 自身のプロパティではなく `Object.prototype`
+  から継承したものです。チェーンの終端にある `Object.prototype` のメソッドなので、配列でもオブジェクトでも同じように呼べます。
+</Callout>
+
+配列っぽく見えるが `Array` インスタンスではないもの（例: `document.querySelectorAll()` の戻り値である `NodeList`）では、そのままでは `.map()` が使えません。
+[`Array.from`](/books/javascript/07-arrays5-fill-flat-methods#array-from) を使えば、配列風オブジェクトを本物の配列に変換できます。
+
+```js
+const nodes = document.querySelectorAll('div');
+// nodes.map(...) → TypeError: nodes.map is not a function
+
+Array.from(nodes).map((node) => node.textContent);
+```
 
 <a id="checklist"></a>
 

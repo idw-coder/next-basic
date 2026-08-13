@@ -1,6 +1,6 @@
 ---
 title: '配列の検索・判定メソッド — find・some・every'
-description: 'JavaScriptの配列メソッド find・findIndex・some・every・includes を、検索・権限チェック・フォームバリデーションなどの実務パターンで整理します。'
+description: 'JavaScriptの配列メソッド find・findIndex・indexOf・some・every・includes を、検索・権限チェック・フォームバリデーションなどの実務パターンで整理します。'
 order: 7.2
 chapterLabel: '配列メソッド 2'
 ---
@@ -11,6 +11,7 @@ chapterLabel: '配列メソッド 2'
 | ------------ | -------- | ------ |
 | 条件に合う最初の要素が欲しい | `find` | 要素 or `undefined` |
 | 条件に合う最初の位置が欲しい | `findIndex` | 数値 or `-1` |
+| 値そのものの位置が欲しい | `indexOf` | 数値 or `-1` |
 | 1つでも条件を満たすか確認したい | `some` | `boolean` |
 | すべて条件を満たすか確認したい | `every` | `boolean` |
 | 値が含まれるか確認したい | `includes` | `boolean` |
@@ -66,6 +67,21 @@ if (targetIndex !== -1) {
   const updated = users.with(targetIndex, { ...users[targetIndex], name: '佐藤' });
 }
 ```
+
+### indexOf との使い分け
+
+値そのものの位置を知りたいだけなら、コールバックを書かずに済む `indexOf` の方が簡潔です。
+見つからないときに `-1` を返す点は `findIndex` と同じです。
+
+```js
+const roles = ['admin', 'editor', 'viewer'];
+
+console.log(roles.indexOf('editor')); // 1
+console.log(roles.indexOf('guest')); // -1
+```
+
+`indexOf` は `===` による比較なので、オブジェクトの中身を条件に探すことはできません。
+条件で探すなら `findIndex` を使います。
 
 <a id="some"></a>
 
@@ -162,7 +178,7 @@ users.some((user) => user.id === 1); // true
 ## ちゃんと使うためのポイント
 
 - 1件だけ欲しいなら `find`
-- 位置が欲しいなら `findIndex`
+- 位置が欲しいなら `findIndex`、値そのものを探すだけなら `indexOf`
 - 存在確認だけなら `some` / `includes`
 - 全件が条件を満たすか確認するなら `every`
 - `every` は空配列で `true` になるため、必要なら `length > 0` と組み合わせる
@@ -173,6 +189,7 @@ users.some((user) => user.id === 1); // true
 
 - [MDN — Array.prototype.find](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/find)
 - [MDN — Array.prototype.findIndex](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/findIndex)
+- [MDN — Array.prototype.indexOf](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf)
 - [MDN — Array.prototype.some](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/some)
 - [MDN — Array.prototype.every](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/every)
 - [MDN — Array.prototype.includes](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/includes)
