@@ -17,7 +17,7 @@ import { SectionHeading } from '@/components/SectionHeading';
 
 import { SITE_URL } from '@/lib/site';
 
-const BOOKS_OG_IMAGE = `${SITE_URL}/images/books-hero-editorial2.png`;
+const BOOKS_OG_IMAGE = `${SITE_URL}/images/books-hero-editorial-human-v2.png`;
 
 export const metadata: Metadata = {
   title: 'プログラミング教科書一覧 — 無料で学べるWeb開発入門 | ウェブエンジニア問題集',
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
         url: BOOKS_OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: '理解を、整える。ウェブエンジニア問題集の教科書機能キービジュアル',
+        alt: '鮮やかな色面の中で青い本を読む人物を描いた、ウェブエンジニア問題集の教科書機能キービジュアル',
       },
     ],
   },
@@ -166,14 +166,14 @@ export default function BooksPage() {
         <div className="mx-auto">
           <div className="relative min-h-[460px] overflow-hidden border-b border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:min-h-[540px] lg:min-h-[580px] xl:min-h-[600px]">
             <Image
-              src="/images/books-hero-editorial-bg.png"
-              alt="青い本を読む人物を中心にした教科書機能のキービジュアル"
+              src="/images/books-hero-editorial-human-v2.png"
+              alt="鮮やかな色面の中で青い本を読む人物を中心にした教科書機能のキービジュアル"
               width={1200}
               height={630}
               priority
-              className="absolute top-0 bottom-0 left-0 h-full w-full object-cover object-[76%_44%] sm:-translate-x-[3%] sm:scale-[1.04] sm:object-[50%_46%] lg:-translate-x-[5%] lg:scale-[1.08] xl:-translate-x-[4%] xl:scale-[1.06]"
+              className="absolute top-0 bottom-0 left-0 h-full w-full object-cover object-[64%_44%] sm:-translate-x-[3%] sm:scale-[1.04] sm:object-[50%_46%] lg:-translate-x-[5%] lg:scale-[1.08] xl:-translate-x-[4%] xl:scale-[1.06]"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,250,244,0.96)_0%,rgba(255,250,244,0.9)_62%,rgba(255,250,244,0.26)_100%)] sm:bg-[linear-gradient(90deg,rgba(255,250,244,0.95)_0%,rgba(255,250,244,0.86)_32%,rgba(255,250,244,0.18)_60%,rgba(255,250,244,0)_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,250,244,0.96)_0%,rgba(255,250,244,0.9)_62%,rgba(255,250,244,0.08)_100%)] sm:bg-[linear-gradient(90deg,rgba(255,250,244,0.95)_0%,rgba(255,250,244,0.86)_32%,rgba(255,250,244,0.18)_60%,rgba(255,250,244,0)_100%)]" />
             <div className="absolute left-6 top-6 flex max-w-[92vw] flex-col items-start sm:left-14 sm:top-10 md:left-24 lg:left-28 xl:left-32">
               <div className="flex items-start gap-3 sm:gap-5">
                 <p className="mt-2 hidden text-lg font-black leading-none text-ink [writing-mode:vertical-rl] sm:block">
