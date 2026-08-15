@@ -183,7 +183,7 @@ for (const key in user) {
 ```
 
 <Callout type="warning" title="配列に for...in は使わない">
-  `for...in` はプロトタイプチェーン上のプロパティも列挙する可能性があります。配列の反復には `for...of` または `forEach` を使いましょう。
+  `for...in` はプロトタイプチェーン上のプロパティも列挙する可能性があります。配列の反復には `for...of` または [`forEach`](/books/javascript/07-arrays1-transform-methods#foreach) を使いましょう。
 </Callout>
 
 ### while
@@ -299,6 +299,7 @@ while (queue.length > 0) {
 | 事前に条件判定できない（必ず1回は実行したい） | `do...while` / `while (true) + break` |
 | 回数・インデックスが決まっている | `for` |
 | 配列などイテラブルを順に処理する | `for...of` |
+| 配列の各要素に副作用を実行する | [`forEach`](/books/javascript/07-arrays1-transform-methods#foreach) |
 | カウンタではない継続条件がある | `while` |
 
 ### do...while を実務であまり見かけない理由

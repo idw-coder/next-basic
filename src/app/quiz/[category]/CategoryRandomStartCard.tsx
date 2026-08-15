@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { HelpCircle, Loader2, Play, X } from 'lucide-react';
+import { Loader2, Play, X } from 'lucide-react';
+import Image from 'next/image';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -116,12 +117,20 @@ export default function CategoryRandomStartCard({
     <>
       <button type="button" onClick={() => setOpen(true)} className="group block h-full min-w-0 text-left">
         <div className="relative flex h-full overflow-hidden rounded-lg border border-primary/15 bg-blue-50 px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5">
-          <HelpCircle
-            className="pointer-events-none absolute right-1/4 top-1/2 size-14 -translate-y-1/2 rotate-12 text-primary opacity-[0.05] sm:size-16"
+          <Image
+            src="/images/card-backgrounds/random-practice-card-bg-person-right.webp"
+            alt=""
+            fill
+            sizes="(min-width: 640px) 50vw, 100vw"
+            className="pointer-events-none object-contain object-right opacity-75 transition-[transform,opacity] duration-500 group-hover:scale-[1.015] group-hover:opacity-90"
             aria-hidden="true"
           />
-          <div className="relative z-10 min-w-0 flex-1">
-            <div className="mb-0.5">
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/70 via-white/45 to-white/20"
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-[72%] min-w-0">
+            <div className="mb-0.5 flex items-center">
               <span className="rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none text-primary sm:text-[10px]">
                 連続演習
               </span>

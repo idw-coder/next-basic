@@ -1,11 +1,12 @@
 ---
-title: '配列の変換メソッド — map・filter・reduce'
-description: 'JavaScriptの配列メソッド map・filter・reduce を、APIレスポンスの整形、検索フィルタリング、グルーピング、メソッドチェーンの実務パターンとともに整理します。'
+title: '配列の変換メソッド — map・filter・reduce・forEach'
+description: 'JavaScriptの配列メソッド map・filter・reduce・forEach を、APIレスポンスの整形、検索フィルタリング、グルーピング、副作用の実行、メソッドチェーンの実務パターンとともに整理します。'
 order: 7.1
 chapterLabel: '配列メソッド 1'
 ---
 
 `map`・`filter`・`reduce` は、配列メソッドの中でも特に使用頻度が高い3つです。
+各要素に対して「何かするだけ」なら、そこに `forEach` が加わります。
 それぞれの役割は、次のように覚えると整理しやすくなります。
 
 | メソッド | 役割 | 戻り値 |
@@ -13,9 +14,10 @@ chapterLabel: '配列メソッド 1'
 | `map` | 各要素を変換する | 新しい配列 |
 | `filter` | 条件に合う要素だけ残す | 新しい配列 |
 | `reduce` | 配列全体を1つの値にまとめる | 任意の値 |
+| `forEach` | 各要素に処理を実行する | `undefined` |
 
 <Callout type="note" title="コールバックの引数">
-  `map`・`filter` などのコールバックは `(element, index, array)` の3つの引数を受け取れます。実務では第1引数だけ使うケースがほとんどです。各メソッドで違うのは「コールバックの戻り値をどう扱い、メソッド自身が最終的に何を返すか」です。
+  `map`・`filter`・`forEach` などのコールバックは `(element, index, array)` の3つの引数を受け取れます。実務では第1引数だけ使うケースがほとんどです。各メソッドで違うのは「コールバックの戻り値をどう扱い、メソッド自身が最終的に何を返すか」です。
 </Callout>
 
 <a id="map"></a>
@@ -69,7 +71,7 @@ const displayUsers = users.map((user) => ({
 ### map を使うべきでない場面
 
 `map` は「変換した新しい配列が欲しいとき」に使います。
-戻り値を使わずに副作用（ログ出力、DOM操作など）だけが目的なら `forEach` を使ってください。
+戻り値を使わずに副作用（ログ出力、DOM操作など）だけが目的なら [`forEach`](#foreach) を使ってください。
 
 ```js
 // ❌ mapの戻り値を捨てている
@@ -81,6 +83,149 @@ users.map((user) => {
 users.forEach((user) => {
   console.log(user.name);
 });
+```
+
+<a id="foreach"></a>
+
+## forEach — 各要素に対して処理を実行する
+
+<Figure
+  src="/images/planning_suit_man_color.png"
+  alt="配列の各要素に対して処理を実行するイメージ"
+  maxWidth="120px"
+/>
+
+`forEach` は配列の各要素に対してコールバックを1回ずつ実行します。
+`map` と違い、**新しい配列は返しません**。戻り値は常に `undefined` です。
+ログ出力、通知の送信、既存オブジェクトへの書き込みなど、**副作用そのものが目的**のときに使います。
+
+**構文：** `array.forEach(callback)`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `callback` | 各要素に対して実行する関数。`(element, index, array)` を受け取れる |
+
+### 基本的な使い方
+
+```js
+const fruits = ['りんご', 'みかん', 'ぶどう'];
+
+fruits.forEach((fruit) => {
+  console.log(fruit);
+});
+// りんご
+// みかん
+// ぶどう
+```
+
+インデックスが必要なときは第2引数を使います。
+
+```js
+fruits.forEach((fruit, index) => {
+  console.log(`${index + 1}番目: ${fruit}`);
+});
+// 1番目: りんご
+// 2番目: みかん
+// 3番目: ぶどう
+```
+
+### 実務パターン: 各要素に副作用を実行する
+
+新しい配列を作るのではなく、「1件ずつ何かする」処理に向いています。
+
+```js
+const users = [
+  { name: '太郎', email: 'taro@example.com' },
+  { name: '花子', email: 'hanako@example.com' },
+];
+
+users.forEach((user) => {
+  sendWelcomeMail(user.email);
+});
+```
+
+オブジェクトのプロパティを集計用の箱に足していく、といった書き方もできます。ただし集約が目的なら [`reduce`](#reduce) の方が意図が明確です。
+
+```js
+const counts = {};
+
+['apple', 'banana', 'apple'].forEach((fruit) => {
+  counts[fruit] = (counts[fruit] ?? 0) + 1;
+});
+
+console.log(counts); // { apple: 2, banana: 1 }
+```
+
+### map との違い
+
+どちらも「各要素を順に見る」点は同じですが、**戻り値と目的**が違います。
+
+| 比較 | `forEach` | `map` |
+| ---- | --------- | ----- |
+| 目的 | 副作用を実行する | 新しい配列を作る |
+| 戻り値 | `undefined` | 新しい配列 |
+| メソッドチェーン | できない | できる |
+
+```js
+const numbers = [1, 2, 3];
+
+const mapped = numbers.map((n) => n * 2);
+console.log(mapped); // [2, 4, 6]
+
+const fromForEach = numbers.forEach((n) => n * 2);
+console.log(fromForEach); // undefined
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  じゃあ、変換したいときは `map`、ログを出したいときは `forEach` って覚えればいい？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  その理解で十分。戻り値を使うなら `map`、使わないなら `forEach`。戻り値を捨てる `map` は、読んだ人が「変換結果はどこ？」と迷う原因になるよ。
+</SpeechBubble>
+
+### 途中で止められない
+
+`forEach` のコールバックで `return` しても、**その要素の処理を抜けるだけ**で、残りの要素は実行されます。`break` は使えません。
+
+```js
+[1, 2, 3, 4].forEach((n) => {
+  if (n === 3) return; // 3 だけスキップ。ループは続く
+  console.log(n);
+});
+// 1
+// 2
+// 4
+```
+
+途中で止めたいときは [`for...of`](/books/javascript/04-control-flow) を使います。
+
+```js
+for (const n of [1, 2, 3, 4]) {
+  if (n === 3) break;
+  console.log(n);
+}
+// 1
+// 2
+```
+
+<Callout type="warning" title="forEach は await を待たない">
+  コールバックを `async` にしても、`forEach` は Promise
+  の完了を待ちません。非同期処理を1件ずつ順に実行したいときは `for...of` を使ってください。
+</Callout>
+
+```js
+const ids = [1, 2, 3];
+
+// ❌ ほぼ同時に走り、完了を待てない
+ids.forEach(async (id) => {
+  await fetch(`/api/users/${id}`);
+});
+
+// ⭕ 1件ずつ待つ
+for (const id of ids) {
+  await fetch(`/api/users/${id}`);
+}
 ```
 
 <a id="filter"></a>
@@ -134,35 +279,62 @@ console.log(result.length); // 0
 
 ## reduce — 配列を1つの値にまとめる
 
-`reduce` は配列の各要素を順に処理し、最終的に**1つの値**に集約します。
-合計値、オブジェクト、別の配列など、あらゆる形に集約できる汎用性の高いメソッドです。
+`map` や `filter` が新しい配列を返すのに対し、`reduce` が返すのは配列ではなく**1つの値**です。
+各要素を左から順に取り込み、途中経過の箱を更新し続け、最後の箱の中身をそのまま返します。合計、オブジェクト、別の配列など、箱の形は自由です。
+
+**構文：** `array.reduce(callback, initialValue)`
+
+引数は2段になっています。`reduce` 自身に渡すものと、その中のコールバックが受け取るものです。
+
+| どこ | 引数 | 役割 |
+| ---- | ---- | ---- |
+| `reduce` 自身 | `callback`（第1引数） | 各要素で1回呼ばれる関数。**戻り値が次の箱になる** |
+| `reduce` 自身 | `initialValue`（第2引数） | 箱の初期内容。最後の箱が **`reduce` の戻り値** |
+| コールバック内 | `accumulator` | 途中経過の箱。初回は初期値、2回目以降は前回の戻り値 |
+| コールバック内 | `currentValue` | 今見ている要素 |
+
+実務ではコールバックの先頭2つだけ使います。`index` と `array` も受け取れますが、省略して問題ありません。
 
 ```js
-const numbers = [1, 2, 3, 4, 5];
+const numbers = [1, 2, 3];
 const sum = numbers.reduce((accumulator, current) => {
   return accumulator + current;
 }, 0);
-// 15
+// 6
 ```
+
+`[1, 2, 3]` を初期値 `0` から足していくと、箱の中身は次のように変わります。最後の `6` が `reduce` の戻り値です。
+
+<MermaidDiagram
+  id="reduce-accumulate"
+  maxWidth="420px"
+  chart={`
+flowchart TD
+    classDef start fill:#6366f1,color:#fff,stroke:#4f46e5
+    classDef step fill:#0ea5e9,color:#fff,stroke:#0284c7
+    classDef result fill:#22c55e,color:#fff,stroke:#16a34a
+
+    I["初期値 0"] --> S1["1回目<br/>0 + 1 = 1"]
+    S1 --> S2["2回目<br/>1 + 2 = 3"]
+    S2 --> S3["3回目<br/>3 + 3 = 6"]
+    S3 --> R["reduce の戻り値 6"]
+
+    class I start
+    class S1,S2,S3 step
+    class R result
+
+`}
+/>
+
+<Marker>コールバックの戻り値は「次の accumulator」になり、最後の戻り値が `reduce` 全体の返り値です。</Marker>
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
   `reduce` だけ急に難しい…！`accumulator` って何者…？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-  `accumulator`（アキュムレータ）は「途中経過を入れておく箱」。要素を1つ処理するたびに箱の中身を更新して、最後にその箱を返す——そうイメージすると一気にわかりやすくなるよ。
+  上の図の箱だよ。`accumulator` は途中経過を入れておく箱で、要素を1つ処理するたびに中身が更新される。最後に残った箱が戻り値——合計なら数字、グルーピングならオブジェクト、というだけ。
 </SpeechBubble>
-
-### 引数の構造
-
-```js
-array.reduce((accumulator, currentValue, index, array) => {
-  // accumulator: 前回のコールバックの戻り値（初回は初期値）
-  // currentValue: 現在の要素
-  return nextAccumulator;
-}, initialValue);
-//  ^^^^^^^^^^^^^ 第2引数: 初期値
-```
 
 ### 初期値は必ず指定する
 
@@ -272,6 +444,8 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 ## ちゃんと使うためのポイント
 
 - `map` は変換した新しい配列が欲しいときに使う
+- 副作用だけが目的なら `forEach`。戻り値を捨てる `map` は書かない
+- `forEach` は途中で止められない。`break` や順次の `await` が必要なら `for...of`
 - `filter` は条件に合う要素だけを残したいときに使う
 - `reduce` は合計、グルーピング、オブジェクトへの変換などの集約で使う
 - `reduce` で何でも書けるが、読みやすさでは `filter` + `map` の方がよいことも多い
@@ -281,5 +455,6 @@ const total = expenses.reduce((sum, t) => sum + t.amount, 0);
 ## 参考リンク
 
 - [MDN — Array.prototype.map](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/map)
+- [MDN — Array.prototype.forEach](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach)
 - [MDN — Array.prototype.filter](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
 - [MDN — Array.prototype.reduce](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)

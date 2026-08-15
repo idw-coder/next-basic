@@ -1,18 +1,26 @@
 'use client';
 
-import { useTransition, useEffect, useMemo, useState } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { Search, ChevronRight, CircleCheck, CircleX, Trash2, BookOpen, Bookmark } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useQuizHistory } from '@/hooks/useQuizHistory';
+import { Input } from '@/components/ui/input';
 import { useQuizBookmarks } from '@/hooks/useQuizBookmarks';
+import { useQuizHistory } from '@/hooks/useQuizHistory';
 import { saveQuizQueueSession, type QuizQueueItem } from '@/lib/quizQueueSession';
+import { cn } from '@/lib/utils';
+import {
+  BookOpen,
+  Bookmark,
+  ChevronRight,
+  CircleCheck,
+  CircleX,
+  Search,
+  Trash2,
+} from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import type { Quiz, Tag } from './page';
-import type { SectionTagConfig, SectionBookLink } from './sectionTagMap';
+import type { SectionBookLink, SectionTagConfig } from './sectionTagMap';
 
 interface QuizListClientProps {
   initialQuizzes: Quiz[];
@@ -103,24 +111,23 @@ function QuizCard({
   const latestAnswer = getLatestAnswer(quiz.id);
   const visibleTags = quiz.tags.filter((tag) => !hiddenTagSlugs.has(tag.slug));
   const isNew =
-    quiz.createdAt &&
-    Date.now() - new Date(quiz.createdAt).getTime() < 14 * 24 * 60 * 60 * 1000;
+    quiz.createdAt && Date.now() - new Date(quiz.createdAt).getTime() < 14 * 24 * 60 * 60 * 1000;
   return (
     <Link
       href={`/quiz/${categorySlug}/${quiz.id}${originParam ? `?from=${encodeURIComponent(originParam)}` : ''}`}
       onClick={onOpen}
-      className="flex min-h-11 items-center gap-3 rounded-md border border-transparent px-2 py-2 transition-colors hover:border-blue-500/30 hover:bg-blue-400/5"
+      className="flex min-h-11 items-start gap-2 border-b border-solid border-ink/20 px-0.5 py-2.5 last:border-b-0 active:bg-muted/50 sm:gap-3 sm:px-2 sm:py-2 sm:hover:bg-blue-400/5"
     >
       <span
         className={cn(
-          'size-5 sm:size-6 shrink-0 rounded p-0 flex items-center justify-center text-xs font-bold text-white',
+          'mt-0.5 size-5 sm:size-6 shrink-0 rounded p-0 flex items-center justify-center text-xs font-bold text-white',
           index % 2 === 0 ? 'bg-blue-600' : 'bg-blue-500',
         )}
       >
         {index + 1}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-foreground text-sm leading-snug line-clamp-2 whitespace-pre-line">
+        <p className="text-foreground text-[13px] leading-snug line-clamp-2 whitespace-pre-line sm:text-[12px]">
           {quiz.question}
         </p>
         {visibleTags.length > 0 && (
@@ -143,10 +150,8 @@ function QuizCard({
           </div>
         )}
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        {isBookmarked && (
-          <Bookmark className="size-3.5 text-amber-500 fill-amber-500" />
-        )}
+      <div className="mt-0.5 flex items-center gap-1.5 shrink-0">
+        {isBookmarked && <Bookmark className="size-3.5 text-amber-500 fill-amber-500" />}
         {isNew && (
           <Badge className="bg-red-500 hover:bg-red-500 text-white text-[10px] px-1.5 py-0 leading-4">
             NEW
@@ -184,13 +189,13 @@ function SectionGroup({
   const queueLabel = section.slug === '_other' ? undefined : `${section.label}の問題`;
   return (
     <div>
-      <div className="flex items-center gap-2 border-b-2 border-blue-500 pb-1.5 mb-3">
-        <h3 className="text-[15px] font-bold text-foreground">{section.label}</h3>
-        <span className="text-xs text-muted-foreground font-medium">
+      <div className="mb-2 flex items-center gap-2 border-b-2 border-blue-500 pb-1 sm:mb-3 sm:pb-1.5">
+        <h3 className="text-sm font-bold text-foreground sm:text-[15px]">{section.label}</h3>
+        <span className="text-[11px] font-medium text-muted-foreground sm:text-xs">
           {section.quizzes.length}問
         </span>
       </div>
-      <div className="space-y-0.5">
+      <div>
         {section.quizzes.map((quiz, i) => (
           <QuizCard
             key={quiz.id}
@@ -206,12 +211,12 @@ function SectionGroup({
         ))}
       </div>
       {section.bookLinks && section.bookLinks.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-1.5 flex flex-wrap gap-1.5 sm:mt-2 sm:gap-2">
           {section.bookLinks.map((link) => (
             <Link
               key={`${link.bookSlug}/${link.chapterSlug}`}
               href={`/books/${link.bookSlug}/${link.chapterSlug}`}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 transition-colors hover:bg-amber-100"
+              className="inline-flex min-h-8 items-center gap-1.5 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900 transition-colors hover:bg-amber-100 sm:min-h-9 sm:px-2.5 sm:py-1.5 sm:text-xs"
             >
               <BookOpen className="size-3 shrink-0" />
               <span className="line-clamp-1">{link.title}</span>
@@ -309,38 +314,45 @@ export default function QuizListClient({
 
   return (
     <div
-      className={cn('space-y-6', isPending && 'opacity-60 pointer-events-none transition-opacity')}
+      className={cn(
+        'space-y-4 sm:space-y-6',
+        isPending && 'opacity-60 pointer-events-none transition-opacity',
+      )}
     >
       {/* 検索・フィルターUI */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground sm:left-3 sm:size-4" />
           <Input
             aria-label="問題をキーワードで絞り込む"
             placeholder="問題を検索..."
-            className="pl-10"
+            className="h-8 pl-9 sm:h-9 sm:pl-10"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
           />
         </div>
 
-        <div className="flex flex-wrap gap-2" role="group" aria-label="タグで絞り込む">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2" role="group" aria-label="タグで絞り込む">
           <Badge asChild variant={!currentTagSlug ? 'default' : 'outline'}>
             <button
               type="button"
               aria-pressed={!currentTagSlug}
-              className="min-h-9 cursor-pointer px-3"
+              className="min-h-7 cursor-pointer px-2 text-[11px] sm:min-h-9 sm:px-3 sm:text-xs"
               onClick={() => updateFilters(inputValue, '')}
             >
               すべて
             </button>
           </Badge>
           {tags.map((tag) => (
-            <Badge key={tag.id} asChild variant={currentTagSlug === tag.slug ? 'default' : 'outline'}>
+            <Badge
+              key={tag.id}
+              asChild
+              variant={currentTagSlug === tag.slug ? 'default' : 'outline'}
+            >
               <button
                 type="button"
                 aria-pressed={currentTagSlug === tag.slug}
-                className="min-h-9 cursor-pointer px-3"
+                className="min-h-7 cursor-pointer px-2 text-[11px] sm:min-h-9 sm:px-3 sm:text-xs"
                 onClick={() => updateFilters(inputValue, tag.slug)}
               >
                 {tag.name}
@@ -352,8 +364,8 @@ export default function QuizListClient({
 
       {/* 解答履歴サマリー */}
       {stats.total > 0 && (
-        <div className="flex items-center justify-between rounded-md border bg-muted/30 px-4 py-3">
-          <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2.5 text-xs sm:gap-4 sm:text-sm">
             <span className="text-muted-foreground">解答済み</span>
             <span className="font-semibold">{stats.total}問</span>
             <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
@@ -368,7 +380,7 @@ export default function QuizListClient({
           <Button
             variant="ghost"
             size="sm"
-            className="min-h-9 px-2 text-muted-foreground hover:text-destructive"
+            className="min-h-8 px-1.5 text-xs text-muted-foreground hover:text-destructive sm:min-h-9 sm:px-2 sm:text-sm"
             onClick={() => {
               if (window.confirm('解答履歴をすべてクリアしますか？')) {
                 clearHistory();
@@ -382,10 +394,10 @@ export default function QuizListClient({
       )}
 
       {/* 結果表示 */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         <p
           aria-live="polite"
-          className="flex min-h-6 items-center gap-2 text-sm text-muted-foreground"
+          className="flex min-h-5 items-center gap-1.5 text-xs text-muted-foreground sm:min-h-6 sm:gap-2 sm:text-sm"
         >
           {isPending ? (
             '読み込み中...'
@@ -399,7 +411,7 @@ export default function QuizListClient({
 
         {initialQuizzes.length > 0 ? (
           useSectionView ? (
-            <div className="space-y-8">
+            <div className="space-y-5 sm:space-y-8">
               {sections.map((section) => (
                 <SectionGroup
                   key={section.slug}
@@ -413,36 +425,40 @@ export default function QuizListClient({
               ))}
             </div>
           ) : (
-            initialQuizzes.map((quiz, index) => (
-              <QuizCard
-                key={quiz.id}
-                quiz={quiz}
-                index={index}
-                categorySlug={categorySlug}
-                getLatestAnswer={getLatestAnswer}
-                isBookmarked={isBookmarked(quiz.id)}
-                onOpen={() => saveCategoryQueue(initialQuizzes)}
-                originParam={originParam}
-              />
-            ))
+            <div>
+              {initialQuizzes.map((quiz, index) => (
+                <QuizCard
+                  key={quiz.id}
+                  quiz={quiz}
+                  index={index}
+                  categorySlug={categorySlug}
+                  getLatestAnswer={getLatestAnswer}
+                  isBookmarked={isBookmarked(quiz.id)}
+                  onOpen={() => saveCategoryQueue(initialQuizzes)}
+                  originParam={originParam}
+                />
+              ))}
+            </div>
           )
         ) : loadError ? (
-          <div className="rounded-md border-2 border-dashed border-destructive/40 py-12 text-center">
-            <p className="font-semibold text-foreground">問題を読み込めませんでした</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+          <div className="rounded-md border-2 border-dashed border-destructive/40 py-8 text-center sm:py-12">
+            <p className="text-sm font-semibold text-foreground sm:text-base">
+              問題を読み込めませんでした
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
               一時的な不具合の可能性があります。時間をおいて試してください
             </p>
-            <Button variant="outline" className="mt-4" onClick={() => router.refresh()}>
+            <Button variant="outline" className="mt-3 sm:mt-4" onClick={() => router.refresh()}>
               再読み込み
             </Button>
           </div>
         ) : (
-          <div className="rounded-md border-2 border-dashed py-12 text-center">
-            <p className="text-muted-foreground">該当する問題がありません</p>
+          <div className="rounded-md border-2 border-dashed py-8 text-center sm:py-12">
+            <p className="text-sm text-muted-foreground sm:text-base">該当する問題がありません</p>
             {(currentQuery || currentTagSlug) && (
               <Button
                 variant="outline"
-                className="mt-4"
+                className="mt-3 sm:mt-4"
                 onClick={() => {
                   setInputValue('');
                   updateFilters('', '');

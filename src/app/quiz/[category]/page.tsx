@@ -11,7 +11,6 @@ import { getQuizTagsByCategory } from '@/lib/server/quizCategoryTags';
 import {
   ArrowLeft,
   ArrowRight,
-  BookOpen,
   BookOpenCheck,
   ChevronRight,
   HelpCircle,
@@ -287,7 +286,7 @@ export default async function CategoryQuizPage({
       </nav>
 
       {/* ファーストビュー */}
-      <section className="relative left-1/2 mb-6 min-h-[440px] w-screen -translate-x-1/2 overflow-hidden border-y border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:mb-8 sm:min-h-[460px]">
+      <section className="relative left-1/2 mb-6 min-h-[400px] w-screen -translate-x-1/2 overflow-hidden border-y border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:mb-8 sm:min-h-[420px]">
         <Image
           src="/images/top-hero-editorial.png"
           alt=""
@@ -391,11 +390,19 @@ export default async function CategoryQuizPage({
             <div
               className={`relative flex h-full overflow-hidden rounded-lg border border-black/10 ${relatedBookTheme.cardBg} px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5`}
             >
-              <BookOpen
-                className={`pointer-events-none absolute right-1/4 top-1/2 size-14 -translate-y-1/2 -rotate-12 ${relatedBookTheme.iconText} opacity-[0.05] sm:size-16`}
+              <Image
+                src="/images/card-backgrounds/textbook-card-bg-person-right.webp"
+                alt=""
+                fill
+                sizes="(min-width: 640px) 50vw, 100vw"
+                className="pointer-events-none object-contain object-right opacity-75 transition-[transform,opacity] duration-500 group-hover:scale-[1.015] group-hover:opacity-90"
                 aria-hidden="true"
               />
-              <div className="relative z-10 min-w-0 flex-1">
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/70 via-white/45 to-white/20"
+                aria-hidden="true"
+              />
+              <div className="relative z-10 w-[72%] min-w-0">
                 <div className="mb-0.5 flex items-center gap-1.5">
                   <span
                     className={`rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none ${relatedBookTheme.badgeText} sm:text-[10px]`}

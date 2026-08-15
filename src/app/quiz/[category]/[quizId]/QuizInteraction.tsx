@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import { useQuizBookmarks } from '@/hooks/useQuizBookmarks';
 import BookChapterCard from './BookChapterCard';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -534,12 +535,24 @@ export default function QuizInteraction({
       {relatedBook && (
         <Link
           href={relatedBook.href}
-          className="group flex items-center gap-3 rounded-lg border border-amber-200 bg-white p-3.5 shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50"
+          className="group relative flex items-center gap-3 overflow-hidden rounded-lg border border-amber-200 bg-white p-3.5 shadow-sm transition-colors hover:border-amber-300 hover:bg-amber-50"
         >
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+          <Image
+            src="/images/card-backgrounds/textbook-card-bg-person-right.webp"
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            className="pointer-events-none object-contain object-right opacity-55 transition-[transform,opacity] duration-500 group-hover:scale-[1.015] group-hover:opacity-70"
+            aria-hidden="true"
+          />
+          <span
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-white/90 via-white/75 to-white/35"
+            aria-hidden="true"
+          />
+          <span className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
             <BookOpen className="size-5" />
           </span>
-          <span className="min-w-0 flex-1">
+          <span className="relative z-10 min-w-0 flex-1">
             <span className="block text-[11px] font-bold text-muted-foreground">教科書トップ</span>
             <span className="block truncate text-sm font-bold text-gray-900">
               {relatedBook.title}
@@ -548,7 +561,7 @@ export default function QuizInteraction({
               全{relatedBook.chapterCount}章
             </span>
           </span>
-          <ChevronRight className="size-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-700" />
+          <ChevronRight className="relative z-10 size-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-amber-700" />
         </Link>
       )}
     </div>

@@ -1,6 +1,6 @@
 ---
 title: '配列メソッド早見表 — やりたいことから選ぶチートシート'
-description: 'JavaScriptの配列メソッドを、変換・絞り込み・検索・コピー・結合・破壊的操作などの目的別に整理します。map・filter・reduce・find・some・every・slice・concat・fillなどの詳細ページへの入口です。'
+description: 'JavaScriptの配列メソッドを、変換・絞り込み・検索・コピー・結合・破壊的操作などの目的別に整理します。map・filter・reduce・forEach・find・some・every・slice・concat・fillなどの詳細ページへの入口です。'
 order: 7
 ---
 
@@ -26,7 +26,9 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 
 | やりたいこと                       | 使うメソッド              | 詳細                                                                                          |
 | ---------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| 新しい配列を作りたい               | 配列リテラル `[]`         | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#create-array)   |
 | 各要素を別の形に変換したい         | `map`                     | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#map)                      |
+| 各要素に処理を実行したい           | `forEach`                 | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#foreach)                  |
 | 条件に合う要素だけ残したい         | `filter`                  | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#filter)                   |
 | 配列全体を1つの値にまとめたい      | `reduce`                  | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#reduce)                   |
 | 複数の加工をつなげたい             | メソッドチェーン          | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#chaining)                 |
@@ -64,8 +66,9 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 
 まずは `map`・`filter`・`reduce` です。
 実務で最もよく使う組み合わせで、APIレスポンスの整形、リスト表示、集計処理の基礎になります。
+各要素にログや通知などの副作用だけを実行したいときは `forEach` を使います。
 
-[配列の変換メソッド — map・filter・reduce](/books/javascript/07-arrays1-transform-methods) で詳しく扱います。
+[配列の変換メソッド — map・filter・reduce・forEach](/books/javascript/07-arrays1-transform-methods) で詳しく扱います。
 
 ### 2. 検索・判定
 
@@ -88,9 +91,9 @@ ReactなどのUI実装では、状態を直接変更しないために非破壊�
 
 [配列の破壊的メソッド — sort・splice・push と非破壊の代替](/books/javascript/07-arrays4-mutating-methods) で詳しく扱います。
 
-### 5. 初期化・平坦化
+### 5. 作成・初期化・平坦化
 
-`fill` は配列の初期化、`flat`・`flatMap` はネストした配列の処理で使います。
+配列リテラル `[]` と `Array.from` は配列を新しく作るとき、`fill` は配列の初期化、`flat`・`flatMap` はネストした配列の処理で使います。
 特に `fill` にオブジェクトや配列を渡すと同じ参照が入る点は、実務でよくハマります。
 
 [配列の初期化・平坦化メソッド — fill・flat・flatMap](/books/javascript/07-arrays5-fill-flat-methods) で詳しく扱います。
@@ -104,6 +107,7 @@ ReactなどのUI実装では、状態を直接変更しないために非破壊�
 | 戻り値              | メソッド                                                   | 例                       |
 | ------------------- | ---------------------------------------------------------- | ------------------------ |
 | 新しい配列          | `map` / `filter` / `slice` / `concat` / `flat` / `flatMap` | 元配列を壊さず加工する   |
+| `undefined`         | `forEach`                                                  | 副作用だけ実行する       |
 | 1つの値             | `reduce`                                                   | 合計、集計、グルーピング |
 | 要素 or `undefined` | `find`                                                     | ID一致の1件を探す        |
 | 数値                | `findIndex` / `indexOf`                                    | 位置を探す               |
@@ -119,7 +123,7 @@ ReactなどのUI実装では、状態を直接変更しないために非破壊�
 | 種類               | メソッド                                                                                                                              |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | 破壊的             | `push` / `pop` / `shift` / `unshift` / `splice` / `sort` / `reverse` / `fill` / `copyWithin`                                          |
-| 非破壊             | `map` / `filter` / `reduce` / `find` / `findIndex` / `some` / `every` / `slice` / `concat` / `flat` / `flatMap` / `includes` / `join` |
+| 非破壊             | `map` / `filter` / `reduce` / `forEach` / `find` / `findIndex` / `some` / `every` / `slice` / `concat` / `flat` / `flatMap` / `includes` / `join` |
 | ES2023の非破壊代替 | `toSorted` / `toReversed` / `toSpliced` / `with`                                                                                      |
 
 破壊的メソッドとES2023の非破壊代替の対応は、[配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#overview) に一覧があります。
@@ -159,6 +163,7 @@ flowchart TB
     B -->|".map()"| B
     B -->|".filter()"| B
     B -->|".reduce()"| B
+    B -->|".forEach()"| B
     B -->|"__proto__"| C["Object.prototype"]
 `}
 />
@@ -185,19 +190,20 @@ Array.from(nodes).map((node) => node.textContent);
 
 ## ちゃんと使うためのポイント
 
-- <Marker>変換は `map`、絞り込みは `filter`、集約は `reduce`</Marker>
+- <Marker>変換は `map`、絞り込みは `filter`、集約は `reduce`、副作用は `forEach`</Marker>
 - 「1件だけ欲しい」なら `find`、「全部欲しい」なら `filter`
 - 「あるかどうか」だけなら `some` / `every` / `includes`
 - 元の配列を壊したくないときは `slice`・`concat`・スプレッド構文・ES2023の非破壊代替を使う
 - `reduce` は万能だが読みにくくなりがち。`map` + `filter` で書けるなら分けた方が明快
 - 破壊的メソッド（`sort` / `reverse` / `splice` / `fill`）と非破壊メソッドの区別を意識する
 
-次は、実務で最もよく使う **[配列の変換メソッド — map・filter・reduce](/books/javascript/07-arrays1-transform-methods)** を詳しく見ていきます。
+次は、実務で最もよく使う **[配列の変換メソッド — map・filter・reduce・forEach](/books/javascript/07-arrays1-transform-methods)** を詳しく見ていきます。
 
 ## 参考リンク
 
 - [MDN — Array](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array)
 - [MDN — Array.prototype.map](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/map)
+- [MDN — Array.prototype.forEach](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach)
 - [MDN — Array.prototype.filter](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
 - [MDN — Array.prototype.reduce](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)
 
