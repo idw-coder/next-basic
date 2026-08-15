@@ -115,7 +115,11 @@ export default function CategoryRandomStartCard({
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="group block h-full min-w-0 text-left">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group block h-full w-full min-w-0 text-left"
+      >
         <div className="relative flex h-full overflow-hidden rounded-lg border border-primary/15 bg-blue-50 px-2.5 py-2 transition-colors hover:bg-white sm:px-3 sm:py-2.5">
           <Image
             src="/images/card-backgrounds/random-practice-card-bg-person-right.webp"

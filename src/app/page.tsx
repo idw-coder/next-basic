@@ -719,56 +719,60 @@ export default async function Home() {
           </section>
 
           {/* ランダムクイズ & キーワード検索 CTA */}
-          <section className="mb-8 grid grid-cols-2 gap-2 sm:gap-4 md:mb-16">
-            <Link href="/quiz/random" className="group block">
-              <div className="flex h-full flex-col rounded-xl border border-brand-blue/20 bg-brand-blue-tint p-3 text-center shadow-[0_18px_45px_rgba(9,103,201,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(9,103,201,0.16)] sm:rounded-[2rem] sm:p-8">
-                <h2 className="mb-0.5 text-xs font-extrabold text-ink sm:mb-1.5 sm:text-lg">
-                  ランダムクイズ
-                </h2>
-                <p className="mb-2 text-[11px] leading-relaxed text-ink-muted sm:mb-4 sm:text-sm">
-                  全カテゴリから出題
-                  <br className="sm:hidden" />
-                  <span className="hidden sm:inline">、</span>サクッと力試し
+          <section className="mb-8 grid gap-3 sm:grid-cols-2 sm:gap-4 md:mb-16">
+            <Link
+              href="/quiz/random"
+              className="group relative isolate min-h-40 overflow-hidden rounded-2xl border border-brand-blue/20 bg-brand-blue-tint shadow-[0_18px_45px_rgba(9,103,201,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(9,103,201,0.16)] sm:min-h-48 sm:rounded-[2rem]"
+            >
+              <span
+                className="pointer-events-none absolute inset-0 -z-10 bg-no-repeat [background-position:right_bottom] [background-size:auto_82%] transition-transform duration-500 group-hover:scale-[1.015] sm:[background-size:auto_92%]"
+                style={{
+                  backgroundImage:
+                    'url("/images/card-backgrounds/random-practice-card-bg-person-right.webp")',
+                }}
+                aria-hidden="true"
+              />
+              <span
+                className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-brand-blue-tint from-0% via-brand-blue-tint/95 via-48% to-brand-blue-tint/5 to-82%"
+                aria-hidden="true"
+              />
+              <div className="flex min-h-40 max-w-[64%] flex-col items-start justify-center p-5 text-left sm:min-h-48 sm:max-w-[62%] sm:p-7">
+                <h2 className="text-lg font-extrabold text-ink sm:text-xl">ランダムクイズ</h2>
+                <p className="mt-1.5 text-xs leading-relaxed text-ink-muted sm:text-sm">
+                  全カテゴリから出題、サクッと力試し
                 </p>
-                <span className="mx-auto inline-flex min-h-8 items-center justify-center gap-1 rounded-full bg-brand-blue px-3.5 py-1 text-[11px] font-bold text-white transition-colors group-hover:bg-brand-blue-deep sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
+                <span className="mt-4 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-brand-blue px-5 py-1.5 text-xs font-bold text-white transition-colors group-hover:bg-brand-blue-deep sm:text-sm">
                   挑戦する
-                  <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform sm:size-4" />
+                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 sm:size-4" />
                 </span>
-                <div className="mt-auto flex h-14 items-end justify-center pt-2 sm:h-36 sm:pt-4">
-                  <Image
-                    src="/images/plan_selection_man_color.png"
-                    alt=""
-                    width={400}
-                    height={280}
-                    className="h-full w-auto object-contain"
-                  />
-                </div>
               </div>
             </Link>
 
-            <Link href="/search" className="group block">
-              <div className="flex h-full flex-col rounded-xl border border-brand-red/20 bg-brand-red-tint p-3 text-center shadow-[0_18px_45px_rgba(255,98,77,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(255,98,77,0.16)] sm:rounded-[2rem] sm:p-8">
-                <h2 className="mb-0.5 text-xs font-extrabold text-ink sm:mb-1.5 sm:text-lg">
-                  キーワード検索
-                </h2>
-                <p className="mb-2 text-[11px] leading-relaxed text-ink-muted sm:mb-4 sm:text-sm">
-                  クイズも教科書も
-                  <br className="sm:hidden" />
-                  <span className="hidden sm:inline">、</span>横断検索
+            <Link
+              href="/search"
+              className="group relative isolate min-h-40 overflow-hidden rounded-2xl border border-brand-red/20 bg-brand-red-tint shadow-[0_18px_45px_rgba(255,98,77,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(255,98,77,0.16)] sm:min-h-48 sm:rounded-[2rem]"
+            >
+              <span
+                className="pointer-events-none absolute inset-0 -z-10 bg-no-repeat [background-position:right_bottom] [background-size:auto_82%] transition-transform duration-500 group-hover:scale-[1.015] sm:[background-size:auto_92%]"
+                style={{
+                  backgroundImage:
+                    'url("/images/card-backgrounds/textbook-card-bg-person-right.webp")',
+                }}
+                aria-hidden="true"
+              />
+              <span
+                className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-brand-red-tint from-0% via-brand-red-tint/95 via-48% to-brand-red-tint/5 to-82%"
+                aria-hidden="true"
+              />
+              <div className="flex min-h-40 max-w-[64%] flex-col items-start justify-center p-5 text-left sm:min-h-48 sm:max-w-[62%] sm:p-7">
+                <h2 className="text-lg font-extrabold text-ink sm:text-xl">キーワード検索</h2>
+                <p className="mt-1.5 text-xs leading-relaxed text-ink-muted sm:text-sm">
+                  クイズも教科書も、まとめて横断検索
                 </p>
-                <span className="mx-auto inline-flex min-h-8 items-center justify-center gap-1 rounded-full bg-brand-red px-3.5 py-1 text-[11px] font-bold text-white transition-colors group-hover:bg-brand-red-deep sm:gap-1.5 sm:px-6 sm:py-2 sm:text-sm">
+                <span className="mt-4 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-brand-red px-5 py-1.5 text-xs font-bold text-white transition-colors group-hover:bg-brand-red-deep sm:text-sm">
                   検索する
-                  <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform sm:size-4" />
+                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 sm:size-4" />
                 </span>
-                <div className="mt-auto flex h-14 items-end justify-center pt-2 sm:h-36 sm:pt-4">
-                  <Image
-                    src="/images/search_woman_color.png"
-                    alt=""
-                    width={400}
-                    height={400}
-                    className="h-full w-auto object-contain"
-                  />
-                </div>
               </div>
             </Link>
           </section>

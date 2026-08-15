@@ -1,0 +1,284 @@
+---
+title: 'SQLiteの型は緩い — 型親和性（TYPE AFFINITY）とSTRICTテーブル'
+description: 'SQLiteに厳密な型がない理由を型親和性の仕組みから解説し、型を固定したいときに使うSTRICTテーブルの使いどころを整理します。'
+order: 3
+---
+
+SQLiteを他のデータベースと同じ感覚で使っていると、必ず一度は驚く場面があります。
+
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  age INTEGER
+);
+
+INSERT INTO users (age) VALUES ('こんにちは');
+```
+
+MySQLやPostgreSQLならエラーになるこのSQLが、SQLiteでは**成功します**。`age` 列に日本語の文字列がそのまま入ります。
+
+これはバグではなく、SQLiteの設計です。この章では、その仕組みと付き合い方を整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+えっ、INTEGER って書いたのに文字列が入るんですか？ それだと型を書く意味がないのでは……。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+意味はあるんだ。SQLiteの型は「絶対に守るルール」じゃなくて「できればこの型に寄せる」という優先度なんだよ。これを型親和性と呼ぶ。
+</SpeechBubble>
+
+## 値の型は「列」ではなく「値」が持つ
+
+多くのデータベースでは、型は**列**に属します。`age INTEGER` と宣言したら、その列には整数しか入りません。
+
+SQLiteでは、型は**値**に属します。列は「どんな型に寄せたいか」という希望を持つだけで、実際の型は1行ごとに異なっていて構いません。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    C["列の宣言: age INTEGER"] --> O["MySQL・PostgreSQL"]
+    C --> S["SQLite"]
+    O --> OV["値はすべて整数<br/>違う型はエラー"]
+    S --> SV1["25（整数）"]
+    S --> SV2["'こんにちは'（文字列）"]
+`}
+/>
+
+<Marker>SQLiteでは、同じ列の中に整数・文字列・NULLが混在できます。型を保証するのはデータベースではなくアプリケーション側の責任です。</Marker>
+
+実際にどの型で保存されたかは `typeof()` 関数で確認できます。
+
+**構文：** `typeof(値)`
+
+**戻り値：** `'null'` / `'integer'` / `'real'` / `'text'` / `'blob'` のいずれか（文字列）
+
+```sql
+SELECT age, typeof(age) FROM users;
+```
+
+```
+┌────────────┬─────────────┐
+│    age     │ typeof(age) │
+├────────────┼─────────────┤
+│ 25         │ integer     │
+│ こんにちは │ text        │
+└────────────┴─────────────┘
+```
+
+## 5つのストレージクラス
+
+SQLiteが実際に値を保存するときの型は、次の5種類だけです。これを**ストレージクラス**と呼びます。
+
+| ストレージクラス | 内容 |
+| ---------------- | ---- |
+| `NULL` | 値なし |
+| `INTEGER` | 符号付き整数（1〜8バイトで可変） |
+| `REAL` | 浮動小数点数（8バイト） |
+| `TEXT` | 文字列（UTF-8 / UTF-16） |
+| `BLOB` | 入力されたバイト列をそのまま保存 |
+
+<Callout type="note" title="BOOLEAN型もDATE型もない">
+SQLiteには真偽値型がありません。`TRUE` / `FALSE` というキーワードは使えますが、保存されるのは整数の `1` / `0` です。日付時刻型もなく、TEXT・INTEGER・REALのいずれかで表現します。詳しくは [SQLiteのSQL方言](/books/sqlite/sqlite-sql-dialect) で扱います。
+</Callout>
+
+## 型親和性（TYPE AFFINITY）とは
+
+`CREATE TABLE` で書いた型名は、「この列に入れる値は、できればこの型に変換して保存してほしい」という**親和性**として扱われます。親和性は5種類です。
+
+| 親和性 | 挙動 |
+| ------ | ---- |
+| `TEXT` | 数値を渡されても文字列に変換して保存する |
+| `NUMERIC` | 数値に変換できる文字列は数値にする。できなければ文字列のまま |
+| `INTEGER` | NUMERICとほぼ同じ。小数点以下がない実数は整数にする |
+| `REAL` | 整数を渡されても実数に変換して保存する |
+| `BLOB` | 変換を一切しない。渡された型のまま保存する |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+親和性が5種類なのはわかりましたが、`VARCHAR(255)` みたいな型を書いたときはどれになるんですか？
+</SpeechBubble>
+
+宣言した型名から親和性を決めるルールが決まっています。**上から順に判定し、最初に当てはまったものが採用されます。**
+
+| 順序 | 型名に含まれる文字列 | 決まる親和性 | 例 |
+| ---- | -------------------- | ------------ | -- |
+| 1 | `INT` | `INTEGER` | `INT`, `INTEGER`, `BIGINT`, `TINYINT` |
+| 2 | `CHAR` / `CLOB` / `TEXT` | `TEXT` | `VARCHAR(255)`, `NVARCHAR`, `TEXT` |
+| 3 | `BLOB`、または型名を書かない | `BLOB` | `BLOB` |
+| 4 | `REAL` / `FLOA` / `DOUB` | `REAL` | `REAL`, `FLOAT`, `DOUBLE` |
+| 5 | 上のどれにも当てはまらない | `NUMERIC` | `DECIMAL(10,2)`, `BOOLEAN`, `DATE` |
+
+このルールは、**他のデータベース向けに書かれた `CREATE TABLE` 文をなるべくそのまま受け入れる**ために作られています。だから `VARCHAR(255)` も `NVARCHAR2` も、とりあえず動きます。
+
+<Callout type="warning" title="桁数の指定は無視される">
+`VARCHAR(10)` の `(10)` に効果はありません。11文字でも100文字でも保存できてしまいます。文字数を制限したい場合は `CHECK` 制約を使ってください。
+</Callout>
+
+```sql
+CREATE TABLE posts (
+  title TEXT NOT NULL CHECK (length(title) <= 100)
+);
+```
+
+<Figure src="/images/marubatsu.png" alt="正解と不正解のイメージ" caption="型の宣言は制約ではなく「希望」です。制約が欲しいならCHECKやSTRICTを明示します" maxWidth="300px" />
+
+## 型親和性が引き起こす実際の事故
+
+親和性を知らないまま使うと、次のような形で表面化します。
+
+### 数字の文字列が数値に変換されてしまう
+
+`INTEGER` 親和性の列に文字列 `'0123'` を入れると、数値に変換できるため `123` として保存されます。先頭のゼロが消えます。
+
+```sql
+CREATE TABLE codes (code INTEGER);
+INSERT INTO codes VALUES ('0123');
+SELECT code, typeof(code) FROM codes;
+-- 123 | integer
+```
+
+郵便番号・電話番号・商品コードのように「数字だが数値ではないもの」は、必ず `TEXT` 型で宣言します。
+
+### 比較が期待通りに動かない
+
+型が違う値どうしを比較すると、SQLiteは**ストレージクラスの順序**で大小を決めます。順序は `NULL` < `INTEGER` = `REAL` < `TEXT` < `BLOB` です。
+
+```sql
+SELECT 100 > '9';   -- 0（偽）
+```
+
+数値の `100` と文字列の `'9'` を比べると、「INTEGERはTEXTより小さい」というルールが先に効くため、偽になります。数値のつもりで文字列を入れていると、`WHERE` や `ORDER BY` が静かに壊れます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+エラーが出ないのが一番厄介なところ。テストが通っているのに集計結果だけがおかしい、という形で出てくるんだ。
+</SpeechBubble>
+
+### JavaScriptから入れた値の型がバラバラになる
+
+アプリケーション側で `Number` と `String` を取り違えていても、SQLiteはエラーを出しません。同じ列に `25` と `'25'` が混ざり、`WHERE age = 25` で片方だけがヒットする、という状態になります。
+
+## STRICTテーブルで型を守らせる
+
+SQLite 3.37.0 以降では、テーブル定義の末尾に `STRICT` を付けることで、他のデータベースと同じ厳密な型チェックを有効にできます。
+
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  age INTEGER
+) STRICT;
+
+INSERT INTO users (name, age) VALUES ('田中', 'こんにちは');
+```
+
+```
+Runtime error: cannot store TEXT value in INTEGER column users.age
+```
+
+<Marker>新しくテーブルを作るなら、まず STRICT を付けることを検討してください。型の事故の大半がここで防げます。</Marker>
+
+`STRICT` テーブルでは、使える型名が次の6つだけに制限されます。
+
+| 型名 | 内容 |
+| ---- | ---- |
+| `INT` | 整数 |
+| `INTEGER` | 整数（`PRIMARY KEY` と組み合わせると rowid の別名になる） |
+| `REAL` | 浮動小数点数 |
+| `TEXT` | 文字列 |
+| `BLOB` | バイト列 |
+| `ANY` | 何でも入る（従来の緩い挙動が欲しい列に使う） |
+
+`VARCHAR(255)` や `BOOLEAN`、`DATETIME` は使えなくなります。これは制限に見えますが、「実際には効いていない型名」が書けなくなるという意味で、むしろ定義が正直になります。
+
+<Callout type="info" title="ANY列はSTRICTでも型変換されない">
+`STRICT` テーブルの `ANY` 列は、通常テーブルの「型名なし」列とは少し違い、**数字の文字列を数値に変換しません**。`'0123'` を入れれば `'0123'` のまま残ります。混在を許しつつ変換もされたくない場合に使えます。
+</Callout>
+
+### STRICTを使うときの注意
+
+`STRICT` は既存テーブルに後から付けられません。付けたい場合はテーブルを作り直す必要があります。
+
+```sql
+CREATE TABLE users_new (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  age INTEGER
+) STRICT;
+
+INSERT INTO users_new SELECT id, name, age FROM users;
+DROP TABLE users;
+ALTER TABLE users_new RENAME TO users;
+```
+
+<Callout type="warning" title="既存データに型の混在があると失敗する">
+移行時の `INSERT ... SELECT` は、既存データに型違反があるとそこで止まります。移行前に `SELECT id FROM users WHERE typeof(age) NOT IN ('integer','null');` のようなクエリで、違反している行を洗い出しておきましょう。
+</Callout>
+
+また、`STRICT` は 3.37.0（2021年11月）以降の機能です。古いSQLiteでは構文エラーになるため、配布するアプリで使う場合は動作環境のバージョンを確認してください。
+
+## 日付をどう保存するか
+
+日付時刻型がないため、保存方法は自分で決める必要があります。実務では次の3つが使われます。
+
+| 方式 | 保存する型 | 例 | 特徴 |
+| ---- | ---------- | -- | ---- |
+| ISO 8601文字列 | `TEXT` | `'2026-08-15 10:30:00'` | 人が読める。文字列比較で時系列順に並ぶ |
+| Unix時間 | `INTEGER` | `1786000000` | 省サイズ。計算しやすい。目視では読めない |
+| ユリウス日 | `REAL` | `2461268.94` | SQLite内部向け。実務ではほぼ使わない |
+
+<Marker>迷ったら TEXT のISO 8601形式を選んでください。文字列としてソートしただけで正しい時系列順になり、目視でも読めます。</Marker>
+
+```sql
+CREATE TABLE logs (
+  id INTEGER PRIMARY KEY,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+) STRICT;
+```
+
+日付関数の詳しい使い方は [SQLiteのSQL方言](/books/sqlite/sqlite-sql-dialect) で扱います。
+
+<Figure src="/images/planning_suit_man_color.png" alt="設計を計画するイメージ" caption="日付の保存形式は、プロジェクトの最初に決めて統一しておくと後が楽になります" maxWidth="360px" />
+
+## よくあるハマりどころ
+
+### 真偽値を `'true'` という文字列で入れてしまう
+
+SQLiteに `BOOLEAN` 型はありません。`TRUE` / `FALSE` キーワードは整数の `1` / `0` になりますが、アプリ側から文字列 `'true'` を渡すとそのまま文字列として保存されます。
+
+```sql
+SELECT * FROM users WHERE is_active = 1;      -- 1が入っている行だけヒット
+SELECT * FROM users WHERE is_active = 'true'; -- 'true'が入っている行だけヒット
+```
+
+両方が混在すると、どちらのクエリも一部の行を取りこぼします。`CHECK (is_active IN (0, 1))` を付けておくと防げます。
+
+### `NUMERIC` 親和性で小数が整数に丸められると勘違いする
+
+`DECIMAL(10,2)` は `NUMERIC` 親和性になりますが、`(10,2)` の桁数指定は効きません。金額を扱う場合、浮動小数点の誤差を避けるために**最小単位の整数**（円なら円、ドルならセント）で保存するのが安全です。
+
+### 既存プロジェクトで急に全テーブルをSTRICTにしようとする
+
+`STRICT` 化はテーブルの作り直しを伴い、既存データの型違反が見つかると移行が止まります。まずは新規テーブルから `STRICT` にし、既存テーブルは `typeof()` で汚染状況を確認してから順に移行してください。
+
+## ちゃんと使うためのポイント
+
+- SQLiteでは型は列ではなく値に属する。同じ列に別の型が混在できる
+- 宣言した型名は「型親和性」という希望として扱われる
+- `VARCHAR(10)` の桁数指定は効かない。制限したいなら `CHECK`
+- 郵便番号・電話番号など「数字だが数値ではないもの」は必ず `TEXT`
+- 型の混在は `typeof()` で調べられる
+- 新規テーブルは `STRICT` を付けて、他のDBMSと同じ厳密さにするのが安全
+- 日付は `TEXT` のISO 8601形式が扱いやすい
+
+次の章では、SQLiteのすべてのテーブルが暗黙に持っている `rowid` と、`INTEGER PRIMARY KEY` の特別な関係、そしてデフォルトで無効になっている外部キー制約について見ていきます。
+
+## 参考リンク
+
+- [SQLite公式 — Datatypes In SQLite](https://www.sqlite.org/datatype3.html)
+- [SQLite公式 — STRICT Tables](https://www.sqlite.org/stricttables.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="データ型と制約の知識を、4択クイズでアウトプットして定着させよう"
+/>

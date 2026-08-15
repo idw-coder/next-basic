@@ -1,0 +1,323 @@
+---
+title: 'sqlite3コマンドの使い方 — .tables・.schema・.mode・.importを覚える'
+description: 'sqlite3コマンドラインツールでデータベースを開き、テーブル一覧やスキーマを確認し、CSVを取り込むまでの基本操作を整理します。'
+order: 2
+---
+
+SQLiteには `sqlite3` という公式のコマンドラインツールが付属しています。データベースを作る、中身を覗く、CSVを取り込む、バックアップを取るといった作業は、すべてこのコマンド1つで完結します。
+
+GUIツールを入れる前に、まず `sqlite3` を使えるようにしておくと、サーバー上での調査やCIでの前処理がぐっと楽になります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+データベースを作るコマンドって、`CREATE DATABASE` みたいなものを叩くんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+SQLiteには `CREATE DATABASE` がないんだ。ファイル名を指定して開くと、その時点でデータベースができる。
+</SpeechBubble>
+
+## インストールを確認する
+
+macOSには最初から入っています。Linuxではディストリビューションのパッケージで入ります。
+
+```bash
+sqlite3 --version
+```
+
+```
+3.50.4 2025-07-30 19:33:53 ...
+```
+
+バージョンが表示されれば準備完了です。入っていない場合は次のようにインストールします。
+
+```bash
+# Debian / Ubuntu
+sudo apt install sqlite3
+
+# macOS（Homebrewで新しいバージョンを入れたい場合）
+brew install sqlite
+```
+
+<Callout type="info" title="macOS標準のsqlite3は少し古いことがある">
+macOSに同梱されている `sqlite3` は、OSのリリース時点のバージョンで固定されます。`STRICT` テーブルや `RETURNING` など比較的新しい機能を試したい場合は、Homebrewで新しいものを入れてパスを通してください。
+</Callout>
+
+## データベースを開く・作る
+
+ファイル名を渡して起動します。ファイルが存在しなければ、その名前で新しいデータベースが作られます。
+
+```bash
+sqlite3 mydb.db
+```
+
+```
+SQLite version 3.50.4 2025-07-30 19:33:53
+Enter ".help" for usage hints.
+sqlite>
+```
+
+<Marker>SQLiteには `CREATE DATABASE` がありません。ファイルを開くことが、そのままデータベースの作成にあたります。</Marker>
+
+ただし、この時点ではまだファイルはディスクに作られていません。**最初のテーブルを作った時点**でファイルが書き出されます。
+
+引数なしで起動すると、一時的なデータベースが使われます。メモリ上だけで完結させたい場合は `:memory:` を指定します。
+
+```bash
+sqlite3 :memory:
+```
+
+終了するときは `.quit` です。`Ctrl+D` でも抜けられます。
+
+## ドットコマンドとSQLの違い
+
+`sqlite3` の中では、2種類の命令を打てます。
+
+| 種類 | 例 | 末尾のセミコロン |
+| ---- | -- | ---------------- |
+| SQL | `SELECT * FROM users;` | 必要 |
+| ドットコマンド | `.tables` | 不要 |
+
+ドットコマンドは `sqlite3` ツール自身への指示で、SQLではありません。**行の先頭にドットを書く**必要があり、セミコロンは付けません。
+
+<Callout type="warning" title="SQLはセミコロンを忘れると終わらない">
+SQLを打ってEnterを押しても何も起きず、プロンプトが `...>` に変わったら、セミコロンを忘れています。落ち着いて `;` を打ってEnterしてください。
+</Callout>
+
+よく使うものを先に押さえておきましょう。
+
+| コマンド | 説明 |
+| -------- | ---- |
+| `.help` | ドットコマンドの一覧を表示 |
+| `.databases` | 開いているデータベースとファイルパスを表示 |
+| `.tables` | テーブル名の一覧を表示 |
+| `.schema` | すべてのテーブルの `CREATE` 文を表示 |
+| `.schema テーブル名` | 特定テーブルの `CREATE` 文を表示 |
+| `.indexes` | インデックスの一覧を表示 |
+| `.mode 形式` | 結果の表示形式を切り替える |
+| `.headers on` | 結果に列名の見出しを付ける |
+| `.import ファイル テーブル` | ファイルをテーブルに取り込む |
+| `.output ファイル` | 以降の出力をファイルに書き出す |
+| `.read ファイル` | ファイルに書いたSQLを実行する |
+| `.backup ファイル` | データベースを安全にバックアップする |
+| `.quit` | 終了する |
+
+## スキーマを確認する
+
+調査で最初にやるのは、どんなテーブルがあるかの確認です。
+
+```
+sqlite> .tables
+books    reviews  users
+```
+
+テーブルの定義を見たいときは `.schema` を使います。
+
+```
+sqlite> .schema users
+CREATE TABLE users(
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+```
+
+<Marker>`.schema` は「実際に作られた定義」を返すため、マイグレーションファイルより信頼できます。</Marker>
+
+同じ情報は `sqlite_schema` テーブルからSQLでも取れます。スクリプトの中で使うならこちらが便利です。
+
+```sql
+SELECT name, type FROM sqlite_schema WHERE type = 'table';
+```
+
+<Callout type="note" title="sqlite_master という別名">
+古い資料では `sqlite_master` という名前で紹介されています。現在は `sqlite_schema` が正式名称ですが、`sqlite_master` も引き続き使えます。
+</Callout>
+
+<Figure src="/images/search_woman_color.png" alt="調査するイメージ" caption="知らないデータベースを渡されたら、まず .tables と .schema で全体像をつかみます" maxWidth="360px" />
+
+## 結果の表示を読みやすくする
+
+デフォルトの表示は、値がパイプ区切りで並ぶだけで非常に読みにくいものです。
+
+```
+sqlite> SELECT * FROM users;
+1|田中|tanaka@example.com|2026-08-01 10:00:00
+2|佐藤|sato@example.com|2026-08-02 11:30:00
+```
+
+`.mode` で表示形式を変えられます。
+
+**構文：** `.mode 形式名`
+
+| 形式 | 説明 |
+| ---- | ---- |
+| `box` | 罫線で囲んだ表。画面で読むならこれ |
+| `table` | ASCII文字の表 |
+| `column` | 列を揃えて表示 |
+| `csv` | CSV形式。ファイル出力向け |
+| `json` | JSON配列。プログラムに渡すとき便利 |
+| `markdown` | Markdownの表。ドキュメントに貼るとき便利 |
+| `list` | パイプ区切り（デフォルト） |
+
+`.headers on` と組み合わせるのが定番です。
+
+```
+sqlite> .mode box
+sqlite> .headers on
+sqlite> SELECT * FROM users;
+┌────┬──────┬────────────────────┬─────────────────────┐
+│ id │ name │       email        │     created_at      │
+├────┼──────┼────────────────────┼─────────────────────┤
+│ 1  │ 田中 │ tanaka@example.com │ 2026-08-01 10:00:00 │
+│ 2  │ 佐藤 │ sato@example.com   │ 2026-08-02 11:30:00 │
+└────┴──────┴────────────────────┴─────────────────────┘
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+毎回この2行を打つのは面倒です……。
+</SpeechBubble>
+
+ホームディレクトリに `.sqliterc` というファイルを置くと、起動時に自動で読み込まれます。
+
+```
+.mode box
+.headers on
+```
+
+<Callout type="warning" title=".sqlitercはスクリプトでは無効化する">
+CIやシェルスクリプトの中で `sqlite3` を使う場合、`.sqliterc` の設定が出力形式を変えてしまい、パース結果が壊れることがあります。スクリプトでは `-init /dev/null` を付けて読み込みを止めるか、`-csv` のようにオプションで形式を明示してください。
+</Callout>
+
+## CSVを取り込む
+
+調査や初期データ投入でよく使うのが `.import` です。
+
+**構文：** `.import ファイルパス テーブル名`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| ファイルパス | 取り込む元ファイル。`.mode` で指定した形式として解釈される |
+| テーブル名 | 取り込み先のテーブル。存在しない場合は自動で作られる |
+
+主なオプションは次の通りです。
+
+| オプション | 説明 |
+| ---------- | ---- |
+| `--csv` | ファイルをCSVとして読む |
+| `--skip N` | 先頭N行を読み飛ばす |
+| `--schema 名` | 取り込み先のスキーマを指定する |
+
+```
+sqlite> .import --csv books.csv books
+```
+
+<Marker>取り込み先のテーブルが存在しない場合、CSVの1行目が列名として使われ、すべての列が TEXT として作られます。</Marker>
+
+意図した型で入れたい場合は、先に `CREATE TABLE` でテーブルを作り、その上で `--skip 1` を付けてヘッダー行を飛ばします。
+
+```sql
+CREATE TABLE books (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  price INTEGER
+);
+```
+
+```
+sqlite> .import --csv --skip 1 books.csv books
+```
+
+逆に書き出したいときは `.output` と組み合わせます。
+
+```
+sqlite> .headers on
+sqlite> .mode csv
+sqlite> .output books_export.csv
+sqlite> SELECT * FROM books;
+sqlite> .output stdout
+```
+
+## シェルから直接実行する
+
+対話モードに入らず、シェルから1行で実行することもできます。CIやスクリプトではこちらを使います。
+
+```bash
+sqlite3 mydb.db "SELECT count(*) FROM users;"
+```
+
+```bash
+# JSONで受け取ってjqに渡す
+sqlite3 -json mydb.db "SELECT id, name FROM users LIMIT 3;" | jq .
+```
+
+SQLをファイルにまとめておいて流し込むこともできます。
+
+```bash
+sqlite3 mydb.db < schema.sql
+```
+
+対話モードの中からファイルを読むなら `.read` です。
+
+```
+sqlite> .read schema.sql
+```
+
+<Figure src="/images/pc-work-woman01.png" alt="ターミナルで作業するイメージ" caption="スキーマ定義をファイルに残しておくと、環境の作り直しがコマンド1回で済みます" maxWidth="380px" />
+
+## よくあるハマりどころ
+
+### ファイルが作られない
+
+`sqlite3 mydb.db` を実行して `.quit` しただけでは、ファイルはできません。テーブルを1つ作るまで、SQLiteはディスクに書き込まないためです。
+
+```
+sqlite> CREATE TABLE t(x);
+sqlite> .quit
+```
+
+これでファイルが作られます。
+
+### 別のディレクトリで実行して「データが消えた」
+
+`sqlite3 mydb.db` は**カレントディレクトリからの相対パス**で解釈されます。別のディレクトリで同じコマンドを打つと、そこに空のデータベースが新規作成されます。「データが消えた」と思ったら、まず `.databases` で実際に開いているファイルのパスを確認してください。
+
+```
+sqlite> .databases
+main: /Users/you/project/mydb.db r/w
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「消えた」の9割はこれ。SQLiteは存在しないファイル名を渡されると、黙って新しく作るからね。
+</SpeechBubble>
+
+### 実行中のアプリのDBを `cp` でバックアップした
+
+アプリが動いている最中に `cp mydb.db backup.db` とすると、書き込みの途中の状態をコピーしてしまい、壊れたファイルになることがあります。`sqlite3` にはこのための専用コマンドがあります。
+
+```
+sqlite> .backup backup.db
+```
+
+詳しくは [SQLiteの運用](/books/sqlite/backup-vacuum-and-pragma) で扱います。
+
+## ちゃんと使うためのポイント
+
+- `sqlite3 ファイル名` で開く。ファイルがなければ新規作成される
+- ドットコマンドはセミコロン不要、SQLはセミコロン必須
+- 調査は `.tables` → `.schema テーブル名` の順が基本
+- `.mode box` と `.headers on` を `.sqliterc` に書いておくと毎回読みやすい
+- スクリプトでは `.sqliterc` を無効化し、`-json` や `-csv` で形式を明示する
+- 稼働中のDBのバックアップに `cp` を使わず `.backup` を使う
+
+次の章では、SQLiteでもっとも誤解されやすい「型の緩さ」を扱います。`VARCHAR(10)` に11文字を入れても通ってしまう理由と、それを防ぐ `STRICT` テーブルを見ていきます。
+
+## 参考リンク
+
+- [SQLite公式 — Command Line Shell For SQLite](https://www.sqlite.org/cli.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="SQLの基本操作を、4択クイズでアウトプットして定着させよう"
+/>

@@ -1,0 +1,280 @@
+---
+title: 'トランザクションとWALモード — SQLITE_BUSYが出る理由と対策'
+description: 'SQLiteのトランザクション、ロールバックジャーナルとWALモードの違い、書き込みが1つに制限される理由、SQLITE_BUSYへの対処を整理します。'
+order: 6
+---
+
+SQLiteを本格的に使い始めると、必ず一度は `SQLITE_BUSY: database is locked` というエラーに出会います。
+
+このエラーは「SQLiteが壊れている」わけでも「性能が足りない」わけでもなく、SQLiteのロックの仕組みをそのまま反映したものです。仕組みを理解すれば、ほとんどのケースは設定2行と書き方の工夫で解決できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ローカルで動かしているときは何ともなかったのに、テストを並列で走らせたら急に `database is locked` が出るようになりました……。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+それはSQLiteが正しく動いている証拠でもあるんだ。まずロックの仕組みを見て、そのあとWALモードで大きく改善しよう。
+</SpeechBubble>
+
+## トランザクションの基本
+
+構文は標準SQLと同じです。
+
+```sql
+BEGIN;
+UPDATE accounts SET balance = balance - 1000 WHERE id = 1;
+UPDATE accounts SET balance = balance + 1000 WHERE id = 2;
+COMMIT;
+```
+
+途中で問題が起きたら `ROLLBACK` で全体を取り消します。`BEGIN` を書かずに単独のSQLを実行した場合、SQLiteはそのSQL1つを自動的にトランザクションとして扱います。
+
+<Marker>SQLiteでは、明示的にトランザクションを開始しない限り、INSERT 1回ごとにディスクへの同期が発生します。大量の挿入が遅い原因はほぼこれです。</Marker>
+
+```sql
+-- 遅い: 10000回のディスク同期が発生する
+INSERT INTO logs (message) VALUES ('a');
+INSERT INTO logs (message) VALUES ('b');
+-- ... 10000回
+
+-- 速い: 同期は1回だけ
+BEGIN;
+INSERT INTO logs (message) VALUES ('a');
+INSERT INTO logs (message) VALUES ('b');
+-- ... 10000回
+COMMIT;
+```
+
+この違いは、数千件規模でも体感で数十倍になります。バッチ処理やデータ投入では必ずトランザクションでまとめてください。
+
+### BEGIN の3つの種類
+
+`BEGIN` には、いつロックを取るかを指定する3つの形があります。ここが後述の `SQLITE_BUSY` に直結します。
+
+**構文：** `BEGIN [DEFERRED | IMMEDIATE | EXCLUSIVE]`
+
+| 種類 | ロックを取るタイミング | 用途 |
+| ---- | ---------------------- | ---- |
+| `DEFERRED`（既定） | 最初のSQLを実行したとき。読み取りなら読み取りロック | 読み取りのみのトランザクション |
+| `IMMEDIATE` | `BEGIN` の時点で書き込みロックを取る | 書き込みを含むトランザクション |
+| `EXCLUSIVE` | `BEGIN` の時点で排他ロックを取る | ほぼ使わない |
+
+<Marker>書き込みを含むトランザクションは、`BEGIN` ではなく `BEGIN IMMEDIATE` で始めてください。これだけで防げる `SQLITE_BUSY` があります。</Marker>
+
+理由はこの章の後半で説明します。
+
+## ロールバックジャーナルとWALモード
+
+SQLiteが変更を安全に記録する方法には、2つのモードがあります。
+
+**ロールバックジャーナル（既定）** では、変更前の内容を `mydb.db-journal` という別ファイルに退避してから、本体ファイルを書き換えます。途中で電源が落ちても、次回起動時にジャーナルから元の状態へ戻せます。
+
+**WAL（Write-Ahead Logging）モード**では発想が逆になります。本体ファイルには触らず、変更内容を `mydb.db-wal` というファイルに追記していきます。読み手は本体ファイルとWALファイルを組み合わせて、自分に見えるべき状態を再構成します。
+
+WALモードでの流れを図にすると次のようになります。書き手は本体ファイルに触れないため、読み手を待たせません。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    W["書き込み"] -->|"追記のみ"| L["mydb.db-wal"]
+    R["読み取り"] -->|"待たずに読める"| D["mydb.db"]
+    R -->|"未反映分を参照"| L
+    L -->|"チェックポイントで反映"| D
+`}
+/>
+
+この違いが生む最大の効果は、**読み取りが書き込みを待たなくてよくなる**ことです。
+
+| | ロールバックジャーナル | WAL |
+| --- | --- | --- |
+| 書き込み中の読み取り | ブロックされる | できる |
+| 読み取り中の書き込み | ブロックされる | できる |
+| 同時に書き込めるプロセス数 | 1 | 1（変わらない） |
+| 書き込み性能 | 標準 | 多くの場合より速い |
+| 補助ファイル | `-journal`（一時的） | `-wal` と `-shm`（常設） |
+| ネットワークファイルシステム | 非推奨 | **使用不可** |
+
+<Callout type="warning" title="WALでも同時書き込みは1つのまま">
+WALモードは「読み取りと書き込みの競合」を解消しますが、「書き込みと書き込みの競合」は解消しません。ライターは常に1つです。ここを勘違いすると、WALにしたのに `SQLITE_BUSY` が消えない理由が分からなくなります。
+</Callout>
+
+### WALモードを有効にする
+
+```sql
+PRAGMA journal_mode = WAL;
+```
+
+```
+wal
+```
+
+<Marker>`journal_mode` は、数少ない「データベースファイルに保存される」PRAGMAです。1回実行すれば以降のすべての接続に適用されます。</Marker>
+
+`PRAGMA foreign_keys` のように接続ごとに実行し直す必要はありません。マイグレーションの最初に1回実行しておけば十分です。
+
+現在のモードは、値を書かずに実行すれば確認できます。
+
+```sql
+PRAGMA journal_mode;
+```
+
+<Callout type="info" title="WALにすべきか">
+ローカルの1プロセスから使うだけなら既定のままでも困りませんが、**Webアプリのように複数の接続がある場合はWALを推奨します**。デメリットは補助ファイルが2つ増えることと、ネットワークファイルシステム上で使えなくなることの2点です。後者はそもそもSQLiteでやってはいけない構成なので、実質的なデメリットはほぼありません。
+</Callout>
+
+## SQLITE_BUSY が出る理由
+
+`SQLITE_BUSY` は、**必要なロックが他の接続に取られていて、待っても取れなかった**ことを示します。原因は大きく2つに分かれます。
+
+### 原因1: 単純にロックの取り合いになっている
+
+複数のプロセスやスレッドが同時に書き込もうとすると、1つを除いて待たされます。SQLiteの既定では**待ち時間がゼロ**なので、その場で即エラーになります。
+
+対策は、待ち時間を設定することです。
+
+```sql
+PRAGMA busy_timeout = 5000;
+```
+
+これで、ロックが取れるまで最大5秒間リトライするようになります。多くの場合、この1行で問題は解消します。
+
+<Callout type="warning" title="busy_timeout は接続ごとの設定">
+`journal_mode` と違ってファイルには保存されません。`PRAGMA foreign_keys` と同様、**すべての接続で実行する**必要があります。接続確立時の初期化処理にまとめて書いておきましょう。
+</Callout>
+
+<Figure src="/images/harry_man_color.png" alt="慌てているイメージ" caption="database is lockedの多くは、待ち時間ゼロで即座に諦めているだけです" maxWidth="320px" />
+
+### 原因2: 読み取りから書き込みへの昇格に失敗している
+
+こちらは `busy_timeout` を設定していても起きるため、原因が分かりにくいパターンです。
+
+`BEGIN`（= `BEGIN DEFERRED`）でトランザクションを始め、最初に `SELECT` を実行すると、その時点では**読み取りロック**だけを取ります。その後 `UPDATE` を実行しようとした瞬間、書き込みロックへ**昇格**する必要が生じます。
+
+このとき、自分が `SELECT` した後に別の接続が先にコミットしていると、SQLiteは昇格を許しません。待っても解決しない（自分が見ているデータがすでに古い）ため、`busy_timeout` を無視して即座に `SQLITE_BUSY` を返します。
+
+```sql
+-- 危険なパターン
+BEGIN;
+SELECT balance FROM accounts WHERE id = 1;  -- 読み取りロック
+-- ここで別の接続がコミットすると…
+UPDATE accounts SET balance = 0 WHERE id = 1;  -- SQLITE_BUSY
+```
+
+対策は、**最初から書き込みロックを取る**ことです。
+
+```sql
+BEGIN IMMEDIATE;
+SELECT balance FROM accounts WHERE id = 1;
+UPDATE accounts SET balance = 0 WHERE id = 1;
+COMMIT;
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`BEGIN IMMEDIATE` だと、最初からロックを取るぶん遅くなりませんか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+待つ時間は増えるけど、その待ちは `busy_timeout` がちゃんと面倒を見てくれる。エラーで落ちて最初からやり直すより、ずっと速くて確実だよ。
+</SpeechBubble>
+
+<Marker>読むだけなら `BEGIN`、1文字でも書くなら `BEGIN IMMEDIATE`。この使い分けを徹底するだけで、原因不明の SQLITE_BUSY はほぼ消えます。</Marker>
+
+## 実務での初期設定
+
+ここまでを踏まえると、SQLiteを使うアプリの接続初期化は次のようになります。
+
+```sql
+-- 1回だけ実行すればよい（ファイルに保存される）
+PRAGMA journal_mode = WAL;
+
+-- 接続のたびに実行する
+PRAGMA busy_timeout = 5000;
+PRAGMA foreign_keys = ON;
+PRAGMA synchronous = NORMAL;
+```
+
+`synchronous` は、コミット時にどこまでディスクへの同期を待つかの設定です。
+
+| 値 | 挙動 | 電源断時のリスク |
+| -- | ---- | ---------------- |
+| `FULL`（ロールバックジャーナルの既定） | 毎回同期を待つ | データは失われない |
+| `NORMAL` | 同期の頻度を減らす | WALモードなら**破損はしない**。直近のコミットが失われる可能性がある |
+| `OFF` | 同期しない | 破損の可能性がある |
+
+<Callout type="note" title="WAL + NORMAL が定番の組み合わせ">
+WALモードでは `synchronous = NORMAL` でもデータベースが壊れることはありません。失われうるのは電源断の直前にコミットされたトランザクションだけです。この安全性と速度のバランスから、WALモードでは `NORMAL` が広く使われています。金融取引のように1件も失えないデータを扱う場合のみ `FULL` にしてください。
+</Callout>
+
+Node.jsでの具体的な書き方は [Node.jsでSQLiteを使う](/books/sqlite/nodejs-sqlite) で扱います。
+
+## チェックポイント — WALファイルが肥大化するとき
+
+WALファイルの内容は、**チェックポイント**という処理で本体ファイルへ反映されます。既定では、WALが約1000ページ（およそ4MB）を超えたタイミングで自動的に実行されます。
+
+ところが、**長時間実行され続ける読み取りトランザクション**があると、チェックポイントは進めません。古い状態を見ているリーダーがいる間、その情報をWALから消せないためです。
+
+結果として、WALファイルが数百MB〜数GBまで膨らむことがあります。
+
+```sql
+-- 手動でチェックポイントを実行し、WALを切り詰める
+PRAGMA wal_checkpoint(TRUNCATE);
+```
+
+| モード | 挙動 |
+| ------ | ---- |
+| `PASSIVE` | 可能な範囲で反映する。他をブロックしない（既定） |
+| `FULL` | すべて反映されるまで待つ |
+| `TRUNCATE` | すべて反映し、WALファイルを0バイトに切り詰める |
+
+<Marker>WALファイルが肥大化したら、まず「閉じ忘れた読み取りトランザクションがないか」を疑ってください。手動チェックポイントは対症療法です。</Marker>
+
+<Figure src="/images/walking_woman_color.png" alt="歩き続けるイメージ" caption="開きっぱなしのトランザクションは、WALの掃除を止め続けます" maxWidth="320px" />
+
+## よくあるハマりどころ
+
+### トランザクションを閉じ忘れる
+
+`BEGIN` したまま `COMMIT` も `ROLLBACK` もしないコードパスがあると、そのロックは接続が閉じるまで残ります。他の書き込みはすべて `SQLITE_BUSY` になり、WALも肥大化します。
+
+例外が起きたときも必ず閉じるよう、言語の機能（`try`/`finally`、`defer`、`with` など）で囲んでください。
+
+### 1件ずつコミットしている
+
+ORMやライブラリによっては、`INSERT` のたびに自動コミットが走ります。ループの中で1万件挿入すると、1万回のディスク同期が発生します。まとめてトランザクションで囲むだけで劇的に速くなります。
+
+### ネットワークファイルシステム上に置く
+
+WALモードは共有メモリ（`-shm` ファイル）を使うため、NFSやSMB上では**動作しません**。データ破損だけでなく、そもそも正しく動きません。SQLiteのファイルは、必ずローカルディスクに置いてください。
+
+### 複数のサーバーから同じファイルを触ろうとする
+
+Webサーバーを複数台にスケールさせたい場合、SQLiteファイルを共有する構成は取れません。この要件が出てきたら、[Turso・libSQL・Cloudflare D1](/books/sqlite/edge-and-local-first) で扱うレプリケーションの仕組みを検討する段階です。
+
+### `PRAGMA` をトランザクションの中で実行する
+
+`journal_mode` や `foreign_keys` の変更は、トランザクションの内側では効きません。接続直後、トランザクションを開始する前に実行してください。
+
+## ちゃんと使うためのポイント
+
+- 明示的なトランザクションでまとめると、大量書き込みが劇的に速くなる
+- 書き込みを含むトランザクションは `BEGIN IMMEDIATE` で始める
+- `PRAGMA journal_mode = WAL` は1回実行すればファイルに保存される
+- `busy_timeout` と `foreign_keys` は接続ごとに毎回設定する
+- WALでも同時に書き込めるのは1つだけ。読み取りと書き込みの競合だけが解消される
+- WALモードなら `synchronous = NORMAL` でも破損しない
+- WALの肥大化は、閉じ忘れた読み取りトランザクションを疑う
+- SQLiteのファイルは必ずローカルディスクに置く
+
+次の章では、クエリを速くするためのインデックスと、SQLiteがどのインデックスを使ったかを確認する `EXPLAIN QUERY PLAN` の読み方を扱います。
+
+## 参考リンク
+
+- [SQLite公式 — Write-Ahead Logging](https://www.sqlite.org/wal.html)
+- [SQLite公式 — BEGIN TRANSACTION](https://www.sqlite.org/lang_transaction.html)
+- [SQLite公式 — PRAGMA Statements](https://www.sqlite.org/pragma.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="トランザクションとロックの知識を、4択クイズでアウトプットして定着させよう"
+/>

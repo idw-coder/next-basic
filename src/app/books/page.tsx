@@ -91,7 +91,7 @@ const LEARNING_PATHS = [
   {
     title: 'バックエンド開発',
     description: 'サーバーサイドの処理やデータベース操作を学ぶ',
-    books: ['javascript', 'node-js', 'sql-basics', 'http-and-web-api'],
+    books: ['javascript', 'node-js', 'sql-basics', 'sqlite', 'http-and-web-api'],
   },
   {
     title: 'インフラ・設計',

@@ -1,0 +1,321 @@
+---
+title: 'sqlite-vecでベクトル検索 — ローカルRAGとAIエージェントのメモリ'
+description: 'sqlite-vec拡張でベクトルを保存・検索する方法と、FTS5と組み合わせたハイブリッド検索、ローカルRAGやAIエージェントのメモリとしての使い方を整理します。'
+order: 10
+---
+
+[前章](/books/sqlite/fts5-full-text-search)のFTS5は、キーワードが「含まれているか」で探す仕組みでした。「データベース」で検索すれば、その文字列を含む文書が見つかります。
+
+しかし「SQLiteって本番で使えるの？」と検索したとき、「WALモードで読み書きの並行性が上がる」という文書は、キーワードが1つも一致しません。意味は近いのに見つからないのです。
+
+これを解決するのが**ベクトル検索**です。テキストを数百次元の数値の並び（埋め込みベクトル）に変換し、その距離の近さで探します。SQLiteでは **sqlite-vec** という拡張でこれが実現できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ベクトル検索といえば専用のデータベースを立てるものだと思っていました。SQLiteでもできるんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+数万〜数十万件くらいなら十分に実用的だよ。専用サーバーを立てずに、アプリと同じファイルの中で完結するのが強みだね。
+</SpeechBubble>
+
+<Callout type="warning" title="sqlite-vec はまだ v1 未満">
+sqlite-vec は本稿執筆時点で **pre-v1（アルファ）** であり、公式ドキュメントにも「破壊的変更を想定してほしい」と明記されています。またAPIリファレンスの一部は執筆中の状態です。実装に入る前に必ず[公式サイト](https://alexgarcia.xyz/sqlite-vec/)で最新の構文を確認し、バージョンを固定して使ってください。この章の内容も、考え方の理解を主目的として読んでください。
+</Callout>
+
+## 全体像 — 埋め込みはSQLiteの外で作る
+
+先に構成を押さえておきます。SQLiteが担当するのは「ベクトルの保存と検索」だけで、**テキストをベクトルに変換する処理は担当しません**。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    T["文書テキスト"] --> M["埋め込みモデル<br/>（アプリ側で実行）"]
+    M --> V["ベクトル<br/>例: 384個の数値"]
+    V --> DB["SQLite<br/>vec0テーブル"]
+    Q["質問テキスト"] --> M
+    DB -->|"距離が近い順に検索"| R["関連する文書"]
+`}
+/>
+
+埋め込みモデルは、外部API（OpenAIやCohereなど）を呼ぶか、ローカルでモデルを動かすかのどちらかです。ローカルで動かせば、**文書もベクトルも問い合わせもすべて手元で完結**します。これが「ローカルRAG」と呼ばれる構成です。
+
+<Marker>ベクトルの次元数は使う埋め込みモデルによって決まります。テーブル定義に書く数値はモデルの出力次元と必ず一致させてください。</Marker>
+
+## 拡張を読み込む
+
+sqlite-vec は本体に組み込まれていないため、拡張として読み込みます。Node.jsの `node:sqlite` では、拡張の読み込みを明示的に許可する必要があります。
+
+```js
+import { DatabaseSync } from 'node:sqlite';
+import * as sqliteVec from 'sqlite-vec';
+
+const db = new DatabaseSync('app.db', { allowExtension: true });
+sqliteVec.load(db);
+
+const { version } = db.prepare('SELECT vec_version() AS version').get();
+console.log(version);
+```
+
+`sqlite3` コマンドから使う場合は `.load` を使います。
+
+```
+sqlite> .load ./vec0
+sqlite> SELECT vec_version();
+```
+
+## vec0テーブルを作る
+
+FTS5と同じく、仮想テーブルとして作ります。
+
+**構文：** `CREATE VIRTUAL TABLE テーブル名 USING vec0(列名 型[次元数], ...)`
+
+```sql
+CREATE VIRTUAL TABLE chunks_vec USING vec0(
+  embedding float[384]
+);
+```
+
+`float[384]` は「384次元のfloat32ベクトル」という意味です。扱えるベクトルの型は3つあります。
+
+| 型 | 1要素あたり | 用途 |
+| -- | ----------- | ---- |
+| `float32` | 4バイト | 標準。ほとんどの埋め込みモデルの出力 |
+| `int8` | 1バイト | 量子化して容量を1/4に抑えたいとき |
+| `bit` | 1/8バイト | 2値化。容量が最小で高速だが精度は落ちる |
+
+<Callout type="info" title="容量の見積もり">
+384次元のfloat32ベクトルは、1件あたり約1.5KB（384 × 4バイト）です。10万件なら約150MB。これに元テキストとインデックスが加わります。数十万件を超えるようなら、`int8` への量子化（`vec_quantize_i8`）や2値化（`vec_quantize_binary`）を検討する段階です。
+</Callout>
+
+## ベクトルを保存する
+
+ベクトルはJSON配列の文字列か、コンパクトなBLOBとして渡せます。学習中はJSONが分かりやすく、実運用ではBLOBのほうが効率的です。
+
+```sql
+INSERT INTO chunks_vec (rowid, embedding)
+VALUES (1, '[0.12, -0.03, 0.87, ...]');
+```
+
+Node.jsからは、埋め込みモデルが返した配列をそのままJSON文字列にして渡します。
+
+```js
+const embedding = await embed(text); // number[] を返す想定
+
+db.prepare('INSERT INTO chunks_vec (rowid, embedding) VALUES (?, ?)')
+  .run(chunkId, JSON.stringify(embedding));
+```
+
+<Marker>vec0テーブルにはテキスト本体を入れません。rowidで通常のテーブルと紐づける構成にします。</Marker>
+
+```sql
+CREATE TABLE chunks (
+  id INTEGER PRIMARY KEY,
+  document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  body TEXT NOT NULL
+) STRICT;
+
+CREATE VIRTUAL TABLE chunks_vec USING vec0(
+  embedding float[384]
+);
+```
+
+## KNN検索 — 近いものを探す
+
+保存したら、`MATCH` で「このベクトルに近いものを距離順に取り出す」検索ができます。
+
+```sql
+SELECT rowid, distance
+FROM chunks_vec
+WHERE embedding MATCH ?
+ORDER BY distance
+LIMIT 5;
+```
+
+`distance` は sqlite-vec が結果に付加する特別な列で、**値が小さいほど近い**という意味です。
+
+本文とあわせて取り出すには、通常のテーブルと結合します。
+
+```sql
+SELECT c.id, c.body, v.distance
+FROM chunks_vec v
+JOIN chunks c ON c.id = v.rowid
+WHERE v.embedding MATCH ?
+ORDER BY v.distance
+LIMIT 5;
+```
+
+Node.jsからの呼び出しはこうなります。
+
+```js
+const queryVec = await embed(question);
+
+const hits = db.prepare(`
+  SELECT c.id, c.body, v.distance
+  FROM chunks_vec v
+  JOIN chunks c ON c.id = v.rowid
+  WHERE v.embedding MATCH ?
+  ORDER BY v.distance
+  LIMIT 5
+`).all(JSON.stringify(queryVec));
+```
+
+<Figure src="/images/meeting_color.png" alt="近いものを集めるイメージ" caption="質問文もベクトルに変換し、距離が近い文書だけを取り出します" maxWidth="360px" />
+
+## 距離の測り方を選ぶ
+
+vec0テーブルを使わず、関数として距離を直接計算することもできます。少量のデータや、条件を細かく組み合わせたいときに使えます。
+
+| 関数 | 距離の種類 | 対象 |
+| ---- | ---------- | ---- |
+| `vec_distance_L2(a, b)` | ユークリッド距離 | float32 / int8 |
+| `vec_distance_cosine(a, b)` | コサイン距離 | float32 / int8 |
+| `vec_distance_hamming(a, b)` | ハミング距離 | bit のみ |
+
+**戻り値：** 距離を表す実数（小さいほど近い）
+
+<Callout type="note" title="どれを選ぶか">
+テキスト検索で一般的なのは**コサイン距離**です。ベクトルの向きだけを見るため、文書の長さに影響されにくくなります。多くの埋め込みモデルは正規化済みのベクトルを返すため、その場合はL2距離でも順位はほぼ同じになります。使うモデルのドキュメントに推奨が書かれていることが多いので、まずそれに従ってください。
+</Callout>
+
+その他、次のような補助関数があります。
+
+| 関数 | 用途 |
+| ---- | ---- |
+| `vec_f32(値)` | JSON文字列やBLOBをfloat32ベクトルに変換する |
+| `vec_length(ベクトル)` | 次元数を返す |
+| `vec_normalize(ベクトル)` | L2正規化する |
+| `vec_quantize_binary(ベクトル)` | bit型に2値化して容量を削減する |
+| `vec_slice(ベクトル, 開始, 終了)` | 一部の次元だけを取り出す |
+| `vec_to_json(ベクトル)` | JSON表現に戻す（デバッグ用） |
+
+## ハイブリッド検索 — FTS5と組み合わせる
+
+ベクトル検索は意味の近さに強い一方、**固有名詞や型番のような「その語そのもの」の検索には弱い**という弱点があります。`SQLITE_BUSY` というエラー名で検索したとき、キーワード一致のほうが確実です。
+
+そこで、FTS5とベクトル検索の両方を実行し、結果を統合する**ハイブリッド検索**が使われます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    Q["ユーザーの質問"] --> F["FTS5<br/>キーワード一致"]
+    Q --> V["sqlite-vec<br/>意味の近さ"]
+    F --> R["順位を統合"]
+    V --> R
+    R --> O["最終的な検索結果"]
+`}
+/>
+
+統合の方法として広く使われているのが **RRF（Reciprocal Rank Fusion）** です。スコアの絶対値ではなく順位だけを使うため、スケールの異なる2つの検索結果を素直に混ぜられます。
+
+```sql
+WITH keyword AS (
+  SELECT rowid AS id, row_number() OVER (ORDER BY rank) AS pos
+  FROM chunks_fts
+  WHERE chunks_fts MATCH ?
+  LIMIT 20
+),
+vector AS (
+  SELECT rowid AS id, row_number() OVER (ORDER BY distance) AS pos
+  FROM chunks_vec
+  WHERE embedding MATCH ?
+  ORDER BY distance
+  LIMIT 20
+)
+SELECT
+  c.id,
+  c.body,
+  COALESCE(1.0 / (60 + k.pos), 0) + COALESCE(1.0 / (60 + v.pos), 0) AS score
+FROM chunks c
+LEFT JOIN keyword k ON k.id = c.id
+LEFT JOIN vector v ON v.id = c.id
+WHERE k.id IS NOT NULL OR v.id IS NOT NULL
+ORDER BY score DESC
+LIMIT 10;
+```
+
+`60` は経験的によく使われる定数で、上位の順位を極端に重視しすぎないための調整値です。
+
+<Marker>ハイブリッド検索は、キーワード検索とベクトル検索のどちらか一方だけでは取りこぼすケースを埋めるための手法です。RAGの精度は、埋め込みモデルの性能よりも検索の作り込みで決まることが多くあります。</Marker>
+
+## ローカルRAGを組み立てる
+
+ここまでの部品を組み合わせると、外部サービスに依存しないRAGが作れます。
+
+**取り込みの流れ**
+
+1. 文書を適当な長さ（数百文字程度）のチャンクに分割する
+2. 各チャンクを埋め込みモデルでベクトル化する
+3. 本文を `chunks` テーブルに、ベクトルを `chunks_vec` に保存する
+4. あわせてFTS5テーブルにも本文を入れる
+
+**検索の流れ**
+
+1. 質問文をベクトル化する
+2. ベクトル検索とFTS5検索を実行する
+3. RRFで統合し、上位数件を取り出す
+4. それらを文脈としてLLMのプロンプトに含める
+
+<Callout type="info" title="チャンク分割は結果を大きく左右する">
+1チャンクが大きすぎると無関係な内容が混ざり、小さすぎると文脈が失われます。段落や見出しの区切りを尊重しつつ、前後を少し重ねて分割する（オーバーラップ）方法がよく使われます。ここはSQLiteの話ではなく、アプリケーション側の設計です。
+</Callout>
+
+<Figure src="/images/gats_suit_man_color.png" alt="組み上がったイメージ" caption="埋め込みモデルまでローカルで動かせば、データを一切外部に出さないRAGになります" maxWidth="340px" />
+
+## AIエージェントのメモリとして使う
+
+エージェントに「過去のやり取りを覚えさせる」用途でも、同じ構成がそのまま使えます。SQLiteが向いているのは、次のような性質があるためです。
+
+| 要件 | SQLiteが向く理由 |
+| ---- | ---------------- |
+| ユーザーごとにデータを分けたい | ユーザーごとに1ファイルにできる |
+| セットアップを不要にしたい | サーバープロセスがない |
+| 会話履歴を構造化して残したい | 通常のテーブルと同じファイルに置ける |
+| 意味の近い記憶を引き出したい | vec0テーブルで検索できる |
+| データを外部に出したくない | すべて手元のファイルに収まる |
+
+書き込み頻度が1ユーザーあたり低く、ユーザーごとに分離できるワークロードは、[第1章](/books/sqlite/what-is-sqlite)で見たSQLiteの弱点（同時書き込みが1つ）にほとんど当たりません。
+
+## よくあるハマりどころ
+
+### 次元数がモデルと一致していない
+
+`float[384]` と定義したテーブルに768次元のベクトルを入れるとエラーになります。埋め込みモデルを変更したら、テーブルを作り直してすべて再生成する必要があります。使用モデル名を記録しておくと、後から判断しやすくなります。
+
+### JSON文字列で保存し続けて容量が膨らむ
+
+JSON配列は人間には読めますが、float32のBLOBに比べて数倍の容量を使います。件数が増えてきたらBLOB形式への移行を検討してください。
+
+### 全件スキャンになっていることに気づかない
+
+vec0テーブルの検索は、件数によっては全件との距離計算になります。数万件までは実用的ですが、桁が増えると応答時間が伸びます。想定件数で実測してから採用を決めてください。
+
+### アルファ版のAPIを固定せずに使う
+
+pre-v1のため、バージョンアップで構文が変わる可能性があります。`package.json` でバージョンを固定し、更新時はリリースノートを確認してください。
+
+### 埋め込みの再生成コストを見落とす
+
+モデルを変えると、保存済みのベクトルはすべて無効になります。数万件の再生成には、外部APIなら費用が、ローカルモデルなら時間がかかります。
+
+## ちゃんと使うためのポイント
+
+- SQLiteが担うのはベクトルの保存と検索。埋め込み生成はアプリケーション側
+- `CREATE VIRTUAL TABLE ... USING vec0(列 float[次元数])` で作る
+- 本文は通常のテーブルに置き、rowidで紐づける
+- 検索は `WHERE 列 MATCH ? ORDER BY distance LIMIT n`。`distance` は小さいほど近い
+- テキスト検索ではコサイン距離が一般的
+- 固有名詞に弱いため、FTS5と組み合わせたハイブリッド検索が効果的
+- sqlite-vec は pre-v1。バージョンを固定し、公式ドキュメントで最新構文を確認する
+
+次の章では、ここまで作ってきたデータベースを安全に運用する方法に移ります。バックアップ、`VACUUM`、そして実務で設定しておきたいPRAGMAを整理します。
+
+## 参考リンク
+
+- [sqlite-vec 公式サイト](https://alexgarcia.xyz/sqlite-vec/)
+- [sqlite-vec — GitHub](https://github.com/asg017/sqlite-vec)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="データベースの検索と設計の知識を、4択クイズでアウトプットして定着させよう"
+/>

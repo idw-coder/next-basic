@@ -72,6 +72,25 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'SQLインジェクション',
   ],
 
+  sqlite: [
+    'sqlite3',
+    '型親和性',
+    'STRICT',
+    'rowid',
+    'AUTOINCREMENT',
+    'UPSERT',
+    'RETURNING',
+    'WAL',
+    'SQLITE_BUSY',
+    'PRAGMA',
+    'VACUUM',
+    'EXPLAIN QUERY PLAN',
+    'node:sqlite',
+    'FTS5',
+    'sqlite-vec',
+    'Turso',
+  ],
+
   'integration-and-e2e-testing': ['E2E', '統合テスト', 'モック', 'CI'],
 
   'system-design': ['要件定義', 'DB設計', 'API設計', '認証', 'エラー設計'],

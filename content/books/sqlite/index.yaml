@@ -1,0 +1,3 @@
+title: 'SQLite入門 — サーバー不要のデータベースを実務で使う'
+description: 'SQLiteの仕組み、sqlite3コマンド、型親和性とSTRICTテーブル、WALモード、インデックス、node:sqliteによるNode.js連携、FTS5全文検索、sqlite-vecによるベクトル検索、Turso・Cloudflare D1でのエッジ利用まで、ファイル1つで動くデータベースを実務で使うための教科書です。'
+coverImage: '/images/books/logos_sqlite.png'

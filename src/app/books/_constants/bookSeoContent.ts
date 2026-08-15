@@ -654,6 +654,72 @@ const bookSeoContentMap: Record<string, BookSeoContent> = {
     relatedQuizSlug: 'sql-basic',
   },
 
+  sqlite: {
+    overview:
+      '本書は、サーバー不要で動くデータベース「SQLite」を実務で使うための教科書です。SQLiteが1ファイルで完結する仕組みから始まり、sqlite3コマンドの操作、SQLite特有の型親和性とSTRICTテーブル、rowid、UPSERTやRETURNINGといった方言、WALモードとSQLITE_BUSY、インデックスとEXPLAIN QUERY PLANまでを解説します。さらにNode.js標準のnode:sqliteモジュールによる実装、FTS5の全文検索、sqlite-vecによるベクトル検索、Turso・libSQL・Cloudflare D1を使ったエッジ環境での運用まで扱います。',
+    whyLearn:
+      'SQLiteは「学習用の簡易DB」という位置づけから変わりつつあります。Node.jsに標準モジュールとして組み込まれたことで導入コストがほぼゼロになり、TursoやCloudflare D1といったサービスによってエッジ環境や本番環境での採用例も増えました。テスト用のDB、CLIツール、デスクトップアプリ、local-firstなWebアプリ、AIエージェントのローカルメモリなど、活躍する場面は広がっています。SQLiteの得意・不得意を理解しておくと、「ここはPostgreSQLを立てるまでもない」という判断が自信を持ってできるようになります。',
+    prerequisites:
+      'SELECT・WHERE・JOINなど基本的なSQLがわかっていると読み進めやすくなります。不安がある場合は先に「SQLとデータベースの基礎」を読んでください。本書はSQL文法そのものではなく、SQLite固有の仕組みと運用に絞って解説します。',
+    topics: [
+      {
+        title: 'SQLiteの仕組みと基本操作',
+        description:
+          'サーバーが不要な理由、1ファイルで完結する構造、sqlite3コマンドによるテーブル確認やCSVインポートを学びます。',
+      },
+      {
+        title: '型親和性・rowid・SQL方言',
+        description:
+          'SQLiteに厳密な型がない理由とSTRICTテーブル、rowidとAUTOINCREMENT、UPSERT・RETURNING・JSON関数といった固有の書き方を理解します。',
+      },
+      {
+        title: 'WALモード・トランザクション・インデックス',
+        description:
+          'WALモードとロールバックジャーナルの違い、SQLITE_BUSYが出る理由と対策、EXPLAIN QUERY PLANの読み方を押さえます。',
+      },
+      {
+        title: 'Node.js連携・全文検索・ベクトル検索',
+        description:
+          'node:sqliteによる実装、better-sqlite3やPrisma・Drizzleとの使い分け、FTS5の全文検索、sqlite-vecによるローカルRAGを扱います。',
+      },
+      {
+        title: '運用とエッジ・local-first',
+        description:
+          'バックアップ・VACUUM・PRAGMA設定に加え、Turso・libSQLの埋め込みレプリカやCloudflare D1での本番採用の判断基準を学びます。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'SQLiteは本番環境で使ってもいいのですか？',
+        answer:
+          '読み取りが中心のアプリ、テナントごとにDBを分ける構成、エッジ環境などでは十分に実用的です。一方で書き込みが同時多発するワークロードは苦手で、SQLiteは書き込みを1つずつ処理する設計になっています。本書の最終章で、採用してよい場面と避けるべき場面を具体的に整理します。',
+      },
+      {
+        question: 'MySQLやPostgreSQLとの違いは何ですか？',
+        answer:
+          '最大の違いは「サーバープロセスが存在しない」点です。MySQLやPostgreSQLはDBサーバーに接続して使いますが、SQLiteはアプリケーションに組み込まれたライブラリがファイルを直接読み書きします。そのため接続設定や運用作業が大幅に減る一方、同時書き込みやユーザー権限管理には制約があります。',
+      },
+      {
+        question: 'SQLの基本を知らなくても読めますか？',
+        answer:
+          '本書はSQLite固有の話題に絞っているため、SELECTやJOINの書き方は別途「SQLとデータベースの基礎」で学ぶことをおすすめします。逆にSQLの基本を知っている方は、本書だけでSQLiteの実務知識を補完できます。',
+      },
+      {
+        question: 'Node.jsからSQLiteを使うには何をインストールすればいいですか？',
+        answer:
+          '近年のNode.jsには標準でnode:sqliteモジュールが同梱されているため、多くの場合は追加インストールなしで使えます。本書では標準モジュールを主軸に解説しつつ、better-sqlite3やPrisma・Drizzleを選ぶべき場面も比較します。安定度はNode.jsのバージョンによって異なるため、利用前に公式ドキュメントで確認してください。',
+      },
+    ],
+    targetAudience: [
+      'SQLの基本は学んだが、実際にDBを動かして試したい方',
+      'テストやCLIツール向けに手軽なデータベースを探している方',
+      'Node.jsアプリでSQLiteを使いたいバックエンドエンジニア',
+      'Turso・Cloudflare D1などエッジDBの選択肢を検討している方',
+      'ローカルRAGやAIエージェントのデータ保存先を検討している方',
+    ],
+    relatedQuizSlug: null,
+  },
+
   'system-design': {
     overview:
       '本書は、Webアプリ開発で必要な設計の考え方と実務パターンを整理する入門書です。要件定義から始まり、機能設計、DB設計（ER図・正規化）、API設計（RESTful設計）、詳細設計書の書き方、設計レビューの進め方までを体系的に解説します。「なんとなく動くコード」から「設計されたコード」へ進むための土台を作ります。',

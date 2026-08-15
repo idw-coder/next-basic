@@ -1,0 +1,265 @@
+---
+title: 'SQLiteの運用 — バックアップ・VACUUM・PRAGMA設定'
+description: 'SQLiteデータベースファイルの安全なバックアップ方法、VACUUMによる最適化、実務で設定しておきたいPRAGMAを整理します。'
+order: 11
+---
+
+SQLiteの運用は、他のデータベースに比べて驚くほど単純です。監視すべきプロセスはなく、バージョンアップの調整も要らず、バックアップは1つのファイルを保存するだけで済みます。
+
+ただし「ファイルをコピーするだけ」が成立するのは、**アプリが動いていないとき**に限られます。稼働中のデータベースを安全に扱うには、専用の手段を使う必要があります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+1ファイルなんだから、`cp` でコピーすればバックアップ完了だと思っていました。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+止まっているならそれで正しい。動いている最中だと、書き込みの途中の状態をコピーしてしまうことがあるんだ。
+</SpeechBubble>
+
+## なぜ cp が危険なのか
+
+`cp` はファイルを先頭から順に読みます。読んでいる最中にアプリが別の場所を書き換えると、コピー先には「前半は書き換え前、後半は書き換え後」という、どの時点にも存在しなかった状態が残ります。
+
+さらに [第6章](/books/sqlite/transactions-and-wal)で見たWALモードでは、最新の変更が `-wal` ファイル側にあります。本体ファイルだけをコピーすると、直近のコミットがまるごと失われます。
+
+<Marker>稼働中のSQLiteを `cp` でバックアップしてはいけません。壊れたファイルができるか、直近のデータが欠けます。</Marker>
+
+## VACUUM INTO — 一貫したスナップショットを作る
+
+もっとも手軽で確実な方法が `VACUUM INTO` です。SQLite 3.27.0 以降で使えます。
+
+**構文：** `VACUUM INTO 'コピー先のファイルパス'`
+
+```sql
+VACUUM INTO '/backup/app-2026-08-15.db';
+```
+
+この命令は、実行時点の一貫した状態を新しいファイルへ書き出します。**アプリが動いたままでも安全**で、しかも書き出しの過程で断片化が解消されるため、元より小さいファイルになります。
+
+```bash
+sqlite3 app.db "VACUUM INTO '/backup/app-$(date +%Y%m%d).db'"
+```
+
+シェルから1行で実行できるため、cronに登録するだけで日次バックアップが完成します。
+
+<Callout type="warning" title="コピー先が既に存在するとエラーになる">
+`VACUUM INTO` は、指定したファイルが既にある場合エラーになります。上書きしたい場合は、事前に削除するか、日付入りのファイル名にしてください。
+</Callout>
+
+`sqlite3` コマンドの `.backup` も同様に安全な方法です。こちらはWALファイルも含めて整合性を保ちます。
+
+```
+sqlite> .backup /backup/app.db
+```
+
+| 方法 | 稼働中の安全性 | 断片化の解消 | 備考 |
+| ---- | -------------- | ------------ | ---- |
+| `cp` / `rsync` | **危険** | なし | 停止中のみ可 |
+| `VACUUM INTO` | 安全 | あり | SQL1行。cron向き |
+| `.backup` | 安全 | なし | CLIのドットコマンド |
+| ファイル3つをまとめてコピー | 不確実 | なし | 推奨されない |
+
+<Figure src="/images/plan_selection_man_color.png" alt="選択するイメージ" caption="日次のスナップショットならVACUUM INTO、継続的な保護なら次章のレプリケーションを検討します" maxWidth="340px" />
+
+## VACUUM — ファイルを整理する
+
+`VACUUM`（`INTO` なし）は、データベースファイルそのものを再構築します。
+
+```sql
+VACUUM;
+```
+
+大量の `DELETE` を実行しても、SQLiteのファイルサイズは自動では小さくなりません。空いた領域は「フリーリスト」として再利用のために保持されるだけです。`VACUUM` はこれを解放し、ファイルを実際に縮めます。
+
+どのくらい無駄があるかは、次のクエリで確認できます。
+
+```sql
+SELECT
+  page_count * page_size / 1024 / 1024 AS total_mb,
+  freelist_count * page_size / 1024 / 1024 AS free_mb
+FROM pragma_page_count(), pragma_page_size(), pragma_freelist_count();
+```
+
+<Callout type="warning" title="VACUUMの実行には条件がある">
+`VACUUM` は元のファイルと同じくらいの一時領域を必要とします。数GBのデータベースなら、ディスクに数GBの空きが必要です。また実行中はデータベース全体がロックされ、規模によっては数分かかります。稼働中のサービスでは、メンテナンス時間に実行してください。
+</Callout>
+
+<Marker>日常的に `VACUUM` を実行する必要はありません。大量削除の後や、ファイルサイズが実データに対して明らかに大きいときだけで十分です。</Marker>
+
+自動で少しずつ整理させたい場合は `auto_vacuum` を使います。
+
+```sql
+PRAGMA auto_vacuum = INCREMENTAL;
+```
+
+| 値 | 挙動 |
+| -- | ---- |
+| `NONE`（既定） | 何もしない。手動 `VACUUM` が必要 |
+| `FULL` | コミットのたびに空き領域を返す。書き込みが遅くなる |
+| `INCREMENTAL` | 空き領域を記録しておき、明示的に指示したときだけ解放する |
+
+`INCREMENTAL` を選んだ場合、実際の解放は次の命令で行います。
+
+```sql
+PRAGMA incremental_vacuum(100);  -- 100ページ分だけ解放
+```
+
+<Callout type="note" title="auto_vacuumはテーブル作成前に設定する">
+`auto_vacuum` の変更は、テーブルが1つも無いうちに行う必要があります。既存のデータベースで変更したい場合は、設定してから `VACUUM` を実行してファイル全体を作り直します。
+</Callout>
+
+## 破損していないか確認する
+
+SQLiteのファイルが壊れることは稀ですが、[第6章](/books/sqlite/transactions-and-wal)で触れたネットワークファイルシステムでの利用や、ディスク障害では起こり得ます。
+
+```sql
+PRAGMA integrity_check;
+```
+
+問題がなければ `ok` の1行が返ります。全ページを検証するため、大きなデータベースでは時間がかかります。
+
+```sql
+PRAGMA quick_check;
+```
+
+こちらは検証項目を絞った簡易版で、はるかに高速です。定期チェックには `quick_check`、異常を疑ったときには `integrity_check` という使い分けが実用的です。
+
+外部キーの整合性は別の命令です。[第4章](/books/sqlite/tables-rowid-and-constraints)で見た通り、外部キーが無効な状態で投入されたデータには違反が残っている可能性があります。
+
+```sql
+PRAGMA foreign_key_check;
+```
+
+## 実務で設定しておきたいPRAGMA
+
+ここまでの章で登場した設定をまとめます。**ファイルに保存されるもの**と**接続ごとに必要なもの**を区別するのが重要です。
+
+| PRAGMA | 保存先 | 推奨値 | 効果 |
+| ------ | ------ | ------ | ---- |
+| `journal_mode` | ファイル | `WAL` | 読み取りと書き込みを並行できる |
+| `auto_vacuum` | ファイル | `INCREMENTAL` | 空き領域を管理する |
+| `busy_timeout` | 接続 | `5000` | ロック待ちでリトライする |
+| `foreign_keys` | 接続 | `ON` | 外部キー制約を有効にする |
+| `synchronous` | 接続 | `NORMAL` | WAL環境での速度と安全性のバランス |
+| `cache_size` | 接続 | `-20000` | ページキャッシュを20MBに |
+| `temp_store` | 接続 | `MEMORY` | 一時テーブルをメモリに置く |
+
+```sql
+-- 初回のみ（ファイルに保存される）
+PRAGMA journal_mode = WAL;
+
+-- 接続ごとに実行する
+PRAGMA busy_timeout = 5000;
+PRAGMA foreign_keys = ON;
+PRAGMA synchronous = NORMAL;
+PRAGMA cache_size = -20000;
+PRAGMA temp_store = MEMORY;
+```
+
+<Callout type="info" title="cache_size の符号に意味がある">
+`cache_size` は、**正の値ならページ数、負の値ならキビバイト**として解釈されます。`-20000` は「20000KiB ≒ 20MB」という指定です。ページサイズが変わっても意味が変わらないため、負の値で指定するほうが安全です。
+</Callout>
+
+接続を閉じる直前には、[第7章](/books/sqlite/indexes-and-query-plan)で触れた統計情報の更新を入れておきます。
+
+```sql
+PRAGMA optimize;
+```
+
+<Marker>`PRAGMA optimize` は必要と判断したときだけ処理を行う軽量な命令です。接続クローズ時に毎回呼んで構いません。</Marker>
+
+<Figure src="/images/toppa_suit_woman_color.png" alt="前に進むイメージ" caption="接続時と切断時に決まったPRAGMAを流すだけで、運用上の問題の多くを予防できます" maxWidth="320px" />
+
+## WALファイルの管理
+
+[第6章](/books/sqlite/transactions-and-wal)で触れた通り、WALファイルは放置すると肥大化することがあります。上限を設けておくと安心です。
+
+```sql
+PRAGMA journal_size_limit = 67108864;  -- 64MB
+```
+
+これは、チェックポイント後にWALファイルをこのサイズまで切り詰めるという設定です。手動で完全に切り詰めたい場合は次を実行します。
+
+```sql
+PRAGMA wal_checkpoint(TRUNCATE);
+```
+
+<Callout type="warning" title="肥大化の原因を先に潰す">
+サイズ制限は対症療法です。WALが膨らむ主因は、閉じ忘れた読み取りトランザクションです。まずアプリケーション側で接続とトランザクションが確実に閉じられているかを確認してください。
+</Callout>
+
+## バックアップ戦略を決める
+
+用途によって、必要な保護のレベルは変わります。
+
+| 状況 | 推奨する方法 |
+| ---- | ------------ |
+| 個人ツール・CLI | 週次で `VACUUM INTO`、ファイルをどこかに保存 |
+| 社内ツール・読み取り中心のWebアプリ | 日次 cron で `VACUUM INTO` + オブジェクトストレージへ転送 |
+| データを失いたくない本番サービス | 継続的レプリケーション（次章） |
+| 開発環境 | バックアップ不要。マイグレーションから作り直す |
+
+```bash
+#!/bin/sh
+# 日次バックアップの例
+set -eu
+DEST="/backup/app-$(date +%Y%m%d).db"
+sqlite3 /var/lib/app/app.db "VACUUM INTO '$DEST'"
+gzip "$DEST"
+find /backup -name 'app-*.db.gz' -mtime +30 -delete
+```
+
+<Marker>バックアップは「取れていること」ではなく「戻せること」を確認して初めて完成します。復元手順を一度は実際に試してください。</Marker>
+
+## よくあるハマりどころ
+
+### バックアップから復元できるか試していない
+
+ファイルは毎日保存されているのに、復元したら壊れていた、というのはよくある事故です。取得したファイルに対して `PRAGMA integrity_check` を実行するところまでを、スクリプトに含めておきましょう。
+
+```bash
+sqlite3 "$DEST" "PRAGMA integrity_check" | grep -q '^ok$' || exit 1
+```
+
+### `VACUUM` をトランザクションの中で実行しようとする
+
+`VACUUM` はトランザクションの内側では実行できません。また、未完了のトランザクションが他にある状態でも失敗します。
+
+### WALファイルを消せばきれいになると思う
+
+`-wal` ファイルには、まだ本体に反映されていない変更が入っています。アプリが動いている状態で削除すると、データが失われます。切り詰めたい場合は必ず `wal_checkpoint` を使ってください。
+
+### PRAGMAを設定したつもりで効いていない
+
+`journal_mode` 以外のほとんどのPRAGMAは接続ごとの設定です。ORMやコネクションプールを使っている場合、新しい接続では初期値に戻っています。接続確立時のフックで必ず実行されているかを確認してください。
+
+現在の値は、値を書かずに実行すれば確認できます。
+
+```sql
+PRAGMA busy_timeout;
+PRAGMA foreign_keys;
+```
+
+## ちゃんと使うためのポイント
+
+- 稼働中のデータベースを `cp` でバックアップしない
+- `VACUUM INTO 'ファイル'` が最も手軽で安全なスナップショット方法
+- `VACUUM` はファイルを縮めるが、ロックと一時領域が必要。日常的には不要
+- `PRAGMA quick_check` を定期チェック、`integrity_check` を異常時に使う
+- PRAGMAは「ファイルに保存されるもの」と「接続ごとのもの」を区別する
+- 接続時に `WAL` / `busy_timeout` / `foreign_keys` / `synchronous`、切断時に `optimize`
+- バックアップは復元まで一度試して初めて完成する
+
+最終章では、ここまで前提としてきた「1台のマシンの中で完結する」という制約を超える方法を扱います。Turso・libSQL・Cloudflare D1・Litestream といった選択肢と、SQLiteを本番に採用してよい場面の判断基準を整理します。
+
+## 参考リンク
+
+- [SQLite公式 — VACUUM](https://www.sqlite.org/lang_vacuum.html)
+- [SQLite公式 — PRAGMA Statements](https://www.sqlite.org/pragma.html)
+- [SQLite公式 — Backup API](https://www.sqlite.org/backup.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="データベース運用の知識を、4択クイズでアウトプットして定着させよう"
+/>

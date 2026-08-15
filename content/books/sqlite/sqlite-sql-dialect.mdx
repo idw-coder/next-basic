@@ -1,0 +1,390 @@
+---
+title: 'SQLiteのSQL方言 — UPSERT・RETURNING・JSON関数・ALTER TABLE'
+description: '標準SQLとの差分に絞って、SQLiteのUPSERT（ON CONFLICT）、RETURNING、JSON関数、日付時刻関数、ALTER TABLEでできることを整理します。'
+order: 5
+---
+
+`SELECT` や `JOIN` の書き方は、[SQLとデータベースの基礎](/books/sql-basics/select-basics)で学んだ内容がそのまま通用します。この章では、**SQLiteならではの書き方**だけに絞って扱います。
+
+具体的には、重複時の挙動を指定する `UPSERT`、更新した行をそのまま返す `RETURNING`、日付時刻型がないSQLiteでの日付の扱い、JSONをそのまま格納して検索するJSON関数、そして制約の多い `ALTER TABLE` です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+「方言」って、SQLiteだけ書き方が違うところ、という意味ですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そう。標準SQLから外れている部分と、標準にはあるけどSQLiteには無い部分、その両方だね。ここを押さえておくと、他のDBから移ってきたSQLがなぜ動かないかがすぐ分かる。
+</SpeechBubble>
+
+## UPSERT — あれば更新、なければ挿入
+
+「すでに同じキーの行があれば更新、なければ挿入」という処理は、`ON CONFLICT` 句で書けます。
+
+**構文：** `INSERT INTO テーブル (...) VALUES (...) ON CONFLICT(競合する列) DO UPDATE SET ... `
+
+| 部分 | 説明 |
+| ---- | ---- |
+| `ON CONFLICT(列)` | どの制約と衝突したときに動くかを指定する。`UNIQUE` か `PRIMARY KEY` が必要 |
+| `DO UPDATE SET ...` | 衝突したときに実行する更新内容 |
+| `DO NOTHING` | 衝突したときは何もせず、エラーにもしない |
+| `excluded.列名` | 挿入しようとした値を参照する特別なテーブル名 |
+
+```sql
+CREATE TABLE page_views (
+  path TEXT NOT NULL PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+) STRICT;
+
+INSERT INTO page_views (path, count) VALUES ('/books', 1)
+ON CONFLICT(path) DO UPDATE SET
+  count = count + 1,
+  updated_at = datetime('now');
+```
+
+1回目は挿入され、2回目以降は `count` が加算されます。
+
+<Marker>`excluded` は「挿入しようとしたが弾かれた行」を指す仮想テーブルです。新しく渡した値を更新側で使いたいときに必要になります。</Marker>
+
+```sql
+INSERT INTO users (email, name) VALUES ('a@example.com', '田中太郎')
+ON CONFLICT(email) DO UPDATE SET
+  name = excluded.name;  -- 新しく渡した '田中太郎' で上書き
+```
+
+`DO NOTHING` は「あれば無視」を実現します。
+
+```sql
+INSERT INTO tags (name) VALUES ('SQLite')
+ON CONFLICT(name) DO NOTHING;
+```
+
+<Callout type="note" title="PostgreSQLとほぼ同じ構文">
+この `ON CONFLICT` 構文は、PostgreSQLのUPSERTを参考に設計されています。MySQLの `ON DUPLICATE KEY UPDATE` とは書き方が違うので、MySQLから移植する場合は書き換えが必要です。
+</Callout>
+
+### INSERT OR ... という古い書き方
+
+SQLiteには `ON CONFLICT` 以前からある、独自の短縮構文もあります。
+
+| 構文 | 挙動 |
+| ---- | ---- |
+| `INSERT OR IGNORE` | 制約違反の行を黙って無視する |
+| `INSERT OR REPLACE` | 既存の行を**削除してから**新しい行を挿入する |
+| `INSERT OR ABORT` | エラーにする（既定） |
+| `INSERT OR ROLLBACK` | トランザクション全体を巻き戻す |
+
+<Callout type="warning" title="INSERT OR REPLACE は「更新」ではない">
+`INSERT OR REPLACE` は既存行を `DELETE` してから `INSERT` します。指定しなかった列は既定値に戻り、`ON DELETE CASCADE` が設定されていれば**子テーブルの行まで消えます**。部分更新のつもりで使うと事故ります。更新したいなら `ON CONFLICT ... DO UPDATE` を使ってください。
+</Callout>
+
+## RETURNING — 変更した行をそのまま受け取る
+
+`INSERT` / `UPDATE` / `DELETE` の末尾に `RETURNING` を付けると、変更対象の行を結果として受け取れます。SQLite 3.35.0 以降で使えます。
+
+```sql
+INSERT INTO users (name, email) VALUES ('佐藤', 'sato@example.com')
+RETURNING id, created_at;
+```
+
+```
+┌────┬─────────────────────┐
+│ id │     created_at      │
+├────┼─────────────────────┤
+│ 42 │ 2026-08-15 10:30:00 │
+└────┴─────────────────────┘
+```
+
+これがないと、挿入したIDを知るために別のクエリを投げる必要がありました。
+
+```sql
+-- RETURNINGがない場合の従来のやり方
+INSERT INTO users (name) VALUES ('佐藤');
+SELECT last_insert_rowid();
+```
+
+<Marker>`RETURNING` は削除した行の内容を確認するときにも便利です。「何を消したか」をログに残せます。</Marker>
+
+```sql
+DELETE FROM sessions WHERE expires_at < datetime('now')
+RETURNING id, user_id;
+```
+
+<Figure src="/images/boomerang_woman_color.png" alt="投げたものが返ってくるイメージ" caption="RETURNINGを使うと、書き込んだ結果をそのまま受け取れます" maxWidth="340px" />
+
+## 日付と時刻を扱う
+
+[第3章](/books/sqlite/data-types-and-affinity)で触れた通り、SQLiteに日付時刻型はありません。代わりに、TEXT・INTEGER・REALで表現された値を解釈する関数群が用意されています。
+
+| 関数 | 戻り値 |
+| ---- | ------ |
+| `date(時刻値, 修飾子...)` | `YYYY-MM-DD` 形式の文字列 |
+| `time(時刻値, 修飾子...)` | `HH:MM:SS` 形式の文字列 |
+| `datetime(時刻値, 修飾子...)` | `YYYY-MM-DD HH:MM:SS` 形式の文字列 |
+| `unixepoch(時刻値, 修飾子...)` | Unix時間（整数） |
+| `strftime(書式, 時刻値, 修飾子...)` | 書式に従って整形した文字列 |
+
+第1引数の**時刻値**には、ISO 8601形式の文字列、`'now'`、Unix時間などを渡せます。
+
+```sql
+SELECT datetime('now');              -- 現在時刻（UTC）
+SELECT date('2026-08-15 10:30:00');  -- 2026-08-15
+SELECT datetime(1786000000, 'unixepoch');
+```
+
+<Callout type="warning" title="'now' はUTCを返す">
+SQLiteの `'now'` は常にUTCです。日本時間で表示したい場合は `'localtime'` 修飾子を付けます。ただし保存時はUTCのまま統一し、表示のときだけ変換するのが安全です。
+</Callout>
+
+```sql
+SELECT datetime('now', 'localtime');  -- 実行環境のタイムゾーンに変換
+```
+
+**修飾子**は第2引数以降にいくつでも並べられ、左から順に適用されます。
+
+| 修飾子 | 意味 |
+| ------ | ---- |
+| `'+7 days'` / `'-1 month'` | 加算・減算（`years` / `months` / `days` / `hours` / `minutes` / `seconds`） |
+| `'start of month'` | 月初に丸める（`year` / `day` も指定可） |
+| `'weekday 0'` | 次の日曜日（0=日曜、1=月曜…）まで進める |
+| `'unixepoch'` | 第1引数をUnix時間として解釈する |
+| `'localtime'` | UTCからローカル時刻へ変換 |
+| `'utc'` | ローカル時刻からUTCへ変換 |
+
+修飾子を組み合わせると、期間の計算が短く書けます。
+
+```sql
+-- 今月の初日
+SELECT date('now', 'start of month');
+
+-- 今月の最終日
+SELECT date('now', 'start of month', '+1 month', '-1 day');
+
+-- 30日以内に作成されたレコード
+SELECT * FROM posts WHERE created_at >= datetime('now', '-30 days');
+```
+
+`strftime` は自由な書式で整形できます。
+
+```sql
+SELECT strftime('%Y年%m月%d日', 'now');  -- 2026年08月15日
+SELECT strftime('%Y-%m', created_at) AS month, count(*)
+FROM posts
+GROUP BY month;
+```
+
+| 書式 | 内容 |
+| ---- | ---- |
+| `%Y` | 4桁の年 |
+| `%m` | 2桁の月 |
+| `%d` | 2桁の日 |
+| `%H` `%M` `%S` | 時・分・秒 |
+| `%w` | 曜日（0=日曜） |
+| `%j` | 年内の通算日 |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+文字列で保存していて、範囲検索は速いんですか？
+</SpeechBubble>
+
+ISO 8601形式は「文字列としての辞書順」と「時系列順」が一致するため、`created_at >= '2026-08-01'` のような比較がそのまま範囲検索になり、インデックスも効きます。この性質が、TEXT保存を推奨する理由です。
+
+## JSONを扱う
+
+SQLiteはJSON関数を標準で内蔵しています（3.38.0以降はビルド時の有効化も不要）。設定値やAPIレスポンスのように、列に分解しづらいデータをそのまま保存して検索できます。
+
+```sql
+CREATE TABLE events (
+  id INTEGER PRIMARY KEY,
+  payload TEXT NOT NULL CHECK (json_valid(payload))
+) STRICT;
+
+INSERT INTO events (payload) VALUES
+  ('{"type":"click","user":{"id":1,"name":"田中"},"tags":["a","b"]}');
+```
+
+値を取り出すには `->>` 演算子が便利です。
+
+| 演算子 | 戻り値 |
+| ------ | ------ |
+| `->` | JSON形式のまま返す（文字列なら引用符付き） |
+| `->>` | SQLの値として返す（TEXT / INTEGER / REAL / NULL） |
+
+```sql
+SELECT
+  payload -> '$.user.name'  AS as_json,   -- "田中"（引用符付き）
+  payload ->> '$.user.name' AS as_text,   -- 田中
+  payload ->> '$.user.id'   AS user_id    -- 1（整数）
+FROM events;
+```
+
+<Marker>アプリケーションで使う値を取り出したいときは、ほぼ常に `->>` のほうです。`->` はJSONを組み立て直すときに使います。</Marker>
+
+主なJSON関数は次の通りです。
+
+| 関数 | 戻り値 |
+| ---- | ------ |
+| `json_extract(JSON, パス)` | パスの値。`->>` とほぼ同じ |
+| `json_valid(値)` | 正しいJSONなら `1`、そうでなければ `0` |
+| `json_type(JSON, パス)` | `'object'` / `'array'` / `'text'` / `'integer'` など |
+| `json_array_length(JSON, パス)` | 配列の要素数 |
+| `json_object(キー, 値, ...)` | JSONオブジェクトを組み立てる |
+| `json_each(JSON, パス)` | 配列・オブジェクトを行に展開するテーブル関数 |
+
+配列を検索したい場合は `json_each` で展開して結合します。
+
+```sql
+-- tags配列に 'a' を含むイベントを探す
+SELECT e.id
+FROM events e, json_each(e.payload, '$.tags') t
+WHERE t.value = 'a';
+```
+
+<Callout type="info" title="JSONB — 検索を速くしたい場合">
+SQLite 3.45.0 以降では、JSONをバイナリ形式で保存する `jsonb_` 系の関数が使えます。保存時に解析済みの形にしておくため、読み取りのたびのパースが不要になり高速です。ただし人間が直接読めない形式になるため、目視での確認が必要なデータでは通常のTEXTのままにしておくほうが扱いやすくなります。
+</Callout>
+
+JSONを頻繁に検索するなら、**生成列**にインデックスを張る方法があります。
+
+```sql
+ALTER TABLE events ADD COLUMN
+  user_id INTEGER GENERATED ALWAYS AS (payload ->> '$.user.id') VIRTUAL;
+
+CREATE INDEX idx_events_user ON events(user_id);
+```
+
+<Figure src="/images/creative_color.png" alt="組み立てるイメージ" caption="JSON列＋生成列＋インデックスの組み合わせで、柔軟さと検索速度を両立できます" maxWidth="360px" />
+
+## ALTER TABLE でできること・できないこと
+
+SQLiteの `ALTER TABLE` は、他のデータベースに比べて制限が強い部分です。ただし年々緩和されています。
+
+| 操作 | 可否 | 対応バージョン |
+| ---- | ---- | -------------- |
+| テーブル名の変更 | できる | 古くから |
+| 列の追加（`ADD COLUMN`） | できる | 古くから |
+| 列名の変更（`RENAME COLUMN`） | できる | 3.25.0 |
+| 列の削除（`DROP COLUMN`） | できる | 3.35.0 |
+| `NOT NULL` / `CHECK` 制約の追加・削除 | できる | 3.53.0 |
+| 列の型の変更 | **できない** | — |
+| 主キー・外部キー・`UNIQUE` の変更 | **できない** | — |
+| 列の並び順の変更 | **できない** | — |
+
+<Callout type="warning" title="古い記事の「SQLiteはALTER TABLEがほぼ使えない」は現在では不正確">
+「列の削除すらできない」と書かれた記事が今も多く残っていますが、`DROP COLUMN` は3.35.0（2021年）から使えます。制約の追加・削除も3.53.0（2026年4月）で可能になりました。手元のバージョンで何ができるかを、まず `SELECT sqlite_version();` で確認してください。
+</Callout>
+
+`DROP COLUMN` には条件があり、主キーの一部である列、`UNIQUE` 制約のある列、インデックスが張られている列などは削除できません。
+
+### できない変更はテーブルを作り直す
+
+型の変更や主キーの変更が必要な場合は、新しいテーブルを作ってデータを移します。公式が案内している手順の要点は次の通りです。
+
+```sql
+PRAGMA foreign_keys = OFF;
+
+BEGIN;
+
+CREATE TABLE users_new (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  age INTEGER
+) STRICT;
+
+INSERT INTO users_new (id, name, age) SELECT id, name, age FROM users;
+
+DROP TABLE users;
+ALTER TABLE users_new RENAME TO users;
+
+-- インデックス・トリガー・ビューを作り直す
+
+PRAGMA foreign_key_check;
+
+COMMIT;
+
+PRAGMA foreign_keys = ON;
+```
+
+<Marker>この作り直しの間、インデックスとトリガーは失われます。再作成を忘れると、動くけれど遅いテーブルが出来上がります。</Marker>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`PRAGMA foreign_keys` の切り替えはトランザクションの外でやるのがポイント。トランザクションの中では設定変更が効かないんだ。
+</SpeechBubble>
+
+## 標準SQLとの主な差分
+
+最後に、他のデータベースから移ってきたときに引っかかりやすい点をまとめます。
+
+| 項目 | SQLiteでの状況 |
+| ---- | -------------- |
+| `RIGHT JOIN` / `FULL OUTER JOIN` | 3.39.0 以降で使える。それ以前は `LEFT JOIN` で書き換えが必要 |
+| ウィンドウ関数 | 3.25.0 以降で使える |
+| CTE（`WITH` 句）・再帰CTE | 使える |
+| `ILIKE` | ない。`LIKE` が既定でASCIIのみ大文字小文字を区別しない |
+| `RIGHT`・`LEFT` 関数 | ない。`substr()` を使う |
+| ストアドプロシージャ | ない |
+| `TRUNCATE TABLE` | ない。`DELETE FROM テーブル` を使う |
+| 文字列連結 | `\|\|` を使う（`CONCAT()` は3.44.0以降） |
+
+<Callout type="note" title="LIKEの大文字小文字">
+SQLiteの `LIKE` は、ASCII文字についてのみ大文字小文字を区別しません。日本語や他のUnicode文字では区別されます。厳密な照合が必要な場合は、正規化した値を別列に持たせるのが確実です。
+</Callout>
+
+## よくあるハマりどころ
+
+### `ON CONFLICT` の対象列を書き忘れる
+
+`ON CONFLICT DO UPDATE` では、対象列の指定が必須です。省略できるのは `DO NOTHING` のときだけです。
+
+```sql
+-- エラーになる
+INSERT INTO users (email, name) VALUES ('a@example.com', '田中')
+ON CONFLICT DO UPDATE SET name = excluded.name;
+
+-- 対象列を明示する
+INSERT INTO users (email, name) VALUES ('a@example.com', '田中')
+ON CONFLICT(email) DO UPDATE SET name = excluded.name;
+```
+
+指定した列に `UNIQUE` または `PRIMARY KEY` 制約がないと、これもエラーになります。
+
+### `datetime('now')` をDEFAULTに直接書けない
+
+`DEFAULT` に関数を書く場合は、括弧で囲む必要があります。
+
+```sql
+-- エラー
+created_at TEXT DEFAULT datetime('now')
+
+-- 正しい
+created_at TEXT DEFAULT (datetime('now'))
+```
+
+### タイムゾーンを混在させる
+
+`datetime('now')` はUTC、`datetime('now', 'localtime')` はローカル時刻を返します。保存時に両方が混ざると、時系列の比較が壊れます。**保存はUTCに統一し、表示のときだけ変換する**と決めておいてください。
+
+## ちゃんと使うためのポイント
+
+- 「あれば更新、なければ挿入」は `ON CONFLICT(列) DO UPDATE SET`、新しい値は `excluded.列名` で参照する
+- `INSERT OR REPLACE` は削除と挿入なので、部分更新には使わない
+- `RETURNING` で挿入・更新・削除した行をその場で受け取れる
+- 日付はISO 8601のTEXTで保存し、`datetime()` の修飾子で計算する。保存はUTCに統一
+- JSONは `->>` で値を取り出す。頻繁に検索するなら生成列＋インデックス
+- `ALTER TABLE` の制限は年々緩和されている。まず `sqlite_version()` を確認する
+- 型や主キーの変更はテーブルの作り直し。インデックスとトリガーの再作成を忘れない
+
+次の章では、SQLiteの性能と安定性を大きく左右する **WALモード**を扱います。「読み取りと書き込みが同時にできる」とはどういうことか、そして `SQLITE_BUSY` エラーが出る理由と対策を見ていきます。
+
+## 参考リンク
+
+- [SQLite公式 — UPSERT](https://www.sqlite.org/lang_upsert.html)
+- [SQLite公式 — The RETURNING Clause](https://www.sqlite.org/lang_returning.html)
+- [SQLite公式 — Date And Time Functions](https://www.sqlite.org/lang_datefunc.html)
+- [SQLite公式 — JSON Functions And Operators](https://www.sqlite.org/json1.html)
+- [SQLite公式 — ALTER TABLE](https://www.sqlite.org/lang_altertable.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="INSERT・UPDATE・関数まわりの知識を、4択クイズでアウトプットして定着させよう"
+/>

@@ -1,0 +1,290 @@
+---
+title: 'SQLiteのインデックスとEXPLAIN QUERY PLANの読み方'
+description: 'SQLiteでインデックスがどう使われるかを、EXPLAIN QUERY PLANの出力の読み方、複合インデックスの列順、ANALYZEとあわせて整理します。'
+order: 7
+---
+
+インデックスの基本的な考え方は、[SQLとデータベースの基礎](/books/sql-basics/indexes-transactions-and-security)で扱った内容と共通です。この章では、**SQLiteでインデックスが効いているかをどう確認するか**に重点を置きます。
+
+SQLiteには `EXPLAIN QUERY PLAN` という、実行計画を人間に読みやすい形で出す機能があります。これを読めるようになると、「なんとなく遅い」から「この検索がテーブル全体を舐めている」まで、原因を特定できるようになります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+インデックスは「検索する列に張ればいい」と覚えていますが、それだけだとダメなんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+方向は合ってる。ただ「張ったつもりで効いていない」パターンが多いんだ。だから確認方法をセットで覚えよう。
+</SpeechBubble>
+
+## インデックスを作る
+
+**構文：** `CREATE [UNIQUE] INDEX [IF NOT EXISTS] インデックス名 ON テーブル名(列, ...) [WHERE 条件]`
+
+| 部分 | 説明 |
+| ---- | ---- |
+| `UNIQUE` | 値の重複を禁止する。制約としても機能する |
+| インデックス名 | データベース内で一意な名前。`idx_テーブル_列` のような命名が一般的 |
+| `(列, ...)` | 対象の列。複数書くと複合インデックスになる |
+| `WHERE 条件` | 条件に合う行だけを対象にする（部分インデックス） |
+
+```sql
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+CREATE UNIQUE INDEX idx_users_email ON users(email);
+```
+
+削除は `DROP INDEX` です。既存のインデックスは `.indexes` か次のSQLで確認できます。
+
+```sql
+SELECT name, tbl_name FROM sqlite_schema WHERE type = 'index';
+```
+
+<Callout type="note" title="自動で作られるインデックス">
+`PRIMARY KEY` と `UNIQUE` 制約には、自動的にインデックスが作られます（名前は `sqlite_autoindex_...`）。ただし [第4章](/books/sqlite/tables-rowid-and-constraints)で見た `INTEGER PRIMARY KEY` だけは例外で、テーブル自体がそのキーで並んでいるため、別のインデックスは作られません。
+</Callout>
+
+## EXPLAIN QUERY PLAN を読む
+
+クエリの前に `EXPLAIN QUERY PLAN` を付けるだけです。
+
+```sql
+EXPLAIN QUERY PLAN
+SELECT * FROM posts WHERE user_id = 5;
+```
+
+インデックスがない場合、こう出ます。
+
+```
+QUERY PLAN
+`--SCAN posts
+```
+
+インデックスを作ってから同じクエリを実行すると、こう変わります。
+
+```
+QUERY PLAN
+`--SEARCH posts USING INDEX idx_posts_user_id (user_id=?)
+```
+
+<Marker>`SCAN` は全行を順に読んでいる、`SEARCH` はインデックスで絞り込んでいる、という意味です。まずこの2語だけ覚えてください。</Marker>
+
+出力に現れる主なキーワードは次の通りです。
+
+| 表記 | 意味 | 良し悪し |
+| ---- | ---- | -------- |
+| `SCAN テーブル` | テーブル全体を順に読む | 行数が多いと問題 |
+| `SEARCH テーブル USING INDEX ...` | インデックスで絞り込んでいる | 良い |
+| `SEARCH テーブル USING INTEGER PRIMARY KEY` | rowidで直接引いている | 最速 |
+| `USING COVERING INDEX ...` | インデックスだけで完結し、本体を読んでいない | とても良い |
+| `USE TEMP B-TREE FOR ORDER BY` | 並べ替えのために一時的な作業領域を作っている | 改善余地あり |
+| `USE TEMP B-TREE FOR GROUP BY` | 集計のために一時領域を作っている | 改善余地あり |
+
+<Callout type="info" title="SCANが常に悪いわけではない">
+行数が数百件のテーブルなら、全件読んだほうがインデックス経由より速いこともあります。また、テーブルの大半がヒットする条件では、SQLiteが意図的に `SCAN` を選ぶこともあります。問題になるのは「大きなテーブルを、少数の行を取るために `SCAN` している」ケースです。
+</Callout>
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="チェックするイメージ" caption="遅いクエリを見つけたら、まずEXPLAIN QUERY PLANで実行計画を確認します" maxWidth="360px" />
+
+## 複合インデックスは「左から順に」使われる
+
+複数の列を持つインデックスは、**定義した列の並び順の左側から**しか使えません。これを左端接頭辞（leftmost prefix）のルールと呼びます。
+
+```sql
+CREATE INDEX idx_posts_user_created ON posts(user_id, created_at);
+```
+
+このインデックスが使えるかどうかは、`WHERE` 句の内容で決まります。
+
+| クエリの条件 | このインデックスを使えるか |
+| ------------ | -------------------------- |
+| `WHERE user_id = 5` | 使える（左端だけでも可） |
+| `WHERE user_id = 5 AND created_at > '2026-01-01'` | 使える（理想的） |
+| `WHERE created_at > '2026-01-01'` | **使えない**（左端を飛ばしている） |
+| `WHERE user_id = 5 ORDER BY created_at` | 使える。並べ替えも省略できる |
+
+<Marker>複合インデックスの列順は「等価比較する列を先、範囲比較や並べ替えに使う列を後」が基本です。</Marker>
+
+`WHERE user_id = 5 ORDER BY created_at DESC` のようなクエリでこのインデックスが効くと、`USE TEMP B-TREE FOR ORDER BY` が消えます。並べ替えのコストがゼロになるため、効果が大きい最適化です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+じゃあ、とりあえず全部の列にインデックスを張っておけば速くなりますか？
+</SpeechBubble>
+
+インデックスは**書き込みを遅くします**。1行 `INSERT` するたびに、そのテーブルのすべてのインデックスも更新されるからです。ディスク容量も消費します。
+
+SQLiteは書き込みが一度に1つという制約があるため、無駄なインデックスの影響は他のデータベースより出やすくなります。「使われていないインデックスは削除する」まで含めて管理してください。
+
+## カバリングインデックス
+
+`SELECT` する列がすべてインデックスに含まれている場合、SQLiteはテーブル本体を読まずに結果を返せます。これがカバリングインデックスです。
+
+```sql
+CREATE INDEX idx_posts_user_title ON posts(user_id, title);
+
+EXPLAIN QUERY PLAN
+SELECT title FROM posts WHERE user_id = 5;
+```
+
+```
+QUERY PLAN
+`--SEARCH posts USING COVERING INDEX idx_posts_user_title (user_id=?)
+```
+
+`USING COVERING INDEX` と出れば成功です。本体へのアクセスが消えるぶん、大きく速くなります。
+
+<Callout type="note" title="やりすぎに注意">
+カバリングを狙って多くの列をインデックスに含めると、インデックス自体が肥大化し、書き込みが重くなります。頻繁に実行される少数のクエリに絞って適用してください。
+</Callout>
+
+## 部分インデックスで小さく保つ
+
+`WHERE` 句付きでインデックスを作ると、条件に合う行だけが対象になります。
+
+```sql
+-- 未削除の行だけをインデックスする
+CREATE INDEX idx_posts_active ON posts(user_id) WHERE deleted_at IS NULL;
+```
+
+論理削除を使っているテーブルでは、削除済みの行がインデックスから外れるため、サイズが小さくなり検索も速くなります。
+
+<Marker>部分インデックスが使われるには、クエリの `WHERE` 句にもインデックス側と同じ条件が含まれている必要があります。</Marker>
+
+```sql
+-- 使われる
+SELECT * FROM posts WHERE user_id = 5 AND deleted_at IS NULL;
+
+-- 使われない（条件が足りない）
+SELECT * FROM posts WHERE user_id = 5;
+```
+
+## 式インデックス
+
+列そのものではなく、式の結果にインデックスを張ることもできます。
+
+```sql
+CREATE INDEX idx_users_lower_email ON users(lower(email));
+
+-- このクエリでインデックスが効く
+SELECT * FROM users WHERE lower(email) = 'a@example.com';
+```
+
+大文字小文字を区別しない検索や、JSON列から取り出した値（[第5章](/books/sqlite/sqlite-sql-dialect)の生成列）への検索で使います。
+
+## ANALYZE で統計情報を更新する
+
+SQLiteは、どのインデックスを使うかを推測で決めています。`ANALYZE` を実行すると、実際のデータ分布を調べて `sqlite_stat1` テーブルに記録し、より正確な判断ができるようになります。
+
+```sql
+ANALYZE;
+```
+
+データ量が大きく変わったとき（大量投入後など）に実行します。ただし毎回手動で実行するのは現実的ではないため、実務では次のPRAGMAを使うのが定番です。
+
+```sql
+PRAGMA optimize;
+```
+
+これは「必要と判断したときだけ `ANALYZE` 相当の処理を行う」という軽量な命令です。**接続を閉じる直前に毎回実行する**のが公式の推奨です。
+
+<Figure src="/images/running_man_color-1.png" alt="走るイメージ" caption="PRAGMA optimizeを接続クローズ時に入れておくと、統計情報が自然に最新へ保たれます" maxWidth="320px" />
+
+## インデックスが効かない典型パターン
+
+### 列に関数を適用している
+
+```sql
+-- インデックスが効かない
+SELECT * FROM users WHERE lower(email) = 'a@example.com';  -- 通常のemailインデックスは使えない
+
+-- インデックスが効く
+SELECT * FROM users WHERE email = 'a@example.com';
+```
+
+関数を使いたい場合は、前述の式インデックスを作ります。
+
+### LIKE の前方に `%` がある
+
+```sql
+-- 効く（前方一致）
+SELECT * FROM posts WHERE title LIKE 'SQLite%';
+
+-- 効かない（部分一致）
+SELECT * FROM posts WHERE title LIKE '%SQLite%';
+```
+
+部分一致の検索が必要なら、インデックスではなく全文検索を使います。次の章で扱う **FTS5** がその手段です。
+
+<Callout type="warning" title="LIKEでインデックスを使うには条件がある">
+前方一致でも、対象列が `COLLATE NOCASE` でない、かつ `case_sensitive_like` が既定のままである、といった条件が揃って初めてインデックスが使われます。効いているか不安なときは、必ず `EXPLAIN QUERY PLAN` で確認してください。
+</Callout>
+
+### 型が一致していない
+
+[第3章](/books/sqlite/data-types-and-affinity)で見た型の緩さが、ここでも影響します。`INTEGER` 親和性の列に文字列が混ざっていると、比較の挙動が変わり、インデックスが使われないことがあります。
+
+```sql
+-- 列に '5' （文字列）が入っている場合、この検索はヒットしない
+SELECT * FROM posts WHERE user_id = 5;
+```
+
+`STRICT` テーブルにしておけば、この問題は根本から発生しません。
+
+### OR で条件をつないでいる
+
+`OR` は、それぞれの条件に個別のインデックスがないと `SCAN` になりがちです。
+
+```sql
+-- 遅くなりやすい
+SELECT * FROM posts WHERE user_id = 5 OR title = 'SQLite';
+
+-- UNIONに分けるとそれぞれインデックスが効く
+SELECT * FROM posts WHERE user_id = 5
+UNION
+SELECT * FROM posts WHERE title = 'SQLite';
+```
+
+## よくあるハマりどころ
+
+### インデックスを作った直後に速くなったか確認しない
+
+`CREATE INDEX` は成功しても、そのクエリで使われるとは限りません。作ったら必ず `EXPLAIN QUERY PLAN` を実行し、`SEARCH ... USING INDEX` に変わったことを確認してください。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「インデックスを張ったのに速くならない」の相談は、だいたい実行計画を見ていないパターン。まず1行実行するだけで原因が分かるよ。
+</SpeechBubble>
+
+### 開発環境の少ないデータで判断する
+
+100件のテーブルでは `SCAN` でも一瞬で終わるため、問題が見えません。本番相当のデータ量を投入してから計測してください。データ量が変わると、SQLiteが選ぶ実行計画自体も変わります。
+
+### `EXPLAIN` と `EXPLAIN QUERY PLAN` を混同する
+
+`EXPLAIN`（QUERY PLANなし）は、SQLiteの仮想マシンのバイトコードを出力します。内部を追う用途では有用ですが、日常のチューニングで見るべきは `EXPLAIN QUERY PLAN` のほうです。
+
+### 使われていないインデックスを放置する
+
+不要なインデックスは、書き込み性能とディスク容量を静かに削り続けます。定期的に `sqlite_schema` でインデックス一覧を確認し、対応するクエリが今も存在するかを見直してください。
+
+## ちゃんと使うためのポイント
+
+- `EXPLAIN QUERY PLAN` を付けるだけで実行計画が読める
+- `SCAN` は全件走査、`SEARCH` はインデックス利用
+- `USING COVERING INDEX` が出れば本体を読んでおらず最速に近い
+- 複合インデックスは左端から順にしか使えない。等価比較の列を先に置く
+- 部分インデックスはクエリ側にも同じ条件が必要
+- `%` で始まる `LIKE` にインデックスは効かない。全文検索を検討する
+- `PRAGMA optimize` を接続クローズ時に実行して統計情報を保つ
+- インデックスは書き込みを遅くする。使われていないものは消す
+
+次の章では、ここまでの設定（`journal_mode`、`busy_timeout`、`foreign_keys`）を実際のNode.jsコードに落とし込みます。標準モジュールの `node:sqlite` を主軸に、better-sqlite3 や Prisma・Drizzle との使い分けも整理します。
+
+## 参考リンク
+
+- [SQLite公式 — EXPLAIN QUERY PLAN](https://www.sqlite.org/eqp.html)
+- [SQLite公式 — Query Planning](https://www.sqlite.org/queryplanner.html)
+- [SQLite公式 — CREATE INDEX](https://www.sqlite.org/lang_createindex.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="インデックスとクエリ最適化の知識を、4択クイズでアウトプットして定着させよう"
+/>

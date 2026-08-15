@@ -1,0 +1,310 @@
+---
+title: 'Node.jsでSQLiteを使う — node:sqlite・better-sqlite3・Prisma・Drizzle'
+description: 'Node.js標準のnode:sqliteモジュールの使い方を中心に、better-sqlite3やPrisma・Drizzleとの違いと選び方を整理します。'
+order: 8
+---
+
+これまでの章で扱ってきた設定を、実際のNode.jsコードに落とし込みます。
+
+かつてNode.jsからSQLiteを使うには、`better-sqlite3` や `sqlite3` といったパッケージを入れる必要がありました。これらはネイティブモジュールなので、環境によってはビルドツールが必要になり、Dockerイメージが膨らむ原因にもなっていました。
+
+現在は **Node.js本体に `node:sqlite` が同梱されている**ため、多くの場合は追加インストールなしで始められます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+標準で入っているなら、もう better-sqlite3 は要らないということですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+用途によるね。ただ「まずは標準を試して、足りなければ他を検討する」という順番でいい段階には来ている。
+</SpeechBubble>
+
+## まず対応状況を確認する
+
+`node:sqlite` は Node.js v22.5.0 で追加され、v22.13.0 / v23.4.0 以降は `--experimental-sqlite` フラグなしで使えます。
+
+<Callout type="warning" title="安定版ではなくリリース候補（Stability 1.2）">
+本稿執筆時点で `node:sqlite` は **Stability 1.2 — Release Candidate** です。実用可能な段階ですが、マイナーバージョン間でAPIが変わる可能性が残っています。本番導入の前に、必ず[公式ドキュメント](https://nodejs.org/api/sqlite.html)で現在のステータスと最新のAPIを確認してください。
+</Callout>
+
+```bash
+node -e "const {DatabaseSync}=require('node:sqlite'); console.log(new DatabaseSync(':memory:').prepare('select sqlite_version() v').get())"
+```
+
+これが動けば、環境は整っています。
+
+## 最小の使い方
+
+```js
+import { DatabaseSync } from 'node:sqlite';
+
+const db = new DatabaseSync('app.db');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  ) STRICT
+`);
+
+const insert = db.prepare('INSERT INTO users (name, email) VALUES (?, ?)');
+const result = insert.run('田中', 'tanaka@example.com');
+console.log(result); // { changes: 1, lastInsertRowid: 1 }
+
+const users = db.prepare('SELECT * FROM users').all();
+console.log(users);
+
+db.close();
+```
+
+`DatabaseSync` という名前の通り、**このAPIは同期的**です。`await` は不要で、戻り値がそのまま結果になります。
+
+<Marker>SQLiteはネットワーク越しではなくローカルファイルを読むため、同期APIでも「待ち」がほとんど発生しません。むしろ非同期にするオーバーヘッドのほうが大きいという設計判断です。</Marker>
+
+## 主なメソッド
+
+### DatabaseSync
+
+**構文：** `new DatabaseSync(パス[, オプション])`
+
+| 主なオプション | 既定値 | 説明 |
+| -------------- | ------ | ---- |
+| `readOnly` | `false` | 読み取り専用で開く |
+| `enableForeignKeyConstraints` | `true` | 外部キー制約を有効にする |
+| `timeout` | `0` | `busy_timeout`（ミリ秒） |
+| `allowExtension` | `false` | 拡張の読み込みを許可する |
+| `readBigInts` | `false` | INTEGER を `BigInt` として読む |
+
+<Callout type="info" title="外部キーは node:sqlite では既定で有効">
+[第4章](/books/sqlite/tables-rowid-and-constraints)で「SQLiteの外部キーは既定で無効」と説明しましたが、`node:sqlite` は接続時に自動で有効化してくれます。これはSQLite本体ではなくNode.js側の親切な既定値です。他のライブラリや `sqlite3` コマンドから同じファイルを触るときは、あらためて `PRAGMA foreign_keys = ON` が必要になります。
+</Callout>
+
+| メソッド | 説明 |
+| -------- | ---- |
+| `exec(sql)` | 結果を返さないSQLを実行する。複数文をまとめて書ける |
+| `prepare(sql)` | プリペアドステートメント（`StatementSync`）を作る |
+| `close()` | 接続を閉じる |
+| `loadExtension(パス)` | 拡張を読み込む（`allowExtension: true` が必要） |
+
+### StatementSync
+
+`prepare()` が返すオブジェクトのメソッドです。
+
+| メソッド | 戻り値 | 用途 |
+| -------- | ------ | ---- |
+| `run(...引数)` | `{ changes, lastInsertRowid }` | INSERT / UPDATE / DELETE |
+| `get(...引数)` | 最初の1行のオブジェクト、なければ `undefined` | 1件取得 |
+| `all(...引数)` | 行オブジェクトの配列 | 複数件取得 |
+| `iterate(...引数)` | イテレータ | 大量データを1件ずつ処理する |
+
+**戻り値の補足：** `changes` は影響を受けた行数、`lastInsertRowid` は最後に挿入された行の rowid です。
+
+## プレースホルダとSQLインジェクション対策
+
+値を文字列連結でSQLに埋め込むのは、SQLインジェクションの原因になります。必ずプレースホルダを使ってください。
+
+```js
+// 危険 — 絶対にやらない
+const rows = db.prepare(`SELECT * FROM users WHERE email = '${email}'`).all();
+
+// 安全
+const rows = db.prepare('SELECT * FROM users WHERE email = ?').all(email);
+```
+
+名前付きのプレースホルダも使えます。引数が多いときは、こちらのほうが取り違えを防げます。
+
+```js
+const stmt = db.prepare(
+  'INSERT INTO users (name, email) VALUES (:name, :email)'
+);
+
+// プレフィックス付きで渡す
+stmt.run({ ':name': '佐藤', ':email': 'sato@example.com' });
+
+// プレフィックスなしでも渡せる（allowBareNamedParameters の既定は true）
+stmt.run({ name: '鈴木', email: 'suzuki@example.com' });
+```
+
+<Marker>`prepare()` の結果は使い回せます。ループの中で毎回 `prepare()` を呼ぶより、外で1回作って `run()` を繰り返すほうが速くなります。</Marker>
+
+<Figure src="/images/fork_suit_man_color.png" alt="分かれ道のイメージ" caption="プレースホルダは速度対策でもあります。同じSQLを解析し直さずに済みます" maxWidth="340px" />
+
+## 実務での接続初期化
+
+[第6章](/books/sqlite/transactions-and-wal)と[第7章](/books/sqlite/indexes-and-query-plan)で見た設定を、接続処理にまとめます。
+
+```js
+import { DatabaseSync } from 'node:sqlite';
+
+export function openDatabase(path) {
+  const db = new DatabaseSync(path, {
+    timeout: 5000, // busy_timeout（ミリ秒）
+  });
+
+  // ファイルに保存される設定（初回だけ効けばよいが、毎回書いても害はない）
+  db.exec('PRAGMA journal_mode = WAL');
+
+  // 接続ごとに必要な設定
+  db.exec('PRAGMA synchronous = NORMAL');
+  db.exec('PRAGMA foreign_keys = ON');
+
+  return db;
+}
+
+export function closeDatabase(db) {
+  db.exec('PRAGMA optimize'); // 統計情報を最新に保つ
+  db.close();
+}
+```
+
+<Callout type="note" title="なぜ foreign_keys を明示するのか">
+`node:sqlite` の既定で有効なので厳密には不要ですが、明示しておくと「このアプリは外部キーを前提にしている」という意図がコードに残ります。将来ライブラリを差し替えたときの事故も防げます。
+</Callout>
+
+## トランザクションを書く
+
+SQLをそのまま書くのが最も分かりやすい方法です。例外時に必ずロールバックされるよう、`try` / `catch` で囲みます。
+
+```js
+function transfer(db, fromId, toId, amount) {
+  db.exec('BEGIN IMMEDIATE'); // 書き込みを含むので IMMEDIATE
+  try {
+    db.prepare('UPDATE accounts SET balance = balance - ? WHERE id = ?')
+      .run(amount, fromId);
+    db.prepare('UPDATE accounts SET balance = balance + ? WHERE id = ?')
+      .run(amount, toId);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+```
+
+大量の行を挿入するときも、必ずトランザクションでまとめます。
+
+```js
+function bulkInsert(db, rows) {
+  const stmt = db.prepare('INSERT INTO logs (message) VALUES (?)');
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    for (const row of rows) stmt.run(row.message);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+1万件のINSERTでも、トランザクションで囲むかどうかで数十倍変わる。ここは最初から入れておこう。
+</SpeechBubble>
+
+## テストで使う
+
+`:memory:` を渡すと、ディスクを一切使わないデータベースになります。テストごとに新しいインスタンスを作れば、後片付けも不要です。
+
+```js
+import { test } from 'node:test';
+import assert from 'node:assert';
+import { DatabaseSync } from 'node:sqlite';
+
+function createTestDb() {
+  const db = new DatabaseSync(':memory:');
+  db.exec(`
+    CREATE TABLE users (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL
+    ) STRICT
+  `);
+  return db;
+}
+
+test('ユーザーを追加できる', () => {
+  const db = createTestDb();
+  db.prepare('INSERT INTO users (name) VALUES (?)').run('田中');
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(1);
+  assert.strictEqual(user.name, '田中');
+
+  db.close();
+});
+```
+
+<Marker>本番がPostgreSQLの場合、テストだけSQLiteにすると方言の違いで検証が甘くなります。テスト用途に割り切るか、本番もSQLiteで揃えるかを意識的に選んでください。</Marker>
+
+## 他の選択肢との比較
+
+| ライブラリ | インストール | API | 特徴 |
+| ---------- | ------------ | --- | ---- |
+| `node:sqlite` | 不要（標準） | 同期 | 依存ゼロ。ネイティブビルド不要。RC段階 |
+| `better-sqlite3` | 必要（ネイティブ） | 同期 | 実績が長い。機能が豊富。ユーザー定義関数など |
+| `sqlite3`（npm） | 必要（ネイティブ） | コールバック / 非同期 | 歴史が長いが、新規採用の理由は薄い |
+| Prisma | 必要 | 非同期 | スキーマ定義とマイグレーションが強力。型生成あり |
+| Drizzle ORM | 必要 | 同期 / 非同期 | SQLに近い書き味。TypeScriptの型付けが薄い層 |
+
+判断の目安は次の通りです。
+
+- **スクリプト・CLI・テスト・小さなツール** → `node:sqlite`。依存を増やさない価値が大きい
+- **長期運用するアプリで、実績と安定を優先したい** → `better-sqlite3`
+- **スキーマ管理とマイグレーションを仕組みで縛りたい** → Prisma
+- **SQLを自分で書きたいが型は欲しい** → Drizzle ORM
+
+<Callout type="info" title="ORMを使ってもPRAGMAは自分で設定する">
+PrismaやDrizzleを使う場合でも、`journal_mode = WAL` や `busy_timeout` はライブラリが自動で設定してくれるとは限りません。接続確立時のフックや初期化SQLで、明示的に実行してください。
+</Callout>
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="段階を上るイメージ" caption="まず標準モジュールで始め、必要になった機能に応じて乗り換えるのが無理のない進め方です" maxWidth="340px" />
+
+## よくあるハマりどころ
+
+### `db.close()` を呼び忘れる
+
+接続が開いたままだと、WALファイルのチェックポイントが進まず、ファイルが肥大化します。長時間動くプロセスでは1つの接続を使い回し、短命なスクリプトでは終了時に必ず閉じてください。
+
+### 相対パスでDBファイルを指定する
+
+`new DatabaseSync('app.db')` は**プロセスのカレントディレクトリ**からの相対パスです。起動場所が変わると別のファイルが作られます。`import.meta.dirname` などを使って絶対パスにしておくと事故が減ります。
+
+```js
+import path from 'node:path';
+const db = new DatabaseSync(path.join(import.meta.dirname, '../data/app.db'));
+```
+
+### サーバーレス環境で使おうとする
+
+Vercelの関数やAWS Lambdaのようなサーバーレス環境では、実行ごとにファイルシステムが揮発します。書き込んだデータは次の呼び出しに残りません。読み取り専用のデータを同梱するなら使えますが、書き込みが必要な場合は[最終章](/books/sqlite/edge-and-local-first)で扱う仕組みを検討してください。
+
+### 複数プロセスから同じファイルを書く
+
+`cluster` やPM2で複数プロセスを立ち上げると、書き込みが競合して `SQLITE_BUSY` が出ます。`timeout` の設定で緩和できますが、根本的には書き込みを1プロセスに集約する設計が安全です。
+
+### `exec()` にユーザー入力を渡す
+
+`exec()` はプレースホルダを使えません。ユーザー入力が絡むSQLは必ず `prepare()` を通してください。
+
+## ちゃんと使うためのポイント
+
+- `node:sqlite` は標準同梱。ただしRC段階なので公式ドキュメントでステータスを確認する
+- APIは同期。`DatabaseSync` と `StatementSync` の2つを押さえれば足りる
+- 値の埋め込みは必ずプレースホルダ（`?` か `:name`）
+- `prepare()` の結果は使い回す
+- 接続時に `journal_mode = WAL` / `busy_timeout` / `synchronous = NORMAL` を設定する
+- 書き込みトランザクションは `BEGIN IMMEDIATE` + `try` / `catch`
+- テストには `:memory:` が便利
+- サーバーレス環境や複数プロセスからの書き込みには向かない
+
+次の章では、`LIKE '%キーワード%'` では実現できない全文検索を、SQLite内蔵の **FTS5** で実装します。日本語をどう扱うかも含めて見ていきます。
+
+## 参考リンク
+
+- [Node.js公式 — SQLite](https://nodejs.org/api/sqlite.html)
+- [better-sqlite3 — GitHub](https://github.com/WiseLibs/better-sqlite3)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="Node.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

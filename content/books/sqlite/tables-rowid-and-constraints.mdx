@@ -1,0 +1,304 @@
+---
+title: 'テーブル作成とrowid — AUTOINCREMENT・主キー・制約の基本'
+description: 'CREATE TABLEの書き方に加え、SQLite特有のrowid、INTEGER PRIMARY KEYとの関係、AUTOINCREMENTを付けるべきかの判断を整理します。'
+order: 4
+---
+
+SQLiteの `CREATE TABLE` は、他のデータベースとほとんど同じように書けます。ただし1つだけ、知らないと必ず混乱する仕組みがあります。それが **rowid** です。
+
+SQLiteのテーブルは、明示的に作らなくても、内部的に整数のキー列を1つ持っています。この章では、rowidの正体と、それを踏まえた主キーの決め方、そしてデフォルトで無効になっている外部キー制約を扱います。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`id INTEGER PRIMARY KEY` って、他のDBだと `AUTO_INCREMENT` を付けないと自動採番されませんよね。SQLiteでも必要ですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+それがSQLiteだと不要なんだ。`INTEGER PRIMARY KEY` と書いた時点で、もう自動採番される。理由はrowidにある。
+</SpeechBubble>
+
+## すべてのテーブルはrowidを持っている
+
+SQLiteの通常のテーブルには、`rowid` という64ビット整数の隠しキーが必ず存在します。テーブル定義に書かなくても、内部的に付与されています。
+
+```sql
+CREATE TABLE memos (
+  body TEXT
+);
+
+INSERT INTO memos (body) VALUES ('買い物'), ('会議の準備');
+
+SELECT rowid, body FROM memos;
+```
+
+```
+┌───────┬────────────┐
+│ rowid │    body    │
+├───────┼────────────┤
+│ 1     │ 買い物     │
+│ 2     │ 会議の準備 │
+└───────┴────────────┘
+```
+
+`SELECT *` には現れませんが、明示的に指定すれば取得できます。`rowid` の代わりに `_rowid_` や `oid` という別名も使えます。
+
+<Marker>SQLiteのテーブルは、rowidをキーとしたB木として物理的に格納されています。rowidによる検索は常に最速です。</Marker>
+
+## INTEGER PRIMARY KEY はrowidの別名になる
+
+ここが重要な部分です。列を `INTEGER PRIMARY KEY` と宣言すると、その列は**新しい列ではなく、rowidそのものの別名**になります。
+
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL
+);
+```
+
+この `id` はrowidと同じ実体なので、次の性質を自動的に持ちます。
+
+- `INSERT` で値を省略すると自動採番される（`AUTO_INCREMENT` 相当の指定は不要）
+- 検索が最速になる（別途インデックスが作られるのではなく、テーブルそのものがこのキーで並んでいる）
+- 追加のディスク容量を消費しない
+
+```sql
+INSERT INTO users (name) VALUES ('田中');
+SELECT * FROM users;
+-- 1 | 田中
+```
+
+<Callout type="warning" title="INTEGERでなければrowidの別名にならない">
+`id INT PRIMARY KEY` と書くと、rowidの別名になりません。親和性は同じINTEGERですが、この特別扱いだけは**型名が厳密に `INTEGER` であること**を要求します。`BIGINT` や `INT` では通常の主キー列として扱われ、自動採番されません。
+</Callout>
+
+これは型親和性のルールとは別の、独立した特別ルールです。[前章](/books/sqlite/data-types-and-affinity)で見た「`INT` を含む型名はINTEGER親和性」という話とは区別してください。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["id INTEGER PRIMARY KEY"] -->|"rowidの別名になる"| B["自動採番される<br/>検索が最速<br/>容量を消費しない"]
+    C["id INT PRIMARY KEY"] -->|"通常の主キー列"| D["自動採番されない<br/>別途インデックスが作られる"]
+`}
+/>
+
+## AUTOINCREMENT は必要か
+
+SQLiteにも `AUTOINCREMENT` キーワードはあります。ただし、多くの場合**付けるべきではありません**。
+
+```sql
+-- 通常はこれで十分
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
+
+-- AUTOINCREMENTを付けた場合
+CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);
+```
+
+違いは、**削除された行のIDを再利用するかどうか**だけです。
+
+| | `AUTOINCREMENT` なし | `AUTOINCREMENT` あり |
+| --- | --- | --- |
+| 採番方法 | 現在の最大rowid + 1 | 過去に使った最大値 + 1 |
+| 削除後のID再利用 | する | しない |
+| 管理テーブル | 不要 | `sqlite_sequence` テーブルが作られる |
+| 性能 | 速い | わずかに遅い |
+| 上限到達時 | 空きIDを探す | エラーになる |
+
+具体例で見てみます。`AUTOINCREMENT` なしの場合、最後の行を削除してから挿入すると、同じIDが再利用されます。
+
+```sql
+INSERT INTO users (name) VALUES ('田中'), ('佐藤');  -- id: 1, 2
+DELETE FROM users WHERE id = 2;
+INSERT INTO users (name) VALUES ('鈴木');            -- id: 2（再利用）
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+IDが使い回されるのは、まずくないですか？ 削除した佐藤さんのIDが鈴木さんに割り当てられていますよね。
+</SpeechBubble>
+
+まずくなるのは、**そのIDが外部に漏れている場合**です。URLに `/users/2` として露出していたり、外部サービスに連携済みだったり、ログに残っていたりすると、別人のデータが同じIDで参照されることになります。
+
+<Marker>IDが外部に露出する・監査ログに残る・他システムと連携する場合は AUTOINCREMENT を付ける。それ以外は不要です。</Marker>
+
+`AUTOINCREMENT` を付けると `sqlite_sequence` という管理テーブルが自動作成され、テーブルごとの最終採番値が記録されます。
+
+```sql
+SELECT * FROM sqlite_sequence;
+-- users | 3
+```
+
+## 主キーに関する歴史的な落とし穴
+
+SQLiteには、他のデータベースとの互換性を壊さないために残されている既知のバグがあります。
+
+<Callout type="warning" title="PRIMARY KEY 列にNULLが入る">
+`INTEGER PRIMARY KEY`（= rowidの別名）**以外**の主キー列は、`NULL` を許してしまいます。標準SQLでは主キーは暗黙に `NOT NULL` ですが、SQLiteは長年の互換性のためこの挙動を修正していません。
+</Callout>
+
+```sql
+CREATE TABLE items (
+  code TEXT PRIMARY KEY,
+  name TEXT
+);
+
+INSERT INTO items (code, name) VALUES (NULL, 'テスト');  -- 通ってしまう
+INSERT INTO items (code, name) VALUES (NULL, 'テスト2'); -- これも通る
+```
+
+対策は単純で、**主キー列に明示的に `NOT NULL` を書く**ことです。
+
+```sql
+CREATE TABLE items (
+  code TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL
+) STRICT;
+```
+
+なお `STRICT` テーブルではこの挙動が修正されており、主キー列は自動的に `NOT NULL` になります。[前章](/books/sqlite/data-types-and-affinity)で `STRICT` を推奨した理由の1つがこれです。
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="想定外の結果に驚くイメージ" caption="「主キーなのにNULLが入る」はSQLite特有の落とし穴。STRICTかNOT NULLで防げます" maxWidth="360px" />
+
+## 外部キーはデフォルトで無効
+
+SQLiteは外部キー制約に対応していますが、**デフォルトでは無効**です。`REFERENCES` を書いても、何のチェックもされません。
+
+```sql
+CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);
+CREATE TABLE posts (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  title TEXT NOT NULL
+);
+
+-- 存在しないユーザーIDでも通ってしまう
+INSERT INTO posts (user_id, title) VALUES (999, 'テスト投稿');
+```
+
+有効にするには、**接続ごとに** `PRAGMA` を実行します。
+
+```sql
+PRAGMA foreign_keys = ON;
+```
+
+<Marker>PRAGMA foreign_keys の設定は接続単位です。データベースファイルには保存されないため、アプリの接続確立時に毎回実行する必要があります。</Marker>
+
+これは、外部キーがSQLiteに後から追加された機能で、既存アプリケーションを壊さないために既定値が `OFF` になっているためです。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「開発中は通っていたのに、本番でデータの不整合が見つかった」の定番パターン。接続処理に1行足すだけで防げるから、最初に入れておこう。
+</SpeechBubble>
+
+Node.jsから使う場合の具体的な書き方は [Node.jsでSQLiteを使う](/books/sqlite/nodejs-sqlite) で扱います。
+
+有効にすると、削除時の動作も指定できるようになります。
+
+```sql
+CREATE TABLE posts (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL
+) STRICT;
+```
+
+| 指定 | 親が削除されたときの動作 |
+| ---- | ------------------------ |
+| `ON DELETE NO ACTION` | エラーにする（既定） |
+| `ON DELETE RESTRICT` | エラーにする（即座に判定する点が異なる） |
+| `ON DELETE CASCADE` | 子の行も一緒に削除する |
+| `ON DELETE SET NULL` | 子の外部キー列を `NULL` にする |
+
+既存のデータに違反がないかは、次のコマンドで確認できます。
+
+```sql
+PRAGMA foreign_key_check;
+```
+
+## その他の制約
+
+外部キー以外の制約は、他のデータベースと同じように使えて、デフォルトで有効です。
+
+| 制約 | 用途 |
+| ---- | ---- |
+| `NOT NULL` | NULLを禁止する |
+| `UNIQUE` | 重複を禁止する |
+| `CHECK (条件)` | 任意の条件を課す |
+| `DEFAULT 値` | 値を省略したときの既定値 |
+
+`CHECK` はSQLiteでは特に重要です。型が緩い分、値の妥当性を守る主役になります。
+
+```sql
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 100),
+  price INTEGER NOT NULL CHECK (price >= 0),
+  status TEXT NOT NULL CHECK (status IN ('draft', 'published', 'archived')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+) STRICT;
+```
+
+<Callout type="note" title="UNIQUE制約とNULL">
+SQLiteでは、`UNIQUE` 制約のある列に `NULL` を複数入れられます。`NULL` どうしは等しくないと判定されるためで、これは標準SQLに沿った挙動です。「1件だけ」を保証したい場合は `NOT NULL` も併記してください。
+</Callout>
+
+## WITHOUT ROWID テーブル
+
+rowidが不要な場合、`WITHOUT ROWID` を指定するとrowidを持たないテーブルを作れます。
+
+```sql
+CREATE TABLE settings (
+  key TEXT NOT NULL PRIMARY KEY,
+  value TEXT NOT NULL
+) WITHOUT ROWID;
+```
+
+通常のテーブルでは、`key` で検索するとまずインデックスを引いてrowidを求め、そこから本体を引くという2段階になります。`WITHOUT ROWID` にすると、主キーそのものでデータが並ぶため1段階で済みます。
+
+向いているのは、次のような条件をすべて満たすテーブルです。
+
+- 主キーが整数以外（文字列やUUID）
+- 1行が小さい（目安として数百バイト以下）
+- 主キー以外での検索が少ない
+
+設定テーブル、キーバリューストア、多対多の中間テーブルなどが典型例です。逆に、1行が大きいテーブルや整数の主キーを持つテーブルでは、通常のテーブルのほうが速くなります。
+
+<Figure src="/images/idea_drawing_woman.png" alt="設計を考えるイメージ" caption="迷ったら通常のテーブルで構いません。WITHOUT ROWIDは条件が揃ったときの最適化です" maxWidth="360px" />
+
+## よくあるハマりどころ
+
+### `INTEGER` を `INT` と書いてしまう
+
+前述の通り、`INT PRIMARY KEY` では自動採番されません。`.schema` で定義を確認し、`INTEGER PRIMARY KEY` になっているかを見てください。
+
+### `PRAGMA foreign_keys = ON` を1回だけ実行して安心する
+
+接続単位の設定なので、コネクションプールを使っている場合は**すべての接続で**実行される必要があります。接続確立時のフックで必ず実行するようにしてください。
+
+### `ALTER TABLE` で制約を後付けしようとする
+
+SQLiteの `ALTER TABLE` は、長らく列の追加・改名・削除しかできませんでした。SQLite 3.53.0（2026年4月）で `NOT NULL` と `CHECK` の追加・削除が可能になりましたが、主キーや外部キーの変更は依然としてできません。この場合はテーブルを作り直します。詳しくは [SQLiteのSQL方言](/books/sqlite/sqlite-sql-dialect) で扱います。
+
+### rowidに永続的な意味を持たせる
+
+`AUTOINCREMENT` を付けていないテーブルのrowidは再利用されます。また `VACUUM` を実行すると、rowidの値が変わる可能性があります。外部に公開するIDとして使うなら `AUTOINCREMENT` を付けるか、別途UUID列を持たせてください。
+
+## ちゃんと使うためのポイント
+
+- SQLiteの通常テーブルは、暗黙に `rowid` という整数キーを持つ
+- `INTEGER PRIMARY KEY` はrowidの別名になり、自動採番される（`AUTOINCREMENT` は不要）
+- 型名が厳密に `INTEGER` でないとこの特別扱いは効かない
+- `AUTOINCREMENT` はIDの再利用を防ぐためのもの。外部に露出するIDにだけ付ける
+- `INTEGER PRIMARY KEY` 以外の主キー列は `NULL` を許すため、`NOT NULL` を明記する
+- 外部キーは接続ごとに `PRAGMA foreign_keys = ON` が必要
+- 型が緩い分、`CHECK` 制約が値の妥当性を守る主役になる
+
+次の章では、標準SQLとの差分に絞って、SQLiteならではの書き方を見ていきます。`UPSERT`、`RETURNING`、JSON関数、日付時刻関数、そして `ALTER TABLE` でいま何ができるかを整理します。
+
+## 参考リンク
+
+- [SQLite公式 — Rowid Tables](https://www.sqlite.org/rowidtable.html)
+- [SQLite公式 — SQLite Autoincrement](https://www.sqlite.org/autoinc.html)
+- [SQLite公式 — SQLite Foreign Key Support](https://www.sqlite.org/foreignkeys.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="主キー・制約・テーブル設計の知識を、4択クイズでアウトプットして定着させよう"
+/>

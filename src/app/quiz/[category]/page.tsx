@@ -383,7 +383,7 @@ export default async function CategoryQuizPage({
 
       {/* 学習導線 */}
       <section
-        className={`${contentShell} mb-4 grid min-w-0 gap-2 ${relatedBook ? 'sm:grid-cols-2' : 'max-w-[220px] sm:max-w-[260px]'}`}
+        className={`${contentShell} mb-4 grid min-w-0 gap-2 ${relatedBook ? 'sm:grid-cols-2' : 'md:max-w-2xl'}`}
       >
         {relatedBook && relatedBookTheme && (
           <Link href={`/books/${relatedBook.bookSlug}`} className="group block h-full min-w-0">

@@ -1,0 +1,302 @@
+---
+title: 'FTS5でSQLiteに全文検索を実装する'
+description: 'SQLiteの全文検索拡張FTS5を使って、仮想テーブルの作り方、MATCH検索、ランキング、日本語トークナイザの扱いまでを整理します。'
+order: 9
+---
+
+[第7章](/books/sqlite/indexes-and-query-plan)で見た通り、`LIKE '%キーワード%'` にインデックスは効きません。記事本文からキーワードを探すような検索を素直に書くと、テーブル全体を毎回走査することになります。
+
+SQLiteには **FTS5** という全文検索の仕組みが内蔵されています。検索用のインデックスを別途持つことで、部分一致の検索を高速に実行でき、さらに関連度順の並べ替えやキーワードのハイライトまで扱えます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+全文検索って、ElasticsearchみたいなものをSQLiteでやるということですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+規模はぜんぜん違うけど、考え方は同じだよ。数万〜数十万件の記事を検索するくらいなら、FTS5で十分に実用になる。
+</SpeechBubble>
+
+## FTS5テーブルを作る
+
+FTS5は**仮想テーブル**として作ります。
+
+**構文：** `CREATE VIRTUAL TABLE テーブル名 USING fts5(列名, ...[, オプション])`
+
+```sql
+CREATE VIRTUAL TABLE articles_fts USING fts5(title, body);
+```
+
+通常のテーブルと違い、**型を指定しません**。FTS5の列はすべてテキストとして扱われるためです。
+
+```sql
+INSERT INTO articles_fts (title, body) VALUES
+  ('SQLiteの基礎', 'SQLiteはサーバー不要のデータベースです'),
+  ('WALモード入門', '読み取りと書き込みを同時に処理できます');
+```
+
+<Callout type="note" title="FTS5が使えるか確認する">
+FTS5はSQLiteのビルド時オプションですが、公式配布のバイナリや主要なランタイム（Node.js、Python、macOS標準など）では通常有効になっています。使えるかどうかは、上の `CREATE VIRTUAL TABLE` がエラーにならないかで判断できます。
+</Callout>
+
+## MATCH で検索する
+
+検索には `MATCH` 演算子を使います。左辺には**テーブル名そのもの**を書きます。
+
+```sql
+SELECT * FROM articles_fts WHERE articles_fts MATCH 'SQLite';
+```
+
+`table(...)` という短い書き方もできます。
+
+```sql
+SELECT * FROM articles_fts('SQLite');
+```
+
+<Marker>`MATCH` の左辺は列名ではなくテーブル名です。列を指定したいときは、検索文字列の側に `列名 : キーワード` と書きます。</Marker>
+
+```sql
+-- title列だけを検索
+SELECT * FROM articles_fts WHERE articles_fts MATCH 'title : SQLite';
+```
+
+検索文字列では、次のような指定ができます。
+
+| 書き方 | 意味 |
+| ------ | ---- |
+| `SQLite WAL` | 両方を含む（暗黙のAND） |
+| `SQLite OR WAL` | どちらかを含む |
+| `SQLite NOT WAL` | 前者を含み後者を含まない |
+| `"WAL mode"` | フレーズとして連続で一致 |
+| `SQL*` | 前方一致（`SQLite` などにヒット） |
+| `NEAR(SQLite WAL, 10)` | 10トークン以内に両方が現れる |
+
+<Callout type="warning" title="ユーザー入力をそのまま渡さない">
+検索文字列はFTS5独自の構文として解釈されます。ユーザーが `AND` や `"` を含む文字列を入力すると構文エラーになったり、意図しない検索になったりします。入力をそのまま渡すのではなく、フレーズとして扱うために引用符で囲む、記号を除去するなどの前処理を入れてください。
+</Callout>
+
+## 関連度順に並べる
+
+FTS5には `rank` という特別な列があり、`ORDER BY rank` と書くだけで関連度順になります。
+
+```sql
+SELECT title, rank
+FROM articles_fts
+WHERE articles_fts MATCH 'SQLite'
+ORDER BY rank
+LIMIT 20;
+```
+
+内部では **BM25** というスコアリングが使われています。BM25のスコアは「小さいほど関連度が高い」負の値で表されるため、`ORDER BY rank`（昇順）がそのまま「関連度の高い順」になります。
+
+列ごとの重み付けもできます。
+
+**構文：** `bm25(テーブル名[, 列1の重み, 列2の重み, ...])`
+
+**戻り値：** BM25スコア（負の実数。小さいほど関連度が高い）
+
+```sql
+-- タイトルの一致を本文の10倍重視する
+SELECT title, bm25(articles_fts, 10.0, 1.0) AS score
+FROM articles_fts
+WHERE articles_fts MATCH 'SQLite'
+ORDER BY score
+LIMIT 20;
+```
+
+<Figure src="/images/readingbook_woman_color.png" alt="本を読むイメージ" caption="タイトルの一致を重く扱うと、検索結果の納得感が大きく変わります" maxWidth="340px" />
+
+## ハイライトと抜粋
+
+検索結果の表示に使う関数が2つ用意されています。
+
+**構文：** `highlight(テーブル名, 列番号, 開始文字列, 終了文字列)`
+
+**戻り値：** 一致部分を開始・終了文字列で囲んだテキスト
+
+```sql
+SELECT highlight(articles_fts, 0, '<mark>', '</mark>')
+FROM articles_fts
+WHERE articles_fts MATCH 'SQLite';
+```
+
+**構文：** `snippet(テーブル名, 列番号, 開始文字列, 終了文字列, 省略記号, 最大トークン数)`
+
+**戻り値：** 一致箇所の周辺だけを切り出したテキスト
+
+```sql
+SELECT snippet(articles_fts, 1, '<mark>', '</mark>', '…', 20)
+FROM articles_fts
+WHERE articles_fts MATCH 'SQLite';
+```
+
+検索結果一覧で「本文の該当部分だけを抜粋して表示する」という、よくあるUIがこれ1つで作れます。
+
+<Callout type="warning" title="列番号は0から始まる">
+`highlight` と `snippet` の第2引数は列名ではなく**0始まりの列番号**です。`fts5(title, body)` なら `title` が `0`、`body` が `1` です。列を追加すると番号がずれるので注意してください。
+</Callout>
+
+## 日本語をどう扱うか
+
+ここがFTS5でもっとも重要な論点です。
+
+FTS5は既定で `unicode61` というトークナイザを使い、**空白や記号でテキストを分割**します。英語なら単語ごとに分かれますが、日本語は単語の間に空白がないため、文がまるごと1つのトークンになってしまいます。
+
+```sql
+-- 既定のトークナイザでは、これがヒットしない
+INSERT INTO articles_fts (title, body) VALUES ('入門', 'データベースの基礎');
+SELECT * FROM articles_fts WHERE articles_fts MATCH 'データベース';
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+日本語だと使えない、ということですか……？
+</SpeechBubble>
+
+使えます。**trigram トークナイザ**を指定します。SQLite 3.34.0 以降で利用できます。
+
+```sql
+CREATE VIRTUAL TABLE articles_fts USING fts5(
+  title,
+  body,
+  tokenize = 'trigram'
+);
+```
+
+trigramは、テキストを**3文字ずつの重なり合った断片**に分割してインデックスを作ります。「データベース」なら「データ」「ータベ」「タベー」「ベース」…という具合です。単語の切れ目を知らなくても部分一致で検索できるため、日本語との相性が良い方式です。
+
+| トークナイザ | 分割方法 | 日本語 | 備考 |
+| ------------ | -------- | ------ | ---- |
+| `unicode61`（既定） | 空白・記号で分割 | 不向き | 英語向け |
+| `ascii` | ASCIIの記号で分割 | 不向き | `unicode61` の簡易版 |
+| `porter` | 英語の語幹処理を追加 | 不向き | `running` と `run` を同一視 |
+| `trigram` | 3文字ずつ | **向いている** | 2文字以下の検索はできない |
+
+<Marker>日本語を検索するなら `tokenize = 'trigram'` を指定してください。ただし2文字以下のキーワードは検索できません。</Marker>
+
+trigramの制約と特徴を整理しておきます。
+
+- 検索キーワードは**3文字以上**が必要（「猫」「東京」ではヒットしない）
+- インデックスのサイズが大きくなる
+- 部分一致に強い。`LIKE '%…%'` や `GLOB` でもインデックスが使われるようになる
+- 語の意味を理解しないため、無関係な文字列が偶然一致することがある
+
+<Callout type="info" title="より高精度にしたい場合">
+形態素解析による分かち書き（MeCabなど）をアプリケーション側で行い、空白区切りにしたテキストを `unicode61` のFTS5テーブルへ入れる方法もあります。精度は上がりますが、外部の辞書と処理が必要になり「SQLiteだけで完結する」利点は失われます。まずはtrigramで試し、精度が不足したときに検討するのが現実的です。
+</Callout>
+
+## 元のテーブルと同期させる
+
+実際のアプリでは、記事データは通常のテーブルにあり、FTS5テーブルは検索用のインデックスとして持つのが一般的です。
+
+FTS5には、本体テーブルを参照する **external content** という仕組みがあります。テキストを二重に保存せずに済みます。
+
+```sql
+CREATE TABLE articles (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+) STRICT;
+
+CREATE VIRTUAL TABLE articles_fts USING fts5(
+  title,
+  body,
+  content = 'articles',
+  content_rowid = 'id',
+  tokenize = 'trigram'
+);
+```
+
+この構成では、本体テーブルの変更がFTS5側に自動反映されません。トリガーで同期させます。
+
+```sql
+CREATE TRIGGER articles_ai AFTER INSERT ON articles BEGIN
+  INSERT INTO articles_fts(rowid, title, body)
+  VALUES (new.id, new.title, new.body);
+END;
+
+CREATE TRIGGER articles_ad AFTER DELETE ON articles BEGIN
+  INSERT INTO articles_fts(articles_fts, rowid, title, body)
+  VALUES ('delete', old.id, old.title, old.body);
+END;
+
+CREATE TRIGGER articles_au AFTER UPDATE ON articles BEGIN
+  INSERT INTO articles_fts(articles_fts, rowid, title, body)
+  VALUES ('delete', old.id, old.title, old.body);
+  INSERT INTO articles_fts(rowid, title, body)
+  VALUES (new.id, new.title, new.body);
+END;
+```
+
+<Callout type="warning" title="削除と更新は特殊な書き方をする">
+external contentのFTS5テーブルでは、`DELETE FROM articles_fts` は使えません。テーブル名と同じ名前の列に `'delete'` を渡す、上記の書き方が必要です。この構文は直感的ではないので、公式ドキュメントの例をそのまま使うのが安全です。
+</Callout>
+
+同期がずれてしまった場合は、作り直しの命令があります。
+
+```sql
+INSERT INTO articles_fts(articles_fts) VALUES('rebuild');
+```
+
+検索するときは、FTS5テーブルと本体テーブルを結合します。
+
+```sql
+SELECT a.id, a.title, a.created_at,
+       snippet(articles_fts, 1, '<mark>', '</mark>', '…', 20) AS excerpt
+FROM articles_fts f
+JOIN articles a ON a.id = f.rowid
+WHERE articles_fts MATCH ?
+ORDER BY rank
+LIMIT 20;
+```
+
+<Figure src="/images/inspiration_color.png" alt="ひらめきのイメージ" caption="本体テーブル＋FTS5＋トリガーの3点セットが、SQLiteでの全文検索の基本構成です" maxWidth="340px" />
+
+## よくあるハマりどころ
+
+### `MATCH` の左辺に列名を書く
+
+```sql
+-- エラーになる
+SELECT * FROM articles_fts WHERE body MATCH 'SQLite';
+
+-- テーブル名を書く
+SELECT * FROM articles_fts WHERE articles_fts MATCH 'body : SQLite';
+```
+
+### `ORDER BY rank DESC` にしてしまう
+
+BM25スコアは負の値で、小さいほど関連度が高いという設計です。`DESC` にすると**関連度の低い順**になります。`ORDER BY rank` のまま（昇順）が正解です。
+
+### trigramで2文字のキーワードを検索している
+
+trigramは3文字単位でインデックスを作るため、2文字以下の検索語はヒットしません。UI側で「3文字以上入力してください」と案内するか、短い検索語のときだけ `LIKE` にフォールバックする実装が必要です。
+
+### 本体テーブルを直接更新してFTS5がずれる
+
+マイグレーションやバッチでトリガーを迂回して更新すると、検索結果と実データがずれます。ずれに気づいたら `'rebuild'` で作り直してください。
+
+### 大量データを1件ずつINSERTする
+
+FTS5への挿入もインデックス更新を伴います。初回のデータ投入では、必ず[トランザクション](/books/sqlite/transactions-and-wal)でまとめてください。
+
+## ちゃんと使うためのポイント
+
+- FTS5は `CREATE VIRTUAL TABLE ... USING fts5(...)` で作る。型は指定しない
+- 検索は `テーブル名 MATCH '検索語'`。列指定は検索語側に `列名 : 語` と書く
+- `ORDER BY rank`（昇順）で関連度順。`bm25()` で列ごとの重み付けができる
+- `highlight()` / `snippet()` で結果表示を作れる。列番号は0始まり
+- 日本語には `tokenize = 'trigram'`。ただし3文字以上のキーワードが必要
+- 本体テーブルと分ける場合は external content + トリガーで同期する
+- ずれたら `'rebuild'` で作り直せる
+
+次の章では、キーワードの一致ではなく「意味の近さ」で探す**ベクトル検索**を扱います。sqlite-vec 拡張を使って、ローカルで完結するRAGやAIエージェントのメモリを構築する方法を見ていきます。
+
+## 参考リンク
+
+- [SQLite公式 — SQLite FTS5 Extension](https://www.sqlite.org/fts5.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="検索とインデックスの知識を、4択クイズでアウトプットして定着させよう"
+/>

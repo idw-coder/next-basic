@@ -32,6 +32,7 @@ export const BOOK_ORDER = [
   'azure-az-900',
   'http-and-web-api',
   'sql-basics',
+  'sqlite',
   'integration-and-e2e-testing',
   'system-design',
   'html-basics',
@@ -52,6 +53,7 @@ export const BOOK_ORDER = [
 
 /** NEW バッジを付ける書籍 */
 export const NEW_BOOK_SLUGS = new Set<string>([
+  'sqlite',
   'coding-test',
   'github-actions',
   'azure-az-900',
