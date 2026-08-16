@@ -63,6 +63,14 @@ console.log(items); // ["A", "B"]
 ## shift / unshift — 先頭に追加・削除する
 
 `unshift` は先頭に要素を追加し、`shift` は先頭の要素を取り除きます。
+どちらも元の配列を変更します。
+
+**構文：** `array.unshift(...items)` / `array.shift()`
+
+| メソッド | 引数 | 戻り値 |
+| -------- | ---- | ------ |
+| `unshift(...items)` | 先頭に入れる値（複数可） | 追加後の配列の長さ |
+| `shift()` | なし | 取り除いた先頭要素。空配列なら `undefined` |
 
 ```js
 const queue = ['B', 'C'];
@@ -73,6 +81,36 @@ console.log(queue); // ["A", "B", "C"]
 const first = queue.shift();
 console.log(first); // "A"
 console.log(queue); // ["B", "C"]
+```
+
+`shift` 単体で見ると、先頭の1件を取り出して残りの要素が前に詰まります。
+キューのように「来た順に1件ずつ処理する」ときは、オブジェクトの配列（レコード）でも同じです。
+
+```js
+const tasks = [
+  { id: 1, title: '設計' },
+  { id: 2, title: '実装' },
+  { id: 3, title: 'レビュー' },
+];
+
+const current = tasks.shift();
+
+console.log(current); // { id: 1, title: "設計" }
+console.log(tasks);   // [{ id: 2, title: "実装" }, { id: 3, title: "レビュー" }]
+```
+
+空の配列に `shift` すると戻り値は `undefined` です。ループで使うときは、先に長さを確認します。
+
+```js
+const pending = [
+  { id: 1, title: '設計' },
+  { id: 2, title: '実装' },
+];
+
+while (pending.length > 0) {
+  const task = pending.shift();
+  run(task);
+}
 ```
 
 非破壊で書くなら、追加は `[value, ...arr]`、削除は `slice(1)` です。
@@ -245,6 +283,8 @@ setItems(items.map((item) => (item.id === targetId ? { ...item, done: true } : i
 
 ## 参考リンク
 
+- [MDN — Array.prototype.shift](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/shift)
+- [MDN — Array.prototype.unshift](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/unshift)
 - [MDN — Array.prototype.splice](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/splice)
 - [MDN — Array.prototype.sort](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/sort)
 - [MDN — Array.prototype.toSorted](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/toSorted)
