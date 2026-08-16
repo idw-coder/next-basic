@@ -9,25 +9,26 @@ chapterLabel: '配列メソッド 4'
 この章では、後者の**破壊的メソッド**をまとめます。
 
 <Callout type="warning" title="破壊的メソッドは元の配列を変える">
-  `sort`・`reverse`・`splice`・`push` などは、呼び出した配列そのものを変更します。Reactのstateや、別の場所でも使っている配列を扱うときは、意図せず表示やデータが変わる原因になります。
+  `sort`・`reverse`・`splice`・`push`
+  などは、呼び出した配列そのものを変更します。Reactのstateや、別の場所でも使っている配列を扱うときは、意図せず表示やデータが変わる原因になります。
 </Callout>
 
 <a id="overview"></a>
 
 ## 破壊的メソッド早見表
 
-| メソッド | 何をする | 非破壊の代替 |
-| -------- | -------- | ------------ |
-| `push` | 末尾に追加 | `[...arr, value]` / `concat` |
-| `pop` | 末尾を削除 | `slice(0, -1)` |
-| `unshift` | 先頭に追加 | `[value, ...arr]` |
-| `shift` | 先頭を削除 | `slice(1)` |
-| `splice` | 途中の追加・削除・置換 | `toSpliced()` |
-| `sort` | 並び替え | `toSorted()` |
-| `reverse` | 逆順にする | `toReversed()` |
-| `fill` | 指定値で埋める | コピーしてから `fill` |
-| `copyWithin` | 配列内で要素をコピー | 目的に応じて `slice` / `map` |
-| `arr[i] = value` | 要素を置き換える | `with(i, value)` |
+| メソッド         | 何をする               | 非破壊の代替                 |
+| ---------------- | ---------------------- | ---------------------------- |
+| `push`           | 末尾に追加             | `[...arr, value]` / `concat` |
+| `pop`            | 末尾を削除             | `slice(0, -1)`               |
+| `unshift`        | 先頭に追加             | `[value, ...arr]`            |
+| `shift`          | 先頭を削除             | `slice(1)`                   |
+| `splice`         | 途中の追加・削除・置換 | `toSpliced()`                |
+| `sort`           | 並び替え               | `toSorted()`                 |
+| `reverse`        | 逆順にする             | `toReversed()`               |
+| `fill`           | 指定値で埋める         | コピーしてから `fill`        |
+| `copyWithin`     | 配列内で要素をコピー   | 目的に応じて `slice` / `map` |
+| `arr[i] = value` | 要素を置き換える       | `with(i, value)`             |
 
 <a id="push-pop"></a>
 
@@ -43,7 +44,7 @@ items.push('C');
 console.log(items); // ["A", "B", "C"]
 
 const last = items.pop();
-console.log(last);  // "C"
+console.log(last); // "C"
 console.log(items); // ["A", "B"]
 ```
 
@@ -67,10 +68,10 @@ console.log(items); // ["A", "B"]
 
 **構文：** `array.unshift(...items)` / `array.shift()`
 
-| メソッド | 引数 | 戻り値 |
-| -------- | ---- | ------ |
-| `unshift(...items)` | 先頭に入れる値（複数可） | 追加後の配列の長さ |
-| `shift()` | なし | 取り除いた先頭要素。空配列なら `undefined` |
+| メソッド            | 引数                     | 戻り値                                     |
+| ------------------- | ------------------------ | ------------------------------------------ |
+| `unshift(...items)` | 先頭に入れる値（複数可） | 追加後の配列の長さ                         |
+| `shift()`           | なし                     | 取り除いた先頭要素。空配列なら `undefined` |
 
 ```js
 const queue = ['B', 'C'];
@@ -96,7 +97,7 @@ const tasks = [
 const current = tasks.shift();
 
 console.log(current); // { id: 1, title: "設計" }
-console.log(tasks);   // [{ id: 2, title: "実装" }, { id: 3, title: "レビュー" }]
+console.log(tasks); // [{ id: 2, title: "実装" }, { id: 3, title: "レビュー" }]
 ```
 
 空の配列に `shift` すると戻り値は `undefined` です。ループで使うときは、先に長さを確認します。
@@ -146,7 +147,7 @@ const items = ['A', 'B', 'C'];
 const removed = items.splice(1, 1);
 
 console.log(removed); // ["B"]
-console.log(items);   // ["A", "C"]
+console.log(items); // ["A", "C"]
 ```
 
 ES2023以降は、非破壊の `toSpliced` が使えます。
@@ -156,7 +157,7 @@ const tasks = ['設計', '実装', 'レビュー'];
 const updated = tasks.toSpliced(1, 1, 'テスト');
 
 console.log(updated); // ["設計", "テスト", "レビュー"]
-console.log(tasks);   // ["設計", "実装", "レビュー"]
+console.log(tasks); // ["設計", "実装", "レビュー"]
 ```
 
 <a id="sort"></a>
@@ -218,7 +219,7 @@ const steps = ['入力', '確認', '完了'];
 const reversed = steps.toReversed();
 
 console.log(reversed); // ["完了", "確認", "入力"]
-console.log(steps);    // ["入力", "確認", "完了"]
+console.log(steps); // ["入力", "確認", "完了"]
 ```
 
 <a id="with"></a>
@@ -241,7 +242,7 @@ const users = ['太郎', '花子', '次郎'];
 const updated = users.with(1, '佐藤');
 
 console.log(updated); // ["太郎", "佐藤", "次郎"]
-console.log(users);   // ["太郎", "花子", "次郎"]
+console.log(users); // ["太郎", "花子", "次郎"]
 ```
 
 <a id="react-state"></a>

@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
-import Image from 'next/image';
-import Link from 'next/link';
+import BookCard from '@/app/books/_components/BookCard';
+import { SectionHeading } from '@/components/SectionHeading';
+import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
 import {
   BookOpenCheck,
   CheckCircle2,
@@ -11,9 +11,9 @@ import {
   Sparkles,
   Target,
 } from 'lucide-react';
-import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
-import BookCard from '@/app/books/_components/BookCard';
-import { SectionHeading } from '@/components/SectionHeading';
+import type { Metadata } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
 
 import { SITE_URL } from '@/lib/site';
 
@@ -86,7 +86,15 @@ const LEARNING_PATHS = [
   {
     title: 'フロントエンド開発',
     description: 'Webサイトの見た目と操作性を作る技術を基礎から学ぶ',
-    books: ['html-basics', 'css-basics', 'javascript', 'tailwind-css', 'typescript', 'react-learning', 'next-js'],
+    books: [
+      'html-basics',
+      'css-basics',
+      'javascript',
+      'tailwind-css',
+      'typescript',
+      'react-learning',
+      'next-js',
+    ],
   },
   {
     title: 'バックエンド開発',
@@ -164,7 +172,7 @@ export default function BooksPage() {
       {/* ヒーロー */}
       <section className="relative overflow-hidden pb-8 md:pb-12">
         <div className="mx-auto">
-          <div className="relative min-h-[460px] overflow-hidden border-b border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:min-h-[540px] lg:min-h-[580px] xl:min-h-[600px]">
+          <div className="relative min-h-[360px] overflow-hidden border-b border-white/85 bg-cream-deep shadow-[0_28px_80px_rgba(47,48,47,0.12)] sm:min-h-[400px] lg:min-h-[500px] xl:min-h-[600px]">
             <Image
               src="/images/books-hero-editorial-human-v2.png"
               alt="鮮やかな色面の中で青い本を読む人物を中心にした教科書機能のキービジュアル"
@@ -173,36 +181,69 @@ export default function BooksPage() {
               priority
               className="absolute top-0 bottom-0 left-0 h-full w-full object-cover object-[64%_44%] sm:-translate-x-[3%] sm:scale-[1.04] sm:object-[50%_46%] lg:-translate-x-[5%] lg:scale-[1.08] xl:-translate-x-[4%] xl:scale-[1.06]"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,250,244,0.96)_0%,rgba(255,250,244,0.9)_62%,rgba(255,250,244,0.08)_100%)] sm:bg-[linear-gradient(90deg,rgba(255,250,244,0.95)_0%,rgba(255,250,244,0.86)_32%,rgba(255,250,244,0.18)_60%,rgba(255,250,244,0)_100%)]" />
-            <div className="absolute left-6 top-6 flex max-w-[92vw] flex-col items-start sm:left-14 sm:top-10 md:left-24 lg:left-28 xl:left-32">
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,250,244,0.98)_0%,rgba(255,250,244,0.9)_46%,rgba(255,250,244,0.52)_72%,rgba(255,250,244,0.12)_100%)] md:bg-[linear-gradient(90deg,rgba(255,250,244,0.98)_0%,rgba(255,250,244,0.92)_28%,rgba(255,250,244,0.46)_54%,rgba(255,250,244,0.1)_100%)]" />
+            <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-cream to-transparent" />
+            <div className="pointer-events-none absolute -left-7 top-[18%] hidden rotate-[-8deg] text-[7rem] font-black leading-none text-brand-blue/10 md:block">
+              BOOK
+            </div>
+            <div className="relative z-10 flex min-h-[360px] flex-col items-start px-6 py-6 sm:min-h-[400px] sm:px-14 sm:py-10 md:px-24 lg:min-h-[500px] lg:px-28 xl:min-h-[600px] xl:px-32">
               <div className="flex items-start gap-3 sm:gap-5">
                 <p className="mt-2 hidden text-lg font-black leading-none text-ink [writing-mode:vertical-rl] sm:block">
                   地図になる。
                 </p>
                 <div>
-                  <p className="mb-3 max-w-[18rem] text-[0.68rem] font-black uppercase leading-relaxed tracking-normal text-ink/75 sm:max-w-none sm:text-xs">
-                    Textbooks for web engineers - {books.length} books
+                  <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-red/25 bg-white/80 px-3 py-1 text-[10px] font-extrabold tracking-[0.14em] text-brand-red-deep shadow-[0_10px_30px_rgba(47,48,47,0.08)] sm:text-xs">
+                    <span className="size-2 rounded-full bg-brand-lime" />
+                    1章から、順番に学べる
                   </p>
-                  <h1 className="flex flex-col font-display text-[4rem] font-black leading-[0.98] tracking-normal text-ink sm:text-[5.5rem] md:text-[7rem] lg:text-[8.5rem]">
-                    <span className="text-brand-red">理解を、</span>
-                    <span>整える。</span>
+                  <h1 className="flex flex-col font-display text-[2.5rem] font-black leading-[0.98] tracking-normal text-ink sm:text-[3.5rem] md:text-[4rem] lg:text-[4.5rem]">
+                    <span className="text-brand-red">迷わない、</span>
+                    <span>腑に落ちる。</span>
                   </h1>
+                  <p className="mt-3 w-fit -rotate-1 bg-brand-red px-3 py-1.5 text-base font-black leading-tight text-white shadow-[8px_8px_0_var(--color-brand-lime)] sm:mt-4 sm:px-4 sm:text-xl">
+                    読む。わかる。身につく。
+                  </p>
                 </div>
               </div>
-              <p className="mt-6 max-w-[18rem] text-lg font-black leading-relaxed tracking-normal text-ink sm:max-w-md sm:text-2xl">
-                ウェブ開発の基礎を、章ごとに順番に学べる教科書。
+              <p className="mt-4 max-w-xl pr-12 text-base font-black leading-relaxed tracking-normal text-ink [&]:decoration-clone sm:text-xl">
+                <span className="[background:linear-gradient(to_top,rgba(255,255,255,0.75)_40%,transparent_40%)] [box-decoration-break:clone]">
+                  ウェブ開発の基礎を、章ごとに順番に学べる教科書。
+                </span>
               </p>
-            </div>
-            <div className="absolute bottom-5 left-6 flex max-w-[calc(100%-3rem)] flex-wrap gap-2 text-xs font-black text-ink sm:bottom-8 sm:left-14 sm:text-sm md:left-24 lg:left-28 xl:left-32">
-              {heroFeatures.map((item) => (
-                <div
-                  key={item.text}
-                  className="flex items-center gap-1.5 rounded-full border border-white/75 bg-cream-soft/82 px-3 py-1.5 shadow-[0_12px_28px_rgba(47,48,47,0.08)] backdrop-blur-sm"
-                >
-                  <item.icon className={`size-4 shrink-0 ${item.color}`} />
-                  {item.text}
+              <div className="mt-5 inline-grid grid-cols-3 divide-x divide-ink/10 rounded-[0.2rem] border border-white/80 bg-white/90 shadow-[0_18px_50px_rgba(47,48,47,0.12)] backdrop-blur">
+                <div className="flex min-w-[6.75rem] flex-col items-center justify-center px-3 py-2.5 sm:min-w-[7.5rem] sm:px-4">
+                  <p className="text-2xl font-black leading-none text-brand-red sm:text-3xl">
+                    {books.length}
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold tracking-[0.08em] text-ink-body">冊</p>
                 </div>
-              ))}
+                <div className="flex min-w-[6.75rem] flex-col items-center justify-center px-3 py-2.5 sm:min-w-[7.5rem] sm:px-4">
+                  <p className="text-2xl font-black leading-none text-ink sm:text-3xl">
+                    {totalChapters}
+                    <span className="text-sm font-bold text-ink-muted">+</span>
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold tracking-[0.08em] text-ink-body">章</p>
+                </div>
+                <div className="flex min-w-[6.75rem] flex-col items-center justify-center px-3 py-2.5 sm:min-w-[7.5rem] sm:px-4">
+                  <p className="text-2xl font-black leading-none text-brand-blue sm:text-3xl">
+                    0円
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold tracking-[0.08em] text-ink-body">
+                    すべて無料
+                  </p>
+                </div>
+              </div>
+              <div className="mt-auto flex max-w-[calc(100%-3rem)] flex-wrap gap-2 pt-8 text-xs font-black text-ink sm:text-sm">
+                {heroFeatures.map((item) => (
+                  <div
+                    key={item.text}
+                    className="flex items-center gap-1.5 rounded-full border border-white/75 bg-cream-soft/82 px-3 py-1.5 shadow-[0_12px_28px_rgba(47,48,47,0.08)] backdrop-blur-sm"
+                  >
+                    <item.icon className={`size-4 shrink-0 ${item.color}`} />
+                    {item.text}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -245,7 +286,9 @@ export default function BooksPage() {
                   ウェブエンジニア問題集の教科書とは
                 </h2>
                 <p className="text-muted-foreground leading-relaxed text-sm">
-                  ウェブエンジニア問題集の教科書は、JavaScript・React・TypeScript・CSS・AWS・SQL・Gitなど、Web開発に必要な技術を体系的に学べる無料のオンライン技術書です。全{books.length}冊・{totalChapters}章以上のコンテンツを、会員登録不要で誰でも読めます。各章は「なぜそうなるのか」を掘り下げて解説しており、暗記ではなく理解を重視した構成になっています。
+                  ウェブエンジニア問題集の教科書は、JavaScript・React・TypeScript・CSS・AWS・SQL・Gitなど、Web開発に必要な技術を体系的に学べる無料のオンライン技術書です。全
+                  {books.length}冊・{totalChapters}
+                  章以上のコンテンツを、会員登録不要で誰でも読めます。各章は「なぜそうなるのか」を掘り下げて解説しており、暗記ではなく理解を重視した構成になっています。
                 </p>
               </div>
             </div>
@@ -256,7 +299,8 @@ export default function BooksPage() {
                   教科書 × クイズで学習効果を最大化
                 </h3>
                 <p className="text-muted-foreground leading-relaxed text-sm">
-                  {books.length}冊のうち10冊には対応するクイズカテゴリがあり、教科書でインプットした知識をクイズでアウトプットできます。「読んだだけ」で終わらず、理解度を確認しながら進められるので定着率が高まります。
+                  {books.length}
+                  冊のうち10冊には対応するクイズカテゴリがあり、教科書でインプットした知識をクイズでアウトプットできます。「読んだだけ」で終わらず、理解度を確認しながら進められるので定着率が高まります。
                 </p>
               </div>
             </div>
