@@ -477,7 +477,7 @@ export default async function Home() {
       </section>
 
       <div className="bg-[linear-gradient(180deg,var(--color-cream)_0%,#ffffff_36%,var(--color-cream)_100%)]">
-        <div className="mx-auto max-w-6xl px-4 pt-4 pb-8 md:pt-8 md:pb-14">
+        <div className="mx-auto max-w-6xl px-4 pt-4 md:pt-8">
           {/* 特徴 */}
           <section className="mb-10 pt-2 md:mb-20 md:pt-4">
             <SectionHeading
@@ -600,13 +600,12 @@ export default async function Home() {
               })}
             </div>
           </section>
+        </div>
 
-          {/* 教科書 */}
-          <section
-            id="books"
-            className="mb-8 rounded-[1.5rem] border border-brand-blue/10 bg-brand-blue-wash/90 px-3 py-5 shadow-[0_24px_70px_rgba(9,103,201,0.07)] sm:rounded-[2rem] md:mb-16 md:px-10 md:py-12"
-          >
-            <div className="mb-4 sm:mb-8 grid gap-2 sm:gap-4 md:grid-cols-[0.8fr_1fr] md:items-end">
+        {/* 教科書 — 背景だけ全幅、中身は他セクションと同じ幅 */}
+        <section id="books" className="mb-8 bg-brand-blue-wash/90 py-5 md:mb-16 md:py-12">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="mb-4 grid gap-2 sm:mb-8 sm:gap-4 md:grid-cols-[0.8fr_1fr] md:items-end">
               <SectionHeading center={false} subtitle="基礎から体系的に学べる技術書コンテンツ">
                 教科書
               </SectionHeading>
@@ -652,8 +651,10 @@ export default async function Home() {
                 </Link>
               </Button>
             </div>
-          </section>
+          </div>
+        </section>
 
+        <div className="mx-auto max-w-6xl px-4 pb-8 md:pb-14">
           {/* 会員登録CTA */}
           <section className="mb-8 rounded-[1.5rem] border border-ink/15 bg-white/92 px-4 py-5 shadow-[0_24px_70px_rgba(47,48,47,0.08)] sm:rounded-[2rem] md:mb-16 md:px-10 md:py-8">
             <div className="mb-3 flex justify-center">
@@ -722,7 +723,7 @@ export default async function Home() {
           <section className="mb-8 grid gap-3 sm:grid-cols-2 sm:gap-4 md:mb-16">
             <Link
               href="/quiz/random"
-              className="group relative isolate min-h-40 overflow-hidden rounded-2xl border border-brand-blue/20 bg-brand-blue-tint shadow-[0_18px_45px_rgba(9,103,201,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(9,103,201,0.16)] sm:min-h-48 sm:rounded-[2rem]"
+              className="group relative isolate min-h-24 overflow-hidden rounded-lg border border-brand-blue/20 bg-brand-blue-tint shadow-[0_18px_45px_rgba(9,103,201,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(9,103,201,0.16)] sm:min-h-30 sm:rounded-[2rem]"
             >
               <span
                 className="pointer-events-none absolute inset-0 -z-10 bg-no-repeat [background-position:right_bottom] [background-size:auto_82%] transition-transform duration-500 group-hover:scale-[1.015] sm:[background-size:auto_92%]"
@@ -736,12 +737,12 @@ export default async function Home() {
                 className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-brand-blue-tint from-0% via-brand-blue-tint/95 via-48% to-brand-blue-tint/5 to-82%"
                 aria-hidden="true"
               />
-              <div className="flex min-h-40 max-w-[64%] flex-col items-start justify-center p-5 text-left sm:min-h-48 sm:max-w-[62%] sm:p-7">
-                <h2 className="text-lg font-extrabold text-ink sm:text-xl">ランダムクイズ</h2>
+              <div className="flex min-h-28 max-w-[68%] flex-col items-start justify-center py-2 px-3 text-left sm:min-h-38 sm:max-w-[64%] sm:p-7">
+                <h2 className="text-base font-extrabold text-ink sm:text-lg">ランダムクイズ</h2>
                 <p className="mt-1.5 text-xs leading-relaxed text-ink-muted sm:text-sm">
                   全カテゴリから出題、サクッと力試し
                 </p>
-                <span className="mt-4 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-brand-blue px-5 py-1.5 text-xs font-bold text-white transition-colors group-hover:bg-brand-blue-deep sm:text-sm">
+                <span className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-blue px-5 py-1 text-xs font-bold text-white transition-colors group-hover:bg-brand-blue-deep">
                   挑戦する
                   <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 sm:size-4" />
                 </span>
@@ -750,7 +751,7 @@ export default async function Home() {
 
             <Link
               href="/search"
-              className="group relative isolate min-h-40 overflow-hidden rounded-2xl border border-brand-red/20 bg-brand-red-tint shadow-[0_18px_45px_rgba(255,98,77,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(255,98,77,0.16)] sm:min-h-48 sm:rounded-[2rem]"
+              className="group relative isolate min-h-24 overflow-hidden rounded-lg border border-brand-red/20 bg-brand-red-tint shadow-[0_18px_45px_rgba(255,98,77,0.08)] transition hover:-translate-y-0.5 hover:shadow-[8px_8px_0_rgba(255,98,77,0.16)] sm:min-h-30 sm:rounded-[2rem]"
             >
               <span
                 className="pointer-events-none absolute inset-0 -z-10 bg-no-repeat [background-position:right_bottom] [background-size:auto_82%] transition-transform duration-500 group-hover:scale-[1.015] sm:[background-size:auto_92%]"
@@ -764,12 +765,12 @@ export default async function Home() {
                 className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-brand-red-tint from-0% via-brand-red-tint/95 via-48% to-brand-red-tint/5 to-82%"
                 aria-hidden="true"
               />
-              <div className="flex min-h-40 max-w-[64%] flex-col items-start justify-center p-5 text-left sm:min-h-48 sm:max-w-[62%] sm:p-7">
-                <h2 className="text-lg font-extrabold text-ink sm:text-xl">キーワード検索</h2>
+              <div className="flex min-h-28 max-w-[68%] flex-col items-start justify-center py-2 px-3 text-left sm:min-h-38 sm:max-w-[64%] sm:p-7">
+                <h2 className="text-base font-extrabold text-ink sm:text-lg">キーワード検索</h2>
                 <p className="mt-1.5 text-xs leading-relaxed text-ink-muted sm:text-sm">
                   クイズも教科書も、まとめて横断検索
                 </p>
-                <span className="mt-4 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-brand-red px-5 py-1.5 text-xs font-bold text-white transition-colors group-hover:bg-brand-red-deep sm:text-sm">
+                <span className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-red px-5 py-1 text-xs font-bold text-white transition-colors group-hover:bg-brand-red-deep">
                   検索する
                   <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 sm:size-4" />
                 </span>
