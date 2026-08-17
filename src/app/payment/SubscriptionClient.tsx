@@ -46,7 +46,7 @@ const PLANS: Plan[] = [
     price: '¥0',
     priceId: '',
     interval: '永久無料',
-    features: ['全カテゴリのクイズに挑戦', '解答履歴の閲覧', 'ランダムクイズ', 'キーワード検索'],
+    features: ['全カテゴリのクイズに挑戦', '解答履歴の閲覧', '腕試しテスト', 'キーワード検索'],
     color: 'border-gray-200 dark:border-gray-700',
     icon: Star,
   },

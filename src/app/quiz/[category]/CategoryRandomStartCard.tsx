@@ -136,14 +136,14 @@ export default function CategoryRandomStartCard({
           <div className="relative z-10 w-[72%] min-w-0">
             <div className="mb-0.5 flex items-center">
               <span className="rounded-full bg-white/80 px-1.5 py-px text-[9px] font-bold leading-none text-primary sm:text-[10px]">
-                連続演習
+                腕試しテスト
               </span>
             </div>
             <p className="line-clamp-1 text-[11px] font-bold leading-snug text-foreground sm:text-[13px]">
-              ランダムに解く
+              実力をチェック
             </p>
             <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
-              問題を選ばず続けて練習
+              ランダム出題で理解度を確認
             </p>
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function CategoryRandomStartCard({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  ランダムクイズ
+                  腕試しテスト
                 </p>
                 <h2 id="category-random-title" className="mt-1 text-xl font-extrabold">
                   {categoryName}を始める
@@ -252,7 +252,7 @@ export default function CategoryRandomStartCard({
                 ) : (
                   <Play className="size-5 mr-2" />
                 )}
-                {quizCount}問 スタート
+                {quizCount}問のテストを始める
               </Button>
             </div>
           </div>

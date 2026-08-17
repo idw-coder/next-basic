@@ -431,8 +431,8 @@ export default function ProfilePage() {
         >
           <Target className="size-4 text-blue-500 shrink-0" />
           <div className="min-w-0">
-            <p className="text-sm font-bold text-foreground">ランダムクイズ</p>
-            <p className="text-[10px] text-muted-foreground sm:text-xs">全カテゴリから出題</p>
+            <p className="text-sm font-bold text-foreground">腕試しテスト</p>
+            <p className="text-[10px] text-muted-foreground sm:text-xs">ランダム出題で実力を確認</p>
           </div>
         </Link>
       </div>

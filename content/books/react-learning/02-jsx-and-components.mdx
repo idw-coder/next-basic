@@ -252,6 +252,8 @@ React.createElement("p", null, raw);
 文字列の子要素に対して、ReactDOMは `innerHTML` ではなく **`textContent`（テキストノード）** としてDOMに挿入します。
 `textContent` はブラウザが文字列をHTMLとして解釈しないため、タグがそのまま表示される、というわけです。
 
+ここで説明しているReactDOMの処理と、HTMLソース内で `<` を `&lt;` のように記述する**文字参照**は別の仕組みです。文字参照の基本は「[HTMLのテキスト要素 — 見出し・段落・強調を正しく使う](/books/html-basics/text-and-heading)」で解説しています。
+
 <MermaidDiagram
   chart={`
 flowchart LR

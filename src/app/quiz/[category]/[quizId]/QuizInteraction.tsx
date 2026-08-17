@@ -907,7 +907,7 @@ export default function QuizInteraction({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
-              {randomSession.mode === 'review' ? '解き直し' : 'ランダムクイズ'}{' '}
+              {randomSession.mode === 'review' ? '解き直し' : '腕試しテスト'}{' '}
               <span className="font-bold text-foreground text-lg">
                 {randomSession.currentIndex + 1}
               </span>

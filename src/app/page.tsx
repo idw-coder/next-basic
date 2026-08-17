@@ -373,7 +373,7 @@ const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
     text: 'Google認証を導入しました、サイトの利用をより便利に安心して行えます',
     isNew: false,
   },
-  { date: '2026/02/25', text: 'ランダムクイズ機能を公開しました', isNew: false },
+  { date: '2026/02/25', text: '腕試しテスト機能を公開しました', isNew: false },
   { date: '2026/02/21', text: '学習記録・プロフィール機能を公開しました', isNew: false },
   { date: '2026/02/18', text: '解答履歴機能を公開しました', isNew: false },
   { date: '2026/02/15', text: 'AWS、Git、Nginxクイズを公開しました', isNew: false },
@@ -738,12 +738,12 @@ export default async function Home() {
                 aria-hidden="true"
               />
               <div className="flex min-h-28 max-w-[68%] flex-col items-start justify-center py-2 px-3 text-left sm:min-h-38 sm:max-w-[64%] sm:p-7">
-                <h2 className="text-base font-extrabold text-ink sm:text-lg">ランダムクイズ</h2>
+                <h2 className="text-base font-extrabold text-ink sm:text-lg">腕試しテスト</h2>
                 <p className="mt-1.5 text-xs leading-relaxed text-ink-muted sm:text-sm">
-                  全カテゴリから出題、サクッと力試し
+                  ランダム出題で、今の実力をチェック
                 </p>
                 <span className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full bg-brand-blue px-5 py-1 text-xs font-bold text-white transition-colors group-hover:bg-brand-blue-deep">
-                  挑戦する
+                  腕試しする
                   <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 sm:size-4" />
                 </span>
               </div>

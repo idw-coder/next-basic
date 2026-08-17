@@ -322,8 +322,10 @@ export default function RandomQuizClient({
         <div className="inline-flex items-center justify-center size-16 rounded-full bg-primary/10 mb-2">
           <Shuffle className="size-8 text-primary" />
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">ランダムクイズ</h1>
-        <p className="text-muted-foreground">カテゴリと問題数を選んでチャレンジ！</p>
+        <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">腕試しテスト</h1>
+        <p className="text-muted-foreground">
+          ランダムに選ばれた問題で、今の実力をチェックしよう
+        </p>
       </div>
 
       <Card>
@@ -411,7 +413,7 @@ export default function RandomQuizClient({
 
       <Button onClick={handleStart} size="lg" className="w-full text-lg py-6">
         <Play className="size-5 mr-2" />
-        {selectedCategoryName} {quizCount}問 スタート！
+        {selectedCategoryName} {quizCount}問のテストを始める
       </Button>
     </div>
   );
@@ -471,7 +473,7 @@ function ResultView({
               )}
             />
           </div>
-          <CardTitle className="text-2xl">結果発表</CardTitle>
+          <CardTitle className="text-2xl">腕試しテストの結果</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="text-center">

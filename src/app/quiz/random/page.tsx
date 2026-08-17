@@ -18,9 +18,9 @@ async function getCategories(): Promise<Category[]> {
 }
 
 export const metadata: Metadata = {
-  title: "ランダムクイズ | ウェブエンジニア問題集",
+  title: "腕試しテスト | ウェブエンジニア問題集",
   description:
-    "全カテゴリからランダムに出題。5問・10問など問題数を選んでチャレンジ！",
+    "カテゴリと問題数を選び、ランダムに出題される問題で今の実力をチェックできます。",
 };
 
 export default async function RandomQuizPage({
