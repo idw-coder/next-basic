@@ -157,6 +157,7 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | 最後の退避を戻す（退避は消す） | `git stash pop` |
 | 退避を戻す（退避は残す） | `git stash apply` |
 | 特定の退避を戻す | `git stash apply stash@{1}` |
+| 退避から特定のファイルだけ復元する | `git restore --source=stash@{0} -- src/...` |
 | 退避を1つ破棄する | `git stash drop` |
 | 退避をすべて破棄する | `git stash clear` |
 
