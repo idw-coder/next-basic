@@ -1,0 +1,214 @@
+---
+title: 'C#のモダン構文 — record・パターンマッチング・タプル'
+description: 'C#のrecordによる値の等価性とwith式、タプルによる複数値の返却、型パターンやプロパティパターンを使ったswitch式までを解説します。'
+order: 14
+---
+
+ここまでで、C#の基礎はひととおり揃いました。最後に、近年のC#を特徴づける3つの機能を扱います。いずれも「短く書ける」だけでなく、**意図が伝わるコードを書くための道具**です。
+
+## record — 値として扱うクラス
+
+`class` は参照型なので、中身が同じでも別インスタンスなら等しくないと判定されます。
+
+```csharp
+public class PointClass
+{
+    public int X { get; init; }
+    public int Y { get; init; }
+}
+
+var a = new PointClass { X = 1, Y = 2 };
+var b = new PointClass { X = 1, Y = 2 };
+Console.WriteLine(a == b);  // False
+```
+
+`record` として定義すると、**中身が同じなら等しい**という比較になります。
+
+```csharp
+public record Point(int X, int Y);
+
+var a = new Point(1, 2);
+var b = new Point(1, 2);
+Console.WriteLine(a == b);        // True
+Console.WriteLine(a);             // Point { X = 1, Y = 2 }
+```
+
+`record` を使うと、次のものが自動的に用意されます。
+
+| 自動生成されるもの | 効果 |
+| ------------------ | ---- |
+| 等価比較（`==` / `Equals`） | 中身が同じなら等しい |
+| `GetHashCode` | 等価比較と整合する |
+| `ToString` | 中身が読める形で出力される |
+| `with` 式 | 一部だけ変えたコピーを作れる |
+| 分解（デコンストラクト） | 各プロパティを変数に取り出せる |
+
+```csharp
+var moved = a with { X = 10 };   // Point { X = 10, Y = 2 }
+var (x, y) = a;                   // x = 1, y = 2
+```
+
+<Marker>`record` は「値そのものを表すデータ」に使い、`class` は「振る舞いや状態を持つオブジェクト」に使う、という切り分けが基本です。</Marker>
+
+| 使うもの | 向いている対象 |
+| -------- | -------------- |
+| `record` | APIのレスポンス、設定値、座標、金額、検索条件 |
+| `class` | サービス、リポジトリ、状態を持ち回るオブジェクト |
+
+<Callout type="note" title="recordもクラス">
+`record` は参照型で、`class` の一種です。「値の等価性を持つクラス」と考えてください。値型として定義したい場合は `record struct` を使います。
+</Callout>
+
+<Figure src="/images/toppa_suit_woman_color.png" alt="前に進むイメージ" caption="recordの登場で、データを表すクラスの記述量は大きく減りました" maxWidth="330px" />
+
+## タプル — 名前を付けずに複数の値を返す
+
+複数の値を返したいだけなら、クラスを作らずタプルで済ませられます。
+
+```csharp
+public (int Min, int Max) GetRange(List<int> values)
+{
+    return (values.Min(), values.Max());
+}
+
+var range = GetRange(scores);
+Console.WriteLine(range.Min);
+
+var (min, max) = GetRange(scores);   // 分解して受け取る
+```
+
+要素に名前を付けられるため、`Item1` / `Item2` のような読みにくいコードになりません。
+
+<Callout type="warning" title="タプルは内部利用にとどめる">
+publicなAPIの戻り値としてタプルを多用すると、各値の意味がドキュメントに残らず、あとから項目を増やしにくくなります。外部に公開する型は `record` を定義したほうが将来の変更に強くなります。
+</Callout>
+
+## パターンマッチング
+
+[第4章](/books/csharp/control-flow) で `switch` 式に触れましたが、C#の分岐は「値」だけでなく「形」でも判定できます。
+
+### 型パターン
+
+```csharp
+object value = 42;
+
+string description = value switch
+{
+    int n when n > 100 => "大きい整数",
+    int n => $"整数: {n}",
+    string s => $"文字列: {s}",
+    null => "null",
+    _ => "その他"
+};
+```
+
+`int n` のように、判定と同時に変数へ取り出せます。[第7章](/books/csharp/inheritance-and-interfaces) の `is` と同じ仕組みです。
+
+### プロパティパターン
+
+オブジェクトの中身の値で分岐できます。
+
+```csharp
+string GetShipping(Order order) => order switch
+{
+    { Total: > 10000 } => "送料無料",
+    { Address.Prefecture: "沖縄県" } => "離島料金",
+    { IsExpress: true } => "速達",
+    _ => "通常配送"
+};
+```
+
+`{ Address.Prefecture: "沖縄県" }` のように、入れ子のプロパティも直接書けます。
+
+### リレーショナルパターンと論理パターン
+
+```csharp
+string Judge(int score) => score switch
+{
+    < 0 or > 100 => "不正な値",
+    >= 90 => "S",
+    >= 70 and < 90 => "A",
+    _ => "B"
+};
+```
+
+`and` / `or` / `not` を組み合わせられるため、複雑な条件も1つの式で表現できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+if文をいくつも書くのと、何が違うんでしょう？
+</SpeechBubble>
+
+分岐が式になるため、**結果を必ず1つの値として受け取れる**点が違います。「どの分岐でも変数への代入を忘れない」ことがコンパイラによって保証され、条件の並びも縦に揃うので比較しやすくなります。
+
+### recordとの組み合わせ
+
+`record` は分解に対応しているため、位置パターンも使えます。
+
+```csharp
+public record Point(int X, int Y);
+
+string Where(Point p) => p switch
+{
+    (0, 0) => "原点",
+    (var x, 0) => $"X軸上（{x}）",
+    (0, var y) => $"Y軸上（{y}）",
+    _ => "その他"
+};
+```
+
+<Marker>`record` とパターンマッチングは組み合わせて使うことで力を発揮します。データを `record` で表し、`switch` 式で形に応じて処理を決める、という書き方がモダンなC#の定番です。</Marker>
+
+### nullの判定
+
+```csharp
+if (user is null) { }
+if (user is not null) { }
+```
+
+`== null` より意図が明確で、演算子が上書きされている型でも確実に動きます。[第10章](/books/csharp/null-safety) で扱ったnullチェックでも、この書き方が推奨されます。
+
+## よくあるハマりどころ
+
+### recordの中に可変なコレクションを入れる
+
+```csharp
+public record Basket(List<string> Items);
+```
+
+`record` 自体は等価比較を提供しますが、`List` は参照型なので中身が同じでも別インスタンスなら等しくなりません。加えて、外から中身を変更できてしまいます。不変にしたいなら `IReadOnlyList<string>` を使い、生成時に確定させます。
+
+### switch式で `_` を書かない
+
+どのパターンにも一致しなかった場合、実行時に例外が発生します。`enum` を網羅したつもりでも、将来値が追加されると漏れます。`_` は必ず用意してください。
+
+### パターンを詰め込みすぎる
+
+1つの `switch` 式に10個以上の分岐や複雑な条件を並べると、かえって読みにくくなります。判定の意味ごとにメソッドへ切り出すほうが読み手に親切です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+新しい構文は「短く書ける」より「意図が伝わる」ときに使う。これは他の言語でも同じだね。
+</SpeechBubble>
+
+## ちゃんと使うためのポイント
+
+- データを表す型は `record`、振る舞いを持つ型は `class`
+- `with` 式で「一部だけ違うコピー」を安全に作れる
+- 内部で複数の値を返すならタプル、公開APIなら `record`
+- `switch` 式は値・型・プロパティ・範囲で分岐でき、結果を1つの値として返す
+- nullの判定は `is null` / `is not null`
+- `_` を必ず用意して、想定外の値で落ちないようにする
+
+## この本を読み終えたら
+
+ここまでで、C#の言語としての基礎はひととおり押さえました。次に進む先は目的によって変わります。
+
+- **Web APIを作る** — ASP.NET Coreへ。設計の考え方は [Web APIとHTTPの基礎](/books/http-and-web-api) が土台になります
+- **データベースを扱う** — Entity Framework Coreへ。その前に [SQLとデータベースの基礎](/books/sql-basics) でSQLを押さえておくと理解が早くなります
+- **テストを書く** — xUnitへ。考え方は [ユニットテスト入門](/books/unit-testing) がそのまま応用できます
+
+言語の文法は入口にすぎません。実際に小さなアプリを1つ作り切ると、この本で扱った内容が一気につながります。
+
+## 参考リンク
+
+- [Microsoft Learn — レコード型](https://learn.microsoft.com/ja-jp/dotnet/csharp/language-reference/builtin-types/record)
+- [Microsoft Learn — パターンマッチング](https://learn.microsoft.com/ja-jp/dotnet/csharp/fundamentals/functional/pattern-matching)

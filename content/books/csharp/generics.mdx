@@ -1,0 +1,208 @@
+---
+title: 'C#のジェネリクス — 型パラメータとwhere制約の使い方'
+description: 'C#のジェネリッククラスとジェネリックメソッドの書き方、where制約の種類、TypeScriptのジェネリクスとの違い、実行時に型情報が残る意味までを解説します。'
+order: 13
+---
+
+`List<T>`、`Dictionary<TKey, TValue>`、`Task<T>`。ここまで何度も出てきた `<>` の記法がジェネリクスです。
+
+役割は「型を後から決められるようにする」こと。これにより、**型の安全性を保ったまま同じコードを使い回せます**。
+
+## なぜ必要なのか
+
+ジェネリクスが無い場合、あらゆる型を入れられる入れ物は `object` で作ることになります。
+
+```csharp
+var list = new ArrayList();   // 古い、型を持たないリスト
+list.Add(1);
+list.Add("テキスト");          // 何でも入ってしまう
+
+int n = (int)list[1];          // 実行時に例外
+```
+
+`List<T>` なら、入れる型をコンパイル時に固定できます。
+
+```csharp
+var list = new List<int>();
+list.Add(1);
+// list.Add("テキスト");  ← コンパイルエラー
+
+int n = list[0];   // キャスト不要
+```
+
+<Marker>ジェネリクスの利点は「キャストが要らない」ことと「間違った型を入れた瞬間にコンパイルエラーになる」ことです。</Marker>
+
+値型を `object` として扱うと、ヒープへコピーされる**ボックス化**が発生し、性能面でも不利になります。ジェネリクスはこれも避けられます。
+
+## ジェネリッククラスを作る
+
+型パラメータはクラス名のあとに `<T>` と書きます。
+
+```csharp
+public class Box<T>
+{
+    private T _value;
+
+    public Box(T value) => _value = value;
+
+    public T Get() => _value;
+}
+
+var intBox = new Box<int>(42);
+var nameBox = new Box<string>("田中");
+
+int n = intBox.Get();       // int として取り出せる
+string s = nameBox.Get();   // string として取り出せる
+```
+
+| 慣習的な名前 | 意味 |
+| ------------ | ---- |
+| `T` | 型パラメータが1つのとき |
+| `TKey` / `TValue` | キーと値 |
+| `TResult` | 戻り値の型 |
+| `TSource` | 入力データの型 |
+
+型パラメータ名は `T` で始めるのがC#の慣習です。
+
+## ジェネリックメソッド
+
+クラス全体ではなく、メソッド単位でも型パラメータを取れます。
+
+```csharp
+public static T? FirstOrNull<T>(IEnumerable<T> source, Func<T, bool> predicate)
+    where T : class
+{
+    foreach (var item in source)
+    {
+        if (predicate(item)) return item;
+    }
+    return null;
+}
+```
+
+呼び出すときは、引数から型が推論されるため `<>` を書く必要はありません。
+
+```csharp
+var user = FirstOrNull(users, u => u.Age > 30);
+```
+
+<Figure src="/images/creative_color.png" alt="組み立てるイメージ" caption="ジェネリクスは「型という部品を差し替えられる設計図」を書く仕組みです" maxWidth="330px" />
+
+## where制約
+
+型パラメータは、そのままでは「何が入るか分からない型」なので、メンバーを呼べません。`where` で条件を付けると、その範囲でできることが増えます。
+
+| 制約 | 意味 |
+| ---- | ---- |
+| `where T : class` | 参照型であること |
+| `where T : struct` | 値型であること |
+| `where T : new()` | 引数なしコンストラクタを持つこと |
+| `where T : IComparable<T>` | 特定のインターフェースを実装していること |
+| `where T : User` | 特定のクラスかその派生であること |
+| `where T : notnull` | nullを許容しない型であること |
+
+```csharp
+public static T Max<T>(T a, T b) where T : IComparable<T>
+{
+    return a.CompareTo(b) >= 0 ? a : b;
+}
+```
+
+`IComparable<T>` を要求したことで、`CompareTo` を呼べるようになりました。制約が無ければ、この行はコンパイルできません。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+TypeScriptの `extends` と同じような役割ですか？
+</SpeechBubble>
+
+考え方は同じです。TypeScriptの `function max<T extends Comparable>(...)` にあたるのが `where T : IComparable<T>` です。複数の制約を並べることもできます。
+
+```csharp
+public class Repository<T> where T : class, IEntity, new()
+{
+}
+```
+
+## TypeScriptのジェネリクスとの違い
+
+最大の違いは、**C#では型パラメータの情報が実行時にも残る**ことです。
+
+```csharp
+var list = new List<int>();
+Console.WriteLine(list.GetType());  // System.Collections.Generic.List`1[System.Int32]
+```
+
+TypeScriptのジェネリクスはコンパイル時に消えるため、実行時に `T` が何だったかを知る方法はありません。C#では実行時にも判別できるため、次のようなことが可能になります。
+
+| できること | 例 |
+| ---------- | -- |
+| 型ごとに別のインスタンスとして扱う | `List<int>` と `List<string>` は実行時にも別の型 |
+| 型を見て依存を解決する | DIコンテナが `IRepository<User>` を解決する |
+| 型情報からシリアライズする | JSONの変換で型に応じた処理を行う |
+
+<Marker>「TypeScriptの型は消える、C#の型は残る」という [第1章で触れた違い](/books/csharp/what-is-csharp) が、いちばん具体的に効いてくるのがジェネリクスです。</Marker>
+
+## 実務での使いどころ
+
+自分でジェネリッククラスを書く機会は、最初のうちはそれほど多くありません。まずは既存のジェネリック型を正しく読めることが重要です。
+
+```csharp
+Task<List<User>> GetUsersAsync();
+```
+
+これは「いずれ `User` のリストを返す非同期処理」と読みます。入れ子になっていても、外側から順に読めば意味は取れます。
+
+自分で書く典型例は、共通のデータアクセス層です。
+
+```csharp
+public interface IRepository<T> where T : class
+{
+    Task<T?> FindAsync(int id);
+    Task<List<T>> GetAllAsync();
+    Task AddAsync(T entity);
+}
+```
+
+`IRepository<User>` と `IRepository<Order>` を、同じ設計で扱えるようになります。
+
+## よくあるハマりどころ
+
+### 制約が無くてメンバーを呼べない
+
+```csharp
+public T Max<T>(T a, T b)
+{
+    return a.CompareTo(b) >= 0 ? a : b;  // コンパイルエラー
+}
+```
+
+型パラメータに何が入るか分からない状態では、`object` が持つメンバーしか呼べません。必要な能力を `where` で宣言します。
+
+### 何でもジェネリックにする
+
+型パラメータが3つ4つと増えると、呼び出し側が型を書くだけで疲れます。実際に複数の型で使い回す見込みが立ってから導入すれば十分です。
+
+### `default(T)` の値を勘違いする
+
+```csharp
+T value = default;   // 参照型なら null、値型なら 0 や false
+```
+
+`T` が値型か参照型かで結果が変わります。`null` を返したいなら `where T : class` を付けて `T?` を返すのが明確です。
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+「使い回したい形が2回以上出てきたらジェネリック化」くらいの感覚でちょうどいいよ。
+</SpeechBubble>
+
+## ちゃんと使うためのポイント
+
+- ジェネリクスは「型を後から決める」仕組み。キャスト不要で型安全になる
+- 型パラメータ名は `T`、`TKey`、`TResult` などの慣習に従う
+- 型パラメータのメンバーを使うには `where` 制約が必要
+- C#の型パラメータは実行時にも残る（TypeScriptとの決定的な差）
+- まずは既存のジェネリック型を読めること。自作は必要になってから
+
+次の章では、いよいよ最後のテーマです。`record` とパターンマッチングという、モダンなC#を特徴づける機能を扱います。
+
+## 参考リンク
+
+- [Microsoft Learn — ジェネリック](https://learn.microsoft.com/ja-jp/dotnet/csharp/fundamentals/types/generics)

@@ -1,0 +1,207 @@
+---
+title: 'C#のコレクション — ListとDictionaryの使い分けと主要メソッド'
+description: 'C#の配列、List、Dictionary、HashSetの違いと選び方、AddやRemoveなど主要メソッドの引数と戻り値、TryGetValueによる安全な取得までを整理します。'
+order: 8
+---
+
+複数のデータをまとめて扱う型を、まとめてコレクションと呼びます。JavaScriptでは配列とオブジェクト（とMap・Set）でほぼ足りますが、C#では**用途ごとに専用の型を選ぶ**のが普通です。
+
+選び方さえ分かれば難しくありません。この章では、実務で使う4つを中心に整理します。
+
+## まず選ぶべき4つ
+
+| 型 | 何を入れるか | 向いている操作 | JavaScriptで近いもの |
+| -- | ------------ | -------------- | -------------------- |
+| `T[]`（配列） | 同じ型の値を固定長で | 要素数が変わらない場面 | `Array` |
+| `List<T>` | 同じ型の値を可変長で | 追加・削除・順番の保持 | `Array` |
+| `Dictionary<TKey, TValue>` | キーと値の組 | キーによる高速な検索 | `Map` |
+| `HashSet<T>` | 重複しない値 | 重複排除・存在確認 | `Set` |
+
+<Marker>迷ったら `List`。キーで引きたいなら `Dictionary`、重複を許したくないなら `HashSet` です。</Marker>
+
+```csharp
+int[] scores = { 80, 92, 75 };
+
+var names = new List<string> { "田中", "鈴木" };
+
+var ages = new Dictionary<string, int>
+{
+    ["田中"] = 30,
+    ["鈴木"] = 25
+};
+
+var tags = new HashSet<string> { "C#", ".NET", "C#" };  // 要素数は2
+```
+
+`<T>` の部分は「中に入る型」を指定するもので、ジェネリクスと呼ばれます。`List<string>` は文字列専用のリストであり、`int` を追加しようとするとコンパイルエラーになります。仕組みは [C#のジェネリクス](/books/csharp/generics) で扱います。
+
+## Listの主要メソッド
+
+**構文：** `list.Add(item)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `item`（第1引数） | リストの型と同じ値 | 末尾に追加する要素 |
+
+**戻り値：** なし（`void`）
+
+主要な操作を一覧にします。
+
+| メソッド | 引数 | 戻り値 |
+| -------- | ---- | ------ |
+| `Add(item)` | 追加する要素 | なし |
+| `Insert(index, item)` | 位置と要素 | なし |
+| `Remove(item)` | 削除したい要素 | 削除できたかの `bool` |
+| `RemoveAt(index)` | 位置 | なし |
+| `RemoveAll(predicate)` | 条件を表すラムダ式 | 削除した件数 `int` |
+| `Contains(item)` | 探す要素 | 含まれるかの `bool` |
+| `IndexOf(item)` | 探す要素 | 位置。見つからなければ `-1` |
+| `Clear()` | なし | なし |
+
+```csharp
+var names = new List<string> { "田中", "鈴木", "佐藤" };
+
+names.Add("高橋");
+names.Remove("鈴木");
+Console.WriteLine(names.Count);          // 3
+Console.WriteLine(names.Contains("佐藤"));  // True
+Console.WriteLine(names[0]);             // 田中
+```
+
+要素数は `Length` ではなく **`Count`** です（配列だけ `Length`）。ここは最初によく間違えます。
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="一覧を確認するイメージ" caption="要素数は List なら Count、配列なら Length と覚えます" maxWidth="330px" />
+
+## Dictionaryの主要メソッド
+
+キーで値を引く用途にはDictionaryを使います。存在しないキーで取り出すと例外になるため、`TryGetValue` を使うのが基本です。
+
+**構文：** `dict.TryGetValue(key, out value)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `key`（第1引数） | キーの型と同じ値 | 探したいキー |
+| `value`（第2引数） | `out` 付きの変数 | 見つかった場合に値が入る |
+
+**戻り値：** キーが存在したかの `bool`（存在しなければ `value` は既定値）
+
+```csharp
+var ages = new Dictionary<string, int> { ["田中"] = 30 };
+
+if (ages.TryGetValue("鈴木", out var age))
+{
+    Console.WriteLine(age);
+}
+else
+{
+    Console.WriteLine("登録されていません");
+}
+```
+
+| メソッド | 引数 | 戻り値 |
+| -------- | ---- | ------ |
+| `Add(key, value)` | キーと値 | なし（キー重複で例外） |
+| `TryAdd(key, value)` | キーと値 | 追加できたかの `bool` |
+| `TryGetValue(key, out value)` | キーと受け取る変数 | 存在したかの `bool` |
+| `ContainsKey(key)` | キー | 存在するかの `bool` |
+| `Remove(key)` | キー | 削除できたかの `bool` |
+
+<Callout type="warning" title="Add と インデクサの違い">
+`dict.Add("田中", 30)` は同じキーが既にあると例外になりますが、`dict["田中"] = 30` は黙って上書きします。上書きしたいのか、重複を検出したいのかで使い分けてください。
+</Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+JavaScriptのオブジェクトみたいに、無いキーを読んだら `undefined` が返る……わけではないんですね。
+</SpeechBubble>
+
+C#では例外（`KeyNotFoundException`）になります。値が無いことを想定するなら `TryGetValue`、キーの有無だけ知りたいなら `ContainsKey` を使います。この「失敗を戻り値で表す」形は [C#のメソッド](/books/csharp/methods) で見た `out` パターンそのものです。
+
+## HashSetと重複排除
+
+```csharp
+var tags = new HashSet<string>();
+Console.WriteLine(tags.Add("C#"));   // True（追加された）
+Console.WriteLine(tags.Add("C#"));   // False（既にある）
+```
+
+`Contains` の速さが `List` と大きく違います。要素数が増えるほど差が開くため、「含まれているか」を大量に判定するなら `HashSet` を選びます。
+
+| 型 | 要素の検索 | 順序 |
+| -- | ---------- | ---- |
+| `List<T>` | 先頭から順に探す（要素数に比例） | 追加順を保持 |
+| `HashSet<T>` | ハッシュで一発 | 保証されない |
+| `Dictionary<TKey, TValue>` | ハッシュで一発 | 保証されない |
+
+## コレクションを型で受け渡す
+
+メソッドの引数では、具体的な型ではなくインターフェースで受け取ると、呼び出し側の自由度が上がります。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["IEnumerable&lt;T&gt;<br/>順に読める"] --> B["ICollection&lt;T&gt;<br/>件数・追加・削除"]
+    B --> C["IList&lt;T&gt;<br/>インデックスでアクセス"]
+    C --> D["List&lt;T&gt;"]
+`}
+/>
+
+| 受け取る型 | できること | 使いどころ |
+| ---------- | ---------- | ---------- |
+| `IEnumerable<T>` | 順に読むだけ | 読むだけのメソッドの引数 |
+| `IReadOnlyList<T>` | 読む・件数・添字 | 変更させたくない公開API |
+| `IList<T>` | 追加・削除・添字 | 中身を変更する処理 |
+| `List<T>` | すべて | ローカル変数・内部実装 |
+
+```csharp
+public int Total(IEnumerable<int> values)
+{
+    int sum = 0;
+    foreach (var v in values) sum += v;
+    return sum;
+}
+```
+
+こう書いておくと、配列でもリストでもLINQの結果でもそのまま渡せます。
+
+## よくあるハマりどころ
+
+### `Count` と `Length` を取り違える
+
+`List<T>` は `Count`、配列は `Length`、`string` も `Length` です。LINQを使うと `Count()` というメソッドもあり紛らわしいですが、プロパティの `Count` があるならそちらを使います。
+
+### 存在しないインデックスにアクセスする
+
+```csharp
+var list = new List<int> { 1, 2, 3 };
+// var x = list[3];  ← ArgumentOutOfRangeException
+```
+
+件数は `list.Count`、最後の要素は `list[^1]`（末尾からの添字）で取得できます。
+
+### ループ中に要素を削除する
+
+`foreach` の途中で `Add` や `Remove` を呼ぶと実行時例外になります。条件に合う要素をまとめて消したいなら `RemoveAll` を使います（[C#の条件分岐と繰り返し](/books/csharp/control-flow) 参照）。
+
+### 空のリストと `null` を混同する
+
+「要素が無い」を `null` で表すと、使う側が毎回nullチェックを強いられます。返すものが無い場合は空のリストを返すのが基本です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`return new List<User>();` を返すだけで、呼び出し側の `foreach` はそのまま安全に回せるからね。
+</SpeechBubble>
+
+## ちゃんと使うためのポイント
+
+- 基本は `List<T>`、キー検索は `Dictionary`、重複排除は `HashSet`
+- 要素数は `List` なら `Count`、配列なら `Length`
+- Dictionaryから値を取るときは `TryGetValue`
+- `Add` は重複で例外、インデクサ代入は上書き
+- メソッドの引数は `IEnumerable<T>` などのインターフェースで受け取る
+- 「結果なし」は `null` ではなく空のコレクションで返す
+
+次の章では、これらのコレクションを宣言的に操作するLINQに進みます。ここからC#らしい書き味になります。
+
+## 参考リンク
+
+- [Microsoft Learn — コレクション](https://learn.microsoft.com/ja-jp/dotnet/standard/collections/)
+- [Microsoft Learn — List&lt;T&gt; クラス](https://learn.microsoft.com/ja-jp/dotnet/api/system.collections.generic.list-1)

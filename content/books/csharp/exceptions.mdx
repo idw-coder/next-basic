@@ -1,0 +1,213 @@
+---
+title: 'C#の例外処理 — try/catch/finallyとusing、独自例外の作り方'
+description: 'C#のtry・catch・finallyの書き方、例外の型階層とcatchの順序、whenフィルタ、throwとthrow exの違い、usingによる後始末、独自例外の定義までを解説します。'
+order: 11
+---
+
+例外は「その場では処理を続けられない事態」を呼び出し元に伝える仕組みです。C#の標準ライブラリは例外を積極的に使うため、扱い方を知らないとアプリが落ちるか、逆に握りつぶして原因が追えなくなります。
+
+## try / catch / finally
+
+```csharp
+try
+{
+    var text = File.ReadAllText("data.txt");
+    Console.WriteLine(text);
+}
+catch (FileNotFoundException ex)
+{
+    Console.WriteLine($"ファイルがありません: {ex.FileName}");
+}
+catch (IOException ex)
+{
+    Console.WriteLine($"読み込みに失敗しました: {ex.Message}");
+}
+finally
+{
+    Console.WriteLine("後始末をします");
+}
+```
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["try ブロック"] -->|"例外なし"| C["finally"]
+    A -->|"例外あり"| B["一致する catch"]
+    B --> C
+    C --> D["続きの処理"]
+`}
+/>
+
+| ブロック | 実行されるタイミング |
+| -------- | -------------------- |
+| `try` | 通常の処理 |
+| `catch` | 対応する型の例外が発生したとき |
+| `finally` | 例外の有無にかかわらず必ず |
+
+<Marker>`catch` は上から順に評価されるため、より具体的な例外型を先に書きます。</Marker>
+
+`catch (Exception)` を先頭に書くと、それ以降の `catch` には到達できずコンパイルエラーになります。
+
+## 例外の型を選ぶ
+
+例外はすべて `System.Exception` を継承しています。実務でよく使うものを挙げます。
+
+| 例外型 | 発生する場面 |
+| ------ | ------------ |
+| `ArgumentNullException` | 引数が `null` |
+| `ArgumentException` | 引数の値が不正 |
+| `ArgumentOutOfRangeException` | 引数が範囲外 |
+| `InvalidOperationException` | その状態では呼べない操作 |
+| `KeyNotFoundException` | Dictionaryにキーが無い |
+| `FormatException` | 文字列の形式が不正（`int.Parse` など） |
+| `NullReferenceException` | nullのメンバーにアクセスした |
+| `IOException` | ファイル・ネットワークの入出力失敗 |
+
+自分で投げるときは、状況に合った型を選びます。
+
+**構文：** `throw new ArgumentException(message, paramName)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `message`（第1引数） | 文字列 | 何が問題かを説明するメッセージ |
+| `paramName`（第2引数） | 文字列 | 問題のある引数名。省略可 |
+
+**戻り値：** なし（例外が投げられ、呼び出し元へ制御が移る）
+
+```csharp
+public void SetAge(int age)
+{
+    if (age < 0)
+    {
+        throw new ArgumentOutOfRangeException(nameof(age), "年齢は0以上で指定してください");
+    }
+}
+```
+
+`nameof(age)` は引数名を文字列として埋め込む式です。変数名を変更してもメッセージがずれません。
+
+<Figure src="/images/harry_man_color.png" alt="慌てているイメージ" caption="例外は「想定外」を隠さず知らせるための仕組みです" maxWidth="320px" />
+
+## catch の書き方で差が出るところ
+
+### whenフィルタ
+
+条件を満たすときだけ捕捉できます。
+
+```csharp
+catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+{
+    Console.WriteLine("見つかりませんでした");
+}
+```
+
+条件に合わない場合は捕捉されず、そのまま上位へ伝播します。
+
+### `throw` と `throw ex` の違い
+
+```csharp
+catch (Exception ex)
+{
+    Log(ex);
+    throw;      // ○ 元のスタックトレースを保持
+    // throw ex;   × ここが発生源だったことになり、原因追跡が困難になる
+}
+```
+
+<Marker>捕捉した例外を再送出するときは、必ず `throw;` と書きます。`throw ex;` はスタックトレースを消してしまいます。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+1文字違うだけなのに、そんなに差があるんですね……。
+</SpeechBubble>
+
+障害調査では「どこで最初に起きたか」が最重要の情報です。`throw ex;` はそれを消してしまうため、レビューでも指摘されやすいポイントです。
+
+## 独自例外を定義する
+
+業務上の意味を持つエラーには、専用の例外型を作ります。
+
+```csharp
+public class OrderNotFoundException : Exception
+{
+    public string OrderId { get; }
+
+    public OrderNotFoundException(string orderId)
+        : base($"注文が見つかりません: {orderId}")
+    {
+        OrderId = orderId;
+    }
+}
+```
+
+呼び出し側は `catch (OrderNotFoundException ex)` と書けるようになり、他のエラーと区別して扱えます。
+
+## usingによる後始末
+
+ファイルやデータベース接続のように、使い終わったら解放が必要なリソースがあります。C#では `IDisposable` を実装した型を `using` で扱います。
+
+```csharp
+using var stream = File.OpenRead("data.txt");
+using var reader = new StreamReader(stream);
+
+var text = reader.ReadToEnd();
+```
+
+`using` を付けた変数は、スコープを抜けるときに自動的に `Dispose()` が呼ばれます。例外が発生した場合でも呼ばれるため、`finally` で自分で解放する必要がありません。
+
+<Callout type="note" title="usingには2つの意味がある">
+ファイル先頭の `using System;` は名前空間の取り込み、メソッド内の `using var` はリソースの解放です。同じキーワードですが役割はまったく別で、両方ともよく使います。
+</Callout>
+
+## 例外を使わない選択肢
+
+「起こりうる想定内の失敗」は、例外ではなく戻り値で表すほうが適切です。
+
+| 場面 | 例外を使う | 戻り値で表す |
+| ---- | ---------- | ------------ |
+| 数値変換 | `int.Parse` | `int.TryParse` |
+| Dictionaryの取得 | `dict[key]` | `dict.TryGetValue` |
+| 検索 | `First()` | `FirstOrDefault()` |
+
+ユーザー入力の検証のように高頻度で失敗しうる処理では、例外は動作コストも読みやすさも不利になります。`Try` から始まるメソッドが用意されている場合は、そちらを優先します。
+
+## よくあるハマりどころ
+
+### `catch (Exception)` で握りつぶす
+
+```csharp
+try { DoSomething(); }
+catch (Exception) { }   // 何も起きなかったことになる
+```
+
+原因不明の不具合を生む最大の要因です。最低でもログに残し、処理を続けてよいのか判断できない場合は再送出します。
+
+### finallyでreturnする
+
+`finally` の中で `return` すると、発生していた例外が消えてしまいます。`finally` は後始末だけに使います。
+
+### 例外を通常の分岐として使う
+
+「見つからなかったら例外」を通常のフローに組み込むと、正常系が読みにくく、動作も遅くなります。想定内の分岐は戻り値で表現します。
+
+### ログに `ex.Message` しか出さない
+
+`Message` だけではどこで起きたか分かりません。ログには例外オブジェクト全体（`ex.ToString()` 相当）を渡し、スタックトレースと `InnerException` まで残します。
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+「メッセージだけ出す」ログは、障害対応のときに本当に効かないんだ。例外はまるごと渡そう。
+</SpeechBubble>
+
+## ちゃんと使うためのポイント
+
+- `catch` は具体的な型を先に、広い型を後に書く
+- 再送出は `throw;`。`throw ex;` はスタックトレースを消す
+- 例外の型は状況に合わせて選び、業務的な意味があるなら独自例外を作る
+- 解放が必要なリソースは `using var` で扱う
+- 想定内の失敗は例外ではなく `TryParse` / `TryGetValue` などで表す
+- 握りつぶさない。ログには例外オブジェクトごと渡す
+
+次の章では、非同期処理に進みます。ネットワークやファイルの待ち時間を無駄にしないための `async` / `await` を扱います。
+
+## 参考リンク
+
+- [Microsoft Learn — 例外と例外処理](https://learn.microsoft.com/ja-jp/dotnet/csharp/fundamentals/exceptions/)

@@ -1,0 +1,3 @@
+title: 'C#入門 — .NETで動く言語の基礎'
+description: 'C#と.NETの関係から、型・クラス・インターフェース・コレクション・LINQ・null安全・例外処理・async/await・ジェネリクスまで、実務でC#を書くために必要な言語の基礎を段階的に学ぶ入門書です。'
+coverImage: '/images/books/csharp.png'

@@ -1,0 +1,201 @@
+---
+title: 'C#のLINQ入門 — Where・Select・OrderByでコレクションを操作する'
+description: 'LINQのメソッド構文の基本、Where・Select・OrderBy・GroupByなど主要メソッドの引数と戻り値、遅延実行の仕組み、FirstとFirstOrDefaultの違いまでを解説します。'
+order: 9
+---
+
+LINQ（リンク）は、コレクションを「絞り込む・変換する・並べ替える」といった操作を宣言的に書くための仕組みです。JavaScriptの `filter` / `map` / `sort` に相当しますが、対象がリストでもDictionaryでもデータベースでも同じ書き方で通せる点が特徴です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`filter` や `map` と同じなら、名前が違うだけですか？
+</SpeechBubble>
+
+書き味は近いです。ただしLINQには**遅延実行**という重要な性質があり、これを知らないと予想外の挙動に出会います。順に見ていきます。
+
+## まずは基本形
+
+```csharp
+var users = new List<User>
+{
+    new() { Name = "田中", Age = 30 },
+    new() { Name = "鈴木", Age = 25 },
+    new() { Name = "佐藤", Age = 41 }
+};
+
+var names = users
+    .Where(u => u.Age >= 30)
+    .OrderBy(u => u.Age)
+    .Select(u => u.Name)
+    .ToList();
+
+// ["田中", "佐藤"]
+```
+
+`u => u.Age >= 30` はラムダ式で、JavaScriptのアロー関数と同じ役割です。`.` でつないでいく書き方を**メソッド構文**と呼びます。
+
+<Callout type="note" title="usingは不要">
+LINQは `System.Linq` 名前空間にありますが、`ImplicitUsings` が有効なプロジェクトでは自動的に読み込まれています。古い記事にある `using System.Linq;` を書く必要はありません。
+</Callout>
+
+## 絞り込みと変換
+
+**構文：** `source.Where(predicate)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `predicate`（第1引数） | `要素 => bool` のラムダ式 | 残したい要素の条件 |
+
+**戻り値：** 条件に合う要素を返す `IEnumerable<T>`（合致0件でも `null` にはならない）
+
+**構文：** `source.Select(selector)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `selector`（第1引数） | `要素 => 新しい値` のラムダ式 | 何に変換するか |
+
+**戻り値：** 変換後の要素を返す `IEnumerable<TResult>`
+
+ラムダ式は第2引数にインデックスも受け取れます（`(u, i) => ...`）。この形はどのメソッドでも共通なので、以降は戻り値の違いに注目して読んでください。
+
+## よく使うメソッド一覧
+
+| メソッド | 何をするか | 戻り値 |
+| -------- | ---------- | ------ |
+| `Where` | 条件で絞り込む | `IEnumerable<T>` |
+| `Select` | 別の形に変換する | `IEnumerable<TResult>` |
+| `OrderBy` / `OrderByDescending` | 並べ替える | `IOrderedEnumerable<T>` |
+| `ThenBy` | 2番目以降のキーで並べ替える | `IOrderedEnumerable<T>` |
+| `First` / `Last` | 最初・最後の1件 | 要素。無ければ例外 |
+| `FirstOrDefault` | 最初の1件 | 要素。無ければ既定値（参照型は `null`） |
+| `Single` | ちょうど1件 | 要素。0件・2件以上なら例外 |
+| `Any` | 1件でもあるか | `bool` |
+| `All` | すべて条件を満たすか | `bool` |
+| `Count` | 件数 | `int` |
+| `Sum` / `Average` / `Max` / `Min` | 集計 | 数値 |
+| `GroupBy` | キーでグループ化する | `IEnumerable<IGrouping<TKey, T>>` |
+| `Distinct` | 重複を除く | `IEnumerable<T>` |
+| `Take` / `Skip` | 先頭N件・N件飛ばす | `IEnumerable<T>` |
+| `ToList` / `ToArray` / `ToDictionary` | 実体化する | `List<T>` / `T[]` / `Dictionary<K,V>` |
+
+```csharp
+bool hasAdult = users.Any(u => u.Age >= 20);
+int total = users.Sum(u => u.Age);
+var oldest = users.OrderByDescending(u => u.Age).First();
+
+var byDecade = users.GroupBy(u => u.Age / 10 * 10);
+foreach (var group in byDecade)
+{
+    Console.WriteLine($"{group.Key}代: {group.Count()}人");
+}
+```
+
+<Figure src="/images/search_woman_color.png" alt="探すイメージ" caption="LINQは「どう探すか」ではなく「何がほしいか」を書く道具です" maxWidth="330px" />
+
+## 遅延実行を理解する
+
+LINQの `Where` や `Select` は、**呼んだ時点では何も実行されません**。結果を実際に使うとき（`foreach` で回す、`ToList()` を呼ぶなど）に初めて処理が走ります。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["Where を呼ぶ"] --> B["条件を覚えるだけ"]
+    B --> C["ToList / foreach"]
+    C --> D["ここで初めて実行"]
+`}
+/>
+
+```csharp
+var list = new List<int> { 1, 2, 3 };
+var query = list.Where(n => n > 1);
+
+list.Add(4);
+
+Console.WriteLine(string.Join(",", query));  // 2,3,4
+```
+
+`Where` を呼んだあとに追加した `4` が結果に含まれています。クエリは「実行される時点のコレクション」を見るためです。
+
+<Marker>結果をその場で確定させたいときは `ToList()` を呼びます。これが遅延実行に関するトラブルのほぼ唯一の対策です。</Marker>
+
+<Callout type="warning" title="同じクエリを何度も列挙しない">
+遅延実行のクエリを `Count()` で数えてから `foreach` で回すと、処理が2回走ります。データベースが相手なら、クエリが2回発行されることになります。使い回す結果は `ToList()` で確定させてから扱ってください。
+</Callout>
+
+## FirstとFirstOrDefaultの違い
+
+| メソッド | 該当なしのとき | 使う場面 |
+| -------- | -------------- | -------- |
+| `First()` | 例外 | 必ず存在するはずの場合 |
+| `FirstOrDefault()` | `null`（値型は `0` など） | 無いこともある場合 |
+| `Single()` | 0件・複数件で例外 | 一意であることを保証したい場合 |
+
+```csharp
+var user = users.FirstOrDefault(u => u.Name == "山田");
+if (user is null)
+{
+    Console.WriteLine("見つかりませんでした");
+}
+```
+
+「無いかもしれない」なら `FirstOrDefault` を使い、必ず結果を確認します。nullの扱いは [C#のnull安全](/books/csharp/null-safety) で詳しく扱います。
+
+## クエリ構文
+
+LINQにはSQLに似た書き方もあります。
+
+```csharp
+var names = from u in users
+            where u.Age >= 30
+            orderby u.Age
+            select u.Name;
+```
+
+メソッド構文と機能はほぼ同じで、どちらを使っても構いません。実務ではメソッド構文が主流ですが、`join` や複数の `from` を使う複雑なクエリではクエリ構文のほうが読みやすくなることがあります。
+
+## よくあるハマりどころ
+
+### `ToList()` を忘れて結果が変わる
+
+前述の遅延実行が原因です。メソッドの戻り値としてクエリをそのまま返すと、呼び出し側で列挙されるまで実行が遅れ、その間に元データが変わる可能性があります。公開するメソッドでは `ToList()` して返すのが安全です。
+
+### `First()` で例外が出る
+
+該当0件の可能性があるなら `FirstOrDefault()` を使います。逆に「必ず1件だけ存在する」ことを保証したいなら、あえて `Single()` を使って違反を早期に検出する方法もあります。
+
+### ループの中でLINQを呼ぶ
+
+```csharp
+foreach (var order in orders)
+{
+    var user = users.First(u => u.Id == order.UserId);  // 毎回全件走査
+}
+```
+
+件数が増えると急に遅くなります。事前に `ToDictionary` でキー検索できる形にしておくと解決します。
+
+```csharp
+var userMap = users.ToDictionary(u => u.Id);
+```
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+「ループの中の検索」は言語を問わず遅くなる典型パターン。`Dictionary` に置き換えるのが定石だよ。
+</SpeechBubble>
+
+### データベース相手のLINQと同じ感覚で書く
+
+Entity Framework CoreでのLINQは、SQLに変換されて実行されます。C#の任意のメソッドをラムダ式の中で呼ぶと変換できず、全件をメモリに読み込んでから処理する事態になり得ます。DB相手のクエリでは「SQLに翻訳できる書き方か」を意識してください。
+
+## ちゃんと使うためのポイント
+
+- 絞り込みは `Where`、変換は `Select`、並べ替えは `OrderBy`
+- LINQは遅延実行。使い回す結果は `ToList()` で確定させる
+- 該当0件がありうるなら `First` ではなく `FirstOrDefault`
+- 存在確認は `Count() > 0` ではなく `Any()`
+- ループ内で毎回検索するなら `ToDictionary` に置き換える
+- DB相手のLINQは、SQLに変換できる書き方かを意識する
+
+次の章では、`FirstOrDefault` が返しうる `null` を安全に扱う仕組み、null許容参照型に進みます。
+
+## 参考リンク
+
+- [Microsoft Learn — LINQ（統合言語クエリ）](https://learn.microsoft.com/ja-jp/dotnet/csharp/linq/)

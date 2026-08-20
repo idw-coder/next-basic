@@ -1,0 +1,218 @@
+---
+title: 'C#の継承とインターフェース — virtual・override・abstractの使い分け'
+description: 'C#の継承、virtualとoverride、abstractクラス、インターフェースの実装、抽象クラスとインターフェースの使い分け、isとasによる型判定までを整理します。'
+order: 7
+---
+
+継承とインターフェースは、どちらも「型どうしの関係」を表す仕組みです。似ているようで役割がはっきり違い、C#の設計ではこの選択が繰り返し登場します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+どちらも「共通化」のための道具に見えます。どうやって選べばいいんでしょう？
+</SpeechBubble>
+
+先に結論を書くと、**実装を共有したいなら継承、役割だけを約束したいならインターフェース**です。以下でその理由を見ていきます。
+
+## 継承の基本
+
+`:` を使って、既存のクラスを引き継いだクラスを作れます。
+
+```csharp
+public class Animal
+{
+    public string Name { get; init; } = "";
+
+    public virtual string Speak() => "...";
+}
+
+public class Dog : Animal
+{
+    public override string Speak() => "ワン";
+}
+```
+
+| キーワード | 意味 |
+| ---------- | ---- |
+| `virtual` | 派生クラスで上書きしてもよい、と宣言する |
+| `override` | 基底クラスのメンバーを上書きする |
+| `abstract` | 実装を持たず、派生クラスに実装を強制する |
+| `sealed` | これ以上の継承・上書きを禁止する |
+| `base` | 基底クラスのメンバーを呼ぶ |
+
+<Marker>C#では、`virtual` が付いていないメソッドは上書きできません。上書きを許すかどうかは基底クラス側が決めます。</Marker>
+
+```csharp
+public class Cat : Animal
+{
+    public override string Speak() => $"{base.Speak()} ニャー";
+}
+```
+
+<Callout type="warning" title="newによる隠蔽に注意">
+`virtual` が無いメソッドを派生クラスで同名定義すると、`new` キーワードによる「隠蔽」になります。この場合、変数の型が基底クラスなら基底の実装が、派生クラスなら派生の実装が呼ばれるという分かりにくい挙動になります。上書きしたいときは、基底に `virtual` を付けて `override` するのが正しい方法です。
+</Callout>
+
+## 抽象クラス
+
+共通の実装は持たせたいが、そのままインスタンス化はさせたくない場合に `abstract` を使います。
+
+```csharp
+public abstract class Shape
+{
+    public abstract double GetArea();          // 実装なし。派生クラスが必ず実装する
+
+    public string Describe() => $"面積は{GetArea()}です";  // 共通実装
+}
+
+public class Circle : Shape
+{
+    public double Radius { get; init; }
+
+    public override double GetArea() => Radius * Radius * Math.PI;
+}
+```
+
+`Shape` 自体は `new` できず、`Circle` や `Rectangle` として使います。「共通処理は基底にまとめつつ、変わる部分だけを派生に任せる」という設計です。
+
+## インターフェース
+
+インターフェースは、**実装を持たず「このメンバーを持つ」という約束だけ**を定義します。
+
+```csharp
+public interface INotifier
+{
+    void Send(string message);
+}
+
+public class EmailNotifier : INotifier
+{
+    public void Send(string message) => Console.WriteLine($"メール送信: {message}");
+}
+
+public class SlackNotifier : INotifier
+{
+    public void Send(string message) => Console.WriteLine($"Slack送信: {message}");
+}
+```
+
+使う側は、具体的なクラスではなくインターフェースを受け取ります。
+
+```csharp
+public class OrderService
+{
+    private readonly INotifier _notifier;
+
+    public OrderService(INotifier notifier)
+    {
+        _notifier = notifier;
+    }
+
+    public void Complete() => _notifier.Send("注文が完了しました");
+}
+```
+
+<Marker>使う側がインターフェースに依存していれば、送信先をメールからSlackへ差し替えても、使う側のコードは変わりません。</Marker>
+
+これが依存性注入（DI）の基本形で、ASP.NET Coreをはじめとする.NETのフレームワークはこの形を前提に作られています。テスト時には偽物の実装（モック）を渡せるため、テストのしやすさにも直結します。
+
+<Figure src="/images/meeting_color.png" alt="役割分担のイメージ" caption="インターフェースは「誰が何を担当するか」という取り決めにあたります" maxWidth="360px" />
+
+<Callout type="info" title="命名の慣習">
+C#では、インターフェース名の先頭に `I` を付けます（`INotifier`、`IEnumerable`、`IDisposable`）。標準ライブラリでも一貫しているため、名前を見ただけでインターフェースだと分かります。
+</Callout>
+
+### TypeScriptのinterfaceとの決定的な違い
+
+TypeScriptでは、形が一致していれば型として互換になります（構造的部分型）。C#は違います。
+
+```csharp
+public class Printer
+{
+    public void Send(string message) { }   // 形は同じ
+}
+
+// INotifier として扱えない
+// INotifier n = new Printer();  ← コンパイルエラー
+```
+
+<Marker>C#では、`: INotifier` と明示的に宣言したクラスだけがそのインターフェースとして扱えます。</Marker>
+
+## 抽象クラスとインターフェースの使い分け
+
+| | 抽象クラス | インターフェース |
+| -- | ---------- | ---------------- |
+| 実装を持てるか | 持てる | 既定実装は持てるが、基本は持たない |
+| フィールドを持てるか | 持てる | 持てない |
+| 多重継承 | できない（1つだけ） | できる（複数実装可） |
+| 表すもの | 「〜の一種である」 | 「〜ができる」 |
+| 使う場面 | 共通実装を配りたい | 差し替え可能にしたい |
+
+C#のクラスは**1つのクラスしか継承できません**が、インターフェースは何個でも実装できます。
+
+```csharp
+public class FileLogger : IDisposable, INotifier
+{
+    public void Send(string message) { }
+    public void Dispose() { }
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+迷ったらインターフェースから考えるといい。継承は結びつきが強くて、あとから外しにくいんだ。
+</SpeechBubble>
+
+## 型を判定する
+
+実行時に型を調べるには `is`、変換には `as` を使います。
+
+```csharp
+object value = "テキスト";
+
+if (value is string s)
+{
+    Console.WriteLine(s.Length);  // 変換された変数がそのまま使える
+}
+
+var maybe = value as string;      // 失敗すると null
+```
+
+| 書き方 | 失敗したとき |
+| ------ | ------------ |
+| `value is string s` | `false` になる |
+| `value as string` | `null` になる |
+| `(string)value` | 例外が発生する |
+
+`is` によるパターンマッチングは [C#のモダン構文](/books/csharp/records-and-pattern-matching) でさらに掘り下げます。
+
+## よくあるハマりどころ
+
+### 継承を「コードを再利用する手段」として使う
+
+処理が似ているという理由だけで継承すると、基底クラスの変更が全派生クラスに波及します。「〜は〜の一種である」と自然に言えないなら、継承ではなく**別クラスに切り出して持たせる**（コンポジション）ほうが安全です。
+
+### 継承階層が深くなる
+
+3階層を超えると、あるメソッドの実装がどこにあるのか追いづらくなります。深くなってきたら、インターフェース＋コンポジションへの置き換えを検討します。
+
+### `override` を書き忘れる
+
+基底に `virtual` があるのに派生で `override` を付け忘れると、隠蔽になり期待した実装が呼ばれません。警告が出るので、警告を無視しないことが対策になります。
+
+### インターフェースを1つの実装のためだけに作る
+
+差し替える予定もテストの必要もないのに、すべてのクラスにインターフェースを用意すると、ファイル数だけが増えます。**差し替えたい・テストで置き換えたい**という理由があるときに導入します。
+
+## ちゃんと使うためのポイント
+
+- 実装を共有したいなら継承、役割の約束だけならインターフェース
+- 上書きを許すメンバーには `virtual`、上書き側には `override`
+- 実装を強制したいときは `abstract`
+- クラスの継承は1つだけ、インターフェースは複数実装できる
+- C#のインターフェースは明示的に宣言した型だけが互換になる
+- 型判定は `is`、失敗を許す変換は `as`
+
+次の章では、複数のデータをまとめて扱うコレクションに進みます。`List` と `Dictionary` の使い分けと、主要メソッドの引数・戻り値を押さえます。
+
+## 参考リンク
+
+- [Microsoft Learn — 継承](https://learn.microsoft.com/ja-jp/dotnet/csharp/fundamentals/object-oriented/inheritance)
+- [Microsoft Learn — インターフェイス](https://learn.microsoft.com/ja-jp/dotnet/csharp/fundamentals/types/interfaces)

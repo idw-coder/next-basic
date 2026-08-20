@@ -268,6 +268,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-lime-700',
     iconName: 'Braces',
   },
+  csharp: {
+    cardBg: 'bg-green-50',
+    iconBg: 'bg-green-100',
+    iconText: 'text-green-700',
+    accent: 'text-green-700',
+    accentHover: 'group-hover:text-green-800',
+    accentBg: 'bg-green-600',
+    badgeBg: 'bg-green-50',
+    badgeText: 'text-green-700',
+    iconName: 'Hash',
+  },
 };
 
 /** bookSlug に対応するテーマを返す。未登録の本は DEFAULT_THEME（amber）。 */

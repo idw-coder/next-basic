@@ -1,0 +1,227 @@
+---
+title: 'C#の開発環境構築 — .NET SDKのインストールからdotnet runまで'
+description: '.NET SDKとランタイムの違い、OS別のインストール手順、dotnet newでのプロジェクト作成、dotnet runでの実行、csprojの読み方までを一通り確認します。'
+order: 2
+---
+
+C#を書き始めるのに必要なものは、実質ひとつだけです。**.NET SDK** を入れれば、コンパイラもビルドツールも実行環境もまとめて手に入ります。
+
+この章では、SDKのインストールから最初のプロジェクトを動かすところまでを行い、あわせて生成されるファイルの意味を確認します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Node.jsのときは「Node本体を入れればnpmも付いてくる」感じでしたが、C#も同じですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+かなり近いよ。.NET SDKを入れると `dotnet` コマンドが使えるようになって、作成・ビルド・実行・テスト・パッケージ追加まで全部これ1つでできる。
+</SpeechBubble>
+
+## SDKとランタイムはどちらを入れるのか
+
+ダウンロードページには「SDK」と「ランタイム」の2種類が並んでいます。開発するなら迷わずSDKです。
+
+| 種類 | 含まれるもの | 用途 |
+| ---- | ------------ | ---- |
+| .NET SDK | コンパイラ・`dotnet` CLI・ランタイム | C#を書く人が入れるもの |
+| .NET ランタイム | 実行に必要な部分のみ | ビルド済みアプリを動かすサーバー向け |
+
+<Marker>開発マシンにはSDKを入れます。ランタイムはSDKに含まれているので、別途入れる必要はありません。</Marker>
+
+## インストールする
+
+OSごとに手順が違いますが、いずれも[.NETのダウンロードページ](https://dotnet.microsoft.com/ja-jp/download)からLTS版を選ぶのが基本です。パッケージマネージャーを使うなら次のようになります。
+
+```bash
+# Windows
+winget install Microsoft.DotNet.SDK.8
+
+# macOS
+brew install --cask dotnet-sdk
+
+# Ubuntu / Debian
+sudo apt-get install -y dotnet-sdk-8.0
+```
+
+インストールできたら、必ずバージョンを確認します。
+
+```bash
+dotnet --version
+# 8.0.404
+
+dotnet --list-sdks
+# 8.0.404 [/usr/local/share/dotnet/sdk]
+```
+
+<Callout type="info" title="コマンドが見つからない場合">
+インストール直後は、`dotnet` がPATHに反映されていないことがあります。ターミナルを開き直してから再度実行してください。それでも見つからない場合は、インストール先（macOSなら `/usr/local/share/dotnet`）をPATHに追加します。
+</Callout>
+
+## エディタを選ぶ
+
+| エディタ | 対応OS | 向いている人 |
+| -------- | ------ | ------------ |
+| Visual Studio | Windows | 機能の多さを重視する人。GUIデザイナーも使える |
+| Visual Studio Code | Windows / macOS / Linux | 軽量に始めたい人。拡張機能でC#に対応 |
+| JetBrains Rider | Windows / macOS / Linux | IntelliJ系に慣れている人（有償） |
+
+VS Codeを使う場合は、拡張機能の **C# Dev Kit** を入れると、補完・デバッグ・テスト実行が揃います。これを入れないとIntelliSenseがほとんど効かないため、最初に入れておいてください。
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="環境を整えて進むイメージ" caption="環境構築でつまずくと学習が止まるので、ここは確実に通しておきます" maxWidth="340px" />
+
+## 最初のプロジェクトを作る
+
+C#では、単体の `.cs` ファイルを直接実行するのではなく、**プロジェクト単位**で扱うのが基本です。
+
+```bash
+dotnet new console -o HelloApp
+cd HelloApp
+```
+
+**構文：** `dotnet new <テンプレート名> [-o 出力先] [-f フレームワーク]`
+
+| 引数・オプション | 渡せるもの | 説明 |
+| ---------------- | ---------- | ---- |
+| テンプレート名 | `console` / `classlib` / `web` / `webapi` / `xunit` など | 作りたいプロジェクトの種類 |
+| `-o`（`--output`） | ディレクトリ名 | 生成先。省略するとカレントディレクトリに作られる |
+| `-f`（`--framework`） | `net8.0` など | 対象の.NETバージョン。省略時は既定のSDKバージョン |
+
+**戻り値：** なし（指定ディレクトリにプロジェクト一式が生成される）
+
+利用できるテンプレートの一覧は `dotnet new list` で確認できます。
+
+### 生成されるファイル
+
+```
+HelloApp/
+├── HelloApp.csproj   ← プロジェクト設定
+├── Program.cs        ← エントリポイント
+└── obj/              ← ビルドの中間生成物
+```
+
+`Program.cs` の中身は1行だけです。
+
+```csharp
+Console.WriteLine("Hello, World!");
+```
+
+`HelloApp.csproj` はプロジェクトの設定ファイルで、npmの `package.json` にあたります。
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+```
+
+| 設定 | 意味 |
+| ---- | ---- |
+| `OutputType` | 実行可能ファイルか、ライブラリか |
+| `TargetFramework` | どの.NETバージョン向けにビルドするか |
+| `ImplicitUsings` | `using System;` などの頻出usingを自動で補う |
+| `Nullable` | null許容参照型の警告を有効にする |
+
+<Callout type="note" title="usingを書いていないのに動く理由">
+`ImplicitUsings` が有効だと、`System`、`System.Collections.Generic`、`System.Linq` などがあらかじめ読み込まれた状態になります。古い記事の冒頭にある `using System;` が手元のコードに無いのは、そのためです。
+</Callout>
+
+`Nullable` については [C#のnull安全](/books/csharp/null-safety) で詳しく扱います。
+
+## 実行する
+
+```bash
+dotnet run
+# Hello, World!
+```
+
+`dotnet` コマンドのうち、開発中によく使うものを整理します。
+
+| コマンド | 何をするか | 使う場面 |
+| -------- | ---------- | -------- |
+| `dotnet run` | ビルドして実行する | 開発中の動作確認 |
+| `dotnet build` | ビルドのみ行う | コンパイルエラーの確認 |
+| `dotnet watch` | 変更を検知して自動で再実行 | 試行錯誤しながら書くとき |
+| `dotnet test` | テストを実行する | テストプロジェクトがある場合 |
+| `dotnet publish` | 配布用の成果物を出力する | デプロイ時 |
+| `dotnet add package` | NuGetパッケージを追加する | ライブラリ導入時 |
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["dotnet new"] --> B["プロジェクト生成"]
+    B --> C["コードを書く"]
+    C --> D["dotnet run"]
+    D -->|"エラー"| C
+    D -->|"OK"| E["dotnet publish"]
+`}
+/>
+
+書きながら試すときは `dotnet watch` が便利です。ファイルを保存するたびに再ビルドと再実行が走ります。
+
+```bash
+dotnet watch run
+```
+
+## 複数プロジェクトをまとめるソリューション
+
+実務では、Web APIとテストプロジェクトのように複数のプロジェクトを1つのアプリとして扱います。それをまとめる単位が**ソリューション**です。
+
+```bash
+dotnet new sln -n MyApp
+dotnet sln add HelloApp/HelloApp.csproj
+```
+
+学習中は1プロジェクトで十分ですが、エディタで「プロジェクトが認識されない」と言われたときは、ソリューションに追加できているかを確認してください。
+
+## よくあるハマりどころ
+
+### 手元のSDKとcsprojのバージョンが合っていない
+
+`TargetFramework` に `net8.0` と書かれているのに、手元のSDKが `net6.0` しか入っていないとビルドできません。`dotnet --list-sdks` で入っているバージョンを確認します。
+
+チームで揃えたい場合は、リポジトリのルートに `global.json` を置いてSDKバージョンを固定できます。
+
+```json
+{
+  "sdk": {
+    "version": "8.0.404",
+    "rollForward": "latestFeature"
+  }
+}
+```
+
+### プロジェクトの外で `dotnet run` している
+
+`dotnet run` は、カレントディレクトリのプロジェクトを探して実行します。`.csproj` があるディレクトリに移動してから実行してください。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+「プロジェクトファイルが見つかりません」というエラーが出たときは、だいたいこれですか？
+</SpeechBubble>
+
+そのケースがほとんどです。ソリューション直下で実行した場合は、`dotnet run --project HelloApp` のようにプロジェクトを明示すると動きます。
+
+### `obj` や `bin` をコミットしてしまう
+
+`obj/` と `bin/` はビルドの生成物なので、`.gitignore` に入れます。`dotnet new gitignore` を実行すると、.NET向けの `.gitignore` が生成されます。
+
+## ちゃんと使うためのポイント
+
+- 開発マシンに入れるのは**SDK**。ランタイムはSDKに含まれる
+- プロジェクトは `dotnet new console -o 名前` で作る
+- `dotnet run` はビルドと実行をまとめて行う。試行錯誤には `dotnet watch`
+- `.csproj` はプロジェクト設定ファイル。`TargetFramework` と `Nullable` は最初に目を通す
+- VS Codeで書くなら **C# Dev Kit** を入れる
+- チームで揃えるときは `global.json` でSDKバージョンを固定する
+
+環境が整ったら、次の章では変数と型を扱います。C#の学習で最初に効いてくる「値型と参照型の違い」を、ここで押さえます。
+
+## 参考リンク
+
+- [Microsoft Learn — dotnet new コマンド](https://learn.microsoft.com/ja-jp/dotnet/core/tools/dotnet-new)
+- [Microsoft Learn — dotnet run コマンド](https://learn.microsoft.com/ja-jp/dotnet/core/tools/dotnet-run)
+- [.NET のダウンロード](https://dotnet.microsoft.com/ja-jp/download)

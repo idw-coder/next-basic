@@ -1,0 +1,246 @@
+---
+title: 'C#の変数と型 — 値型・参照型とvarの使い分け'
+description: 'C#の変数宣言、intやstringなどの組み込み型、値型と参照型の違い、varとconstの使い分け、型変換とTryParseまでを整理します。'
+order: 3
+---
+
+C#は静的型付けの言語で、すべての変数に型があります。TypeScriptと似た書き味ですが、決定的に違うのは**型が実行時にも残る**ことです。
+
+この章では、変数の宣言方法と組み込み型を確認したうえで、C#でつまずきやすい「値型と参照型」の違いを整理します。
+
+## 変数を宣言する
+
+C#の変数宣言は「型 変数名 = 初期値」の順で書きます。
+
+```csharp
+int count = 10;
+string name = "田中";
+bool isActive = true;
+double price = 1980.5;
+```
+
+右辺から型が明らかな場合は、`var` で型推論に任せられます。
+
+```csharp
+var count = 10;          // int と推論される
+var name = "田中";       // string と推論される
+var users = new List<string>();  // List<string> と推論される
+```
+
+変更しない値には `const` を使います。宣言時に値が確定している必要があります。
+
+```csharp
+const double TaxRate = 0.1;
+```
+
+<Callout type="note" title="varは「なんでも入る型」ではない">
+JavaScriptの `var` とは別物です。C#の `var` は「コンパイラが右辺から型を決める」という指示にすぎず、決まった型は後から変更できません。`var count = 10;` のあとに `count = "テキスト";` と書くとコンパイルエラーになります。
+</Callout>
+
+## よく使う組み込み型
+
+| 型 | 何を入れるか | 例 |
+| -- | ------------ | -- |
+| `int` | 整数（約 -21億〜21億） | `int age = 30;` |
+| `long` | より大きい整数 | `long total = 10_000_000_000;` |
+| `double` | 小数（高速だが誤差あり） | `double ratio = 0.75;` |
+| `decimal` | 小数（誤差が出にくい） | `decimal price = 1980.00m;` |
+| `bool` | 真偽値 | `bool isDone = false;` |
+| `char` | 1文字 | `char grade = 'A';` |
+| `string` | 文字列 | `string name = "田中";` |
+| `DateTime` | 日時 | `var now = DateTime.Now;` |
+
+数値リテラルは `1_000_000` のようにアンダースコアで桁を区切れます。`decimal` には `m`、`float` には `f` のサフィックスが必要です。
+
+<Callout type="warning" title="お金の計算にdoubleを使わない">
+`double` は二進数の小数で表現されるため、`0.1 + 0.2` が `0.30000000000000004` になるような誤差が発生します。金額や税計算には `decimal` を使ってください。これはJavaScriptの数値型で起きる問題と同じ原因ですが、C#には `decimal` という逃げ道が用意されています。
+</Callout>
+
+## 値型と参照型
+
+C#の型は、大きく**値型**と**参照型**に分かれます。ここはC#の挙動を理解するうえで最重要のポイントです。
+
+| | 値型 | 参照型 |
+| -- | ---- | ------ |
+| 代表例 | `int` / `double` / `bool` / `struct` / `enum` | `string` / `class` / 配列 / `List<T>` |
+| 変数が持つもの | 値そのもの | 実体への参照（アドレス） |
+| 代入したとき | 値がコピーされる | 参照がコピーされる（実体は共有） |
+| 既定値 | `0` / `false` など | `null` |
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["値型の変数<br/>int a = 5"] --> B["5<br/>値そのもの"]
+    C["参照型の変数<br/>var list = new List()"] --> D["参照"]
+    D --> E["実体<br/>リスト本体"]
+`}
+/>
+
+違いはコードで見ると一目瞭然です。
+
+```csharp
+// 値型：コピーされる
+int a = 5;
+int b = a;
+b = 10;
+Console.WriteLine(a);  // 5（影響を受けない）
+
+// 参照型：同じ実体を指す
+var list1 = new List<int> { 1, 2, 3 };
+var list2 = list1;
+list2.Add(4);
+Console.WriteLine(list1.Count);  // 4（list1も変わる）
+```
+
+<Marker>代入やメソッドへの受け渡しで「コピーされるのか、同じ実体を共有するのか」は、値型か参照型かで決まります。</Marker>
+
+<Figure src="/images/deta_man_color.png" alt="データの受け渡しのイメージ" caption="値型は「値の写し」を渡し、参照型は「置き場所の案内」を渡します" maxWidth="340px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+JavaScriptでもオブジェクトを渡すと元が変わりますよね。あれと同じですか？
+</SpeechBubble>
+
+考え方は同じです。JavaScriptでプリミティブとオブジェクトで挙動が違うのと同様に、C#では値型と参照型で挙動が変わります。違いは、C#では `struct` を定義することで**自分で値型を作れる**点です。
+
+### stringは参照型だが、値のように振る舞う
+
+`string` は参照型ですが、**不変**（イミュータブル）です。文字列を変更する操作は、元の文字列を書き換えるのではなく、新しい文字列を作ります。
+
+```csharp
+string s1 = "abc";
+string s2 = s1;
+s2 += "d";
+Console.WriteLine(s1);  // abc（変わらない）
+```
+
+比較も、参照ではなく中身で行われます。
+
+```csharp
+string a = "hello";
+string b = "hel" + "lo";
+Console.WriteLine(a == b);  // True
+```
+
+<Callout type="warning" title="== の挙動はクラスによって違う">
+`string` は `==` が中身の比較になるよう特別に定義されています。自作クラスの `==` は既定では参照の比較になり、「同じ内容でも別インスタンスなら `false`」になります。中身で比較したい場合は `record` を使うか、比較の方法を自分で定義します。詳しくは [C#のモダン構文](/books/csharp/records-and-pattern-matching) で扱います。
+</Callout>
+
+## 文字列の書き方
+
+文字列に変数を埋め込むときは、先頭に `$` を付けた**文字列補間**を使います。
+
+```csharp
+string name = "田中";
+int age = 30;
+Console.WriteLine($"{name}さんは{age}歳です");
+```
+
+パスや正規表現のようにバックスラッシュを多用する場合は、先頭に `@` を付けると改行やエスケープをそのまま書けます。
+
+```csharp
+string path = @"C:\Users\tanaka\Documents";
+```
+
+複数行のJSONやSQLを埋め込むときは、C# 11以降で使える**生文字列リテラル**が便利です。
+
+```csharp
+string json = """
+    { "name": "田中", "age": 30 }
+    """;
+```
+
+## 型を変換する
+
+型変換には、失敗しうるものと、しないものがあります。
+
+| 方法 | 例 | 失敗したとき |
+| ---- | -- | ------------ |
+| 暗黙の変換 | `long total = intValue;` | 起きない（情報が失われない方向のみ） |
+| 明示的キャスト | `int n = (int)doubleValue;` | 小数部が切り捨てられる |
+| `Parse` | `int.Parse("42")` | 例外が発生する |
+| `TryParse` | `int.TryParse(input, out var n)` | `false` を返す（例外は出ない） |
+| `Convert` | `Convert.ToInt32("42")` | 例外が発生する |
+
+ユーザー入力や外部データを数値にするときは、`TryParse` を使うのが基本です。
+
+**構文：** `int.TryParse(s, out result)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `s`（第1引数） | 文字列 / `null` | 変換したい文字列 |
+| `result`（第2引数） | `out` 付きの `int` 変数 | 変換に成功した場合、値がここに入る |
+
+**戻り値：** 変換できたかどうかの `bool`（失敗時は `result` に `0` が入る）
+
+```csharp
+if (int.TryParse(input, out var age))
+{
+    Console.WriteLine($"{age}歳ですね");
+}
+else
+{
+    Console.WriteLine("数値を入力してください");
+}
+```
+
+`out var age` は「ここで変数を宣言して、結果を受け取る」という書き方です。`out` については [C#のメソッド](/books/csharp/methods) で扱います。
+
+## structとenum
+
+自分で値型を定義したいときは `struct`、決まった選択肢を表したいときは `enum` を使います。
+
+```csharp
+enum OrderStatus
+{
+    Pending,
+    Shipped,
+    Delivered
+}
+
+var status = OrderStatus.Shipped;
+```
+
+`enum` は「文字列で状態を持ち回って打ち間違える」事故を防げます。TypeScriptのユニオン型（`'pending' | 'shipped'`）に近い役割です。
+
+`struct` は小さなデータをまとめて値型として扱いたいときに使いますが、実務では基本的に `class` か `record` を選び、必要になってから `struct` を検討すれば十分です。
+
+## よくあるハマりどころ
+
+### 整数同士の割り算で小数が消える
+
+```csharp
+int a = 7;
+int b = 2;
+Console.WriteLine(a / b);           // 3（切り捨て）
+Console.WriteLine((double)a / b);   // 3.5
+```
+
+`int` 同士の除算は結果も `int` になります。小数がほしい場合は、どちらかを `double` にキャストします。
+
+### 参照型を渡したのに「コピーされたと思っていた」
+
+メソッドにリストを渡して中身を変更すると、呼び出し元のリストも変わります。変更したくない場合は、新しいリストを作って渡します。
+
+### `var` を使いすぎて型が読めない
+
+`var users = GetUsers();` のように、右辺を見ても型が分からない書き方は避けます。目安は「右辺に型名が現れているなら `var`、そうでなければ型を明記」です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`var user = new User();` はOK。`var result = Calc();` は型を書いたほうが親切、という感覚だね。
+</SpeechBubble>
+
+## ちゃんと使うためのポイント
+
+- 変数は「型 名前 = 値」。右辺から型が明らかなら `var` を使う
+- 金額や税計算は `double` ではなく `decimal`
+- 値型は代入でコピー、参照型は実体を共有する
+- `string` は参照型だが不変で、`==` は中身の比較になる
+- 文字列の組み立ては文字列補間（`$"..."`）
+- 外部からの入力を数値にするときは `Parse` ではなく `TryParse`
+
+次の章では、条件分岐と繰り返しに進みます。C#では `switch` が式として書けるようになっており、ここがJavaScriptとの書き味の差が出るところです。
+
+## 参考リンク
+
+- [Microsoft Learn — 値型](https://learn.microsoft.com/ja-jp/dotnet/csharp/language-reference/builtin-types/value-types)
+- [Microsoft Learn — 参照型](https://learn.microsoft.com/ja-jp/dotnet/csharp/language-reference/builtin-types/reference-types)

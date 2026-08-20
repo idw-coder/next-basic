@@ -1,4 +1,21 @@
 export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
+  csharp: [
+    'LINQ',
+    'async/await',
+    'Task',
+    'ジェネリクス',
+    'インターフェース',
+    'プロパティ',
+    'List',
+    'Dictionary',
+    'null許容参照型',
+    'record',
+    'パターンマッチング',
+    '値型と参照型',
+    '例外処理',
+    'using',
+    '.NET',
+  ],
   'aws-saa-c03': [
     'IAM',
     'VPC',

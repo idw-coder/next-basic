@@ -1,0 +1,228 @@
+---
+title: 'C#のクラスとオブジェクト — フィールド・プロパティ・コンストラクタ'
+description: 'C#のクラス定義、フィールドとプロパティの違い、自動実装プロパティとinit、コンストラクタ、アクセス修飾子、静的メンバー、オブジェクト初期化子までを整理します。'
+order: 6
+---
+
+C#はクラスを中心に組み立てる言語です。JavaScriptでは関数とオブジェクトリテラルだけでも書けますが、C#では**データと処理をクラスにまとめるのが標準的な書き方**になります。
+
+この章では、クラスの定義から、C#特有の「プロパティ」という仕組みまでを扱います。
+
+## クラスを定義して使う
+
+```csharp
+public class User
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+
+    public string Greet() => $"こんにちは、{Name}です";
+}
+```
+
+```csharp
+var user = new User();
+user.Name = "田中";
+user.Age = 30;
+Console.WriteLine(user.Greet());
+```
+
+`new` でインスタンスを作り、`.` でメンバーにアクセスします。ここまではJavaScriptのクラスと同じです。
+
+### オブジェクト初期化子
+
+生成と同時にプロパティを設定できます。
+
+```csharp
+var user = new User { Name = "田中", Age = 30 };
+```
+
+## フィールドとプロパティ
+
+C#には、値を保持する仕組みが2つあります。
+
+| | フィールド | プロパティ |
+| -- | ---------- | ---------- |
+| 正体 | 変数そのもの | 値の出し入れを行うメソッドの組 |
+| 書き方 | `private string name;` | `public string Name { get; set; }` |
+| 公開するか | 通常は `private` | 外部への公開はこちらを使う |
+| 途中で処理を挟めるか | できない | できる（検証・変換・通知など） |
+
+<Marker>外部に公開する値はフィールドではなくプロパティにする、というのがC#の基本方針です。</Marker>
+
+`{ get; set; }` は**自動実装プロパティ**と呼ばれ、コンパイラが裏側にフィールドを用意してくれます。あとから検証を足したくなったら、次のように書き換えられます。
+
+```csharp
+public class User
+{
+    private int _age;
+
+    public int Age
+    {
+        get => _age;
+        set
+        {
+            if (value < 0) throw new ArgumentException("年齢は0以上です");
+            _age = value;
+        }
+    }
+}
+```
+
+`set` の中では、代入された値が `value` という名前で使えます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+最初から `{ get; set; }` と書いておけば、後で困らないということですか？
+</SpeechBubble>
+
+その通りです。呼び出し側は `user.Age = 30;` と書くだけなので、**あとから内部実装を変えても呼び出し側のコードを直さずに済みます**。これがフィールドを直接公開しない最大の理由です。
+
+### 読み取り専用にする
+
+| 書き方 | 変更できるタイミング |
+| ------ | -------------------- |
+| `{ get; set; }` | いつでも |
+| `{ get; init; }` | オブジェクト初期化子まで |
+| `{ get; }` + コンストラクタで設定 | コンストラクタ内のみ |
+| `{ get; private set; }` | クラス内部からのみ |
+
+```csharp
+public class Order
+{
+    public string Id { get; init; }
+    public DateTime CreatedAt { get; init; }
+}
+
+var order = new Order { Id = "A-001", CreatedAt = DateTime.Now };
+// order.Id = "A-002";  ← コンパイルエラー
+```
+
+`init` は「生成時だけ設定でき、その後は変更できない」プロパティを作る仕組みです。意図しない書き換えを防げるため、実務では積極的に使われます。
+
+<Figure src="/images/idea_drawing_woman.png" alt="設計を描くイメージ" caption="どこまで書き換えを許すかを決めることが、クラス設計の第一歩です" maxWidth="330px" />
+
+## コンストラクタ
+
+インスタンス生成時に必要な値を受け取るには、コンストラクタを定義します。
+
+```csharp
+public class User
+{
+    public string Name { get; }
+    public int Age { get; }
+
+    public User(string name, int age)
+    {
+        Name = name;
+        Age = age;
+    }
+}
+
+var user = new User("田中", 30);
+```
+
+C# 12以降では、クラス宣言に直接引数を書く**プライマリコンストラクタ**も使えます。
+
+```csharp
+public class User(string name, int age)
+{
+    public string Name { get; } = name;
+    public int Age { get; } = age;
+}
+```
+
+コンストラクタは引数違いで複数定義でき、`this(...)` で別のコンストラクタに処理を委譲できます。
+
+```csharp
+public User(string name) : this(name, 0)
+{
+}
+```
+
+## アクセス修飾子
+
+| 修飾子 | どこから見えるか |
+| ------ | ---------------- |
+| `public` | どこからでも |
+| `private` | そのクラスの中だけ（既定値） |
+| `protected` | そのクラスと派生クラス |
+| `internal` | 同じプロジェクト（アセンブリ）内 |
+
+迷ったら `private` から始め、必要になったときに広げるのが安全です。
+
+## 静的メンバー
+
+インスタンスを作らずに使うメンバーには `static` を付けます。
+
+```csharp
+public class TaxCalculator
+{
+    public const decimal Rate = 0.1m;
+
+    public static decimal Add(decimal price) => price * (1 + Rate);
+}
+
+var total = TaxCalculator.Add(1000m);
+```
+
+インスタンスごとの状態を持たない計算処理やユーティリティは、`static` にすると呼び出しが簡潔になります。ただし状態を `static` で持つと、アプリ全体で共有される変数になり、テストや並行処理で問題を起こしやすくなります。
+
+<Callout type="warning" title="staticな可変フィールドは避ける">
+`public static List<User> Users = new();` のような書き方は、どこからでも書き換えられるグローバル変数と同じです。共有したい状態は、依存性注入（DI）でインスタンスを配る形にするのが一般的です。
+</Callout>
+
+## ToStringを上書きする
+
+すべてのクラスは暗黙的に `object` を継承しており、`ToString()` を持っています。既定ではクラス名が返るだけなので、必要に応じて上書きします。
+
+```csharp
+public override string ToString() => $"{Name}({Age})";
+```
+
+`override` については [C#の継承とインターフェース](/books/csharp/inheritance-and-interfaces) で扱います。
+
+## よくあるハマりどころ
+
+### プロパティを初期化せずにnullのまま使う
+
+```csharp
+public class User
+{
+    public string Name { get; set; }  // 警告: null の可能性
+}
+```
+
+`Nullable` が有効なプロジェクトでは、初期化されない参照型のプロパティに警告が出ます。`required` を付けて必須にするか、`= string.Empty;` で初期化するか、`string?` にするかを選びます。詳しくは [C#のnull安全](/books/csharp/null-safety) で扱います。
+
+### publicフィールドで公開してしまう
+
+```csharp
+public string Name;        // フィールド（避ける）
+public string Name { get; set; }  // プロパティ（推奨）
+```
+
+見た目の使い勝手は同じですが、後から検証を挟めない・一部のライブラリが認識しないなどの差があります。
+
+### インスタンスをコピーしたつもりが共有されていた
+
+クラスは参照型なので、代入しても実体は1つのままです。中身の複製が必要なら、新しいインスタンスを作って値を移すか、`record` の `with` 式を使います（[C#のモダン構文](/books/csharp/records-and-pattern-matching)）。
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+[値型と参照型の話](/books/csharp/variables-and-types) がここで効いてくる。クラスは全部参照型だと覚えておこう。
+</SpeechBubble>
+
+## ちゃんと使うためのポイント
+
+- 外部に公開する値はプロパティ（`{ get; set; }`）で定義する
+- 生成後に変えたくない値は `init` か `get` のみにする
+- コンストラクタは「そのオブジェクトが成立するために必要な値」を受け取る
+- アクセス修飾子は `private` から始めて必要な範囲だけ広げる
+- `static` は状態を持たない処理に使い、可変な状態は持たせない
+- クラスは参照型。代入してもコピーされない
+
+次の章では、クラス同士の関係を表す継承とインターフェースに進みます。C#の型システムで最も設計判断が問われる部分です。
+
+## 参考リンク
+
+- [Microsoft Learn — オブジェクト指向プログラミング](https://learn.microsoft.com/ja-jp/dotnet/csharp/fundamentals/object-oriented/objects)
+- [Microsoft Learn — プロパティ](https://learn.microsoft.com/ja-jp/dotnet/csharp/properties)

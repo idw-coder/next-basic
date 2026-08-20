@@ -1,0 +1,187 @@
+---
+title: 'C#のnull安全 — null許容参照型と?.・??・!の使い方'
+description: 'C#のnull許容参照型、int?などのNullable値型、?.と??と??=と!演算子の違い、null許容コンテキストの警告への対処、requiredキーワードまでを整理します。'
+order: 10
+---
+
+`NullReferenceException` は、C#で最も多く遭遇する実行時エラーです。「値が入っていると思って使ったら `null` だった」という、どの言語でも起きる問題です。
+
+現在のC#には、これをコンパイル時の警告として検出する仕組みがあります。TypeScriptの `strictNullChecks` に近い考え方です。
+
+## null許容参照型
+
+`.csproj` に `<Nullable>enable</Nullable>` が書かれていると、参照型は既定で「nullを入れてはいけないもの」として扱われます。
+
+```csharp
+string name = null;    // 警告：null を代入している
+string? nickname = null;  // OK：null を許容する型
+```
+
+| 書き方 | 意味 |
+| ------ | ---- |
+| `string` | nullは想定しない |
+| `string?` | nullがありうる |
+
+<Marker>型に `?` が付いているかどうかが、「nullを考慮すべきか」の設計上の宣言になります。</Marker>
+
+`string?` の値をそのまま使おうとすると、警告が出ます。
+
+```csharp
+string? nickname = GetNickname();
+// Console.WriteLine(nickname.Length);  ← 警告：null の可能性
+
+if (nickname is not null)
+{
+    Console.WriteLine(nickname.Length);  // OK
+}
+```
+
+<Callout type="warning" title="警告であって、エラーではない">
+null許容参照型の違反は既定では警告どまりで、ビルド自体は通ってしまいます。チームで徹底するなら、`.csproj` に `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` を入れて、警告をエラーとして扱う設定を検討してください。
+</Callout>
+
+## 値型のnull許容（Nullable値型）
+
+`int` や `DateTime` などの値型は、そもそも `null` を持てません。nullを表したい場合は `?` を付けます。
+
+```csharp
+int? count = null;
+
+if (count.HasValue)
+{
+    Console.WriteLine(count.Value);
+}
+```
+
+| メンバー | 意味 |
+| -------- | ---- |
+| `HasValue` | 値が入っているか（`bool`） |
+| `Value` | 中身。nullのときにアクセスすると例外 |
+| `GetValueOrDefault()` | nullなら既定値を返す |
+
+`int?` の正体は `Nullable<int>` という構造体で、参照型の `string?` とは仕組みが異なります。ただし書き方はほぼ共通なので、使う側は同じ感覚で扱えます。
+
+## nullを扱う演算子
+
+| 演算子 | 名前 | 動作 |
+| ------ | ---- | ---- |
+| `?.` | null条件演算子 | 左がnullなら、その先を評価せずnullを返す |
+| `??` | null合体演算子 | 左がnullなら右の値を使う |
+| `??=` | null合体代入 | 左がnullのときだけ代入する |
+| `!` | null免除演算子 | 「nullではない」とコンパイラに伝える |
+
+```csharp
+string? name = user?.Profile?.Name;      // 途中がnullでも例外にならない
+string display = name ?? "名無し";        // nullなら既定値
+name ??= "未設定";                        // nullのときだけ代入
+```
+
+`?.` は途中でnullが出た時点で全体がnullになるため、`user.Profile.Name` のような連鎖アクセスを安全に書けます。JavaScriptのオプショナルチェーンと同じ挙動です。
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="想定外に驚くイメージ" caption="NullReferenceExceptionは、想定と実際のデータがずれたときに現れます" maxWidth="330px" />
+
+### `!` は最後の手段
+
+```csharp
+string name = GetName()!;  // 「絶対にnullじゃない」と宣言する
+```
+
+`!` を付けると警告は消えますが、**実際にnullだった場合は実行時に例外になります**。コンパイラのチェックを黙らせているだけで、安全になったわけではありません。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+警告が消えるならつい使いたくなります……使っていい場面はあるんですか？
+</SpeechBubble>
+
+「直前で確認済みだが、コンパイラがそれを追跡できない」ケースに限ります。たとえばテストコードや、外部ライブラリの型注釈が不正確な場合です。通常のコードでは、`is not null` で分岐するか、後述の例外を投げる形にしてください。
+
+## 引数のnullチェック
+
+publicなメソッドでは、渡された値がnullでないことを明示的に確認します。
+
+**構文：** `ArgumentNullException.ThrowIfNull(argument)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `argument`（第1引数） | 任意の参照型 | nullなら例外を投げる対象。引数名は自動で埋められる |
+
+**戻り値：** なし（nullの場合は `ArgumentNullException`）
+
+```csharp
+public void Register(User user)
+{
+    ArgumentNullException.ThrowIfNull(user);
+    // 以降、user は null ではないものとして扱える
+}
+```
+
+「nullのまま処理を進めて、遠く離れた場所で例外になる」より、入口で落としたほうが原因を特定しやすくなります。例外の扱いは [C#の例外処理](/books/csharp/exceptions) で扱います。
+
+## プロパティを必須にする
+
+初期化し忘れによるnullを防ぐには、`required` を使います（C# 11以降）。
+
+```csharp
+public class User
+{
+    public required string Name { get; init; }
+    public string? Nickname { get; init; }
+}
+
+var user = new User { Name = "田中" };  // Name を省略するとコンパイルエラー
+```
+
+<Marker>「必ずある値」は `required`、「無いこともある値」は `?` を付ける。この2つでクラスの前提を型に書き込めます。</Marker>
+
+## 文字列のnullと空文字
+
+文字列は「null」「空文字」「空白のみ」の3状態があり、判定用のメソッドが用意されています。
+
+| メソッド | `null` | `""` | `"   "` |
+| -------- | ------ | ---- | ------- |
+| `string.IsNullOrEmpty(s)` | `true` | `true` | `false` |
+| `string.IsNullOrWhiteSpace(s)` | `true` | `true` | `true` |
+
+ユーザー入力の検証では、空白だけの入力も弾きたいことが多いため `IsNullOrWhiteSpace` を使います。
+
+## よくあるハマりどころ
+
+### 外部から来たデータを信用する
+
+JSONのデシリアライズやデータベースからの読み込みでは、型が `string` でも実際にはnullが入りうるためです。null許容参照型のチェックはC#のコードだけを見ており、外部データの中身までは保証しません。**境界では必ず自分で検証する**必要があります。
+
+### `?.` を付けたのに例外になる
+
+```csharp
+var length = user?.Name.Length;  // Name が null なら例外
+```
+
+`?.` は直前の `user` にしか効きません。連鎖するすべての箇所に付ける必要があります（`user?.Name?.Length`）。
+
+### 値型に `?.` を付けて型が変わる
+
+`int?` に対して演算すると、結果も `int?` になります。`int` として使いたい場合は `?? 0` や `GetValueOrDefault()` で確定させます。
+
+### 警告を一括で無効化する
+
+プロジェクト全体で `<Nullable>disable</Nullable>` に戻すと、この仕組みの利点は失われます。既存プロジェクトへ段階的に導入する場合は、ファイル単位の `#nullable enable` から始めるのが現実的です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+新規プロジェクトなら最初から有効のまま進めるのがいちばん楽。あとから入れるほうが何倍も大変なんだ。
+</SpeechBubble>
+
+## ちゃんと使うためのポイント
+
+- `string` は「nullでない」、`string?` は「nullがありうる」という宣言
+- 値型でnullを表すなら `int?`（`Nullable<int>`）
+- `?.` `??` `??=` を組み合わせて安全にアクセスする
+- `!` は警告を消すだけで安全にはならない。使用は最小限に
+- publicメソッドの入口は `ArgumentNullException.ThrowIfNull` で守る
+- 必須の値は `required`、任意の値は `?` を付けて型に意図を書く
+- 外部から来たデータは、型注釈を信用せず自分で検証する
+
+次の章では、入口のチェックで投げた例外そのものを扱います。`try` / `catch` / `finally` と `using` の関係を整理します。
+
+## 参考リンク
+
+- [Microsoft Learn — null許容参照型](https://learn.microsoft.com/ja-jp/dotnet/csharp/nullable-references)
+- [Microsoft Learn — null合体演算子](https://learn.microsoft.com/ja-jp/dotnet/csharp/language-reference/operators/null-coalescing-operator)

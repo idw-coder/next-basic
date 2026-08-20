@@ -1,0 +1,201 @@
+---
+title: 'C#とは何か — .NETで動く言語の特徴と使いどころ'
+description: 'C#と.NETの関係、C#で何が作れるのか、JavaScriptやTypeScriptとの違い、バージョンの選び方を整理し、以降の章で使う土台を作ります。'
+order: 1
+---
+
+C#（シーシャープ）は、Microsoftが開発した**汎用のプログラミング言語**です。2000年に登場し、静的な型システムとクラスベースのオブジェクト指向を中心に据えています。
+
+「業務システムの言語」という印象を持たれがちですが、実際にはWeb API、CLIツール、デスクトップアプリ、モバイルアプリ、そしてUnityによるゲーム開発まで、かなり広い範囲で使われています。現在のC#はWindows専用ではなく、macOSやLinuxでも同じように動きます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+C#って、Visual StudioでWindowsアプリを作る言語というイメージがあります。Macでも書けるんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+昔はほぼその通りだったんだ。でも2016年以降のC#はクロスプラットフォームで、macOSでもLinuxでも、VS Codeでも書けるようになったよ。
+</SpeechBubble>
+
+## C#と.NETは何が違うのか
+
+C#を学び始めると、`.NET`、`CLR`、`NuGet` といった言葉が一気に出てきます。最初にここを整理しておくと、後の章で迷いません。
+
+<Marker>C#は「言語」、.NETは「C#で書いたコードを動かす実行環境と標準ライブラリ」です。</Marker>
+
+| 用語 | 正体 | 役割 |
+| ---- | ---- | ---- |
+| C# | プログラミング言語 | 文法そのもの。型・クラス・LINQなどの書き方を定める |
+| .NET | 実行環境 + 標準ライブラリ | C#のコードを実際に動かす基盤。旧称 .NET Core |
+| CLR | .NETに含まれる仮想マシン | 中間言語を機械語に変換して実行する。メモリ管理（GC）も担当 |
+| クラスライブラリ | .NETに含まれる標準API | `string` / `List<T>` / `File` / `HttpClient` など |
+| NuGet | パッケージ管理の仕組み | 外部ライブラリの入手。npmにあたるもの |
+| .NET SDK | 開発ツール一式 | ビルド・実行・テストを行う `dotnet` コマンドを含む |
+
+JavaScriptで例えるなら、**C#がJavaScript、.NETがNode.js＋標準モジュール、NuGetがnpm**にあたります。言語だけでは何もできず、実行環境とセットで初めて動く、という関係も同じです。
+
+### ソースコードが実行されるまで
+
+C#のソースコードは、いきなりCPU向けの機械語になるわけではありません。いったん**IL**（中間言語）という共通の形式にコンパイルされ、実行時にその場のCPU向けの機械語へ変換されます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["Program.cs<br/>C#のソース"] -->|"ビルド"| B["IL<br/>中間言語"]
+    B -->|"実行時にJIT変換"| C["機械語"]
+    C --> D["CPUが実行"]
+`}
+/>
+
+このILへの変換を行うのがC#コンパイラ、ILを機械語に変換して実行するのがCLRです。
+
+<Marker>C#のビルド成果物はOS固有の機械語ではなくILなので、同じビルド結果をWindows・macOS・Linuxで動かせます。</Marker>
+
+<Callout type="note">
+「実行時に変換するなら遅いのでは？」と思うかもしれませんが、JIT（Just-In-Time）コンパイラは実行中の情報を使って最適化できるため、実用上は十分高速です。起動速度が重要な場面向けに、あらかじめ機械語にしておくNative AOT（Ahead-Of-Time）という選択肢も用意されています。
+</Callout>
+
+## C#で何が作れるのか
+
+C#は「.NETの上で動く」ため、.NETがサポートする領域がそのままC#の守備範囲になります。
+
+| 作れるもの | 使う技術 | 補足 |
+| ---------- | -------- | ---- |
+| Web API・Webアプリ | ASP.NET Core | 実務で最も需要が大きい領域 |
+| ブラウザで動くUI | Blazor | WebAssemblyでC#をブラウザ上で実行する |
+| デスクトップアプリ | WPF / WinUI / Avalonia | Avaloniaはクロスプラットフォーム対応 |
+| モバイルアプリ | .NET MAUI | iOS / Android を1つのコードから |
+| ゲーム | Unity | Unityのスクリプトは基本的にC# |
+| CLIツール・バッチ処理 | コンソールアプリ | `dotnet run` だけで動かせる |
+| クラウドの関数 | Azure Functions / AWS Lambda | イベント駆動の小さな処理 |
+
+<Figure src="/images/plan_selection_man_color.png" alt="用途を選ぶイメージ" caption="C#は「1つの言語で守備範囲が広い」タイプの言語です" maxWidth="360px" />
+
+この本では、これらすべてを扱うのではなく、**どの用途でも共通して必要になる「言語としてのC#」に絞って学びます**。ASP.NET CoreやUnityに進むとき、結局つまずくのは型・クラス・LINQ・非同期処理といった言語の基礎だからです。
+
+## JavaScript・TypeScriptとの違い
+
+このサイトの読者にはJavaScriptやTypeScriptから入った方が多いので、その視点で違いを整理しておきます。書き方の見た目はTypeScriptとよく似ていますが、根っこの考え方が違う部分があります。
+
+| 項目 | C# | TypeScript |
+| ---- | -- | ---------- |
+| 型が存在する期間 | ビルド後も実行時に残る | ビルド時に消える |
+| 型チェックのタイミング | ビルド時 + 実行時 | ビルド時のみ |
+| 実行環境 | .NET（CLR） | Node.js / ブラウザ |
+| パッケージ管理 | NuGet | npm |
+| クラスの位置づけ | 言語の中心。ほぼ必ず使う | 使えるが必須ではない |
+| 非同期処理 | `async` / `await`（`Task`） | `async` / `await`（`Promise`） |
+| nullの扱い | Nullable参照型（`string?`） | `strictNullChecks` |
+| ファイルとモジュール | 名前空間（namespace）で整理 | ファイル単位のimport / export |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+「型が実行時にも残る」って、具体的に何が変わるんですか？
+</SpeechBubble>
+
+TypeScriptの型はコンパイル時にすべて削除され、実行されるのはただのJavaScriptです。そのため実行中に「この値は本当に `User` 型か」を型情報から判断することはできません。
+
+C#の型はビルド後もILの中に残り、実行時にも参照できます。この違いが、ジェネリクスの挙動（`List<int>` と `List<string>` は実行時にも別物として扱われる）、DIコンテナが型を見て依存を解決できること、JSONのシリアライズが型情報だけで動くことなどにつながっています。ジェネリクスについては [C#のジェネリクス](/books/csharp/generics) で詳しく扱います。
+
+<Callout type="warning" title="似ているからこそ間違えやすい">
+TypeScriptの `interface` は「構造が合っていれば互換」という構造的部分型ですが、C#の `interface` は「明示的に実装を宣言したクラスだけが互換」という名前的部分型です。形が同じでも、`: IUser` と書いていないクラスは `IUser` として扱えません。詳しくは [C#の継承とインターフェース](/books/csharp/inheritance-and-interfaces) で扱います。
+</Callout>
+
+## .NETのバージョンとC#のバージョンの関係
+
+C#のバージョン（C# 12、C# 13 …）は、.NETのバージョンとセットで進みます。基本的に**使っている.NETのバージョンが、使えるC#の文法を決める**と考えて問題ありません。
+
+.NETのリリースには2種類あります。
+
+| 種類 | サポート期間 | 選ぶ場面 |
+| ---- | ------------ | -------- |
+| LTS（長期サポート） | 約3年 | 業務システム・長く運用するサービス |
+| STS（標準サポート） | 約1年半 | 新機能を早く試したい場合・短命なツール |
+
+<Marker>新規プロジェクトでは、迷ったらLTS（偶数バージョン）を選ぶのが基本です。</Marker>
+
+具体的なバージョン番号やサポート終了日は定期的に変わるため、着手時点で[.NET のサポートポリシー](https://dotnet.microsoft.com/ja-jp/platform/support/policy/dotnet-core)を確認してください。
+
+<Callout type="warning" title=".NET Framework と .NET は別物">
+`.NET Framework 4.8` は**Windows専用の古い系統**で、現在の `.NET`（かつての .NET Core）とは別ラインです。検索で出てくる記事がどちらを指しているかで、書き方も使えるAPIも変わります。新規開発で選ぶのは `.NET` のほうです。判断に迷ったら、記事の中に `.NET Framework` と書かれていないか確認する癖をつけてください。
+</Callout>
+
+## 最初のC#コードを読む
+
+C#の「Hello, World」は、今ではこれだけで動きます。
+
+```csharp
+Console.WriteLine("Hello, C#");
+```
+
+これは**トップレベルステートメント**という書き方で、C# 9以降で使えます。以前は次のように書く必要がありました。
+
+```csharp
+using System;
+
+namespace HelloApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Hello, C#");
+        }
+    }
+}
+```
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+古い記事に出てくるのはたいてい下の書き方だけど、意味は同じ。コンパイラが上の書き方を下の形に組み立て直してくれているんだ。
+</SpeechBubble>
+
+`Console.WriteLine` は、標準出力に値と改行を書き出すメソッドです。この本では、メソッドを紹介するときに構文・引数・戻り値をセットで示していきます。
+
+**構文：** `Console.WriteLine(value?)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `value`（第1引数） | 文字列 / 数値 / 任意のオブジェクト | 出力したい値。省略すると改行だけを出力する |
+
+**戻り値：** なし（`void`）
+
+任意のオブジェクトを渡した場合は、その型の `ToString()` の結果が出力されます。改行を付けたくない場合は `Console.Write` を使います。
+
+## よくあるハマりどころ
+
+### 「C#はWindows専用」だと思って選択肢から外す
+
+現在の.NETはmacOS・LinuxでもWindowsと同じように動き、DockerコンテナやLinuxサーバーへのデプロイも一般的です。「Windowsサーバーが必要になるから」という理由で候補から外す判断は、今は成り立ちません。
+
+### 検索結果が .NET Framework 時代の情報だった
+
+C#は歴史が長く、蓄積された記事も膨大です。そのぶん**現在では推奨されない書き方の記事が上位に残っている**ことがよくあります。`WebForms`、`app.config`、`packages.config` といった単語が出てきたら、かなり古い情報の可能性が高いと考えてください。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+つい上から順に読んでしまうんですが、新しいかどうかはどこで見分けたらいいですか？
+</SpeechBubble>
+
+いちばん確実なのは、公式の[C# ドキュメント](https://learn.microsoft.com/ja-jp/dotnet/csharp/)を先に開くことです。公式ドキュメントはバージョンごとに整理されており、新旧の書き方が併記されている場合も「どちらが現在の推奨か」が明記されています。
+
+### Visual Studio と Visual Studio Code を混同する
+
+名前は似ていますが別の製品です。**Visual Studio**はWindows向けの統合開発環境で機能が豊富、**Visual Studio Code**は軽量なエディタで、拡張機能を入れてC#開発に使います。macOSやLinuxで学び始めるなら、後者で十分です。
+
+### 「クラスを書かないと動かない」と身構える
+
+トップレベルステートメントのおかげで、学習中の小さなコードはクラスなしで書けます。まずは1ファイルで動かして文法に慣れ、クラスの設計は [C#のクラスとオブジェクト](/books/csharp/classes-and-objects) で改めて扱います。
+
+## ちゃんと使うためのポイント
+
+- C#は言語、.NETは実行環境と標準ライブラリ。両者はセットで動く
+- C#のコードはILにコンパイルされ、実行時にJITで機械語に変換される
+- 現在のC#はクロスプラットフォーム。Windows専用なのは旧系統の `.NET Framework`
+- TypeScriptと見た目は似ているが、**型が実行時にも残る**点が根本的に違う
+- 新規開発ではLTS（長期サポート）の.NETを選ぶ
+- 古い記事に当たったら、まず公式ドキュメントで現在の書き方を確認する
+
+次の章では、実際に.NET SDKをインストールし、`dotnet new` と `dotnet run` で最初のプロジェクトを動かすところまで進みます。
+
+## 参考リンク
+
+- [Microsoft Learn — C# ドキュメント](https://learn.microsoft.com/ja-jp/dotnet/csharp/)
+- [Microsoft Learn — C# のツアー](https://learn.microsoft.com/ja-jp/dotnet/csharp/tour-of-csharp/)
+- [Microsoft Learn — .NET とは](https://learn.microsoft.com/ja-jp/dotnet/core/introduction)

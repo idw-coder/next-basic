@@ -1,0 +1,215 @@
+---
+title: 'C#の条件分岐と繰り返し — if・switch式・foreach'
+description: 'C#のif文、switch文とswitch式の違い、for・foreach・whileの使い分け、break・continue、ループ中のコレクション変更の注意点までを整理します。'
+order: 4
+---
+
+条件分岐と繰り返しは、どの言語でも見た目が似ています。C#で押さえるべきは、**`switch` が「式」としても書ける**ことと、**`foreach` が何を相手にしているのか**の2点です。
+
+## if文と三項演算子
+
+`if` の書き方はJavaScriptとほぼ同じですが、条件式は必ず `bool` である必要があります。
+
+```csharp
+int score = 82;
+
+if (score >= 80)
+{
+    Console.WriteLine("合格");
+}
+else if (score >= 60)
+{
+    Console.WriteLine("再テスト");
+}
+else
+{
+    Console.WriteLine("不合格");
+}
+```
+
+<Callout type="warning" title="0やnullは条件式にできない">
+JavaScriptの `if (list.length)` のような書き方はコンパイルエラーになります。C#では `if (list.Count > 0)` のように、必ず `bool` に評価される式を書きます。曖昧な真偽値の判定が存在しないぶん、意図しない分岐が起きにくくなっています。
+</Callout>
+
+短い分岐は三項演算子で書けます。
+
+```csharp
+string result = score >= 80 ? "合格" : "不合格";
+```
+
+## switch文とswitch式
+
+C#の `switch` には、昔からある**文**（statement）と、C# 8以降で使える**式**（expression）の2つの形があります。
+
+```csharp
+// switch文
+switch (status)
+{
+    case OrderStatus.Pending:
+        Console.WriteLine("処理待ち");
+        break;
+    case OrderStatus.Shipped:
+        Console.WriteLine("発送済み");
+        break;
+    default:
+        Console.WriteLine("不明");
+        break;
+}
+```
+
+```csharp
+// switch式（値を返す）
+string label = status switch
+{
+    OrderStatus.Pending => "処理待ち",
+    OrderStatus.Shipped => "発送済み",
+    _ => "不明"
+};
+```
+
+| | switch文 | switch式 |
+| -- | -------- | -------- |
+| 目的 | 処理を分岐する | 値を求める |
+| `break` | 必要 | 不要 |
+| 網羅性のチェック | されない | されない（ただし `_` が無いと実行時例外） |
+| 書ける場所 | 文として | 式として（代入や `return` の右辺） |
+
+<Marker>「分岐して値を1つ決めたい」ときはswitch式、「分岐して処理を実行したい」ときはswitch文を選びます。</Marker>
+
+`_` は「それ以外すべて」を表すパターンで、`default` に相当します。switch式で `_` を書かず、どのパターンにも一致しなかった場合は実行時に例外が発生します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+switch文はJavaScriptと同じでしたが、`break` を書き忘れたらどうなりますか？
+</SpeechBubble>
+
+C#ではコンパイルエラーになります。JavaScriptのように次の `case` へ処理が流れ落ちる（フォールスルー）ことは、原則として許されていません。書き忘れによるバグが起きない設計になっています。
+
+### 条件付きのswitch式
+
+`when` を使うと、パターンに条件を付けられます。
+
+```csharp
+string rank = score switch
+{
+    >= 90 => "S",
+    >= 80 => "A",
+    >= 60 => "B",
+    _ => "C"
+};
+```
+
+このような書き方はパターンマッチングと呼ばれ、型による分岐も可能です。詳しくは [C#のモダン構文](/books/csharp/records-and-pattern-matching) で扱います。
+
+## ループの使い分け
+
+| 構文 | 向いている場面 |
+| ---- | -------------- |
+| `foreach` | コレクションの全要素を順に処理する（最も多い） |
+| `for` | 回数が決まっている、インデックスが必要 |
+| `while` | 終了条件が回数で決まらない |
+| `do-while` | 最低1回は実行したい |
+
+```csharp
+var names = new List<string> { "田中", "鈴木", "佐藤" };
+
+foreach (var name in names)
+{
+    Console.WriteLine(name);
+}
+
+for (int i = 0; i < names.Count; i++)
+{
+    Console.WriteLine($"{i + 1}人目: {names[i]}");
+}
+
+int count = 0;
+while (count < 3)
+{
+    count++;
+}
+```
+
+<Figure src="/images/fork_suit_man_color.png" alt="分かれ道のイメージ" caption="分岐とループは、どの言語でも書けますが「どれを選ぶか」で読みやすさが変わります" maxWidth="330px" />
+
+### foreachが相手にしているもの
+
+`foreach` は、`IEnumerable<T>` を実装している型なら何でも回せます。配列も `List<T>` も `Dictionary<TKey, TValue>` も、LINQの結果も同じように扱えるのはこのためです。
+
+```csharp
+foreach (var n in Enumerable.Range(1, 5))
+{
+    Console.Write(n);  // 12345
+}
+```
+
+**構文：** `Enumerable.Range(start, count)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `start`（第1引数） | `int` | 最初の値 |
+| `count`（第2引数） | `int` | 生成する個数（負の値は例外） |
+
+**戻り値：** 連続した整数を順に返す `IEnumerable<int>`
+
+この `IEnumerable<T>` という共通の枠組みが、[C#のコレクション](/books/csharp/collections) と [C#のLINQ入門](/books/csharp/linq) の土台になります。
+
+### break と continue
+
+```csharp
+foreach (var n in numbers)
+{
+    if (n < 0) continue;  // 次の要素へ
+    if (n > 100) break;   // ループを抜ける
+    Console.WriteLine(n);
+}
+```
+
+多重ループの内側で `break` しても、抜けられるのは内側のループだけです。外まで抜けたい場合は、フラグを使うかメソッドに切り出して `return` します。
+
+## よくあるハマりどころ
+
+### ループ中にコレクションを変更する
+
+```csharp
+foreach (var user in users)
+{
+    if (user.IsInactive)
+    {
+        users.Remove(user);  // InvalidOperationException
+    }
+}
+```
+
+`foreach` の実行中に、対象のコレクションへ要素を追加・削除すると実行時例外になります。削除したい場合は `RemoveAll` を使うか、新しいリストを作ります。
+
+```csharp
+users.RemoveAll(u => u.IsInactive);
+```
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+「ループしながら消す」は各言語で共通のハマりどころだけど、C#は黙って壊れずに例外で止めてくれるぶん親切なんだ。
+</SpeechBubble>
+
+### ループ変数のスコープを勘違いする
+
+`for` の中で宣言した変数は、ループの外からは見えません。結果を外で使いたい場合は、ループの前に宣言します。
+
+### 条件式にnullを渡してしまう
+
+`bool?`（null許容のbool）は、そのままでは `if` の条件に書けません。`if (flag == true)` のように明示的に比較するか、`GetValueOrDefault()` を使います。null許容型については [C#のnull安全](/books/csharp/null-safety) で扱います。
+
+## ちゃんと使うためのポイント
+
+- 条件式は必ず `bool`。数値やnullを真偽値として扱えない
+- 値を決めたいときは `switch` 式、処理を分けたいときは `switch` 文
+- switch文のフォールスルーは禁止されており、`break` 忘れはコンパイルエラー
+- 全要素を回すなら `foreach`、インデックスが必要なら `for`
+- `foreach` の対象は `IEnumerable<T>`。この共通枠組みがLINQにつながる
+- ループ中にコレクションを変更しない。削除は `RemoveAll` を使う
+
+次の章では、処理をまとめる単位であるメソッドを扱います。引数の渡し方（`ref` / `out` / 省略可能引数）まで踏み込みます。
+
+## 参考リンク
+
+- [Microsoft Learn — 選択ステートメント（if・switch）](https://learn.microsoft.com/ja-jp/dotnet/csharp/language-reference/statements/selection-statements)
+- [Microsoft Learn — 反復ステートメント（for・foreach・while）](https://learn.microsoft.com/ja-jp/dotnet/csharp/language-reference/statements/iteration-statements)

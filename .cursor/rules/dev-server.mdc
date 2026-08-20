@@ -1,0 +1,10 @@
+---
+description: devサーバーの多重起動によるVelite破壊を防ぐ
+alwaysApply: true
+---
+
+- `npm run dev` / `next dev` を実行しない。devサーバーは同時に1本だけ許される
+- `npx velite` / `npm run build` を実行しない（`.velite/` を消して他プロセスを壊す）
+- 表示確認は、既に立っているdevサーバーに `curl` で行う。立っていなければ確認をスキップして報告する
+
+理由と復旧手順は `AGENTS.md` を参照。

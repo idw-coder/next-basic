@@ -1,0 +1,180 @@
+---
+title: 'C#の非同期処理 — async/awaitとTaskの仕組み'
+description: 'C#のasync/awaitの書き方、TaskとTask<T>の違い、Task.WhenAllによる並列実行、CancellationToken、async voidや.Resultが危険な理由までを解説します。'
+order: 12
+---
+
+Webアプリやツールの処理時間の多くは、計算ではなく**待ち時間**です。データベースの応答、外部APIのレスポンス、ファイルの読み込み。この待ち時間の間もスレッドを占有し続けると、同時に処理できる件数が頭打ちになります。
+
+C#の `async` / `await` は、この待ち時間にスレッドを解放するための仕組みです。JavaScriptの `async` / `await` と書き方はほぼ同じですが、背景にある仕組みは異なります。
+
+## 基本の書き方
+
+```csharp
+public async Task<string> FetchAsync(string url)
+{
+    using var client = new HttpClient();
+    var response = await client.GetAsync(url);
+    return await response.Content.ReadAsStringAsync();
+}
+```
+
+| 要素 | 意味 |
+| ---- | ---- |
+| `async` | このメソッドの中で `await` を使う、という宣言 |
+| `Task<T>` | 「いずれ `T` を返す処理」を表す型 |
+| `Task` | 「いずれ完了する処理」（戻り値なし） |
+| `await` | 完了を待つ。待っている間はスレッドを手放す |
+
+<Marker>`Task` はJavaScriptの `Promise` に相当します。「実行中の処理そのもの」を値として扱えるようにしたものです。</Marker>
+
+| C# | JavaScript |
+| -- | ---------- |
+| `Task<string>` | `Promise<string>` |
+| `await` | `await` |
+| `Task.WhenAll` | `Promise.all` |
+| `Task.WhenAny` | `Promise.race` |
+| `Task.Delay(1000)` | `setTimeout` のPromise版 |
+
+<Callout type="note" title="非同期メソッドの名前にはAsyncを付ける">
+`FetchAsync`、`SaveAsync` のように、非同期メソッドの名前は `Async` で終える慣習があります。標準ライブラリも同じ規則なので、補完候補を見ただけで非同期かどうか分かります。
+</Callout>
+
+## awaitしている間に何が起きているか
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["リクエスト受付"] --> B["await でDB問い合わせ"]
+    B -->|"待機中"| C["スレッドは別の処理へ"]
+    B -->|"応答が返る"| D["続きから再開"]
+    D --> E["レスポンス返却"]
+`}
+/>
+
+`await` に到達すると、メソッドはそこで一旦戻り、スレッドは他の仕事に回されます。待っていた処理が終わると、続きから再開されます。**同時に多数のリクエストを捌けるのは、この仕組みのおかげ**です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+「速くなる」ものだと思っていましたが、1つの処理自体が速くなるわけではないんですね。
+</SpeechBubble>
+
+その通りです。1件あたりの所要時間は変わりません。変わるのは**同時に扱える件数**です。待ち時間にスレッドを占有しないため、少ないスレッドで多くのリクエストを処理できます。
+
+<Figure src="/images/calling_suit_man_color.png" alt="連絡待ちのイメージ" caption="返事を待つあいだ、手を止めずに別の仕事を進めるのが非同期処理です" maxWidth="330px" />
+
+## 複数の処理を同時に走らせる
+
+順番に `await` すると、処理は直列になります。
+
+```csharp
+var a = await FetchAsync(url1);   // 1秒
+var b = await FetchAsync(url2);   // さらに1秒 → 合計2秒
+```
+
+同時に走らせたい場合は、先にTaskを作ってから待ちます。
+
+**構文：** `Task.WhenAll(tasks)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `tasks`（第1引数） | `Task` の配列 / `IEnumerable<Task>` | 完了を待ちたい処理の集まり |
+
+**戻り値：** すべての完了を表す `Task`。`Task<T>` を渡した場合は結果の配列（`Task<T[]>`）
+
+```csharp
+var task1 = FetchAsync(url1);
+var task2 = FetchAsync(url2);
+
+var results = await Task.WhenAll(task1, task2);  // 合計1秒程度
+```
+
+<Callout type="warning" title="外部サービスへの同時実行数に注意">
+`Task.WhenAll` に大量のタスクを渡すと、相手のAPIやデータベースへ一斉にリクエストが飛びます。件数が多い場合は分割するか、同時実行数を制限する仕組み（`SemaphoreSlim` など）を挟んでください。
+</Callout>
+
+## 非同期処理での例外
+
+`await` した時点で、中で発生した例外が投げ直されます。`try` / `catch` は同期処理と同じように書けます。
+
+```csharp
+try
+{
+    var text = await FetchAsync(url);
+}
+catch (HttpRequestException ex)
+{
+    Console.WriteLine($"取得に失敗: {ex.Message}");
+}
+```
+
+`Task.WhenAll` で複数のタスクが失敗した場合、`await` が投げるのは最初の1件です。すべての例外を見たい場合は、タスクの `Exception` プロパティを確認します。
+
+## キャンセルに対応する
+
+時間のかかる処理には、`CancellationToken` を引数で受け取り、そのまま渡していくのが標準的な作法です。
+
+```csharp
+public async Task<string> FetchAsync(string url, CancellationToken cancellationToken)
+{
+    using var client = new HttpClient();
+    var response = await client.GetAsync(url, cancellationToken);
+    return await response.Content.ReadAsStringAsync(cancellationToken);
+}
+```
+
+ASP.NET Coreでは、クライアントが接続を切ったときにこのトークンがキャンセル状態になります。受け取って渡すだけで、無駄な処理を続けずに済みます。
+
+## よくあるハマりどころ
+
+### `.Result` や `.Wait()` で待つ
+
+```csharp
+var text = FetchAsync(url).Result;  // 危険
+```
+
+非同期の完了を同期的に待つと、環境によってはデッドロックが発生し、アプリが応答しなくなります。**呼び出し元も `async` にして `await` する**のが原則です。
+
+<Marker>非同期は「途中から同期に戻す」ことができません。入口から出口まで `async` で通します。</Marker>
+
+### `async void` を使う
+
+```csharp
+public async void Run()  // 避ける
+```
+
+`async void` のメソッドは呼び出し側が完了を待てず、内部で発生した例外も捕捉できません（多くの場合プロセスが落ちます）。イベントハンドラー以外では `async Task` を使います。
+
+### `await` を付け忘れる
+
+```csharp
+SaveAsync(user);   // 警告は出るが、完了を待たずに次へ進む
+```
+
+処理が終わる前にメソッドを抜けてしまい、「保存されていないのにエラーも出ない」という状況になります。警告を無視しないことが対策です。
+
+### CPUを使う処理を非同期にすれば速くなると考える
+
+`async` / `await` が効くのは、待ち時間があるI/O処理です。計算そのものを速くしたい場合は、`Task.Run` で別スレッドに逃がす、あるいは並列処理（`Parallel.ForEach`）を検討します。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「待つ処理」は async、「計算する処理」は並列化。この区別ができていれば大きく外さないよ。
+</SpeechBubble>
+
+### 同期版と非同期版を混ぜる
+
+`File.ReadAllText` と `File.ReadAllTextAsync` のように、多くのAPIには両方の版があります。非同期のメソッドの中では、非同期版を使い切ってください。
+
+## ちゃんと使うためのポイント
+
+- `Task` はJavaScriptの `Promise` にあたる「実行中の処理」を表す型
+- `await` している間はスレッドが解放され、同時処理数が増える
+- 同時に走らせたいときは先にTaskを作り、`Task.WhenAll` で待つ
+- `.Result` / `.Wait()` / `async void` は避ける
+- 時間のかかる処理は `CancellationToken` を受け取り、そのまま渡す
+- 非同期が効くのはI/O待ち。計算の高速化は別の手段を使う
+
+次の章では、`Task<T>` や `List<T>` の `<T>` の正体であるジェネリクスを扱います。ここまで何度も出てきた記法を、自分で書けるようにします。
+
+## 参考リンク
+
+- [Microsoft Learn — 非同期プログラミング](https://learn.microsoft.com/ja-jp/dotnet/csharp/asynchronous-programming/)

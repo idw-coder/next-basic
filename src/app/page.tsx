@@ -307,6 +307,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/08/20',
+    text: '教科書「C#入門 — .NETで動く言語の基礎」を公開しました。型・クラス・インターフェースからLINQ・null安全・非同期処理まで全14章です',
+    isNew: true,
+    link: '/books/csharp',
+  },
+  {
     date: '2026/07/18',
     text: '教科書「AZ-900 合格とクラウドの基礎がわかるAzure入門」を公開しました。クラウドの概念からEntra ID・RBACまで順次章を追加中です',
     isNew: true,

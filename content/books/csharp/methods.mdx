@@ -1,0 +1,224 @@
+---
+title: 'C#のメソッド — 引数・戻り値・ref/outとオーバーロード'
+description: 'C#のメソッド定義、値渡しと参照渡し、ref・out・inの違い、省略可能引数と名前付き引数、params、オーバーロード、式形式メンバーまでを整理します。'
+order: 5
+---
+
+メソッドは処理をまとめる単位です。基本の書き方はJavaScriptの関数と大差ありませんが、C#には**引数の渡し方が複数ある**という特徴があります。ここを理解しておくと、標準ライブラリのシグネチャが読めるようになります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`int.TryParse(input, out var n)` の `out` は何だったんでしょうか。ずっと気になっていました。
+</SpeechBubble>
+
+この章でその正体を扱います。
+
+## メソッドの基本形
+
+```csharp
+public int Add(int a, int b)
+{
+    return a + b;
+}
+```
+
+| 位置 | 要素 | 意味 |
+| ---- | ---- | ---- |
+| `public` | アクセス修飾子 | どこから呼べるか |
+| `int` | 戻り値の型 | 返す値の型。返さないなら `void` |
+| `Add` | メソッド名 | 慣習としてパスカルケース（先頭大文字） |
+| `(int a, int b)` | 引数リスト | 受け取る値と型 |
+
+値を返さない場合は `void` を指定し、`return;` で途中終了できます。
+
+```csharp
+public void PrintName(string name)
+{
+    if (string.IsNullOrEmpty(name)) return;
+    Console.WriteLine(name);
+}
+```
+
+<Callout type="note" title="命名の慣習">
+C#ではメソッド名・プロパティ名・クラス名をパスカルケース（`GetUser`）、引数とローカル変数をキャメルケース（`userName`）で書きます。JavaScriptと違い、メソッド名が大文字始まりである点に最初は違和感があるかもしれません。
+</Callout>
+
+## 引数の渡し方
+
+C#では、引数の前に付けるキーワードで渡し方を変えられます。
+
+| 書き方 | 渡るもの | 呼び出し側での初期化 | 主な用途 |
+| ------ | -------- | -------------------- | -------- |
+| （なし） | 値のコピー | 必要 | 通常の引数 |
+| `ref` | 変数そのものへの参照 | 必要 | 呼び出し元の変数を書き換える |
+| `out` | 変数そのものへの参照 | 不要 | 結果を追加で返す |
+| `in` | 読み取り専用の参照 | 必要 | 大きな値型をコピーせず渡す |
+
+```csharp
+public void Increment(ref int value)
+{
+    value++;
+}
+
+int count = 5;
+Increment(ref count);
+Console.WriteLine(count);  // 6
+```
+
+`out` は「戻り値をもう1つ増やす」ための仕組みです。メソッド内で必ず値を代入する必要があります。
+
+```csharp
+public bool TryDivide(int a, int b, out int result)
+{
+    if (b == 0)
+    {
+        result = 0;
+        return false;
+    }
+
+    result = a / b;
+    return true;
+}
+
+if (TryDivide(10, 2, out var answer))
+{
+    Console.WriteLine(answer);  // 5
+}
+```
+
+<Marker>`out` は「成功したかどうかを戻り値で、結果を引数で返す」というC#の定番パターンです。</Marker>
+
+`int.TryParse` や `Dictionary.TryGetValue` がこの形をとっているのは、変換や検索の失敗を例外ではなく戻り値で表現するためです。
+
+<Callout type="warning" title="参照型を渡しても ref にはならない">
+参照型を引数に渡すと「実体が共有される」ため、メソッド内で中身を変更すると呼び出し元にも反映されます。しかし引数の変数に別のインスタンスを代入し直しても、呼び出し元の変数は変わりません。呼び出し元の変数そのものを差し替えたい場合にだけ `ref` を使います。
+</Callout>
+
+<Figure src="/images/planning_suit_man_color.png" alt="設計を考えるイメージ" caption="引数の渡し方は「何を返したいか」から選びます" maxWidth="330px" />
+
+## 省略可能引数と名前付き引数
+
+引数に既定値を与えると、呼び出し時に省略できます。
+
+```csharp
+public void Log(string message, string level = "INFO", bool withTime = true)
+{
+    Console.WriteLine($"[{level}] {message}");
+}
+
+Log("起動しました");
+Log("失敗しました", "ERROR");
+Log("処理中", withTime: false);   // 名前付きで飛ばして指定
+```
+
+引数が多いメソッドでは、名前付き引数を使うと呼び出し側が読みやすくなります。`Log("処理中", "INFO", false)` より意図が伝わります。
+
+## 可変長引数（params）
+
+個数が決まらない引数は `params` で受け取ります。
+
+```csharp
+public int Sum(params int[] numbers)
+{
+    int total = 0;
+    foreach (var n in numbers) total += n;
+    return total;
+}
+
+Sum(1, 2, 3);       // 6
+Sum(1, 2, 3, 4, 5); // 15
+```
+
+`params` は引数リストの最後にしか置けません。
+
+## オーバーロード
+
+同じ名前で、引数の型や個数が違うメソッドを複数定義できます。
+
+```csharp
+public string Format(int value) => $"数値: {value}";
+public string Format(string value) => $"文字列: {value}";
+public string Format(DateTime value) => $"日時: {value:yyyy/MM/dd}";
+```
+
+呼び出し時の引数から、どれを使うかがコンパイル時に決まります。`Console.WriteLine` が文字列でも数値でもオブジェクトでも受け取れるのは、多数のオーバーロードが定義されているためです。
+
+<Callout type="info" title="オーバーロードと省略可能引数は競合させない">
+`Format(int value)` と `Format(int value, string prefix = "")` の両方を定義すると、`Format(5)` がどちらを指すか曖昧になり、意図しないほうが呼ばれることがあります。どちらか一方の設計に寄せてください。
+</Callout>
+
+## 式形式メンバーとローカル関数
+
+1行で書けるメソッドは `=>` で簡潔に書けます。
+
+```csharp
+public int Square(int n) => n * n;
+```
+
+メソッドの中だけで使う小さな処理は、ローカル関数として内側に定義できます。
+
+```csharp
+public void Report(List<int> scores)
+{
+    Console.WriteLine($"平均: {Average()}");
+
+    double Average() => scores.Count == 0 ? 0 : scores.Sum() / (double)scores.Count;
+}
+```
+
+## 標準ライブラリの例：string.Join
+
+シグネチャの読み方に慣れるため、よく使うメソッドを1つ見ておきます。
+
+**構文：** `string.Join(separator, values)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `separator`（第1引数） | 文字列 / `char` | 各要素のあいだに挟む区切り文字 |
+| `values`（第2引数） | 配列 / `IEnumerable<T>` | 連結したい要素の集まり |
+
+**戻り値：** 連結した新しい文字列（要素が0個なら空文字列）
+
+```csharp
+var names = new List<string> { "田中", "鈴木", "佐藤" };
+Console.WriteLine(string.Join("、", names));  // 田中、鈴木、佐藤
+```
+
+## よくあるハマりどころ
+
+### `out` 変数に代入し忘れる
+
+`out` を付けた引数は、メソッドを抜けるまでに必ず代入しなければコンパイルエラーになります。早期 `return` する分岐でも忘れずに代入します。
+
+### 引数を書き換えて呼び出し元が変わると思い込む
+
+```csharp
+public void Reset(List<int> list)
+{
+    list = new List<int>();  // 呼び出し元は変わらない
+}
+```
+
+新しいインスタンスを代入しても、呼び出し元の変数はもとのリストを指したままです。中身を空にしたいなら `list.Clear()` を呼びます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「中身を変える」のか「変数ごと差し替える」のかを区別すると、`ref` が必要な場面がはっきりするよ。
+</SpeechBubble>
+
+### 省略可能引数の既定値はライブラリ更新で反映されない
+
+既定値は呼び出し側のコードにコンパイル時に埋め込まれます。ライブラリ側で既定値を変えても、再ビルドしない限り古い値のままです。公開ライブラリではオーバーロードを使うほうが安全です。
+
+## ちゃんと使うためのポイント
+
+- メソッド名はパスカルケース、引数はキャメルケース
+- 通常は値渡し。呼び出し元の変数を書き換えたいときだけ `ref`
+- 「成功可否＋結果」を返したいときは `out`（`TryParse` 型のパターン）
+- 引数が多いときは名前付き引数で読みやすくする
+- 同じ役割で型違いの入口を作りたいときはオーバーロード
+- 1行で済む処理は `=>` の式形式で書く
+
+次の章では、メソッドとデータをまとめる入れ物であるクラスに進みます。C#のオブジェクト指向の中心となる部分です。
+
+## 参考リンク
+
+- [Microsoft Learn — メソッド](https://learn.microsoft.com/ja-jp/dotnet/csharp/methods)
