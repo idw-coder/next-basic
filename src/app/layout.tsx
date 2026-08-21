@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Dela_Gothic_One } from 'next/font/google';
 import { Suspense } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import Script from 'next/script';
 import './globals.css';
@@ -95,9 +96,26 @@ export default function RootLayout({
           <div className="relative mx-auto flex h-14 max-w-7xl items-center gap-1 px-4 md:h-16 md:gap-2 md:px-6">
             <Link
               href="/"
-              className="group flex shrink-0 flex-col items-start gap-1 text-ink transition-colors hover:text-brand-blue"
+              aria-label="ウェブエンジニア問題集 トップページ"
+              className="group flex shrink-0 items-center gap-2 rounded-lg text-ink transition-colors hover:text-brand-blue focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue"
             >
-              <span className="text-[17px] font-black leading-none tracking-normal md:text-xl">
+              <Image
+                src="/images/site-mark.svg"
+                alt=""
+                width={32}
+                height={32}
+                priority
+                className="h-[30px] w-[30px] shrink-0 rounded-[7px] md:h-9 md:w-9 md:rounded-[9px]"
+              />
+              <Image
+                src="/images/site-wordmark.svg"
+                alt=""
+                width={198}
+                height={28}
+                priority
+                className="h-[26px] w-auto md:h-[30px]"
+              />
+              <span className="sr-only">
                 ウェブエンジニア問題集
               </span>
             </Link>

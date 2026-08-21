@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">ウェブエンジニア問題集</title>
+  <defs>
+    <linearGradient id="background" x1="128" y1="0" x2="128" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffff55" />
+      <stop offset="1" stop-color="#ffffd8" />
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="34" fill="url(#background)" />
+  <path
+    d="M83.5 208V170.5C65.8 157.8 55.5 138.2 55.5 116.5C55.5 78.5 85.8 47.5 124.5 47.5C155.3 47.5 181.3 67.2 190.3 95.4L204.4 140.3C205.4 143.4 203 146.5 199.8 146.5H180.5V162.3C180.5 177.8 170.1 187.5 153.5 187.5V208"
+    fill="#ffdda0"
+    stroke="#202020"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M104.5 100.5C104.5 87.2 113.2 78.5 125.5 78.5C137.8 78.5 146.5 87.3 146.5 99.3C146.5 111.6 139.6 117.6 130.8 122.9C126.7 125.4 124.5 129.1 124.5 134V139"
+    fill="none"
+    stroke="#202020"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="124.5" cy="153.5" r="4.5" fill="#202020" />
+</svg>
