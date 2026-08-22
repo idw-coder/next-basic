@@ -322,10 +322,58 @@ TypeScriptは通常、互換性のない型同士のアサーションをエラ�
 
 ```tsx
 const n: number = 42;
-const s = n as string; // ❌ エラー：number と string は互換性がない
+const s = n as string;
+// ❌ 型 'number' から型 'string' への変換は、互いに十分に重複できないため
+//    間違っている可能性があります。意図的にそうする場合は、
+//    まず式を 'unknown' に変換してください。ts(2352)
 ```
 
-ダブルアサーションは、一度 `any` や `unknown` を経由することで**この安全装置を迂回**します。`unknown` 経由のほうが `@typescript-eslint/no-explicit-any` ルールに引っかからないぶん行儀が良く見えますが、やっていることは同じです。
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+エラーメッセージ自体が「まず `unknown` に変換してください」と回避策を教えてくれるの、なんだか不思議です。これっておまじないですか？
+</SpeechBubble>
+
+### なぜ `unknown` を挟むと通るのか
+
+おまじないではなく、はっきりしたルールがあります。<Marker>`as` は「どちらか一方向に代入できる型同士」でしか許可されません。</Marker>これがエラーメッセージの言う「十分に重複」の正体です。`number` と `string` はどちらも互いに代入できないため、直接のアサーションは拒否されます。
+
+一方 `unknown` は、あらゆる型を受け入れる**トップ型**です。そのため2段に分けると、それぞれが個別にルールを満たします。
+
+```tsx
+const step1 = n as unknown; // ✅ 何でも unknown には代入できる
+const step2 = step1 as string; // ✅ unknown は任意の型にアサーションできる
+```
+
+つまりダブルアサーションは、ルールを「経由」してすり抜けているだけです。そしてここが肝心なのですが、これは**コンパイル時だけの話**です。
+
+```tsx
+const n = 42;
+const s = n as unknown as string;
+
+s.toUpperCase(); // 💥 TypeError: s.toUpperCase is not a function
+```
+
+実行時の値は数値のままなので、`string` のつもりでメソッドを呼べば落ちます。型注釈に嘘をついただけで、値そのものは1ビットも変わっていません。この `number` → `string` の例に限っていえば、<Marker>エラーは正しく仕事をしていたので、消すのではなく従うのが正解です。</Marker>値を本当に変えたいなら、この章の前半で見た型キャスト、つまり変換関数を使います。
+
+```tsx
+String(n); // "42" — n.toString() や `${n}` でもよい
+```
+
+ダブルアサーションは、一度 `any` や `unknown` を経由することで**この安全装置を迂回**します。`unknown` 経由のほうが `@typescript-eslint/no-explicit-any` ルールに引っかからないぶん行儀が良く見えますが、迂回していること自体は変わりません。
+
+<Callout type="note">
+### `as any` と `as unknown as T` の違い
+
+危険度は同じですが、汚染する範囲が違います。`any` は**そのあとの式全体に伝播**し、どんなプロパティアクセスも素通しにします。対して `as unknown as T` は<Marker>その場で `T` に型が確定するため、以降は通常どおり型チェックが効きます</Marker>。実務で後者が好まれるのは、主にこの理由です。
+
+```tsx
+const a = value as any;
+a.foo.bar.baz(); // 何を書いてもエラーにならない
+
+const b = value as unknown as User;
+b.foo; // ❌ プロパティ 'foo' は型 'User' に存在しません
+```
+
+</Callout>
 
 <Callout type="warning">
 ### AI生成コードでよく見るパターン
@@ -342,6 +390,44 @@ AIに「`any` を使わないで」と指示すると、`as any` を機械的に
 | ライブラリの型定義が古い | `@types` を更新する / 型定義を拡張（declaration merging） |
 | テストでモックを作りたい | `Partial<T>` や `satisfies` を活用する |
 | 本当にどうしようもない | `as unknown as T` を使い、コメントで理由を残す |
+
+### 使ってよい場面 — 「実行時の値は正しいが、コンパイラには証明できない」とき
+
+とはいえ、ダブルアサーションが常に悪というわけではありません。判断基準はシンプルです。
+
+| 実行時の値 | 判定 |
+| --- | --- |
+| 本当にその型になっている | 許容。なぜ安全といえるかをコメントで残す |
+| その型になっていない | 修正すべきコードを隠しているだけなので不可 |
+
+先ほどの `number` → `string` は後者なので論外でした。前者に当たる典型例は次の3つです。
+
+- **テストのモック** — 巨大なインターフェースの一部だけ作って渡したい
+- **型定義が実態とズレたライブラリの回避** — `@types` の更新が追いついていない
+- **ジェネリクスの内部** — 実装者には正しいと分かるが、コンパイラが変換を追跡しきれない
+
+いずれも「実行時の値は本当に正しい」のが前提です。頻度としては、普通のアプリケーションコードなら年に数回出るかどうかという程度で、日常的に書くものではありません。
+
+ただし「モックだから常にダブルアサーションが要る」わけではない点に注意してください。
+
+```tsx
+type User = { id: number; name: string; email: string };
+
+// ✅ プロパティが足りないだけなら、1段の as で通る
+const mockUser = { id: 1 } as User;
+
+// ❌ プロパティの型が食い違うと ts(2352) になる
+const mockRequest = { url: '/api', headers: { 'content-type': 'json' } } as Request;
+```
+
+理由は、さきほどのルール（片方向に代入できればOK）で説明できます。`User` は `{ id: 1 }` の形に代入できるので前者は通り、`headers` が `Headers` 型と噛み合わない後者は両方向とも失敗します。<Marker>unknown を足す前に、まず1段の `as` で足りないか試すのが正しい順番です。</Marker>
+
+<Callout type="note">
+### ブランド型も1段で足りる
+
+`type UserId = string & { readonly __brand: 'UserId' }` のようなブランド型（nominal typing）は、`as unknown as UserId` で生成している例をよく見かけます。ですが `UserId` は `string` に代入できるので、`raw as UserId` の1段で通ります。
+
+</Callout>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生">
 `as unknown as` に統一すること自体は悪くありません。lintルールと整合しますし、コードレビューで「ここは意図的にキャストしている」と分かりやすくなります。ただ、**そもそもダブルアサーションが必要な設計自体を見直すほうが先**、という順番が大事です。
@@ -363,7 +449,7 @@ const config = {
 // 推論結果: { endpoint: string; method: string }
 ```
 
-`method` の値は `'GET'` と書いたのに、型は `string` に**広げられて（widening）**推論されます。オブジェクトのプロパティは後から書き換えられるため、TypeScriptは安全側に倒して広い型を付けるのです。これが困る場面があります。
+`method` の値は `'GET'` と書いたのに、型は `string` に**広げられて**（widening）推論されます。オブジェクトのプロパティは後から書き換えられるため、TypeScriptは安全側に倒して広い型を付けるのです。これが困る場面があります。
 
 ```tsx
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -440,7 +526,8 @@ function setCategory(category: Category) {
 ## ちゃんと使うためのポイント
 
 - <Marker>型ガードはランタイムで検証するので安全。型アサーションは自己申告なので危険</Marker>
-- `as any` も `as unknown as T` も型安全性を放棄している点は同じ
+- `as any` も `as unknown as T` も型安全性を放棄している点は同じ。ただし `any` は後続の式に伝播し、`as unknown as T` はその場で型が確定する
+- <Marker>`ts(2352)` が出たら、`unknown` を挟む前に「1段の `as` で足りないか」「そもそも値の型が間違っていないか」を先に確認する</Marker>
 - `as const` はアサーションではなくリテラル型への固定。安全に使える
 - ユーザー定義型ガード（`is`）はAPIレスポンスのバリデーションで特に有用。ただし検査ロジックの正しさは自分で保証する
 - TypeScript 5.5以降、単純な関数の型述語は自動推論される（特定の型へ絞る場合は明示的に `is` を書く）
