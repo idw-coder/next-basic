@@ -21,6 +21,8 @@ export const metadata: Metadata = {
   title: "腕試しテスト | ウェブエンジニア問題集",
   description:
     "カテゴリと問題数を選び、ランダムに出題される問題で今の実力をチェックできます。",
+  // ?category / ?completed 付きのURLで重複扱いされないよう、素のパスに集約する
+  alternates: { canonical: "/quiz/random" },
 };
 
 export default async function RandomQuizPage({

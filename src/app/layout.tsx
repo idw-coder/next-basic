@@ -93,27 +93,19 @@ export default function RootLayout({
         </a>
         <header className="sticky top-0 z-50 border-b border-cream-line bg-cream-deep/88 backdrop-blur-xl">
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-ink/10" />
-          <div className="relative mx-auto flex h-14 max-w-7xl items-center gap-1 px-4 md:h-16 md:gap-2 md:px-6">
+          <div className="relative mx-auto flex h-14 max-w-7xl items-center gap-1 px-3 md:h-16 md:gap-2 md:px-6">
             <Link
               href="/"
               aria-label="ウェブエンジニア問題集 トップページ"
-              className="group flex shrink-0 items-center gap-2 rounded-lg text-ink transition-colors hover:text-brand-blue focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue"
+              className="group flex shrink-0 items-center gap-1 rounded-lg text-ink transition-colors hover:text-brand-blue focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue md:gap-2"
             >
               <Image
-                src="/images/site-mark.svg"
+                src="/images/logo-sample.svg"
                 alt=""
-                width={32}
-                height={32}
+                width={961}
+                height={180}
                 priority
-                className="h-[30px] w-[30px] shrink-0 rounded-[7px] md:h-9 md:w-9 md:rounded-[9px]"
-              />
-              <Image
-                src="/images/site-wordmark.svg"
-                alt=""
-                width={198}
-                height={28}
-                priority
-                className="h-[26px] w-auto md:h-[30px]"
+                className="h-[42px] w-auto md:h-12"
               />
               <span className="sr-only">
                 ウェブエンジニア問題集
@@ -154,6 +146,29 @@ export default function RootLayout({
                 Xでフォロー
               </a>
             </div>
+            {/* サイト説明ページへの導線がヘッダーになく、内部リンクが1本も張られていなかったため
+                フッターにまとめて置く（回遊とクロール経路の確保） */}
+            <nav aria-label="フッターナビゲーション" className="mb-4">
+              <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs md:text-sm">
+                {[
+                  { href: '/', label: 'ホーム' },
+                  { href: '/#categories', label: 'クイズカテゴリ' },
+                  { href: '/books', label: '教科書' },
+                  { href: '/quiz/random', label: '腕試しテスト' },
+                  { href: '/search', label: '検索' },
+                  { href: '/about', label: 'このサイトについて' },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className="text-ink-muted transition-colors hover:text-brand-blue hover:underline"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
             <div className="text-center text-ink-muted text-xs md:text-sm">
               <p>&copy; 2026 ウェブエンジニア問題集. All rights reserved.</p>
             </div>

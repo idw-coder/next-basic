@@ -22,6 +22,13 @@ import { SectionHeading } from '@/components/SectionHeading';
 import { getBookSeoContent, type BookSeoContent } from '../_constants/bookSeoContent';
 
 import { SITE_URL } from '@/lib/site';
+import {
+  BOOKS_OG_IMAGE,
+  BOOKS_OG_IMAGE_ALT,
+  BOOKS_OG_IMAGE_HEIGHT,
+  BOOKS_OG_IMAGE_WIDTH,
+  SITE_PUBLISHER,
+} from '@/lib/book-seo';
 
 export function generateStaticParams() {
   return getAllBooks().map((book) => ({ bookSlug: book.bookSlug }));
@@ -37,7 +44,9 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
   if (!book) return {};
   const chapters = getChaptersByBook(bookSlug);
   const seoContent = getBookSeoContent(bookSlug);
-  const title = `${book.title}（全${chapters.length}章）| ウェブエンジニア問題集`;
+  // 「| ウェブエンジニア問題集」は日本語SERPの省略位置より後ろで表示されないため、
+  // 同じ文字数を本の中身を示す語に使う
+  const title = `${book.title}｜全${chapters.length}章の無料教科書`;
   const description = seoContent
     ? `${book.description} ${seoContent.prerequisites ? `前提知識：${seoContent.prerequisites}` : ''} 全${chapters.length}章で基礎から順番に学べる無料の技術書コンテンツ。`
     : `${book.description} 全${chapters.length}章で基礎から順番に学べる無料の技術書コンテンツ。`;
@@ -50,7 +59,23 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
       description: book.description,
       type: 'website',
       locale: 'ja_JP',
+      siteName: 'ウェブエンジニア問題集',
       url: `${SITE_URL}/books/${bookSlug}`,
+      images: [
+        {
+          url: BOOKS_OG_IMAGE,
+          width: BOOKS_OG_IMAGE_WIDTH,
+          height: BOOKS_OG_IMAGE_HEIGHT,
+          alt: BOOKS_OG_IMAGE_ALT,
+        },
+      ],
+    },
+    // 画像なしだとルートlayoutのサイト全体の文言でカードが出てしまう
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description: book.description,
+      images: [BOOKS_OG_IMAGE],
     },
   };
 }
@@ -83,11 +108,9 @@ function buildJsonLd(
     isAccessibleForFree: true,
     numberOfPages: chapters.length,
     timeRequired: `PT${estimatedMinutes}M`,
-    publisher: {
-      '@type': 'Organization',
-      name: 'ウェブエンジニア問題集',
-      url: SITE_URL,
-    },
+    image: [BOOKS_OG_IMAGE],
+    author: SITE_PUBLISHER,
+    publisher: SITE_PUBLISHER,
   };
 
   const jsonLdList: Record<string, unknown>[] = [breadcrumb, bookSchema];

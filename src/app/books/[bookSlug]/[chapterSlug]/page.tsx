@@ -18,6 +18,15 @@ import { ChapterTocDesktop, ChapterTocMobile } from '../../_components/TableOfCo
 import { getChapterLabel } from '@/lib/chapter-label';
 
 import { SITE_URL } from '@/lib/site';
+import {
+  BOOKS_OG_IMAGE,
+  BOOKS_OG_IMAGE_ALT,
+  BOOKS_OG_IMAGE_HEIGHT,
+  BOOKS_OG_IMAGE_WIDTH,
+  SITE_PUBLISHER,
+  buildChapterTitle,
+  getBookShortTitle,
+} from '@/lib/book-seo';
 
 export function generateStaticParams() {
   return getAllBooks().flatMap((book) =>
@@ -37,8 +46,10 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
   const book = getBook(bookSlug);
   const chapter = getChapter(bookSlug, chapterSlug);
   if (!book || !chapter) return {};
-  const title = `${chapter.title} - ${book.title} | ウェブエンジニア問題集`;
+  // 検索結果で切れない長さに詰めたタイトル。ページ内のH1（chapter.title）は変えない
+  const title = buildChapterTitle(chapter.title, bookSlug, book.title);
   const description = chapter.description ?? book.description;
+  const url = `${SITE_URL}/books/${bookSlug}/${chapterSlug}`;
   return {
     title,
     description,
@@ -49,7 +60,25 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
       title,
       description,
       type: 'article',
-      url: `${SITE_URL}/books/${bookSlug}/${chapterSlug}`,
+      url,
+      locale: 'ja_JP',
+      siteName: 'ウェブエンジニア問題集',
+      modifiedTime: chapter.updated,
+      images: [
+        {
+          url: BOOKS_OG_IMAGE,
+          width: BOOKS_OG_IMAGE_WIDTH,
+          height: BOOKS_OG_IMAGE_HEIGHT,
+          alt: BOOKS_OG_IMAGE_ALT,
+        },
+      ],
+    },
+    // ルートlayoutのtwitterはサイト全体の文言なので、章ページでは章の文言に差し替える
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [BOOKS_OG_IMAGE],
     },
   };
 }
@@ -71,6 +100,16 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
       description: chapter.description ?? book.description,
       inLanguage: 'ja',
       url: chapterUrl,
+      // Search Consoleの「記事」レポートが推奨するフィールド。
+      // datePublished は初出日を保持していない（veliteが持つのは更新日時のみ）ため、
+      // 推測値を入れずに省略している。
+      mainEntityOfPage: { '@type': 'WebPage', '@id': chapterUrl },
+      dateModified: chapter.updated,
+      image: [BOOKS_OG_IMAGE],
+      author: SITE_PUBLISHER,
+      publisher: SITE_PUBLISHER,
+      isAccessibleForFree: true,
+      timeRequired: `PT${chapter.readingTime}M`,
       isPartOf: {
         '@type': 'Book',
         name: book.title,
@@ -80,10 +119,18 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
+      // 本ページ側のパンくずと階層を揃える（ホームを起点にする）
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: '教科書', item: `${SITE_URL}/books` },
-        { '@type': 'ListItem', position: 2, name: book.title, item: `${SITE_URL}/books/${bookSlug}` },
-        { '@type': 'ListItem', position: 3, name: chapter.title, item: chapterUrl },
+        { '@type': 'ListItem', position: 1, name: 'ホーム', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name: '教科書', item: `${SITE_URL}/books` },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          // 画面のパンくずと表記を揃える（フルタイトルは検索結果のパンくずでも切れる）
+          name: getBookShortTitle(bookSlug, book.title),
+          item: `${SITE_URL}/books/${bookSlug}`,
+        },
+        { '@type': 'ListItem', position: 4, name: chapter.title, item: chapterUrl },
       ],
     },
   ];
@@ -100,17 +147,25 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
       <nav aria-label="パンくずリスト" className="mb-6 text-xs sm:text-sm">
         <ol className="flex items-center gap-1 text-muted-foreground flex-wrap">
           <li>
+            <Link href="/" className="hover:text-foreground transition-colors">
+              ホーム
+            </Link>
+          </li>
+          <li><ChevronRight className="size-3" /></li>
+          <li>
             <Link href="/books" className="hover:text-foreground transition-colors">
               教科書
             </Link>
           </li>
           <li><ChevronRight className="size-3" /></li>
           <li>
+            {/* 本のフルタイトルは長く、truncateで「HTML入門 — Webページの構…」と切れて
+                どの本かわかりにくかったため、短縮名を出す */}
             <Link
               href={`/books/${bookSlug}`}
               className="hover:text-foreground transition-colors truncate max-w-[120px] sm:max-w-[200px] inline-block align-bottom"
             >
-              {book.title}
+              {getBookShortTitle(bookSlug, book.title)}
             </Link>
           </li>
           <li><ChevronRight className="size-3" /></li>

@@ -34,9 +34,11 @@ import {
   UserCircle,
   type LucideIcon,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import { unstable_cache } from 'next/cache';
 import Image from 'next/image';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/site';
 
 // DBへ直接アクセスするため、ビルド時プリレンダの対象から外す。
 // 静的化されるとビルド環境（DB到達不可）の結果がHTMLに焼き込まれてしまう。
@@ -388,12 +390,56 @@ const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   { date: '2026/02/08', text: 'ウェブエンジニア問題集を開設しました', isNew: false },
 ];
 
+// タイトル・descriptionはルートlayoutを継承する。ここではトップ固有の
+// canonical（末尾スラッシュ有無やクエリ付きURLの重複を防ぐ）だけを足す。
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
+
+// サイト全体を表す構造化データ。sitelinks検索ボックスの対象はトップページのHTMLなので、
+// SearchActionは /search ではなくここに置く必要がある。
+const SITE_JSON_LD = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'ウェブエンジニア問題集',
+    alternateName: 'Web Engineer Quiz',
+    url: SITE_URL,
+    inLanguage: 'ja',
+    description:
+      'HTML・CSS・JavaScript・React・Node.jsを4択クイズと教科書で学べる無料学習サイト。',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'EducationalOrganization',
+    name: 'ウェブエンジニア問題集',
+    url: SITE_URL,
+    logo: `${SITE_URL}/images/site-mark.svg`,
+    sameAs: ['https://x.com/web_eng_quiz'],
+  },
+];
+
 export default async function Home() {
   const counts = await getQuizCountsBySlugs([...CATEGORY_SLUGS]);
   const totalCount = Object.values(counts).reduce((sum, c) => sum + c, 0);
   const bookList = getAllBooks();
   return (
     <div className="bg-cream text-ink">
+      {SITE_JSON_LD.map((ld) => (
+        <script
+          key={ld['@type']}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
+        />
+      ))}
       {/* ヒーロー */}
       <section className="relative min-h-[calc(100svh-12rem)] overflow-hidden bg-cream px-4 py-4 md:min-h-[calc(100svh-14rem)] md:px-6 md:py-6">
         <Image

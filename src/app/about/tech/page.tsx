@@ -6,6 +6,8 @@ import { EntryGuard } from '@/components/EntryGuard';
 export const metadata: Metadata = {
   title: '技術構成 | ウェブエンジニア問題集',
   description: 'ウェブエンジニア問題集のシステム構成・使用技術・インフラ構成について紹介します。',
+  // ?mode=entry 付きで開かれることがあるため、正規URLはクエリなしに固定する
+  alternates: { canonical: '/about/tech' },
 };
 
 const ARCHITECTURE_CHART = `graph TD

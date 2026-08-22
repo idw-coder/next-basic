@@ -16,16 +16,21 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 import { SITE_URL } from '@/lib/site';
+import {
+  BOOKS_OG_IMAGE,
+  BOOKS_OG_IMAGE_HEIGHT,
+  BOOKS_OG_IMAGE_WIDTH,
+} from '@/lib/book-seo';
 
-const BOOKS_OG_IMAGE = `${SITE_URL}/images/books-hero-editorial-human-v2.png`;
+
 
 export const metadata: Metadata = {
-  title: 'プログラミング教科書一覧 — 無料で学べるWeb開発入門 | ウェブエンジニア問題集',
+  title: 'プログラミング教科書一覧｜無料で学べるWeb開発入門',
   description:
     'HTML・CSS・JavaScript・React・TypeScript・AWS・SQL・Git などのWeb開発教科書を無料で公開。章ごとに順番に読み進められ、クイズで理解度をチェックできます。初心者から実務経験者まで、基礎を体系的に学びたい方に最適です。',
   alternates: { canonical: '/books' },
   openGraph: {
-    title: 'プログラミング教科書一覧 — 無料で学べるWeb開発入門 | ウェブエンジニア問題集',
+    title: 'プログラミング教科書一覧｜無料で学べるWeb開発入門',
     description:
       'HTML・CSS・JavaScript・React・TypeScriptなどのWeb開発教科書を無料で公開。章ごとに順番に学べます。',
     type: 'website',
@@ -34,15 +39,15 @@ export const metadata: Metadata = {
     images: [
       {
         url: BOOKS_OG_IMAGE,
-        width: 1200,
-        height: 630,
+        width: BOOKS_OG_IMAGE_WIDTH,
+        height: BOOKS_OG_IMAGE_HEIGHT,
         alt: '鮮やかな色面の中で青い本を読む人物を描いた、ウェブエンジニア問題集の教科書機能キービジュアル',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'プログラミング教科書一覧 — 無料で学べるWeb開発入門 | ウェブエンジニア問題集',
+    title: 'プログラミング教科書一覧｜無料で学べるWeb開発入門',
     description:
       'HTML・CSS・JavaScript・React・TypeScriptなどのWeb開発教科書を無料で公開。章ごとに順番に学べます。',
     images: [BOOKS_OG_IMAGE],
