@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { escapeHtmlInCode } from '@/lib/escapeHtmlInCode';
 import { fetchNextApiJson } from '@/lib/nextApiClient';
 import { ArrowLeft, Copy, ExternalLink, FileOutput, Import, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -112,18 +113,6 @@ function safeParseJson(text: string): unknown {
   } catch {
     return JSON.parse(repairJson(text));
   }
-}
-
-function escapeHtmlInCodeBlocks(html: string): string {
-  return html.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, (_, content: string) => {
-    const decoded = content
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"');
-    const escaped = decoded.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    return `<pre><code>${escaped}</code></pre>`;
-  });
 }
 
 function buildPrompt(topic: string, existingTagSlugs: string[]): string {
@@ -349,7 +338,7 @@ export default function QuizEditPage() {
       };
       if (data.slug) setSlug(data.slug);
       if (data.question) setQuestion(data.question);
-      if (data.explanation) setExplanation(escapeHtmlInCodeBlocks(data.explanation));
+      if (data.explanation) setExplanation(escapeHtmlInCode(data.explanation));
       if (data.choices?.length) {
         setChoices(
           data.choices.map((c) => ({

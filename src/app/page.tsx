@@ -533,6 +533,7 @@ export default async function Home() {
           {/* 特徴 */}
           <section className="mb-10 pt-2 md:mb-20 md:pt-4">
             <SectionHeading
+              variant="frame"
               className="mb-4 sm:mb-7"
               icon={<Sparkles className="size-5 text-brand-red" />}
             >
@@ -593,6 +594,7 @@ export default async function Home() {
               </div>
             </div>
             <SectionHeading
+              variant="frame"
               className="mb-8 md:mb-10"
               subtitle={
                 totalCount > 0
@@ -658,7 +660,11 @@ export default async function Home() {
         <section id="books" className="mb-8 bg-brand-blue-wash/90 py-5 md:mb-16 md:py-12">
           <div className="mx-auto max-w-6xl px-4">
             <div className="mb-4 grid gap-2 sm:mb-8 sm:gap-4 md:grid-cols-[0.8fr_1fr] md:items-end">
-              <SectionHeading center={false} subtitle="基礎から体系的に学べる技術書コンテンツ">
+              <SectionHeading
+                variant="frame"
+                center={false}
+                subtitle="基礎から体系的に学べる技術書コンテンツ"
+              >
                 教科書
               </SectionHeading>
               <p className="text-xs leading-relaxed text-ink-muted sm:text-sm sm:leading-7">
@@ -714,7 +720,9 @@ export default async function Home() {
                 FREE
               </span>
             </div>
-            <SectionHeading className="mb-1 sm:mb-2">無料で学習をもっと便利に</SectionHeading>
+            <SectionHeading variant="frame" className="mb-2 sm:mb-3">
+              無料で学習をもっと便利に
+            </SectionHeading>
             <p className="mb-4 text-center text-xs text-ink-muted sm:mb-6 sm:text-sm">
               登録なしでも全問解けます。登録すると以下が使えます。
             </p>
@@ -838,7 +846,9 @@ export default async function Home() {
                 <div className="absolute -bottom-1 left-1/2 size-2.5 -translate-x-1/2 rotate-45 bg-brand-red" />
               </div>
             </div>
-            <SectionHeading className="mb-6">学習のすすめ方</SectionHeading>
+            <SectionHeading variant="frame" className="mb-6">
+              学習のすすめ方
+            </SectionHeading>
             {(() => {
               const steps = [
                 {
@@ -905,7 +915,9 @@ export default async function Home() {
 
           {/* お知らせ */}
           <section id="news" className="mb-8">
-            <SectionHeading className="mb-6">お知らせ</SectionHeading>
+            <SectionHeading variant="frame" className="mb-6">
+              お知らせ
+            </SectionHeading>
             <div className="mx-auto max-w-2xl rounded-[2rem] border border-ink/10 bg-white/92 px-5 py-4 shadow-[0_24px_70px_rgba(47,48,47,0.08)]">
               <NewsList items={NEWS} />
               <div className="space-y-1 border-t border-ink/10 py-3">
