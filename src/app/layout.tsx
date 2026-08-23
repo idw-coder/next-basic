@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Dela_Gothic_One, Kosugi_Maru } from 'next/font/google';
+import { Dela_Gothic_One, Zen_Maru_Gothic } from 'next/font/google';
 import { Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -15,13 +15,13 @@ const delaGothicOne = Dela_Gothic_One({
   variable: '--font-dela',
 });
 
-// ロゴと同じ丸ゴシック。枠付き見出し（SectionHeadingのframe）でロゴの雰囲気を再現する
-const kosugiMaru = Kosugi_Maru({
-  weight: '400',
+// 本文・UI用の丸ゴシック。用途ごとの太さを実ウェイトで配信する
+const zenMaruGothic = Zen_Maru_Gothic({
+  weight: ['400', '500', '700', '900'],
   subsets: ['latin'],
   preload: false,
   display: 'swap',
-  variable: '--font-kosugi',
+  variable: '--font-zen-maru',
 });
 
 import GoogleAdSense, { HideAdsForEntry } from '@/components/GoogleAdSense';
@@ -84,7 +84,7 @@ export default function RootLayout({
           <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
         )}
       </head>
-      <body className={`app-font ${delaGothicOne.variable} ${kosugiMaru.variable}`}>
+      <body className={`app-font ${delaGothicOne.variable} ${zenMaruGothic.variable}`}>
         {clientId && !isDevelopment && (
           <Script
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientId}`}

@@ -6,7 +6,8 @@
     "dev": "velite && next dev",
     "build": "velite && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:content": "node scripts/check-content.mjs"
   },
   "dependencies": {
     "@blocknote/core": "^0.46.2",

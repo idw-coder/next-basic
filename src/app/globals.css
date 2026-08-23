@@ -36,8 +36,9 @@
 @theme inline {
   /* 見出し専用ディスプレイ書体（Dela Gothic One）。本文はapp-fontのまま2書体構成 */
   --font-display: var(--font-dela), 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-  /* ロゴと同じ丸ゴシック（Kosugi Maru）。枠付き見出し専用 */
-  --font-round: var(--font-kosugi), 'Hiragino Maru Gothic ProN', 'Zen Maru Gothic', 'Hiragino Sans', sans-serif;
+  /* 本文・UI・枠付き見出しに使う丸ゴシック */
+  --font-sans: var(--font-zen-maru), 'Hiragino Maru Gothic ProN', 'Hiragino Sans', sans-serif;
+  --font-round: var(--font-zen-maru), 'Hiragino Maru Gothic ProN', 'Hiragino Sans', sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -165,11 +166,6 @@
   font-synthesis-weight: none;
 }
 
-/* Kosugi Maruも400のみ。太字指定が来ても疑似ボールドで潰れないようにする */
-.font-round {
-  font-synthesis-weight: none;
-}
-
 /* ロゴと同じ「太い丸枠＋あえて途切れる線」。
    - 枠線は疑似要素で描き、maskで上辺1か所・下辺2か所を抜いて手描きの抜けを作る
    - 抜き口は丸く（ロゴSVGの stroke-linecap="round" と同じ見え方）。
@@ -234,6 +230,8 @@
 
 .app-font {
   font-family:
+    var(--font-zen-maru),
+    "Hiragino Maru Gothic ProN",
     "Hiragino Sans",
     "Hiragino Kaku Gothic ProN",
     "Noto Sans JP",
