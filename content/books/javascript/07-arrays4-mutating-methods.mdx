@@ -200,6 +200,8 @@ console.log(items.splice(2)); // ["B", "C", "D"] ← 第2引数を省略する�
 console.log(items); // ["A", "X"]
 ```
 
+オブジェクトの `id` など、条件に合う最初の要素を1件削除する場合は、[`findIndex` で位置を探してから `splice` する方法](/books/javascript/07-arrays2-search-methods#findindex-splice-delete)を使います。
+
 <Callout type="warning" title="splice の戻り値は「変更後の配列」ではない">
 `splice` が返すのは**削除された要素の配列**です。変更後の配列は、元の変数のほうに入っています。
 

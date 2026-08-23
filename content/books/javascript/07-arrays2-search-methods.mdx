@@ -68,6 +68,32 @@ if (targetIndex !== -1) {
 }
 ```
 
+<a id="findindex-splice-delete"></a>
+
+### findIndex と splice で見つけた要素を削除する
+
+条件に合う要素を元の配列から破壊的に削除するときは、`findIndex` で位置を探し、[`splice`](/books/javascript/07-arrays4-mutating-methods#splice) で1件削除するのが一般的です。
+
+```js
+const targetIndex = users.findIndex((u) => u.id === 2);
+
+if (targetIndex !== -1) {
+  const [deletedUser] = users.splice(targetIndex, 1);
+
+  console.log(deletedUser); // { id: 2, name: "花子" }
+}
+
+console.log(users);
+// [{ id: 1, name: "太郎" }, { id: 3, name: "次郎" }]
+```
+
+`splice(targetIndex, 1)` は「`targetIndex` の位置から1件削除する」という意味です。`splice` の戻り値は削除した要素の配列なので、1件だけ取り出す場合は分割代入で受け取れます。
+
+<Callout type="warning" title="-1 のまま splice しない">
+  見つからないと `findIndex` は `-1` を返します。`splice(-1, 1)`
+  は配列の最後の要素を削除するため、必ず `targetIndex !== -1` を確認します。
+</Callout>
+
 ### indexOf との使い分け
 
 値そのものの位置を知りたいだけなら、コールバックを書かずに済む `indexOf` の方が簡潔です。

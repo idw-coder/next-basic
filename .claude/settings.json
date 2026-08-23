@@ -1,18 +1,10 @@
 {
   "permissions": {
     "deny": [
-      "Bash(npm run dev)",
-      "Bash(npm run dev *)",
-      "Bash(next dev)",
-      "Bash(next dev *)",
-      "Bash(npx next dev)",
-      "Bash(npx next dev *)",
       "Bash(npx velite)",
       "Bash(npx velite *)",
       "Bash(velite)",
-      "Bash(velite *)",
-      "mcp__Claude_Browser__preview_start",
-      "mcp__Claude_Preview__preview_start"
+      "Bash(velite *)"
     ]
   }
 }

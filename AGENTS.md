@@ -4,23 +4,27 @@
 
 ## devサーバーとVelite（最重要）
 
-このリポジトリは複数のAIセッションに並行で作業を委任することがある。**devサーバーの多重起動は `.velite/` を破壊する。**
+このリポジトリは複数のAIセッションに並行で作業を委任することがある。**devサーバーの多重起動は `.velite/` を破壊する。** 起動そのものは禁止しないが、順番は必ず守ること。
 
-- **devサーバーを起動しない。** `npm run dev` / `next dev` / preview_start はすべて禁止（settings.json の deny でブロック済み）
-- **`npx velite` を実行しない。** `velite.config.ts` は `clean: true` のため、`.velite/` を消してから作り直す。他セッションのdevサーバーが即座に500になる
+1. **起動前に必ず既存を確認する。** `lsof -nP -iTCP -sTCP:LISTEN | grep node`
+2. **すでに立っていたら起動しない。** そのポートを `curl` やブラウザツールで見る
+3. **1つも立っていないときに限り、1つだけ起動してよい。** `npm run dev`（またはpreview_startの `next-dev`）。2つ目は絶対に起動しない
+4. 起動したら、そのセッションの間は使い回す。他セッションが使うので、止めるかどうかは任意
+
+- **`npx velite` を単独で実行しない。** `velite.config.ts` は `clean: true` のため、`.velite/` を消してから作り直す。他セッションのdevサーバーが即座に500になる
 - **`npm run build` も避ける。** 中身は `velite && next build` で、上と同じ破壊が起きる
 
 理由: Veliteのwatchはロックも一時ファイルも使わず `.velite/chapters.json`（約10MB）を直接 `writeFile` する。2プロセスが同時に書くとJSONが壊れ、`Cannot parse JSON: Extra data` で全ページが500になる。MDXを直しても直らない。
 
-復旧（人間が実行する）: 余分な `next-server` プロセスを止めてから `npx velite build --clean` を1回。
+復旧: 余分な `next-server` プロセスを止めてから `npx velite build --clean` を1回（`npx velite` はdenyのまま。人間が実行する）。
 
 ## 表示確認のしかた
 
 1. `lsof -nP -iTCP -sTCP:LISTEN | grep node` で既存のdevサーバーを探す
-2. 立っていれば `curl http://localhost:<port>/...` やブラウザツールでそこを見る（起動はしない）
-3. 立っていなければ**表示確認はスキップし、その旨を報告して終える**。勝手に起動しない
+2. 立っていれば `curl http://localhost:<port>/...` やブラウザツールでそこを見る（**起動しない**）
+3. 立っていなければ、上のルールに従って1つだけ起動して確認する
 
-サーバーなしでできる検証は積極的に行う。
+サーバーなしでできる検証は先に済ませておく。
 
 - `npx tsc --noEmit`
 - 記事中の外部URLを `curl -s -o /dev/null -w "%{http_code}" -L <url>` で全件200確認

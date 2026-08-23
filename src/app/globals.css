@@ -172,41 +172,64 @@
 
 /* ロゴと同じ「太い丸枠＋あえて途切れる線」。
    - 枠線は疑似要素で描き、maskで上辺1か所・下辺2か所を抜いて手描きの抜けを作る
-   - ライムの影はbox-shadow（枠線の外側にしか描かれない）で、白地に重ならないようにする */
+   - 抜き口は丸く（ロゴSVGの stroke-linecap="round" と同じ見え方）。
+     抜き（--cut）を引いたあと、線の端に線幅ぶんの円（--cap）を足し戻している
+   - ライムの影はbox-shadow（枠線の外側にしか描かれない）で、白地に重ならないようにする
+   - maskが効かない古いブラウザでは、途切れなしの枠として出るだけで崩れない */
 .logo-frame {
   /* 枠線の色。ロゴSVGの枠と同じ#444444（本文のinkだと黒が強すぎる） */
   --logo-frame-line: #444444;
+  /* 線幅。周りのカード（border-ink/10）より強くなりすぎない太さにする */
+  --logo-frame-w: 2px;
+  --logo-frame-offset: 3px 4px;
   position: relative;
   background: #fff;
   box-shadow:
-    4px 5px 0 0 var(--color-brand-lime-soft),
-    4px 5px 0 3px var(--logo-frame-line);
+    var(--logo-frame-offset) 0 0 var(--color-brand-lime-soft),
+    var(--logo-frame-offset) 0 var(--logo-frame-w) var(--logo-frame-line);
+}
+
+@media (min-width: 48rem) {
+  .logo-frame {
+    --logo-frame-w: 2.5px;
+    --logo-frame-offset: 4px 5px;
+  }
 }
 
 .logo-frame::after {
-  --logo-frame-layer: linear-gradient(#000 0 0);
+  --cut: linear-gradient(#000 0 0);
+  --cap: radial-gradient(circle closest-side, #000 96%, transparent);
+  --w: var(--logo-frame-w);
+  /* 抜きの幅と位置。位置は角のカーブを外して、短い見出しでも直線部に収まるようにする */
+  --g1: 11px;
+  --g2: 10px;
+  --g3: 8px;
   content: '';
   position: absolute;
   inset: 0;
-  border: 3px solid var(--logo-frame-line);
+  border: var(--w) solid var(--logo-frame-line);
   border-radius: inherit;
   pointer-events: none;
-  -webkit-mask-image: var(--logo-frame-layer), var(--logo-frame-layer),
-    var(--logo-frame-layer), var(--logo-frame-layer);
-  mask-image: var(--logo-frame-layer), var(--logo-frame-layer),
-    var(--logo-frame-layer), var(--logo-frame-layer);
-  /* 抜き幅はmin()で頭打ちにして、短い見出しでも穴が大きくなりすぎないようにする。
-     位置は角のカーブを外して、途切れが「線の抜け」に見えるところに置く */
-  -webkit-mask-size: 100% 100%, min(18px, 7%) 10px, min(15px, 6%) 10px,
-    min(11px, 5%) 10px;
-  mask-size: 100% 100%, min(18px, 7%) 10px, min(15px, 6%) 10px, min(11px, 5%) 10px;
-  -webkit-mask-position: 0 0, 30% 0, 56% 100%, 78% 100%;
-  mask-position: 0 0, 30% 0, 56% 100%, 78% 100%;
-  -webkit-mask-repeat: no-repeat;
+  mask-image: var(--cap), var(--cap), var(--cap), var(--cap), var(--cap),
+    var(--cap), var(--cut), var(--cut), var(--cut), var(--cut);
+  mask-size: var(--w) var(--w), var(--w) var(--w), var(--w) var(--w),
+    var(--w) var(--w), var(--w) var(--w), var(--w) var(--w), var(--g1) 10px,
+    var(--g2) 10px, var(--g3) 10px, 100% 100%;
+  /* 円は抜きの左右の端に合わせる。%の基準がレイヤーサイズで変わるぶんをcalcで補正 */
+  mask-position:
+    calc(30% - 0.3 * (var(--g1) - var(--w)) - var(--w) / 2) 0,
+    calc(30% - 0.3 * (var(--g1) - var(--w)) + var(--g1) - var(--w) / 2) 0,
+    calc(52% - 0.52 * (var(--g2) - var(--w)) - var(--w) / 2) 100%,
+    calc(52% - 0.52 * (var(--g2) - var(--w)) + var(--g2) - var(--w) / 2) 100%,
+    calc(70% - 0.7 * (var(--g3) - var(--w)) - var(--w) / 2) 100%,
+    calc(70% - 0.7 * (var(--g3) - var(--w)) + var(--g3) - var(--w) / 2) 100%,
+    30% 0,
+    52% 100%,
+    70% 100%,
+    0 0;
   mask-repeat: no-repeat;
-  /* 1枚目から残り3枚（＝抜き穴）を差し引く。xorは旧WebKit向けの綴り */
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  /* 下から: 全面 → 抜き3枚を差し引く → 端の円6枚を足す */
+  mask-composite: add, add, add, add, add, add, exclude, exclude, exclude, add;
 }
 
 .app-font {
