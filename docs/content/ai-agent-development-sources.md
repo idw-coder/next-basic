@@ -25,6 +25,68 @@
 
 `確認日` は URL の実在と内容の一致を最後に確かめた日。
 
+### 第1章 エージェントとは何か（`what-is-an-agent.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| **ツールがなければテキストを返すことしかできない**／エージェントループ（コンテキストを集める→行動する→結果を確かめる）／ツールの5分類／「失敗テストを直して」の6ステップ例／**エージェンティック・ハーネス**という位置づけ／いつでも割り込める | [How Claude Code works（公式）](https://code.claude.com/docs/en/how-claude-code-works) | 2026-08-24 | ツール分類は増減しうる。**ループとハーネスの概念自体は安定** |
+| ワークフローとエージェントの区別 | [Building Effective Agents（Anthropic, 2024-12-19）](https://www.anthropic.com/engineering/building-effective-agents) | 2026-08-24 | 12章と共通の依存 |
+| AIツール84% vs エージェント31% | [AI｜2025 Stack Overflow Developer Survey](https://survey.stackoverflow.co/2025/ai) | 2026-08-24 | 2章と共通の依存 |
+
+### 第2章 データで見る導入状況（`adoption-data.mdx`）— **要更新**
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| エージェント業務利用31%（毎日14.1%）／導入予定なし37.9%／不信46%・信頼33%・強く信頼3.1%／AI設問回答 33,662人 | [AI｜2025 Stack Overflow Developer Survey](https://survey.stackoverflow.co/2025/ai) | 2026-08-24 | **年次更新。次版が出たら全面差し替え** |
+| 回答者49,000超・177カ国・62設問・314技術／AIツール84%／肯定的な感情60%（従来70%超から低下） | [2025 Stack Overflow Developer Survey](https://survey.stackoverflow.co/2025/) | 2026-08-24 | **調査年の確認はこのページで行う** |
+| **2026-08-24時点で公式サイトの調査年は2011〜2025。2026年版は未公開** | 同上（一覧を直接確認） | 2026-08-24 | **本章の「年号詐称」の節はこの事実に依存している。2026年版が公開されたら節を書き換える**（実例としては残せるが、時点表記を更新すること） |
+| 日常利用90%（+14pt）・中央値1日2時間・約5,000人 | [DORA 2025](https://dora.dev/dora-report-2025/) | 2026-08-24 | 年次更新 |
+| AI日常利用85%・いずれか62%・24,534人/194カ国 | [JetBrains DevEco 2025](https://blog.jetbrains.com/research/2025/10/state-of-developer-ecosystem-2025/) | 2026-08-24 | 年次更新 |
+| コーディングエージェントが5か月で100万超のPR | [Octoverse 2025（GitHub）](https://github.blog/news-insights/octoverse/octoverse-a-new-developer-joins-github-every-second-as-ai-leads-typescript-to-1/) | 2026-08-24 | 年次更新。**唯一の行動ログ系なので枠は必ず維持** |
+
+### 第3章 体感と実測（`perception-vs-measurement.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| 16人・246タスク・2025年2〜6月／**予測+24%・体感+20%・実測-19%** | [METR, 2025-07-10](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/) | 2026-08-24 | 発表済み研究なので数値は不変 |
+| **著者自身による実験デザインの見直し**／選択バイアス（30〜50%がタスクを提出しない・辞退増・時給150→50ドル）／後期推定 -18%（CI -38%〜+9%）と -4%（CI -15%〜+9%）／「非常に弱い証拠」 | [METR, 2026-02-24](https://metr.org/blog/2026-02-24-uplift-update/) | 2026-08-24 | **METRが再設計後の結果を出したら差し替え。**本章の主張の要なので必ず追う |
+| AIは増幅器 | [Announcing the 2025 DORA Report](https://cloud.google.com/blog/products/ai-machine-learning/announcing-the-2025-dora-report) | 2026-08-24 | 18章と共通の依存 |
+
+### 第4章 実行環境（`execution-environment.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| **クラウドVMはローカルのチェックアウトではなくGitHubのリモートをクローンする**／バンドル送信の制約（100MB未満・untracked除外・push不可）／往復は片方向／teleportの4条件／隔離VM・ネットワーク既定制限・監査ログ・VM回収／**ネットワーク無効でもAnthropic APIとは通信できるためデータが出る可能性がある**／IP許可リストで認証エラー／GitHub以外はpush不可 | [Use Claude Code on the web（公式）](https://code.claude.com/docs/en/claude-code-on-the-web) | 2026-08-24 | **リサーチプレビュー段階の機能。**フラグ名・制約とも変わりやすい |
+| 環境設定（ネットワーク・環境変数・セットアップスクリプト） | [Configure cloud environments（公式）](https://code.claude.com/docs/en/cloud-environments) | 2026-08-24 | 設定項目の増減 |
+| クラウド実行時の隔離と認証情報の保護 | [Security（Claude Code 公式）](https://code.claude.com/docs/en/security) | 2026-08-24 | 6章と共通の依存 |
+| 日本語圏では並列化の主流がローカルworktreeであること | 2026-08-23 時点の調査（Qiita/Zenn の worktree 記事群） | 2026-08-23 | **本文でColumnとして「現時点では先行した話」と明記済み。**クラウド事例が増えたら書き換える |
+
+### 第6章 シークレット（`secrets.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| **本物の認証情報をサンドボックスに置かず、スコープ付きの資格情報をプロキシが実トークンに変換する**／pushは現在の作業ブランチに限定／全操作を監査記録／認証情報の保存場所 | [Security（Claude Code 公式）](https://code.claude.com/docs/en/security) | 2026-08-24 | 設計自体は安定。実装の詳細は変わりうる |
+| **セッションにはコードと認証情報が含まれうるので共有前に確認**／個人向けプランの公開範囲とアクセス権検証の既定値 | [Use Claude Code on the web（公式）](https://code.claude.com/docs/en/claude-code-on-the-web) | 2026-08-24 | **既定値は変わりやすい。**公開範囲の記述は毎回確認 |
+| 読み取りに対する禁止ルール | [Configure permissions（Claude Code 公式）](https://code.claude.com/docs/en/permissions) | 2026-08-24 | 5章・10章と共通の依存 |
+| Git管理外ファイルをworktreeへコピーする仕組み | [Run parallel sessions with worktrees（公式）](https://code.claude.com/docs/en/worktrees) | 2026-08-24 | 7章と共通の依存 |
+
+### 第7章 並列実行（`parallel-agents.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| worktreeの定義／**共有されるもの（`.git`・プロジェクトスコープのプラグイン・権限の承認）**／権限承認はメインチェックアウトに保存されリポジトリ全体に効く／**新しいチェックアウトなのでGit管理外ファイルと依存が無い**／後片付けの挙動と**非対話実行では片付かない** | [Run parallel sessions with worktrees（Claude Code 公式）](https://code.claude.com/docs/en/worktrees) | 2026-08-24 | **共有物の一覧が増減しうる。**権限承認の保存先は過去に変更履歴あり |
+| worktreeのコマンド | [git worktree（Git 公式）](https://git-scm.com/docs/git-worktree) | 2026-08-24 | ほぼ不変 |
+| 並列作業の増加による認知負荷 | [Claude Code導入3ヶ月後の社内アンケート（2025-10-23）](https://zenn.dev/readyfor_blog/articles/a1cfd81a562e07) | 2026-08-24 | 15章・18章と共通の依存 |
+| **共有生成物の破壊の実例** | 本リポジトリの `AGENTS.md`（Veliteが `.velite/` を直接書き込むため並行実行でJSONが壊れる） | 2026-08-24 | **自前の事例。**リポジトリ側の構成が変わったら書き換える |
+
+### 第8章 待たない設計（`async-and-notification.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| フックのイベント一覧／`Notification` の種類（権限確認待ち・アイドル・入力要求・完了）／`Stop`・`SubagentStop` の挙動／非同期フックの指定／端末通知の出力 | [Hooks reference（Claude Code 公式）](https://code.claude.com/docs/en/hooks) | 2026-08-24 | **イベント名と種類名は増減する。**本文で挙げた3イベントは中核なので比較的安定 |
+| セッションがブラウザを閉じても継続／モバイルから確認／**PR自動修正の3分岐**／**自動応答は自分のGitHubアカウントで投稿され、コメント起動の自動化を誘発しうる**／**ベースブランチ前進によるコンフリクトはwebhookが出ないので反応できない** | [Use Claude Code on the web（公式）](https://code.claude.com/docs/en/claude-code-on-the-web) | 2026-08-24 | 4章と共通の依存。**副作用の警告は特に重要なので削らない** |
+| スケジュール実行・イベント起点の自動実行 | [Routines（Claude Code 公式）](https://code.claude.com/docs/en/routines) | 2026-08-24 | 機能名が変わりうる |
+
 ### 第5章 権限設計とサンドボックス（`permissions-and-sandbox.mdx`）
 
 | 主張 | 出典 | 確認日 | 何が変わったら見直すか |
@@ -76,6 +138,38 @@
 | ツールポイズニングの定義と攻撃の流れ | [MCP Tool Poisoning（OWASP）](https://owasp.org/www-community/attacks/MCP_Tool_Poisoning) | 2026-08-23 | OWASPの分類が変わったとき |
 | クライアントによって耐性に差がある／静的検証とパラメータ可視性が不十分 | [arXiv:2603.22489（2026-03）](https://arxiv.org/abs/2603.22489) | 2026-08-23 | クライアント側の防御が改善されたら記述を弱める |
 
+### 第14章 検証ループ（`verification-loop.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| エージェントは終わったように見えたら止まる／検証手段の種類／指示の弱い例と強い例／停止を縛る4段階／**停止フックは連続8回ブロックで上書きされる**／証拠を出させる／レビュー役は指摘を出しすぎる | [Best practices for Claude Code（公式）](https://code.claude.com/docs/en/best-practices) | 2026-08-24 | **本章の依存が集中している。**8回という数値は実装依存で変わりうる |
+| フックは決定的、指示ファイルは助言 | [Get started with hooks（Claude Code 公式）](https://code.claude.com/docs/en/hooks-guide) | 2026-08-24 | フックのイベント名が変わったとき |
+| フックでツール入力を加工し出力を絞る実例 | [Manage costs effectively（Claude Code 公式）](https://code.claude.com/docs/en/costs) | 2026-08-24 | 17章と共通の依存 |
+
+### 第16章 評価とリグレッション（`evaluation.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| エージェント評価が通常のテストと違う理由／**結果と記録の区別**／経路ではなく結果を採点／**20〜50件から始める**／完璧なスイートを待つな／モデル採点の4つの注意／採点器のバグを疑う（42%→95%の例）／飽和の監視／評価駆動開発／体制 | [Demystifying evals for AI agents（Anthropic, 2026-01-09）](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) | 2026-08-24 | **本章はほぼこの1本に依存。**Anthropicが改訂・撤回したら全面見直し |
+| 成功基準の立て方 | [Define success criteria and build evaluations（Claude 公式）](https://platform.claude.com/docs/en/test-and-evaluate/develop-tests) | 2026-08-24 | ドキュメント構成の変更 |
+
+### 第17章 モデル選択とコスト（`model-and-cost.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| 毎リクエストで会話全体を送る／ツール利用ごとに追加のリクエスト／キャッシュ失効（1時間・5分）／**1人あたり稼働日13ドル・月150〜250ドル・90%が稼働日30ドル未満**／モデル階層の使い分け／思考は出力トークン課金／削減レバー7つ／**並列構成は約7倍**／使用量の内訳と10%フラグ | [Manage costs effectively（Claude Code 公式）](https://code.claude.com/docs/en/costs) | 2026-08-24 | **金額は最優先で再確認。**本文に「2026年8月時点」と明記済み。7倍という数値も実装依存 |
+| キャッシュは前方一致／1バイト変わると以降が無効 | [Prompt caching（Claude 公式）](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) | 2026-08-24 | 挙動自体は安定。有効期間の数値は変わりうる |
+| 単価そのもの | [Pricing（Claude 公式）](https://platform.claude.com/docs/en/about-claude/pricing) | 2026-08-24 | **本書には転記していない。**読者を誘導するリンクとしてのみ使用。`/docs/en/pricing` は404なのでこのパスを使う |
+
+### 第18章 チーム導入（`team-adoption.mdx`）
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| AIは増幅器／約5,000人＋100時間超の定性データ／内部プラットフォームの品質・ワークフローの明確さ・足並みが価値の源／**90%が少なくとも1つのプラットフォームを採用**／7つのチーム類型の存在 | [Announcing the 2025 DORA Report（2025-09-24）](https://cloud.google.com/blog/products/ai-machine-learning/announcing-the-2025-dora-report) | 2026-08-24 | **DORAは年次更新。**次版が出たら差し替え |
+| AIの効果を増幅する7つの能力が特定されている | [DORA AI Capabilities Model](https://dora.dev/research/ai/ai-capabilities-model/) | 2026-08-24 | **7つの名称はレポート本体（PDF）内にあり、Webページからは取得できなかった。**本文では名称を列挙していない。名称を載せるならPDFを取得して確認すること |
+| 検証段階での目減り | [ROI of AI-assisted Software Development（DORA）](https://dora.dev/ai/) | 2026-08-24 | 15章と共通の依存 |
+| 12名での生産性83%と負荷（並列66.7%・疲労42%・ストレス25%・品質ばらつき66.7%） | [Claude Code導入3ヶ月後の社内アンケート（2025-10-23）](https://zenn.dev/readyfor_blog/articles/a1cfd81a562e07) | 2026-08-24 | 15章と共通の依存 |
+
 ### 第15章 コードレビュー（`code-review.mdx`）
 
 | 主張 | 出典 | 確認日 | 何が変わったら見直すか |
@@ -98,6 +192,47 @@
 | GitHub Octoverse 2025 | Copilot coding agent が5か月で100万超のPR作成 | **唯一のアンケートでない行動ログ。**アンケートと対比させる材料 |
 | METR RCT（2025-07）と続報（2026-02） | 経験者が19%遅くなった／体感は20%高速。**2026年2月に実験デザイン見直しを公表** | **19%だけの引用は古い。**続報とセットでのみ使う |
 
+### 第19章 ツールの分類（`tool-landscape.mdx`）— **要更新**
+
+| 主張 | 出典 | 確認日 | 何が変わったら見直すか |
+| --- | --- | --- | --- |
+| **AGENTS.md 対応ツール23件の一覧**／6万超のプロジェクトで採用 | [agents.md](https://agents.md/) | 2026-08-24 | **半年ごとに一覧を取り直す。**掲載ツールは増減する |
+| 実行場所（ローカル／クラウド／リモート操作）と操作面の分離 | [How Claude Code works（公式）](https://code.claude.com/docs/en/how-claude-code-works) | 2026-08-24 | 概念は安定 |
+| MCPがツール接続の共通規約になっていること | [modelcontextprotocol.io](https://modelcontextprotocol.io/docs/getting-started/intro) | 2026-08-24 | 13章と共通の依存 |
+
+**方針** — この章では**製品の優劣・ランキングを書かない**。比較記事由来の順位付けは根拠が不透明なため一切採用していない。書いてあるのは「評価すべき7項目」という軸と、規約対応ツールの一覧のみ。
+
+### 第20章 チートシート（`cheatsheet.mdx`）— **要更新**
+
+本書各章の要約なので、**独自の出典はない**。参照しているのは以下で、いずれも該当章と共通の依存。
+
+- [How Claude remembers your project](https://code.claude.com/docs/en/memory)（200行の目安・具体性の指針）
+- [Configure permissions](https://code.claude.com/docs/en/permissions)（評価順）
+- [Hooks reference](https://code.claude.com/docs/en/hooks)（イベント）
+- [Best practices for Claude Code](https://code.claude.com/docs/en/best-practices)（検証手段）
+- [agents.md](https://agents.md/)
+
+**更新のしかた** — 各章を直したら、この章の該当箇所も直す。**この章だけ単独で更新しない**（本文と食い違うと最も害が大きい）。
+
+---
+
+## 公開作業の記録（2026-08-24 完了）
+
+`docs/books.md` の「デプロイ後の作業」1〜6の実施状況。
+
+| # | 項目 | 状態 |
+| --- | --- | --- |
+| 1 | テーマカラー（`src/lib/book-theme.ts`） | ✅ `stone` ＋ アイコン `Bot`。**`Bot` は `BookCard.tsx` と `HeaderNav.tsx` の両方の `iconMap` にも追加が必要だった**（片方だけだとフォールバックして別アイコンになる） |
+| 2 | 表示順（`BOOK_ORDER`） | ✅ 先頭に追加 |
+| 3 | NEWバッジ（`NEW_BOOK_SLUGS`） | ✅ 追加。一定期間後に外す |
+| 4 | クイズカテゴリ連携（`categoryToBookMap`） | ⏭️ **未実施**。対応するクイズカテゴリが存在しないため。カテゴリを作ったら追加する |
+| 5 | 検索サジェスト（`searchSuggestions.ts`） | ✅ 15語 |
+| 6 | トップページのお知らせ（`src/app/page.tsx` の `NEWS`） | ✅ 2026/08/24 で先頭に追加 |
+
+色の選定について: 既存23冊で未使用だったのは `gray` / `neutral` / `stone` のみだった（`sky`・`zinc`・`orange`・`blue`・`indigo` はすでに2冊ずつ使用）。表紙画像のテラコッタ系と馴染む `stone` を選択。
+
+**検証** — `npx tsc --noEmit` は通過。**表示確認は未実施**（AGENTS.md の方針により devサーバーを起動していない）。
+
 ---
 
 ## 使わないと決めたもの
@@ -107,6 +242,8 @@
 | 除外したもの | 理由 |
 | --- | --- |
 | いいね1件のZenn記事（ガバナンス5判断軸） | 反応が乏しく、個人の設計案1本。内容の筋は通っていたが根拠として弱い |
+| DORA 2025の7つのチーム類型の**構成比**（Harmonious high-achievers 20%、Constrained by process 17% など） | 二次記事には割合が出ているが、一次ページからは類型名2つしか確認できず、割合は裏が取れなかった。18章では「類型が複数ある」という事実だけを使い、数値は載せていない。載せるならレポート本体を取得すること |
+| DORA AI Capabilities Model の7つの能力の**名称** | モデルのWebページには名称が載っておらず、レポート本体（PDF）内にある。18章では「7つの能力が特定されている」とだけ書いている |
 | 「1,899個のMCPサーバーのうち7.2%に脆弱性、5.5%にツールポイズニング」 | 二次記事で広く引用されているが**分母が食い違う**。ツールポイズニングの割合は1,899ではなく73サーバーを対象にしたスキャンの結果らしく、一次情報を特定できなかった。13章では数値を使わず、OWASPの定義とarXivの定性的知見だけを引いている |
 | 「Stack Overflow 2026調査」を名乗る二次記事 | 2026-08時点で2026年版は未公開。2025年の数字の年号詐称 |
 | 製品名の優劣（「今はAが最強」） | 数か月で覆る。19章で分類軸として扱う |

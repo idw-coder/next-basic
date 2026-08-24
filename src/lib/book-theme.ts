@@ -279,6 +279,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-green-700',
     iconName: 'Hash',
   },
+  'ai-agent-development': {
+    cardBg: 'bg-stone-50',
+    iconBg: 'bg-stone-100',
+    iconText: 'text-stone-700',
+    accent: 'text-stone-700',
+    accentHover: 'group-hover:text-stone-800',
+    accentBg: 'bg-stone-600',
+    badgeBg: 'bg-stone-50',
+    badgeText: 'text-stone-700',
+    iconName: 'Bot',
+  },
 };
 
 /** bookSlug に対応するテーマを返す。未登録の本は DEFAULT_THEME（amber）。 */

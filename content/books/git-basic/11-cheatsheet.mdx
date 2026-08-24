@@ -239,6 +239,7 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | コミットメッセージを打ち間違えた | `git commit --amend`（push前なら） |
 | 別のブランチで作業すべきだった | `git stash` → ブランチ切替 → `git stash pop` |
 | 直前のコミットをなかったことに（変更は残す） | `git reset --soft HEAD^` |
+| pushしたコミットを取り消したい | `git reset --soft HEAD^` → 再commit → `git push --force-with-lease`（[第8章](/books/git-basic/08-remote-sync)） |
 | 公開済みのコミットを取り消したい | `git revert コミットID` |
 | `.env` など機密ファイルをコミットした | `git rm --cached .env` → `.gitignore` に追記 |
 | 間違えてリセットする前に戻りたい | `git reflog` で探して `git reset --hard コミットID` |

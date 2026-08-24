@@ -309,6 +309,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/08/24',
+    text: '教科書「AIエージェント開発の実務 — 原則と手札を分けて覚える」を公開しました。実行環境・権限設計・コンテキスト設計・検証ループ・チーム導入まで全20章です',
+    isNew: true,
+    link: '/books/ai-agent-development',
+  },
+  {
     date: '2026/08/20',
     text: '教科書「C#入門 — .NETで動く言語の基礎」を公開しました。型・クラス・インターフェースからLINQ・null安全・非同期処理まで全14章です',
     isNew: true,

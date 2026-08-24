@@ -1,6 +1,6 @@
 ---
 title: "リモートとの同期 — fetch・pull・pushを正しく使う"
-description: "ローカルとリモート（GitHub）を同期するコマンド、fetch・pull・pushの違いと使い分けを解説します。pullの内部動作、pull --rebase、push -uの意味まで踏み込みます。"
+description: "ローカルとリモート（GitHub）を同期するコマンド、fetch・pull・pushの違いと使い分けを解説します。pullの内部動作やpush -uの意味に加え、pushしてしまったコミットを reset --soft と --force-with-lease で取り消す手順まで踏み込みます。"
 order: 8
 ---
 
@@ -188,6 +188,75 @@ git push --force-with-lease origin feature/login
 `--force-with-lease` は、リモートの状態が「あなたが最後に確認したとき」と違っていたら失敗してくれます。誰かが後からpushしていたら、それを壊さずに済みます。
 
 **`--force` より `--force-with-lease`** を習慣にしてください。
+
+### push済みのコミットを取り消す
+
+pushする前なら `git commit --amend` でメッセージも中身も直せます。しかし**一度pushすると、リモート側にも同じコミットが残る**ので、ローカルを直すだけでは終わりません。ここでは、typo混じりのコミットをpushしてしまった状況を例に見ていきます。
+
+```
+local:  A --- B --- C（typo入り）  ← HEAD
+remote: A --- B --- C（typo入り）  ← origin/feature/login
+```
+
+やりたいのは「Cをなかったことにして、正しい内容でpushし直す」ことです。3ステップに分けて見ていきます。
+
+**1. コミットだけを巻き戻す**
+
+```bash
+git reset --soft HEAD^
+```
+
+`--soft` はHEADの位置を1つ前に戻すだけで、ステージングにも作業ディレクトリにも触りません。**Cの変更内容はステージに残ったまま**なので、そのまま直して再コミットできます。resetの3つのモードについては[第7章 取り消し操作の完全ガイド](/books/git-basic/07-undo)で詳しく扱っています。
+
+```
+local:  A --- B  ← HEAD（ステージにはCの差分が残っている）
+remote: A --- B --- C（typo入り）
+```
+
+**2. 直してコミットし直す**
+
+```bash
+git diff --cached          # ステージに何が残っているか確認
+# typoを修正する
+git add -A
+git commit -m "fix: 正しいメッセージ"
+```
+
+**3. リモートを上書きする**
+
+ここで普通に `git push` すると拒否されます。
+
+```
+! [rejected]        feature/login -> feature/login (non-fast-forward)
+```
+
+さきほどの `(fetch first)` と似ていますが、原因が違います。リモートが先に進んだのではなく、**あなたが履歴を書き換えたことでローカルとリモートが枝分かれした**ために、fast-forward（早送り）で追いつけなくなっているのです。リモート側のCを捨てさせる必要があるので、ここでforce pushの出番になります。
+
+```bash
+git push --force-with-lease origin feature/login
+```
+
+これでリモートも「Cのない、正しい履歴」に置き換わります。
+
+<Callout type="warning" title="fetch した直後の --force-with-lease は安全弁が効かない">
+`--force-with-lease` が比較しているのは、リモートのHEADと、あなたの手元にあるリモート追跡ブランチ `origin/feature/login` です。「自分が最後に見たときから変わっていないか」を確認している、と言い換えられます。
+
+ところが `git fetch` すると、このリモート追跡ブランチが最新に更新されます。他人のpushごと「自分が見た状態」として取り込まれてしまうため、直後の `--force-with-lease` はチェックを素通りします。`git fetch && git push --force-with-lease` のようにワンライナーで繋ぐと、実質 `--force` と同じ挙動になるので注意してください。
+</Callout>
+
+複数のコミットをまとめて取り消したいときは、`HEAD^` の部分を変えるだけです。`HEAD~N` はN個前のコミットを指し、`HEAD^` は `HEAD~1` と同じ意味です。
+
+```bash
+git reset --soft HEAD~3    # 直近3コミットを取り消して、変更はステージに残す
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+force pushって禁止だと思ってた…。使っていいときとダメなときの線引きはどこにあるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+**そのブランチを自分しか触っていないか**が判断ラインです。自分専用のfeatureブランチなら、履歴を書き換えても困る人はいません。逆に、他のメンバーがそのブランチから枝を切っていたり、`main` のような共有ブランチだったりする場合は、force pushではなく `git revert` で打ち消しコミットを積むほうが安全ですよ。
+</SpeechBubble>
 
 ## 3つのコマンドの使い分け
 

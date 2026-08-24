@@ -1,4 +1,21 @@
 export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
+  'ai-agent-development': [
+    'AGENTS.md',
+    'CLAUDE.md',
+    'MCP',
+    'サンドボックス',
+    '権限',
+    'プロンプトインジェクション',
+    'コンテキスト',
+    'worktree',
+    '並列実行',
+    'フック',
+    '検証ループ',
+    'コードレビュー',
+    'eval',
+    'トークン',
+    'プロンプトキャッシュ',
+  ],
   csharp: [
     'LINQ',
     'async/await',

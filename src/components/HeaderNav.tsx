@@ -34,6 +34,7 @@ import {
   TestTube2,
   Database,
   Hash,
+  Bot,
   type LucideIcon,
 } from "lucide-react";
 import { createAvatar } from "@dicebear/core";
@@ -69,6 +70,7 @@ const bookIconMap: Record<string, LucideIcon> = {
   TestTube2,
   Database,
   Hash,
+  Bot,
 };
 
 export default function HeaderNav({ books }: HeaderNavProps) {
