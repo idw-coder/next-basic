@@ -1,0 +1,224 @@
+---
+title: 'Zodとは何か — TypeScriptの型が実行時に消える問題'
+description: 'TypeScriptの型はコンパイル後に消えるため、APIレスポンスやフォーム入力を型注釈だけでは守れません。Zodがその境界で何をしてくれるのか、スキーマ1つで検証と型の両方が手に入る仕組みを整理します。'
+order: 1
+draft: true
+---
+
+TypeScriptで書いているのに、実行したら `Cannot read properties of undefined` で落ちた——という経験はないでしょうか。しっかり型を付けたはずなのに、なぜ実行時に壊れるのか。
+
+答えは単純で、**TypeScriptの型はビルドの時点で消えてしまう**からです。Zodは、その消えたあとの世界で「本当にその形をしているか」を確かめるためのライブラリです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+APIのレスポンスにちゃんと `User` 型を付けたのに、実行したらundefinedで落ちたんだけど…型を付けた意味って何だったの？
+</SpeechBubble>
+
+---
+
+## TypeScriptの型は実行時には残らない
+
+TypeScriptのコードは、ビルド時に型情報をすべて取り除かれてJavaScriptになります。型チェックのコードが1行も残らない、というのがポイントです。
+
+```ts
+// 書いたコード（TypeScript）
+type User = { id: number; name: string };
+
+function greet(user: User) {
+  return `こんにちは、${user.name}さん`;
+}
+```
+
+```js
+// 実行されるコード（JavaScript）— 型はどこにもない
+function greet(user) {
+  return `こんにちは、${user.name}さん`;
+}
+```
+
+つまり型は**自分が書いたコードの内側だけ**を守る仕組みです。プログラムの外から届いたデータには、この安全ネットが届きません。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["自分で書いたコード"] -->|tscが検査する| B["ビルド"]
+    B --> C["JavaScript\n型は消えている"]
+    D["APIレスポンス"] -->|誰も検査しない| C
+    E["フォーム入力"] -->|誰も検査しない| C
+    F["環境変数"] -->|誰も検査しない| C
+`}
+/>
+
+## 型注釈は「約束」であって「検査」ではない
+
+外から届くデータに型を付けるとき、私たちはよくこう書きます。
+
+```ts
+type User = { id: number; name: string };
+
+async function fetchUser(id: number): Promise<User> {
+  const res = await fetch(`/api/users/${id}`);
+  return (await res.json()) as User; // ← ここが問題
+}
+```
+
+`as User` は「このデータは `User` の形をしているはずだ」という**宣言**です。実際にそうなっているかは誰も確かめていません。APIが仕様変更で `name` を返さなくなっても、`null` を返してきても、この行は静かに通過します。そして画面を描画する段階になって初めて落ちます。
+
+<Marker>型注釈は「こうなっているはずだ」という約束であって、そうなっているかを確かめる処理ではありません。</Marker>
+
+守れる境界と守れない境界を整理すると、こうなります。
+
+| データの出どころ | 型注釈だけで守れるか | 理由 |
+| --- | --- | --- |
+| 自分のコード内で作った値 | 守れる | ビルド時にtscが検査する |
+| APIのレスポンス | 守れない | 実体はただのJSON。形が変わっても気づけない |
+| フォームの入力値 | 守れない | ユーザーは何でも入力できる |
+| URLのクエリパラメータ | 守れない | 手で書き換えられる |
+| 環境変数 | 守れない | 型は常に `string` か `undefined` |
+| `localStorage` / `JSON.parse` | 守れない | 戻り値は `any` 相当 |
+| DBから取得した行 | 守れない | スキーマ変更やNULLが素通りする |
+
+<Callout type="warning" title="`as` は検査ではなくtscを黙らせる操作">
+`as` を書くと型エラーは消えますが、消えたのはエラー表示だけで、データの中身は何も変わっていません。外部データに対する `as` は「ここは未検証です」という印だと考えてください。
+</Callout>
+
+## Zodがすること — 実行時に確かめて、型も付ける
+
+Zodでは、まず**スキーマ**（データの形の定義）を書きます。
+
+```ts
+import { z } from 'zod';
+
+const userSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.email(),
+});
+```
+
+このスキーマ1つから、2つのものが手に入ります。
+
+1. **実行時の検査** — 届いたデータがこの形をしているかを実際に確かめる
+2. **静的な型** — `z.infer` でTypeScriptの型を取り出せる
+
+```ts
+type User = z.infer<typeof userSchema>;
+// { id: number; name: string; email: string } と同じ型になる
+```
+
+先ほどの `fetchUser` をZodで書き直すと、こうなります。
+
+```ts
+async function fetchUser(id: number): Promise<User> {
+  const res = await fetch(`/api/users/${id}`);
+  const json = await res.json();
+
+  const result = userSchema.safeParse(json);
+  if (!result.success) {
+    // 形が違う時点で気づける。画面が壊れる前に対処できる
+    throw new Error('APIレスポンスの形式が想定と違います');
+  }
+
+  return result.data; // ここでの型は User
+}
+```
+
+`safeParse` は検査結果をオブジェクトで返します。成功すれば `result.data` に**検査済みのデータ**が入り、その型は `User` として扱えます。「型を主張する」のではなく「確かめてから型が付く」という順番に変わったのが、この書き換えの本質です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ポイントは、型定義とバリデーションを二重に書かなくていいこと。`type User` を手で書いて、さらに検査用の `if` 文を手で書く——という重複が、スキーマ1つに片付くんだ。
+</SpeechBubble>
+
+### 二重管理がなくなる
+
+Zodを使わない場合、同じ「Userの形」の情報をコードの2か所に書くことになります。
+
+```ts
+// 1か所目: 型
+type User = { id: number; name: string; email: string };
+
+// 2か所目: 検査（手書き）
+function isUser(v: unknown): v is User {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as User).id === 'number' &&
+    typeof (v as User).name === 'string' &&
+    typeof (v as User).email === 'string'
+  );
+}
+```
+
+項目が1つ増えるたびに両方を直す必要があり、片方の修正漏れが起きます。Zodならスキーマだけを直せば、型も検査も同時に追従します。
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="チェックしている人のイラスト" maxWidth="300px" />
+
+## Zodを置く場所は「外との境目」
+
+Zodはアプリ内のすべてのオブジェクトに書くものではありません。**外から中へデータが入ってくる境目**に置きます。上の表で「守れない」となっていた場所が、そのまま置き場所になります。
+
+- APIのレスポンスを受け取った直後
+- リクエストのボディを受け取った直後（Route Handler、Server Action、Expressのハンドラなど）
+- フォームの送信値を受け取った直後
+- 環境変数を読み込むところ（起動時に1回）
+- `JSON.parse` や `localStorage` から値を復元したところ
+
+一度検査を通したあとは、アプリ内部では普通のTypeScriptの型として扱えます。境目で1回止める、というのが基本の考え方です。
+
+「なぜ検証が必要か」「フロントとサーバーのどちらで検証するか」といった設計面は [バリデーション設計 — どこで何を検証するか](/books/system-design/11-validation-design) で扱っています。この本はその「どう書くか」の部分を担当します。
+
+<Callout type="note" title="TypeScriptの型の基礎に不安がある場合">
+`z.infer` や `typeof` の読み方でつまずいたら、[TypeScript入門](/books/typescript) の[ジェネリクス](/books/typescript/07-generics)や[ユーティリティ型](/books/typescript/09-utility-types)の章が下地になります。Zodは型の仕組みをかなり使い込んだライブラリなので、型に慣れているほど読みやすくなります。
+</Callout>
+
+## この本が前提にするバージョン
+
+本書のコードは **Zod 4系（4.4.3）で実際に動かして確認**しています。
+
+<Callout type="warning" title="ネットの記事はv3のものが多く残っています">
+Zod 4は2025年7月に安定版が出ましたが、それ以前に書かれた記事はv3の書き方です。たとえばメールアドレスの検証は、v3では `z.string().email()`、v4では `z.email()` と書きます。v4でも `z.string().email()` は動きますが、型定義には「`z.email()` を使ってください」という非推奨の注記が付いています。
+
+新旧の書き方の対応は [Zod 3から4への移行](/books/zod/zod-v4-migration) にまとめます。検索で出てきたコードが動かないときは、まずバージョンの違いを疑ってください。
+</Callout>
+
+## よくある誤解
+
+### 「TypeScriptを使っているからバリデーションは要らない」
+
+この章の主題どおりです。型はビルド時に消えるため、実行時に届くデータには効きません。TypeScriptとZodは競合するものではなく、**担当する時間帯が違う**道具です。
+
+| | 効くタイミング | 守る対象 |
+| --- | --- | --- |
+| TypeScriptの型 | ビルド時（書いている最中） | 自分のコードの整合性 |
+| Zod | 実行時 | 外から届くデータ |
+
+### 「Zodを入れたら全部のオブジェクトに書かないといけない」
+
+境目だけで十分です。内部のロジックまでスキーマだらけにすると、記述量が増えるわりに得るものがありません。
+
+### 「フロントで検証しているからサーバーでは省略できる」
+
+フロントの検証は回避できるため、サーバー側の検証は省略できません。逆にフロント側を省略しても、体験が悪くなるだけで安全性は保たれます。詳しくは [バリデーション設計の章](/books/system-design/11-validation-design)を参照してください。
+
+## ちゃんと使うためのポイント
+
+- <Marker>TypeScriptの型はビルド時に消える。外から届くデータは型注釈では守れない</Marker>
+- 外部データへの `as` は検査ではなく、tscを黙らせているだけ
+- Zodはスキーマ1つから「実行時の検査」と「静的な型」の両方を作る
+- `safeParse` を通すと、型を主張するのではなく**確かめてから型が付く**
+- 置き場所はアプリ全体ではなく、外と中の境目
+
+---
+
+次の章では、実際にZodを **[インストールして動かす準備](/books/zod/install-and-setup)** をします。`strict` を有効にしていないとZodの型推論が正しく働かない、という落とし穴もここで扱います。
+
+## 参考リンク
+
+- [Zod 公式ドキュメント](https://zod.dev/) — スキーマの一覧とAPIリファレンス（英語）
+- [Basic usage - Zod](https://zod.dev/basics) — 公式の最小構成のチュートリアル（英語）
+- [Everyday Types - TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html) — 型注釈がビルド時のものであることを含む公式解説（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="型の基礎を4択クイズで確認して、Zodを読むための下地を固めよう"
+/>

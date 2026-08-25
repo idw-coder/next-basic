@@ -1,0 +1,221 @@
+---
+title: '文字列・数値・真偽値のスキーマ — 使える検証メソッド一覧'
+description: 'z.string()・z.number()・z.boolean()に用意されている検証メソッドを、引数と戻り値つきで整理します。メソッドをつなぐと新しいスキーマが返るという仕組みと、書く順番で結果が変わるケースも扱います。'
+order: 3
+draft: true
+---
+
+ここからは実際にスキーマを書いていきます。まずはすべての土台になる、単体の値を検証するスキーマからです。
+
+## スキーマは「作る」と「検証する」が別々
+
+`z.string()` を呼んだ時点では、まだ何も検証されません。返ってくるのは**検証の設計図**であるスキーマオブジェクトで、実際の検証は `parse` や `safeParse` を呼んだときに走ります。
+
+```ts
+const schema = z.string(); // この時点では何も起きない
+schema.safeParse('hello'); // ここで初めて検証される
+```
+
+そして、検証メソッドをつなぐと**新しいスキーマが返ります**。元のスキーマは書き換わりません。
+
+```ts
+const base = z.string();
+const strict = base.min(5);
+
+base.safeParse('ab'); // 成功 — baseは変わっていない
+strict.safeParse('ab'); // 失敗 — 5文字以上が必要
+```
+
+<Marker>検証メソッドは元のスキーマを変更せず、条件を足した別のスキーマを返します。</Marker>だから `z.string().min(3).max(10)` のようにつなげて書けますし、共通のスキーマを変数に置いて各所で条件を足す、という使い方もできます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+つなげて書けるのは分かったけど、`.min()` は何を返してるの？ 検証結果じゃないの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+返ってくるのは**スキーマ**だよ。検証結果が返るのは `parse` と `safeParse` だけ。ここを混同すると「`.min()` の戻り値をifで判定する」みたいなコードを書いてしまうから、最初に押さえておこう。
+</SpeechBubble>
+
+---
+
+## 文字列スキーマ
+
+**構文：** `z.string()`
+
+**戻り値：** 文字列スキーマ。`typeof v === 'string'` であることを検証する
+
+数値の `123` を渡すと失敗しますが、`"123"` は文字列なので通ります。空文字も通ることは [デフォルト挙動の章](/books/zod/default-behavior)のとおりです。
+
+### 長さ・形を検証するメソッド
+
+| メソッド | 引数 | 何を検証するか |
+| --- | --- | --- |
+| `.min(n, message?)` | `n`: 最小文字数 | `n` 文字以上か |
+| `.max(n, message?)` | `n`: 最大文字数 | `n` 文字以下か |
+| `.length(n, message?)` | `n`: 文字数 | ちょうど `n` 文字か |
+| `.regex(re, message?)` | `re`: 正規表現 | パターンに一致するか |
+| `.startsWith(s, message?)` | `s`: 文字列 | `s` で始まるか |
+| `.endsWith(s, message?)` | `s`: 文字列 | `s` で終わるか |
+| `.includes(s, message?)` | `s`: 文字列 | `s` を含むか |
+| `.nonempty(message?)` | なし | 1文字以上か（`.min(1)` と同じ） |
+
+**戻り値：** いずれも条件を追加した新しいスキーマ。第2引数の `message` を渡すと、失敗時のメッセージを差し替えられる
+
+```ts
+const password = z.string().min(8, '8文字以上で入力してください');
+
+password.safeParse('short').error.issues[0].message;
+// "8文字以上で入力してください"
+```
+
+<Callout type="warning" title="`.nonempty()` は空白だけの入力を通します">
+名前から「空を弾く」と読めますが、実体は `.min(1)` です。`"   "` は3文字なので通過します。未入力を弾きたい場合は次に説明する `.trim()` と組み合わせてください。
+</Callout>
+
+### 値を書き換えるメソッド
+
+検証ではなく、**値そのものを変換する**メソッドもあります。
+
+| メソッド | 効果 |
+| --- | --- |
+| `.trim()` | 前後の空白を削除する |
+| `.toLowerCase()` | 小文字にする |
+| `.toUpperCase()` | 大文字にする |
+
+**戻り値：** 変換を追加した新しいスキーマ。検証を通ると、変換後の値が `data` に入る
+
+```ts
+z.string().trim().parse('  hello  '); // "hello"
+z.string().toLowerCase().parse('ABC'); // "abc"
+```
+
+元の入力ではなく**戻り値が変換済み**である点に注意してください。この性質は次の章でもう一度扱います。
+
+### 書く順番で結果が変わる
+
+変換メソッドと検証メソッドは、**書いた順に上から実行されます**。順番を入れ替えると結果が変わります。
+
+```ts
+z.string().trim().min(1).safeParse('   ');
+// { success: false } — trimして "" になってから長さを見るので弾ける
+
+z.string().min(1).trim().safeParse('   ');
+// { success: true, data: "" } — 3文字あるので通過し、そのあとtrimされて空文字になる
+```
+
+<Marker>後者は「検証を通ったのに中身が空文字」という最悪の結果になります。変換は検証より先に書く、と覚えてください。</Marker>
+
+<Figure src="/images/plan_selection_man_color.png" alt="順番を選んでいる人のイラスト" maxWidth="300px" />
+
+---
+
+## 文字列フォーマットのスキーマ
+
+メールアドレスやURLのような「形式が決まった文字列」には、専用のスキーマが用意されています。Zod 4では**トップレベルの関数**として呼びます。
+
+| スキーマ | 検証する形式 |
+| --- | --- |
+| `z.email()` | メールアドレス |
+| `z.url()` | URL |
+| `z.uuid()` | UUID |
+| `z.iso.date()` | `2026-01-01` 形式の日付文字列 |
+| `z.iso.datetime()` | `2026-01-01T00:00:00Z` 形式 |
+| `z.iso.time()` | `12:30:00` 形式 |
+| `z.ipv4()` / `z.ipv6()` | IPアドレス |
+| `z.jwt()` | JWT |
+| `z.base64()` | Base64文字列 |
+| `z.nanoid()` / `z.ulid()` / `z.cuid2()` | 各種ID形式 |
+
+**戻り値：** 文字列スキーマ。`.min()` などの文字列メソッドをそのままつなげられる
+
+```ts
+const schema = z.email().max(255);
+```
+
+<Callout type="warning" title="v3の書き方は `z.string().email()` でした">
+記事で `z.string().email()` を見かけたらv3の書き方です。Zod 4.4.3でも動きますが、型定義には「`z.email()` を使ってください」という非推奨の注記が付いています。新しく書くコードではトップレベル版を使ってください。
+</Callout>
+
+---
+
+## 数値スキーマ
+
+**構文：** `z.number()`
+
+**戻り値：** 数値スキーマ。`NaN` と `Infinity` は弾かれる
+
+| メソッド | 引数 | 何を検証するか |
+| --- | --- | --- |
+| `.min(n)` / `.gte(n)` | `n`: 下限 | `n` 以上か |
+| `.max(n)` / `.lte(n)` | `n`: 上限 | `n` 以下か |
+| `.gt(n)` / `.lt(n)` | `n`: 境界値 | `n` より大きいか / 小さいか（`n` 自体は不可） |
+| `.int()` | なし | 整数か |
+| `.positive()` | なし | `0` より大きいか |
+| `.nonnegative()` | なし | `0` 以上か |
+| `.negative()` / `.nonpositive()` | なし | 負の数か / `0` 以下か |
+| `.multipleOf(n)` | `n`: 倍数の基準 | `n` の倍数か |
+| `.finite()` | なし | 有限の数値か |
+
+**戻り値：** いずれも条件を追加した新しいスキーマ
+
+境界の扱いは間違えやすいところです。実際の結果で並べます。
+
+| 書き方 | `0` を渡すと |
+| --- | --- |
+| `z.number().positive()` | ✗ 失敗 |
+| `z.number().nonnegative()` | 通る |
+| `z.number().min(0)` | 通る |
+
+<Callout type="info" title="個数や在庫数には `nonnegative()`">
+「マイナスは困るが0はありうる」という項目に `.positive()` を使うと、正当な `0` が弾かれます。数量・在庫・カウントの類は `.nonnegative()`（または `.min(0)`）が正解です。
+</Callout>
+
+---
+
+## その他の基本スキーマ
+
+| スキーマ | 通る値 | 主な用途 |
+| --- | --- | --- |
+| `z.boolean()` | `true` / `false` | フラグ。文字列の `"true"` は通らない |
+| `z.bigint()` | BigInt | 大きな整数 |
+| `z.date()` | `Date` オブジェクト | JSON由来の文字列は通らない |
+| `z.null()` | `null` のみ | union の部品として使う |
+| `z.undefined()` | `undefined` のみ | 同上 |
+| `z.any()` | 何でも | 検証を放棄する。型は `any` |
+| `z.unknown()` | 何でも | 検証しないが型は `unknown` のまま |
+| `z.never()` | 何も通らない | 「ここには値が来ないはず」の表明 |
+
+<Callout type="warning" title="`z.any()` は検証を無効化するのと同じ">
+`z.any()` を書くとその項目は素通りし、型も `any` になります。「とりあえず通しておく」ために置くと、そこだけ検証の網が破れます。中身を使わないなら `z.unknown()` にしておくと、少なくとも型のうえでは「そのままでは触れない値」として扱われます。
+</Callout>
+
+## よくあるハマりどころ
+
+### `.min()` の戻り値をifで判定してしまう
+
+`.min(3)` が返すのはスキーマであって検証結果ではありません。結果がほしいときは `parse` か `safeParse` を呼びます。
+
+### `.trim()` を後ろに書いて空文字が通る
+
+前述のとおりです。変換系は検証より先に書きます。
+
+### `z.boolean()` にフォームの値を渡して落ちる
+
+HTMLのフォームやURLクエリから届く値は文字列です。`"true"` は `z.boolean()` を通りません。文字列から真偽値に変換したい場合は `z.stringbool()` を使います（[変換の章](/books/zod/coercion-and-env)で扱います）。
+
+## ちゃんと使うためのポイント
+
+- 検証メソッドは**新しいスキーマ**を返す。元のスキーマは変わらない
+- <Marker>`.trim()` などの変換は検証より先に書く。順番で結果が変わる</Marker>
+- `.nonempty()` は `.min(1)` と同じで、空白だけの入力は通る
+- 数値の `0` を許すかどうかで `.positive()` と `.nonnegative()` を使い分ける
+- メールやURLはZod 4ではトップレベルの `z.email()` / `z.url()`
+
+---
+
+次の章では、作ったスキーマを実際に使う **[parseとsafeParseの違い](/books/zod/parse-and-safeparse)** を扱います。例外で落とすか、結果を受け取って自分で分岐するか——実務ではほぼ後者を使うことになります。
+
+## 参考リンク
+
+- [Defining schemas - Zod](https://zod.dev/api) — 全スキーマとメソッドの公式一覧（英語）
+- [正規表現 - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Regular_expressions) — `.regex()` に渡すパターンの書き方

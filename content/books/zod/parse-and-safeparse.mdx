@@ -1,0 +1,165 @@
+---
+title: 'parseとsafeParseの違い — 例外で落とすか結果で受けるか'
+description: 'Zodでスキーマを実行する4つのメソッドを整理します。parseは失敗時に例外を投げ、safeParseは結果オブジェクトを返します。どちらを使うべきかの判断基準と、戻り値を使わないと変換が反映されない落とし穴も扱います。'
+order: 4
+draft: true
+---
+
+スキーマを書いただけでは何も起きません。実際に値を通すには `parse` か `safeParse` を呼びます。同じ検証をしますが、**失敗したときの伝え方**がまったく違います。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+2つあるってことは使い分けがあるんだよね？ 名前的に safe の方が安全そうだけど、じゃあ parse はいつ使うの？
+</SpeechBubble>
+
+## parse — 失敗すると例外を投げる
+
+**構文：** `schema.parse(data)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `data` | 何でも（`unknown`） | 検証したい値 |
+
+**戻り値：** 検証を通った値。型はスキーマから推論された型になる。**失敗した場合は戻り値がなく、`ZodError` が throw される**
+
+```ts
+z.string().parse('hello'); // "hello"
+z.string().parse(123); // ZodError が throw される
+```
+
+成功時のコードが素直に書けるのが利点です。戻り値をそのまま使えて、分岐が要りません。裏を返すと、**失敗を処理したいなら `try` / `catch` で囲む必要があります。**
+
+```ts
+try {
+  const name = z.string().parse(input);
+  console.log(name);
+} catch (e) {
+  if (e instanceof z.ZodError) {
+    console.log(e.issues); // 何が不正だったかの配列
+  }
+  throw e; // Zod以外の例外は握りつぶさず投げ直す
+}
+```
+
+<Callout type="warning" title="catchで全部を握らない">
+`catch (e)` はZodError以外の例外もすべて捕まえます。ネットワークエラーやプログラムのバグまで「入力が不正」として処理してしまうと、原因の分からない不具合になります。`e instanceof z.ZodError` で判定し、それ以外は投げ直してください。
+</Callout>
+
+## safeParse — 結果をオブジェクトで返す
+
+**構文：** `schema.safeParse(data)`
+
+**戻り値：** 例外を投げず、結果オブジェクトを返す
+
+| 結果 | 中身 |
+| --- | --- |
+| 成功 | `{ success: true, data: 検証済みの値 }` |
+| 失敗 | `{ success: false, error: ZodError }` |
+
+```ts
+const result = z.string().safeParse(input);
+
+if (!result.success) {
+  // ここでは result.error が使える
+  return { message: '入力が不正です', issues: result.error.issues };
+}
+
+// ここから先、result.data は string として扱える
+console.log(result.data.toUpperCase());
+```
+
+`success` の値によって中身が変わる**判別可能なユニオン**になっているため、`if (!result.success)` で分岐すると、それ以降でTypeScriptが `result.data` の型を正しく絞り込みます。この仕組みについては [TypeScriptの絞り込み（narrowing）](/books/typescript/05-narrowing)の章が詳しいです。
+
+<Marker>成功と失敗で持っているプロパティが違うので、分岐する前に `result.data` を触ることはできません。型の側から順番を強制されます。</Marker>
+
+## 4つのメソッド
+
+非同期版を含めると4つあります。
+
+| メソッド | 戻り値 | 失敗時 |
+| --- | --- | --- |
+| `.parse(data)` | 検証済みの値 | `ZodError` を throw |
+| `.safeParse(data)` | `{ success, data }` または `{ success, error }` | 例外を投げない |
+| `.parseAsync(data)` | 検証済みの値の `Promise` | Promiseが reject される |
+| `.safeParseAsync(data)` | 結果オブジェクトの `Promise` | 例外を投げない |
+
+`.safeParseAsync()` には `.spa()` という短い別名もあります。
+
+## どちらを使うか
+
+判断の軸は「**その失敗をユーザーに伝えるのか、プログラムを止めるのか**」です。
+
+| 場面 | 使うもの | 理由 |
+| --- | --- | --- |
+| フォームの入力値 | `safeParse` | どの項目がなぜ不正かを画面に返す必要がある |
+| APIのリクエストボディ | `safeParse` | 400と一緒にエラー内容を返す |
+| APIレスポンスの検証 | `safeParse` | 落とさずリトライや代替表示に切り替えられる |
+| 起動時の環境変数 | `parse` | 設定が壊れているなら**起動させない方が安全** |
+| 内部で作った値の念のための検証 | `parse` | 失敗＝プログラムのバグなので例外でよい |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+迷ったら `safeParse` でいい。外から来たデータで例外を投げると、呼び出し側が `try` を書き忘れた瞬間にアプリごと落ちるからね。逆に環境変数みたいな「壊れてたら動かしちゃいけない」ものは、あえて `parse` で落とすのが正解になる。
+</SpeechBubble>
+
+<Figure src="/images/fork_suit_man_color.png" alt="分かれ道で選択する人のイラスト" maxWidth="300px" />
+
+## 非同期版が必要になるのは
+
+`refine` に非同期の関数（DBへの重複チェックなど）を渡した場合です。この場合、同期の `parse` を呼ぶとエラーになります。
+
+```ts
+const schema = z.string().refine(async (v) => await isUnique(v));
+
+schema.parse('abc');
+// $ZodAsyncError: Encountered Promise during synchronous parse. Use .parseAsync() instead.
+```
+
+エラーメッセージが「`.parseAsync()` を使え」と教えてくれるので、出たら差し替えれば済みます。非同期の検証そのものは [refineとtransform](/books/zod/refine-and-transform) の章で扱います。
+
+## 戻り値を使わないと変換が反映されない
+
+見落としやすい落とし穴です。`parse` と `safeParse` は、**検証を通った値を新しく作って返します**。元の変数は書き換わりません。
+
+```ts
+const input = { name: '  Alice  ' };
+const schema = z.object({ name: z.string().trim() });
+
+const result = schema.parse(input);
+
+result.name; // "Alice" — trim済み
+input.name; // "  Alice  " — 元のまま
+```
+
+オブジェクトの場合、返ってくるのは**別のオブジェクト**です（同じ参照ではありません）。`.trim()` や `.default()` を書いたのに効いていないように見えるときは、**元の変数を使い続けていないか**を確認してください。
+
+<Marker>検証したあとは、必ず戻り値（`result.data`）の方を使います。</Marker>
+
+## よくあるハマりどころ
+
+### `safeParse` の結果をそのまま使おうとする
+
+`safeParse` が返すのは検証済みデータそのものではなく、`success` を持つ結果オブジェクトです。`result.data` を取り出す必要があります。分岐を書かずに `result.data` へ触ろうとすると、TypeScriptがエラーで教えてくれます。
+
+### エラーをそのままユーザーに表示する
+
+`ZodError` のメッセージは既定では英語で、`Invalid input: expected string, received undefined` のような開発者向けの文言です。そのまま画面に出さず、項目ごとのメッセージに整形してください。方法は [エラーメッセージの日本語化](/books/zod/error-handling) の章で扱います。
+
+### 失敗したときだけログを出して処理を続ける
+
+`safeParse` は例外を投げないため、**失敗しても書き忘れると処理が続きます**。`if (!result.success)` の中で必ず `return` するか、エラーを投げるかを決めてください。「安全」なのは例外が飛ばないことであって、不正なデータが安全になるわけではありません。
+
+## ちゃんと使うためのポイント
+
+- `parse` は失敗時に `ZodError` を throw、`safeParse` は結果オブジェクトを返す
+- <Marker>外から来たデータは `safeParse`、起動時の設定は `parse` が基本</Marker>
+- `try` / `catch` で受けるときは `e instanceof z.ZodError` で判定する
+- 非同期の `refine` を使うなら `parseAsync` / `safeParseAsync`
+- 検証後は元の変数ではなく**戻り値**を使う。変換は戻り値にだけ反映される
+
+---
+
+次の章では、ここまで何度か顔を出した「空文字は通るのか」「`null` と `undefined` はどちらが弾かれるのか」を **[デフォルト挙動の早見表](/books/zod/default-behavior)** としてまとめます。迷ったときに開く章です。
+
+## 参考リンク
+
+- [Parsing data - Zod](https://zod.dev/basics) — parse系メソッドの公式解説（英語）
+- [try...catch - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/try...catch) — 例外処理の基本と `instanceof` による分岐

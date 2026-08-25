@@ -1,0 +1,152 @@
+---
+title: 'Zodのインストールとtsconfig設定 — strictが必須な理由'
+description: 'Zodの導入手順と、動かす前に確認しておきたいtsconfigの設定を整理します。strictが無効だと`.optional()`や`.nullable()`の型推論が事実上無視される、という落とし穴も実例で確認します。'
+order: 2
+draft: true
+---
+
+Zodの導入自体は1コマンドで終わります。ただし、**`tsconfig.json` の設定次第でZodの型推論が働かなくなる**という落とし穴があるので、この章では導入とあわせてそこまで確認します。
+
+## インストール
+
+```bash
+npm install zod
+```
+
+`zod` は開発時だけでなく実行時にも動くライブラリなので、`-D`（devDependencies）ではなく**通常の依存関係**に入れます。バリデーションは本番のコードで実行されるためです。
+
+入ったバージョンを確認します。
+
+```bash
+npm ls zod
+```
+
+```
+next-basic@0.1.0
+└── zod@4.4.3
+```
+
+<Callout type="warning" title="`4.x` であることを確認してください">
+本書はZod 4系を前提にしています。`3.x` が入っている場合、`z.email()` のような本書の書き方はエラーになります。既存プロジェクトで3系が入っているときの進め方は [Zod 3から4への移行](/books/zod/zod-v4-migration) で扱います。
+</Callout>
+
+## 動作確認
+
+TypeScriptのファイルを1つ作って、スキーマを定義して通してみます。
+
+```ts
+import { z } from 'zod';
+
+const schema = z.string();
+
+console.log(schema.safeParse('hello')); // { success: true, data: 'hello' }
+console.log(schema.safeParse(123)); // { success: false, error: ... }
+```
+
+`import { z } from 'zod'` が基本形です。ESM（`import`）でもCommonJS（`require`）でも動くので、Next.jsでもNode.jsのスクリプトでもそのまま使えます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`z` って何の略なんだろう…毎回 `z.` から書くのが決まりなの？
+</SpeechBubble>
+
+`z` はZod本体をまとめた名前空間（namespace）です。`z.string()`、`z.object()` のようにスキーマを作る関数がすべてこの下にぶら下がっています。慣習として `z` という名前で読み込むのが公式ドキュメントを含めた標準で、他の名前にする理由はほぼありません。
+
+## strictが無効だと型推論が効かない
+
+ここがこの章の本題です。`tsconfig.json` の `strict` が無効だと、**Zodが正しい型を出しているのに、TypeScript側がその型を無視します。**
+
+次のスキーマを見てください。
+
+```ts
+const schema = z.object({
+  name: z.string(),
+  nickname: z.string().optional(), // undefined かもしれない
+  bio: z.string().nullable(), // null かもしれない
+});
+
+type T = z.infer<typeof schema>;
+// { name: string; nickname?: string | undefined; bio: string | null }
+```
+
+`nickname` は `string | undefined`、`bio` は `string | null` です。これを `string` として扱おうとすると、当然エラーになってほしいところです。
+
+```ts
+declare const t: T;
+
+const check: string = t.nickname; // string | undefined を string に入れている
+const check2: string = t.bio; // string | null を string に入れている
+```
+
+同じコードを `strict` の設定だけ変えて `tsc --noEmit` にかけると、結果がはっきり分かれます。
+
+| `strict` | 結果 |
+| --- | --- |
+| `true` | `Type 'string \| undefined' is not assignable to type 'string'.` などのエラーで止まる |
+| `false` | **エラーなし。そのまま通る** |
+
+<Marker>`strict: false` では `null` と `undefined` がすべての型に代入できてしまうため、Zodが `string | undefined` と正しく推論しても、その情報が意味を持ちません。</Marker>
+
+つまりZodを入れても、「検証は通ったのに `undefined` を触って落ちる」という事故がそのまま残ります。せっかくスキーマから型を作っている意味が半分失われるので、**Zodを使うプロジェクトでは `strict: true` が実質的な前提条件**だと考えてください。
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "strict": true
+  }
+}
+```
+
+<Callout type="info" title="新規プロジェクトなら大抵はもう有効">
+`create-next-app` や `npm create vite@latest` で作ったプロジェクトは、最初から `"strict": true` が入っています。確認が必要なのは、古いプロジェクトや、途中でTypeScriptを導入したプロジェクトです。
+</Callout>
+
+<Figure src="/images/search_woman_color.png" alt="設定を確認している人のイラスト" maxWidth="300px" />
+
+### strictを今すぐ有効にできない場合
+
+既存プロジェクトで `strict: true` にすると、既存コードのエラーが大量に出ることがあります。その場合は、まず `strictNullChecks` だけを有効にする方法があります。`null` と `undefined` の扱いを厳しくするのがこのオプションで、Zodの型推論に効くのは主にここです。
+
+```json
+{
+  "compilerOptions": {
+    "strictNullChecks": true
+  }
+}
+```
+
+これも難しい場合、Zodの**実行時の検証は問題なく働きます**。効かなくなるのは「検証済みデータをその後の型で守る」部分だけです。導入をやめる理由にはなりませんが、片翼で飛んでいる状態だと理解しておいてください。
+
+## インポートの種類
+
+`zod` パッケージは、用途別に複数の入り口を持っています。普段使うのは1行目だけですが、記事やIssueで見かけたときに迷わないよう一覧にしておきます。
+
+| 書き方 | 中身 |
+| --- | --- |
+| `import { z } from 'zod'` | 標準。Zod 4の通常版 |
+| `import { z } from 'zod/mini'` | 関数型スタイルの軽量版。バンドルサイズを削りたい場合の選択肢 |
+| `import { z } from 'zod/v3'` | 同じパッケージに同梱されている旧v3。移行期間中に併存させるためのもの |
+| `import { z } from 'zod/v4'` | `'zod'` と同じもの。移行期の記事で明示的に書かれることがある |
+| `import { ja } from 'zod/locales'` | エラーメッセージの各言語版（日本語を含む） |
+
+<Callout type="note" title="`zod/v3` が同梱されている意味">
+Zod 4のパッケージには、v3の実装もそのまま入っています。ライブラリ側がまだv3にしか対応していない場合でも、「アプリ側はv4、そのライブラリに渡す部分だけv3」という併存ができます。大きなプロジェクトを一気に書き換えなくてよい、という逃げ道です。
+</Callout>
+
+`zod/locales` を使うと、エラーメッセージを日本語に切り替えられます。設定方法は [エラーメッセージの日本語化](/books/zod/error-handling) の章で扱います。
+
+## ちゃんと使うためのポイント
+
+- `npm install zod` は devDependencies ではなく通常の依存に入れる（実行時に動くため）
+- `npm ls zod` で **4系が入っていること**を確認する
+- <Marker>`strict`（最低でも `strictNullChecks`）が無効だと、Zodの型推論は出ていても無視される</Marker>
+- 読み込みは `import { z } from 'zod'` が標準形
+
+---
+
+次の章では、いよいよスキーマを書きはじめます。**[文字列・数値・真偽値の基本スキーマ](/books/zod/primitive-schemas)** で、それぞれに用意されている検証メソッドを引数と戻り値つきで見ていきます。
+
+## 参考リンク
+
+- [Installation - Zod](https://zod.dev/) — 公式のインストール手順とバージョン方針（英語）
+- [tsconfig の strict - TypeScript公式](https://www.typescriptlang.org/tsconfig/#strict) — strictがまとめて有効にする各オプションの一覧（英語）
