@@ -1,0 +1,264 @@
+---
+title: 'Zodチートシート — スキーマ・メソッド・v3対応表'
+description: '本書の内容を作業中に引ける形へ圧縮しました。スキーマ一覧、デフォルト挙動の早見表、メソッド一覧、エラー処理の定型、Zod 3からの対応表、そのままコピーして使えるスニペット集をまとめています。'
+order: 17
+---
+
+最後の章は、読むためではなく**引くため**の章です。作業中に開く前提でまとめています。
+
+<Callout type="info" title="この章の内容はZod 4.4.3で確認しています">
+掲載しているコードと表は、実際に動かした結果に基づいています。バージョンが上がって挙動が変わる可能性はあるので、疑わしいときは手元で1行動かすのが最短です。
+</Callout>
+
+## スキーマ一覧
+
+| 書き方 | 通る値 |
+| --- | --- |
+| `z.string()` | 文字列（空文字も通る） |
+| `z.number()` | 数値（`NaN` と `Infinity` は不可） |
+| `z.boolean()` | `true` / `false` |
+| `z.date()` | `Date` オブジェクトのみ |
+| `z.bigint()` | BigInt |
+| `z.array(s)` | 配列（空配列も通る） |
+| `z.tuple([s1, s2])` | 固定長で位置ごとに型が違う配列 |
+| `z.object({...})` | オブジェクト（未知のキーは削除） |
+| `z.strictObject({...})` | オブジェクト（未知のキーはエラー） |
+| `z.looseObject({...})` | オブジェクト（未知のキーを保持） |
+| `z.record(k, v)` | キーが不定のオブジェクト |
+| `z.union([s1, s2])` | どれか1つに当てはまればよい |
+| `z.discriminatedUnion('type', [...])` | 目印のキーで形が切り替わる |
+| `z.literal('a')` | その値のみ |
+| `z.enum(['a', 'b'])` | 決まった選択肢 |
+| `z.any()` / `z.unknown()` | 何でも（検証しない） |
+
+### 文字列フォーマット
+
+`z.email()` / `z.url()` / `z.uuid()` / `z.iso.date()` / `z.iso.datetime()` / `z.iso.time()` / `z.ipv4()` / `z.ipv6()` / `z.jwt()` / `z.base64()` / `z.nanoid()` / `z.ulid()` / `z.cuid2()`
+
+---
+
+## デフォルト挙動の早見表
+
+詳しい解説は [デフォルト挙動の章](/books/zod/default-behavior)にあります。
+
+| 入力値 | `z.string()` | `z.number()` | `z.boolean()` | `z.array()` |
+| --- | --- | --- | --- | --- |
+| `""` | 通る | ✗ | ✗ | ✗ |
+| `"   "` | 通る | ✗ | ✗ | ✗ |
+| `0` | ✗ | 通る | ✗ | ✗ |
+| `NaN` | ✗ | ✗ | ✗ | ✗ |
+| `[]` | ✗ | ✗ | ✗ | 通る |
+| `null` | ✗ | ✗ | ✗ | ✗ |
+| `undefined` | ✗ | ✗ | ✗ | ✗ |
+
+### null / undefined の許し方
+
+| 書き方 | `null` | `undefined` | キーが無い |
+| --- | --- | --- | --- |
+| そのまま | ✗ | ✗ | ✗ |
+| `.optional()` | ✗ | 通る | 通る |
+| `.nullable()` | 通る | ✗ | ✗ |
+| `.nullish()` | 通る | 通る | 通る |
+| `.default(v)` | ✗ | `v` になる | `v` になる |
+| `.catch(v)` | `v` になる | `v` になる | `v` になる |
+
+### 「空」を弾く定型
+
+| 弾きたいもの | 書き方 |
+| --- | --- |
+| 空文字 | `z.string().min(1)` |
+| 空白だけの入力 | `z.string().trim().min(1)` |
+| 空配列 | `z.array(s).min(1)` |
+
+---
+
+## メソッド一覧
+
+### 文字列
+
+| メソッド | 用途 | 避けたい使い方 |
+| --- | --- | --- |
+| `.min(n)` / `.max(n)` | 文字数 | 未入力対策に `.min(1)` だけ使う（空白が通る） |
+| `.length(n)` | ちょうどn文字 | — |
+| `.regex(re)` | パターン一致 | メールアドレスを自作の正規表現で検証する |
+| `.startsWith` / `.endsWith` / `.includes` | 部分一致 | — |
+| `.trim()` | 前後の空白削除 | 検証の**後**に書く |
+| `.toLowerCase()` / `.toUpperCase()` | 大文字小文字の変換 | — |
+
+### 数値
+
+| メソッド | 用途 | 注意 |
+| --- | --- | --- |
+| `.min(n)` / `.max(n)` | 範囲 | — |
+| `.gt(n)` / `.lt(n)` | 境界を含まない範囲 | — |
+| `.int()` | 整数 | — |
+| `.positive()` | 0より大きい | **`0` が弾かれる** |
+| `.nonnegative()` | 0以上 | 個数・在庫はこちら |
+| `.multipleOf(n)` | nの倍数 | — |
+
+### オブジェクト
+
+| メソッド | 用途 |
+| --- | --- |
+| `.extend({...})` | キーを追加 |
+| `.pick({ k: true })` / `.omit({ k: true })` | キーの絞り込み |
+| `.partial()` | 全キーを任意に |
+| `.required()` | 全キーを必須に |
+| `.shape` | 個々のキーのスキーマを取り出す |
+| `.catchall(s)` | 未知のキーの値を検証 |
+
+### 共通
+
+| メソッド | 用途 |
+| --- | --- |
+| `.refine(fn, 'メッセージ')` | 独自の条件。**メッセージ必須** |
+| `.superRefine((v, ctx) => ...)` | 複数のエラーを返す |
+| `.transform(fn)` | 値を変換する（検証はしない） |
+| `.pipe(schema)` | 別のスキーマへつなぐ |
+| `.optional()` / `.nullable()` / `.nullish()` | null・undefinedの許可 |
+| `.default(v)` / `.catch(v)` | 既定値 |
+
+---
+
+## 実行と型
+
+| 書き方 | 戻り値 |
+| --- | --- |
+| `schema.parse(data)` | 検証済みの値（失敗時は `ZodError` を throw） |
+| `schema.safeParse(data)` | `{ success: true, data }` または `{ success: false, error }` |
+| `schema.parseAsync(data)` | 上の非同期版（`async` な `refine` があるとき） |
+| `z.infer<typeof schema>` | 検証**後**の型（= `z.output`） |
+| `z.input<typeof schema>` | 検証**前**の型（フォームの値はこちら） |
+
+---
+
+## エラー処理の定型
+
+```ts
+const result = schema.safeParse(input);
+if (!result.success) {
+  return { errors: z.flattenError(result.error).fieldErrors };
+}
+// result.data は型が付いている
+```
+
+| 関数 | 返る形 | 用途 |
+| --- | --- | --- |
+| `z.flattenError(e)` | `{ fieldErrors, formErrors }` | 1階層のフォーム |
+| `z.treeifyError(e)` | 入れ子オブジェクト | ネストしたフォーム |
+| `z.prettifyError(e)` | 複数行の文字列 | ログ・デバッグ |
+
+日本語化は起動時に1行です。
+
+```ts
+z.config(z.locales.ja());
+```
+
+---
+
+## v3 → v4 対応表
+
+| v3 | v4 | 備考 |
+| --- | --- | --- |
+| `z.string().email()` | `z.email()` | 動くが非推奨 |
+| `z.string().ip()` | `z.ipv4()` / `z.ipv6()` | **削除済み** |
+| `{ required_error }` | `{ error }` | **黙って無視される** |
+| `{ invalid_type_error }` | `{ error }` | **黙って無視される** |
+| `{ errorMap }` | `{ error }` | **黙って無視される** |
+| `error.format()` | `z.treeifyError(error)` | メソッドも残存 |
+| `error.flatten()` | `z.flattenError(error)` | メソッドも残存 |
+| `.strict()` | `z.strictObject()` | メソッドも残存 |
+| `.passthrough()` | `z.looseObject()` | メソッドも残存 |
+| `.nonstrict()` / `.deepPartial()` | — | **削除済み** |
+
+<Marker>太字の3つ（`required_error` / `invalid_type_error` / `errorMap`）だけは、エラーも警告も出ずに無視されます。移行時の最優先チェック項目です。</Marker>
+
+---
+
+## コピーして使うスニペット
+
+### フォーム（React Hook Form）
+
+```ts
+const schema = z.object({
+  name: z.string().trim().min(1, '名前を入力してください'),
+  email: z.email('メールアドレスの形式が正しくありません'),
+  age: z.string().min(1, '入力してください').pipe(z.coerce.number().int().min(0)),
+});
+
+type FormValues = z.input<typeof schema>; // infer ではない
+```
+
+### パスワード確認
+
+```ts
+z.object({ password: z.string().min(8), confirm: z.string() }).refine(
+  (d) => d.password === d.confirm,
+  { message: 'パスワードが一致しません', path: ['confirm'] },
+);
+```
+
+### 環境変数
+
+```ts
+export const env = z
+  .object({
+    DATABASE_URL: z.string().min(1),
+    API_BASE_URL: z.url(),
+    PORT: z.coerce.number().int().positive(),
+    DEBUG: z.stringbool().default(false),
+  })
+  .parse(process.env); // 壊れていたら起動させない
+```
+
+### APIレスポンス
+
+```ts
+const result = userSchema.safeParse(await res.json());
+if (!result.success) {
+  console.error(z.prettifyError(result.error));
+  return null; // 画面全体を落とさず縮退させる
+}
+return result.data;
+```
+
+### 作成用・更新用スキーマの派生
+
+```ts
+export const userSchema = z.object({ id: z.number(), name: z.string(), email: z.email() });
+export const createUserSchema = userSchema.omit({ id: true });
+export const updateUserSchema = createUserSchema.partial();
+```
+
+---
+
+## 困ったときの逆引き
+
+| 症状 | 見るところ |
+| --- | --- |
+| 空文字が通ってしまう | `.trim().min(1)` にする |
+| `null` で落ちる | `.nullable()` か `.nullish()` |
+| 送った項目が消える | `z.object()` が未知のキーを削除している |
+| 空欄が `0` になる | `z.coerce.number()` の前に `z.string().min(1)` |
+| `false` が `true` になる | `z.stringbool()` を使う |
+| メッセージが英語のまま | v3のオプションが残っていないか |
+| エラーが画面に出ない | `refine` の `path` 指定 |
+| 変換が効かない | 戻り値（`result.data`）を使う |
+| `$ZodAsyncError` が出る | `parseAsync` / `safeParseAsync` に変える |
+
+各項目の詳しい理由は [デフォルト挙動の章](/books/zod/default-behavior)と [実務パターンの章](/books/zod/pitfalls-and-patterns)にあります。
+
+---
+
+本書はここまでです。[第1章](/books/zod/what-is-zod)で見たとおり、TypeScriptの型はビルド時に消えます。外から届くデータを守れるのは、実行時に動く検証だけです。境界で1回止める——それだけで防げる不具合が、驚くほどたくさんあります。
+
+## 参考リンク
+
+- [Zod 公式ドキュメント](https://zod.dev/) — APIリファレンス（英語）
+- [Zod API - Defining schemas](https://zod.dev/api) — スキーマとメソッドの一覧（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

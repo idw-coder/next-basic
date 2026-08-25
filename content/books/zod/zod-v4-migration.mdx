@@ -1,0 +1,153 @@
+---
+title: 'Zod 3から4への移行 — 変わった書き方の対応表'
+description: 'ネットに残るZod 3の記事を読み解き、v4のコードに直すための対応表です。z.string().email()の非推奨化、required_errorが黙って無視される罠、エラー整形APIの変更、そして段階的に移行するためのzod/v3の使い方を扱います。'
+order: 15
+---
+
+Zod 4の安定版が出たのは2025年7月です。それ以前に書かれた記事やStack Overflowの回答は**すべてv3の書き方**なので、そのまま貼り付けても動かなかったり、動くけれど非推奨だったりします。
+
+この章は「検索で出てきたコードをv4に直す」ための対応表です。**本章の内容はZod 4.4.3で実際に動かして確認**しています。
+
+## まず自分のバージョンを確認する
+
+```bash
+npm ls zod
+```
+
+`4.x` ならこの章の左側（v3）の書き方は避け、右側を使ってください。
+
+---
+
+## 対応表1: 文字列フォーマット
+
+v4では、メールやURLの検証が**トップレベル関数**に移りました。
+
+| v3 | v4 |
+| --- | --- |
+| `z.string().email()` | `z.email()` |
+| `z.string().url()` | `z.url()` |
+| `z.string().uuid()` | `z.uuid()` |
+| `z.string().datetime()` | `z.iso.datetime()` |
+| `z.string().ip()` | `z.ipv4()` / `z.ipv6()` |
+
+<Callout type="info" title="古い書き方も動くが非推奨">
+`z.string().email()` は4.4.3でも動作します。ただし型定義には `@deprecated Use z.email() instead.` が付いており、エディタで取り消し線が表示されます。既存コードが即座に壊れるわけではないので、**触るタイミングで直す**方針で問題ありません。ただし `z.string().ip()` は**削除済み**で、`z.ipv4()` / `z.ipv6()` に分かれました。
+</Callout>
+
+## 対応表2: エラーメッセージの指定
+
+ここが**もっとも危険な変更**です。v3のオプションは、エラーにならず**黙って無視されます**。
+
+| v3 | v4 | v4での挙動 |
+| --- | --- | --- |
+| `{ required_error: '必須' }` | `{ error: '必須' }` | **無視される**（英語のまま） |
+| `{ invalid_type_error: '型が違う' }` | `{ error: '型が違う' }` | **無視される** |
+| `{ errorMap: () => ... }` | `{ error: () => ... }` | **無視される** |
+| `.min(1, 'メッセージ')` | 変更なし | そのまま動く |
+
+```ts
+// v3の書き方。v4では警告も出ず、メッセージが英語のまま
+z.string({ required_error: '必須です' }).safeParse(undefined).error.issues[0].message;
+// 'Invalid input: expected string, received undefined'
+
+// v4
+z.string({ error: '必須です' }).safeParse(123).error.issues[0].message;
+// '必須です'
+```
+
+<Marker>「日本語にしたはずのメッセージが英語のまま」という症状が出たら、まずこの3つのオプションが残っていないかを疑ってください。</Marker>
+
+<Figure src="/images/harry_man_color.png" alt="慌てている人のイラスト" maxWidth="300px" />
+
+## 対応表3: エラーの整形
+
+v3ではメソッド、v4ではトップレベル関数が推奨です。
+
+| v3 | v4 |
+| --- | --- |
+| `error.format()` | `z.treeifyError(error)` |
+| `error.flatten()` | `z.flattenError(error)` |
+| （なし） | `z.prettifyError(error)` |
+
+`.format()` と `.flatten()` はメソッドとして**4.4.3でも残っています**。急いで書き換える必要はありませんが、新しく書くなら関数版を使ってください。
+
+## 対応表4: オブジェクトの未知キー
+
+| v3 | v4 |
+| --- | --- |
+| `z.object({...}).strict()` | `z.strictObject({...})` |
+| `z.object({...}).passthrough()` | `z.looseObject({...})` |
+| `.strip()` | 既定の挙動（書く必要なし） |
+
+`.strict()` / `.passthrough()` / `.strip()` はメソッドとして残っており、そのまま動きます。一方で **`.nonstrict()` と `.deepPartial()` は削除されました**。使っているコードはコンパイルエラーになるので、こちらは気づけます。
+
+## 対応表5: その他
+
+| 項目 | v3 | v4 |
+| --- | --- | --- |
+| Record | `z.record(値スキーマ)` | `z.record(キースキーマ, 値スキーマ)` |
+| 部分Record | — | `z.partialRecord()` が追加 |
+| 文字列の真偽値 | 自作の `transform` | `z.stringbool()` が追加 |
+| 軽量版 | — | `zod/mini` が追加 |
+
+`z.record(z.number())` のような1引数の書き方も4.4.3では動作しますが、v4では**キーのスキーマも明示する2引数の形**が基本です。
+
+---
+
+## 段階的に移行する
+
+Zod 4のパッケージには**v3の実装も同梱**されています。サブパスから読み込めば、同じプロジェクト内で共存できます。
+
+```ts
+import { z } from 'zod'; // v4
+import { z as z3 } from 'zod/v3'; // v3
+```
+
+これが効くのは、**依存ライブラリがまだv3にしか対応していない**場合です。アプリのコードはv4で書きつつ、そのライブラリに渡すスキーマだけv3で作る、という分離ができます。大きなプロジェクトを一度に書き換えなくて済みます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+そもそも、なんでこんなに変えたの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+大きいのは**エラーメッセージの指定方法がバラバラだったこと**。`message` / `required_error` / `invalid_type_error` / `errorMap` と4通りあったのを `error` 1つに寄せたんだ。他にも型推論の速度やバンドルサイズの改善が入っている。移行の手間はあるけど、方向としては素直な整理だよ。
+</SpeechBubble>
+
+---
+
+## 移行のチェックリスト
+
+古いコードをv4に持ってくるとき、上から順に確認してください。
+
+1. `npm ls zod` で4系が入っているか
+2. **`required_error` / `invalid_type_error` / `errorMap` が残っていないか**（無言で壊れるので最優先）
+3. `z.string().email()` などを `z.email()` へ（急がなくてよい）
+4. `.nonstrict()` / `.deepPartial()` を使っていないか（コンパイルエラーで気づける）
+5. `error.format()` / `error.flatten()` を関数版に寄せるか検討する
+6. `z.record()` を2引数の形にする
+
+<Callout type="warning" title="2番目だけは必ず確認する">
+他の変更は「エラーになる」か「動くが非推奨」なので気づけます。**エラーメッセージ系のオプションだけは、何も言わずに無視される**ため、テストを書いていないと本番でユーザーが英語のエラーを見るまで分かりません。
+</Callout>
+
+## ちゃんと使うためのポイント
+
+- 検索で出たコードが動かないときは、まずバージョンの違いを疑う
+- <Marker>`required_error` / `invalid_type_error` / `errorMap` はv4では黙って無視される。最優先で潰す</Marker>
+- `z.string().email()` は動くが非推奨。`z.string().ip()` は削除済み
+- `.nonstrict()` と `.deepPartial()` は削除。コンパイルエラーで気づける
+- `zod/v3` を併用すれば、段階的に移行できる
+
+---
+
+次の章では、ここまでで扱いきれなかった実務上の判断——**[スキーマの置き場所とハマりどころ](/books/zod/pitfalls-and-patterns)** をまとめます。
+
+## 参考リンク
+
+- [Migration guide - Zod](https://zod.dev/v4/changelog) — v3からv4への変更点の公式一覧（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

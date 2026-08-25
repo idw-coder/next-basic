@@ -1,0 +1,170 @@
+---
+title: 'APIの入力とレスポンスをZodで検証する'
+description: 'Route Handlerでリクエストボディを検証する書き方と、fetchで受け取ったレスポンスを信用せずに検証する理由を整理します。検証をどの層に置くか、失敗したときにどう振る舞うかの設計も扱います。'
+order: 14
+---
+
+フォームの次は、APIの境界です。ここには**入ってくる方向**と**出ていく先から返ってくる方向**の2つがあり、必要な考え方が違います。
+
+| 方向 | 何を検証するか | 失敗したときの振る舞い |
+| --- | --- | --- |
+| リクエスト（受け取る） | クライアントから届いた値 | 400を返す |
+| レスポンス（受け取る） | 外部APIから返ってきた値 | 落とさず代替表示・リトライ |
+
+---
+
+## リクエストボディを検証する
+
+Next.jsのRoute Handlerを例にします。`request.json()` の戻り値は `any` なので、**そのまま使うと型の安全が切れます**。
+
+```ts
+// app/api/users/route.ts
+import { z } from 'zod';
+
+const createUserSchema = z.object({
+  name: z.string().trim().min(1),
+  email: z.email(),
+  age: z.number().int().min(0).optional(),
+});
+
+export async function POST(request: Request) {
+  const body = await request.json(); // any
+
+  const result = createUserSchema.safeParse(body);
+  if (!result.success) {
+    return Response.json(
+      { message: '入力内容を確認してください', errors: z.flattenError(result.error).fieldErrors },
+      { status: 400 },
+    );
+  }
+
+  const user = await db.users.create(result.data); // ここから先は型が付いている
+  return Response.json(user, { status: 201 });
+}
+```
+
+<Marker>`safeParse` を通した後の `result.data` だけを下流に渡す。これが「境界で1回止める」の実装形です。</Marker>
+
+`request.json()` 自体が失敗する（JSONとして壊れている）可能性もあるので、実務では `try` で囲んでおきます。
+
+```ts
+let body: unknown;
+try {
+  body = await request.json();
+} catch {
+  return Response.json({ message: 'リクエストの形式が不正です' }, { status: 400 });
+}
+```
+
+<Callout type="info" title="ボディだけでなくクエリやパスパラメータも同じ">
+`searchParams` やURLの `[id]` 部分も、クライアントが自由に書き換えられる値です。数値IDなら `z.coerce.number().int().positive()` のように検証してから使います。文字列で来る点は [変換の章](/books/zod/coercion-and-env)と同じ注意が必要です。
+</Callout>
+
+---
+
+## レスポンスを信用しない
+
+[第1章](/books/zod/what-is-zod)で見たとおり、`await res.json() as User` は「そういうことにする」だけで、何も確かめていません。外部APIが仕様変更したり、エラー時に別の形を返したりすれば、そのまま壊れたデータが画面まで届きます。
+
+```ts
+const userSchema = z.object({ id: z.number(), name: z.string() });
+
+async function fetchUser(id: number) {
+  const res = await fetch(`https://api.example.com/users/${id}`);
+  if (!res.ok) throw new Error(`APIエラー: ${res.status}`);
+
+  const result = userSchema.safeParse(await res.json());
+  if (!result.success) {
+    // 想定と違う形。ログに残して、画面は代替表示に切り替える
+    console.error('APIレスポンスが想定と異なります', z.prettifyError(result.error));
+    return null;
+  }
+  return result.data;
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+自社のAPIでも検証した方がいいの？ 形は分かっているのに。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+自社APIこそ変わるよ。フロントとバックが別々にデプロイされる以上、**一時的に食い違う瞬間**は必ずある。検証しておけば「画面が白くなる」代わりに「ここだけ表示できません」に留められるんだ。
+</SpeechBubble>
+
+### 失敗したときに落とすか、代替に切り替えるか
+
+レスポンス検証で `parse`（例外）を使うと、APIの小さな変更でページ全体が落ちます。**`safeParse` で受けて、その画面部分だけ縮退させる**方が実務的です。
+
+| 場面 | 使い分け |
+| --- | --- |
+| 表示用のデータ | `safeParse`。失敗しても画面全体は保つ |
+| 決済・在庫など、間違うと実害が出るデータ | `parse`。壊れたまま処理を進めない |
+
+<Figure src="/images/calling_suit_man_color.png" alt="連絡を取っている人のイラスト" maxWidth="300px" />
+
+---
+
+## スキーマをどこに置くか
+
+同じスキーマをクライアントとサーバーの両方で使うため、置き場所を決めておきます。
+
+```
+src/schemas/
+  user.ts     ← createUserSchema, userSchema など
+  post.ts
+```
+
+- **リクエスト用**（作成・更新）と**レスポンス用**（表示）は別のスキーマになることが多い
+- 共通部分は1つ書いて、[z.objectの章](/books/zod/object-schema)の `.omit()` や `.partial()` で派生させる
+
+```ts
+export const userSchema = z.object({ id: z.number(), name: z.string(), email: z.email() });
+export const createUserSchema = userSchema.omit({ id: true }); // idはサーバーが採番
+export const updateUserSchema = createUserSchema.partial(); // 部分更新
+```
+
+<Callout type="warning" title="レスポンス用スキーマに strictObject を使わない">
+[z.objectの章](/books/zod/object-schema)で触れたとおり、`strictObject` は未知のキーをエラーにします。APIが項目を1つ追加しただけで自分のアプリが壊れるため、**レスポンスの検証には既定の `z.object()`** を使ってください。余分なキーは黙って取り除かれます。
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### 検証したのに元の変数を使っている
+
+`safeParse` は新しい値を返します。`body` ではなく `result.data` を使ってください。`.trim()` や `.default()` の結果は戻り値にしか反映されません。
+
+### エラーオブジェクトをそのままレスポンスに載せる
+
+`z.flattenError()` の `fieldErrors` のように、**項目名とメッセージだけ**を返します。`error` 全体をJSONにすると内部構造が漏れます。
+
+### レスポンス検証に `parse` を使って画面が落ちる
+
+外部APIの小さな変更が全画面のクラッシュになります。表示用データは `safeParse` で受けて縮退させます。
+
+### 日付が `z.date()` で弾かれる
+
+JSONにDate型は存在しません。`z.iso.datetime()` で文字列として検証するか、`z.coerce.date()` で変換します（[デフォルト挙動の章](/books/zod/default-behavior)を参照）。
+
+## ちゃんと使うためのポイント
+
+- `request.json()` の戻り値は `any`。**必ず `safeParse` を通してから使う**
+- 失敗したら `z.flattenError()` の `fieldErrors` を添えて400を返す
+- <Marker>自社APIであってもレスポンスは検証する。フロントとバックが食い違う瞬間は必ずある</Marker>
+- 表示用データは `safeParse` で縮退、実害の出るデータは `parse` で停止
+- レスポンス用スキーマに `strictObject` を使わない
+
+---
+
+次の章では、記事やIssueで見かける古い書き方を読み解くための **[Zod 3から4への移行](/books/zod/zod-v4-migration)** を扱います。
+
+## 参考リンク
+
+- [Route Handlers - Next.js](https://nextjs.org/docs/app/building-your-application/routing/route-handlers) — Route Handlerの公式ドキュメント（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

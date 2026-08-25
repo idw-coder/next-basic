@@ -2,7 +2,6 @@
 title: '文字列・数値・真偽値のスキーマ — 使える検証メソッド一覧'
 description: 'z.string()・z.number()・z.boolean()に用意されている検証メソッドを、引数と戻り値つきで整理します。メソッドをつなぐと新しいスキーマが返るという仕組みと、書く順番で結果が変わるケースも扱います。'
 order: 3
-draft: true
 ---
 
 ここからは実際にスキーマを書いていきます。まずはすべての土台になる、単体の値を検証するスキーマからです。
@@ -201,7 +200,7 @@ const schema = z.email().max(255);
 
 ### `z.boolean()` にフォームの値を渡して落ちる
 
-HTMLのフォームやURLクエリから届く値は文字列です。`"true"` は `z.boolean()` を通りません。文字列から真偽値に変換したい場合は `z.stringbool()` を使います（[変換の章](/books/zod/coercion-and-env)で扱います）。
+HTMLのフォームやURLクエリから届く値は文字列です。`"true"` は `z.boolean()` を通りません。文字列から真偽値に変換したい場合は `z.stringbool()` を使います。こちらは `"false"` をちゃんと `false` に変換してくれます（`z.coerce.boolean()` は `"false"` を `true` にしてしまうので注意してください）。
 
 ## ちゃんと使うためのポイント
 
@@ -219,3 +218,9 @@ HTMLのフォームやURLクエリから届く値は文字列です。`"true"` �
 
 - [Defining schemas - Zod](https://zod.dev/api) — 全スキーマとメソッドの公式一覧（英語）
 - [正規表現 - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Regular_expressions) — `.regex()` に渡すパターンの書き方
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

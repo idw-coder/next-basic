@@ -1,0 +1,200 @@
+---
+title: 'refineで独自ルール、transformで値を変換する'
+description: '「パスワードが一致しているか」のような、型だけでは表せない検証をrefineで書く方法と、検証しながら値を別の形に変える transform・pipe の使い方を整理します。エラーを特定の項目に紐づけるpathの指定も扱います。'
+order: 9
+---
+
+ここまでのスキーマは「文字列か」「10文字以内か」といった、値そのものの形を見るものでした。実務ではそれだけでは足りません。
+
+- パスワードと確認用パスワードが**一致しているか**
+- 開始日が終了日より**前か**
+- そのメールアドレスが**まだ登録されていないか**
+
+こうした「複数の値の関係」や「外部に問い合わせないと分からないこと」は `refine` で書きます。
+
+---
+
+## refine — 独自の条件を足す
+
+**構文：** `schema.refine(検証関数, メッセージまたはオプション)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| 検証関数 | `(値) => boolean` | `true` を返せば合格、`false` で失敗 |
+| 第2引数 | 文字列 または オブジェクト | 失敗時のメッセージ。オブジェクトなら `path` も指定できる |
+
+**戻り値：** 条件を追加した新しいスキーマ
+
+```ts
+const password = z.string().min(8).refine((v) => /[0-9]/.test(v), '数字を1文字以上含めてください');
+```
+
+<Callout type="warning" title="メッセージは必ず自分で書く">
+第2引数を省略すると、失敗時のメッセージは `Invalid input` になります。何が悪いのか読者にはまったく伝わりません。`refine` を書くときは**必ずメッセージをセットで書く**と覚えてください。
+</Callout>
+
+### エラーを特定の項目に紐づける
+
+オブジェクト全体に `refine` を掛けると、エラーの `path` は空になります。フォームで「どの入力欄が悪いか」を示したいときは、`path` を指定します。
+
+```ts
+const form = z
+  .object({ password: z.string(), confirm: z.string() })
+  .refine((d) => d.password === d.confirm, {
+    message: 'パスワードが一致しません',
+    path: ['confirm'], // 確認用の入力欄にエラーを出す
+  });
+
+form.safeParse({ password: 'a', confirm: 'b' }).error.issues[0];
+// { code: 'custom', path: ['confirm'], message: 'パスワードが一致しません' }
+```
+
+<Marker>`path` を指定しないと、フォームライブラリがどの欄にエラーを出せばよいか判断できません。</Marker>
+
+### 型が合わないときrefineは呼ばれない
+
+地味に重要な性質です。**基本の型検証に失敗した時点で、`refine` は実行されません。**
+
+```ts
+z.object({ a: z.string() })
+  .refine((d) => d.a.length > 3) // a が文字列でないときは呼ばれない
+  .safeParse({ a: 123 });
+```
+
+`a` が数値なので `z.string()` の段階で失敗し、`refine` は呼ばれません。`d.a.length` で例外が飛ぶ心配をしなくてよい、ということです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+じゃあ refine の中では「型は正しい」前提で書いていいんだ。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+そのとおり。型チェックを通った値だけが渡ってくるから、中で `typeof` を確認し直す必要はないよ。
+</SpeechBubble>
+
+---
+
+## superRefine — エラーを複数出す
+
+`refine` は失敗を1件しか返せません。「大文字が必要」「数字が必要」を**同時に**指摘したいときは `superRefine` を使います。
+
+**構文：** `schema.superRefine((値, ctx) => void)`
+
+```ts
+const password = z.string().superRefine((v, ctx) => {
+  if (!/[A-Z]/.test(v)) ctx.addIssue({ code: 'custom', message: '大文字を含めてください' });
+  if (!/[0-9]/.test(v)) ctx.addIssue({ code: 'custom', message: '数字を含めてください' });
+});
+
+password.safeParse('abc').error.issues.map((i) => i.message);
+// ['大文字を含めてください', '数字を含めてください']
+```
+
+`ctx.addIssue()` を呼んだ回数だけエラーが増えます。呼ばなければ合格です。
+
+---
+
+## 非同期の検証
+
+「このメールアドレスは登録済みか」のようにDBやAPIへ問い合わせる場合、`refine` に `async` 関数を渡します。
+
+```ts
+const email = z.email().refine(async (v) => !(await isTaken(v)), 'すでに登録されています');
+
+await email.safeParseAsync('test@example.com');
+```
+
+このスキーマを同期の `parse` で実行すると `$ZodAsyncError` になります（[parseとsafeParseの章](/books/zod/parse-and-safeparse)を参照）。**非同期の検証を1つでも入れたら、呼び出し側も `parseAsync` / `safeParseAsync` に揃える**必要があります。
+
+<Callout type="info" title="非同期の検証はサーバー側だけに置く">
+重複チェックのような問い合わせをフロントのスキーマに混ぜると、入力のたびにリクエストが飛びます。フロントは形式チェックだけ、重複チェックはサーバー側のスキーマで、と分けるのが実務的です。
+</Callout>
+
+<Figure src="/images/meeting_color.png" alt="打ち合わせをしている人たちのイラスト" maxWidth="320px" />
+
+---
+
+## transform — 検証しながら値を変える
+
+**構文：** `schema.transform(変換関数)`
+
+**戻り値：** 検証を通ったあと、変換関数の結果を返すスキーマ
+
+```ts
+z.string().transform((v) => v.length).parse('hello');
+// 5 — 文字列を受け取って数値を返す
+```
+
+<Marker>`transform` は検証ではなく変換です。渡された値を弾く力はありません。</Marker>検証したいなら、変換の前後で `refine` や別のスキーマを組み合わせます。
+
+```ts
+z.string()
+  .transform((v) => v.length)
+  .refine((n) => n > 3, '4文字以上にしてください');
+```
+
+変換の順番は書いた順です。上の例では「文字列か確認 → 長さに変換 → 長さが4以上か確認」と流れます。
+
+### pipe — スキーマ同士をつなぐ
+
+変換先をスキーマで表したいときは `pipe` が使えます。
+
+```ts
+z.string().pipe(z.coerce.number()).safeParse('42');
+// { success: true, data: 42 }
+```
+
+「まず文字列であることを確認し、次に数値へ変換して検証する」という流れを、スキーマの連結で表現できます。
+
+### 入力の型と出力の型がずれる
+
+`transform` を使うと、**スキーマに入れる型と出てくる型が別物**になります。
+
+```ts
+const schema = z.string().transform((v) => v.length);
+// 入力: string / 出力: number
+```
+
+この違いは `z.input<typeof schema>` と `z.output<typeof schema>` で取り出せます。`z.infer` は `z.output` と同じ、つまり**変換後の型**を返します。フォームの初期値の型が合わないと感じたときは、`z.input` の方を見てください。
+
+---
+
+## よくあるハマりどころ
+
+### refineのメッセージを書き忘れる
+
+`Invalid input` がそのままユーザーに出ます。`refine` とメッセージはセットです。
+
+### pathを指定せずフォームに繋ぐ
+
+オブジェクト全体のエラーになるため、どの入力欄の下にも表示されません。「エラーは出ているのに画面に何も出ない」ときは `path` を疑ってください。
+
+### transformで値を弾こうとする
+
+`transform` の中で `undefined` を返しても検証は成功扱いです。弾きたいなら `refine` を使うか、`superRefine` で `ctx.addIssue()` を呼びます。
+
+### 非同期を混ぜたのに parse を呼んでいる
+
+`$ZodAsyncError` が出ます。スキーマの奥深くに1つでも `async` の `refine` があれば、呼び出し側は非同期版に揃える必要があります。
+
+## ちゃんと使うためのポイント
+
+- 型で表せない条件（値の関係・外部への問い合わせ）は `refine`
+- <Marker>`refine` にはメッセージを必ず添える。既定は `Invalid input` で役に立たない</Marker>
+- フォームで使うなら `path` で対象の項目を指定する
+- 複数のエラーを同時に出したいなら `superRefine` と `ctx.addIssue()`
+- `transform` は変換であって検証ではない。弾く役目は `refine` に任せる
+- `transform` を入れると入力型と出力型がずれる。`z.infer` が返すのは**出力型**
+
+---
+
+ここまでで、形の検証・構造の組み立て・独自ルール・変換がひととおり揃いました。値が通るかどうかの基準に迷ったときは [デフォルト挙動の早見表](/books/zod/default-behavior)へ戻ってください。
+
+## 参考リンク
+
+- [Refinements - Zod](https://zod.dev/api) — refine・superRefine・transformの公式リファレンス（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

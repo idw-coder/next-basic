@@ -26,6 +26,17 @@ export const DEFAULT_THEME: BookTheme = {
 };
 
 const bookThemeMap: Record<string, BookTheme> = {
+  zod: {
+    cardBg: 'bg-sky-50',
+    iconBg: 'bg-sky-100',
+    iconText: 'text-sky-600',
+    accent: 'text-sky-600',
+    accentHover: 'group-hover:text-sky-700',
+    accentBg: 'bg-sky-500',
+    badgeBg: 'bg-sky-50',
+    badgeText: 'text-sky-700',
+    iconName: 'Braces',
+  },
   'system-design': {
     cardBg: 'bg-emerald-50',
     iconBg: 'bg-emerald-100',

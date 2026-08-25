@@ -309,6 +309,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/08/25',
+    text: '教科書「Zod入門 — TypeScriptで実行時の入力検証を型と一緒に書く」を公開しました。基本スキーマ、parseとsafeParseの違い、空文字やnullを通すかどうかの早見表、オブジェクトの検証まで、順次章を追加中です',
+    isNew: true,
+    link: '/books/zod',
+  },
+  {
     date: '2026/08/24',
     text: '教科書「AIエージェント開発の実務 — 原則と手札を分けて覚える」を公開しました。実行環境・権限設計・コンテキスト設計・検証ループ・チーム導入まで全20章です',
     isNew: true,

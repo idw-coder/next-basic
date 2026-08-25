@@ -1,0 +1,140 @@
+---
+title: 'z.inferでスキーマから型を作る — input と output の違い'
+description: 'スキーマからTypeScriptの型を取り出すz.infer・z.input・z.outputの使い分けを整理します。transformやdefaultを使うと入力型と出力型がずれる理由と、型を先に書くかスキーマを先に書くかの判断も扱います。'
+order: 10
+---
+
+Zodを使う最大の利点は、**スキーマ1つから型も作れる**ことです。この章ではその取り出し方と、つまずきやすい「入力型と出力型のずれ」を扱います。
+
+## z.infer — スキーマから型を取り出す
+
+**構文：** `z.infer<typeof スキーマ>`
+
+```ts
+const userSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  tags: z.array(z.string()),
+});
+
+type User = z.infer<typeof userSchema>;
+// { id: number; name: string; tags: string[] }
+```
+
+`typeof` が必要な点に注意してください。`userSchema` は**値**なので、型の世界に持ち込むために `typeof` を挟みます。この書き方は [TypeScriptのユーティリティ型](/books/typescript/09-utility-types)の章で扱っている `ReturnType<typeof fn>` と同じ発想です。
+
+<Marker>型定義を手で書かず、スキーマから導出する。これで「型は直したが検証を直し忘れた」という不一致が原理的に起きなくなります。</Marker>
+
+---
+
+## 入力型と出力型がずれるケース
+
+ここが本題です。Zodのスキーマには**2つの型**があります。
+
+| 型 | 意味 |
+| --- | --- |
+| `z.input<typeof スキーマ>` | `parse` に**渡す**値の型 |
+| `z.output<typeof スキーマ>` | `parse` から**返ってくる**値の型 |
+| `z.infer<typeof スキーマ>` | `z.output` と同じ（＝変換後の型） |
+
+ほとんどのスキーマではこの3つは一致します。ずれるのは、**値を変える機能**を使ったときです。
+
+### transform を使った場合
+
+```ts
+const lenSchema = z.string().transform((v) => v.length);
+
+type In = z.input<typeof lenSchema>; // string
+type Out = z.output<typeof lenSchema>; // number
+type Inferred = z.infer<typeof lenSchema>; // number（outputと同じ）
+```
+
+文字列を渡すと数値が返るスキーマなので、入口と出口で型が違います。
+
+### default を使った場合
+
+```ts
+const schema = z.object({ name: z.string().default('ゲスト') });
+
+type In = z.input<typeof schema>; // { name?: string | undefined }
+type Out = z.output<typeof schema>; // { name: string }
+```
+
+`.default()` があると、**入力では省略できて、出力では必ず存在する**という関係になります。この違いを実際に確かめると、次のコードが両方とも型エラーなく通ります。
+
+```ts
+const ok: In = {}; // 入力では name を省略できる
+const name: string = (parsed as Out).name; // 出力では必ず string
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+フォームの初期値を `z.infer` の型で書いたら、`name` が必須になって「初期値が入れられない」って怒られたんだけど…
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+それがまさにこのズレ。フォームが扱うのは**送る前の値**だから `z.input` が正しい。`z.infer`（= output）は検証を通った後の型なんだ。
+</SpeechBubble>
+
+**迷ったときの判断基準はこれです。**
+
+| 何の型が欲しいか | 使うもの |
+| --- | --- |
+| 検証を通した後のデータ（APIの戻り値、DBに保存する値） | `z.infer` / `z.output` |
+| これから検証に渡す値（フォームの入力値、初期値） | `z.input` |
+
+<Figure src="/images/highfive_hi_color.png" alt="型と検証が噛み合っているイメージのイラスト" maxWidth="300px" />
+
+---
+
+## 型を先に書くか、スキーマを先に書くか
+
+既存の型定義がある場合、「型に合ったスキーマを書けているか」を保証したくなります。`satisfies` を使う方法があります。
+
+```ts
+type User = { id: number; name: string };
+
+const userSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+}) satisfies z.ZodType<User>;
+```
+
+こうすると、スキーマが `User` を満たしていない場合にコンパイルエラーになります。ただし実務では、**スキーマを唯一の定義元にして型を導出する**方が管理する場所が1つで済みます。既存の型定義がどうしても正である場合（他システムが生成した型など）に限って `satisfies` を使う、という順序で考えるとよいです。
+
+---
+
+## よくあるハマりどころ
+
+### `typeof` を書き忘れる
+
+`z.infer<userSchema>` は型エラーになります。`z.infer<typeof userSchema>` が正しい書き方です。
+
+### フォームの型に `z.infer` を使ってしまう
+
+前述のとおり、`.default()` や `transform` があると初期値の型が合いません。フォーム側は `z.input` を使います。
+
+### 型を手で書いてスキーマと二重管理する
+
+`type User` を手書きし、それとは別にスキーマを書くと、片方だけ更新される事故が起きます。[第1章](/books/zod/what-is-zod)で見たとおり、二重管理をなくすのがZodを入れる理由の1つです。
+
+## ちゃんと使うためのポイント
+
+- <Marker>`z.infer<typeof スキーマ>` でスキーマから型を導出する。型を手書きしない</Marker>
+- `z.infer` は `z.output`（変換後）と同じ
+- `transform` や `.default()` があると入力型と出力型がずれる
+- フォームの値・初期値の型は `z.input`、検証後のデータは `z.infer`
+
+---
+
+次の章では、検証に失敗したときに返ってくる **[ZodErrorの扱いとメッセージの日本語化](/books/zod/error-handling)** を扱います。既定のメッセージは英語なので、ユーザーに見せる前にひと手間必要です。
+
+## 参考リンク
+
+- [Inferring types - Zod](https://zod.dev/api) — 型推論まわりの公式リファレンス（英語）
+- [typeof 型演算子 - TypeScript公式](https://www.typescriptlang.org/docs/handbook/2/typeof-types.html) — 値から型を取り出す `typeof` の解説（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

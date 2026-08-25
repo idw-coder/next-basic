@@ -2,7 +2,6 @@
 title: 'Zodのインストールとtsconfig設定 — strictが必須な理由'
 description: 'Zodの導入手順と、動かす前に確認しておきたいtsconfigの設定を整理します。strictが無効だと`.optional()`や`.nullable()`の型推論が事実上無視される、という落とし穴も実例で確認します。'
 order: 2
-draft: true
 ---
 
 Zodの導入自体は1コマンドで終わります。ただし、**`tsconfig.json` の設定次第でZodの型推論が働かなくなる**という落とし穴があるので、この章では導入とあわせてそこまで確認します。
@@ -27,7 +26,7 @@ next-basic@0.1.0
 ```
 
 <Callout type="warning" title="`4.x` であることを確認してください">
-本書はZod 4系を前提にしています。`3.x` が入っている場合、`z.email()` のような本書の書き方はエラーになります。既存プロジェクトで3系が入っているときの進め方は [Zod 3から4への移行](/books/zod/zod-v4-migration) で扱います。
+本書はZod 4系を前提にしています。`3.x` が入っている場合、`z.email()` のような本書の書き方はエラーになります。既存プロジェクトで3系のまま読み進めるときは、`z.email()` を `z.string().email()` に読み替えてください。
 </Callout>
 
 ## 動作確認
@@ -133,7 +132,7 @@ const check2: string = t.bio; // string | null を string に入れている
 Zod 4のパッケージには、v3の実装もそのまま入っています。ライブラリ側がまだv3にしか対応していない場合でも、「アプリ側はv4、そのライブラリに渡す部分だけv3」という併存ができます。大きなプロジェクトを一気に書き換えなくてよい、という逃げ道です。
 </Callout>
 
-`zod/locales` を使うと、エラーメッセージを日本語に切り替えられます。設定方法は [エラーメッセージの日本語化](/books/zod/error-handling) の章で扱います。
+`zod/locales` を使うと、エラーメッセージを日本語に切り替えられます。個別のメッセージは各メソッドの第2引数（`.min(1, "1文字以上で入力してください")` など）でも指定できます。
 
 ## ちゃんと使うためのポイント
 
@@ -150,3 +149,9 @@ Zod 4のパッケージには、v3の実装もそのまま入っています。�
 
 - [Installation - Zod](https://zod.dev/) — 公式のインストール手順とバージョン方針（英語）
 - [tsconfig の strict - TypeScript公式](https://www.typescriptlang.org/tsconfig/#strict) — strictがまとめて有効にする各オプションの一覧（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

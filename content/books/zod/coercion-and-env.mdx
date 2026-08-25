@@ -1,0 +1,195 @@
+---
+title: 'z.coerceでフォーム・クエリ・環境変数を検証する'
+description: 'HTMLフォームやURLクエリ、環境変数はすべて文字列で届きます。z.coerceで数値や真偽値に変換する方法と、空欄が0になる・"false"がtrueになるという2つの落とし穴、そして起動時に設定を検証するパターンを扱います。'
+order: 12
+---
+
+HTMLのフォーム、URLのクエリ、環境変数——これらに共通するのは、**中身が何であれ文字列で届く**ことです。
+
+```ts
+z.number().safeParse('42'); // ✗ 失敗。"42" は文字列
+```
+
+数値として検証したいのに、届くのは `"42"`。この橋渡しをするのが `z.coerce` です。
+
+## z.coerce — 変換してから検証する
+
+**構文：** `z.coerce.number()` / `z.coerce.string()` / `z.coerce.boolean()` / `z.coerce.date()`
+
+**戻り値：** 入力を変換してから検証するスキーマ
+
+```ts
+z.coerce.number().parse('42'); // 42（数値）
+z.coerce.date().parse('2026-01-01'); // Date オブジェクト
+z.coerce.string().parse(123); // '123'
+```
+
+内部でJavaScriptの `Number()` や `String()` を通してから検証します。**この「JavaScriptの変換をそのまま使う」点が、次の落とし穴の原因**になります。
+
+---
+
+## 落とし穴1: 空欄が `0` になる
+
+`z.coerce.number()` に何を渡すと何になるか、実際の結果です。
+
+| 入力 | 結果 |
+| --- | --- |
+| `'42'` | `42` |
+| `''`（空文字） | **`0`** |
+| `null` | **`0`** |
+| `[]` | **`0`** |
+| `true` | `1` |
+| `'abc'` | ✗ 失敗 |
+| `undefined` | ✗ 失敗 |
+
+<Marker>未入力のフォーム項目は空文字で送られてくるので、`z.coerce.number()` だけだと「未入力」が「0」として保存されます。</Marker>
+
+`Number('')` が `0` になるというJavaScriptの仕様がそのまま出ています。年齢や在庫数でこれが起きると、未入力と0の区別がつきません。
+
+### 対処
+
+空文字を先に弾いてから変換します。
+
+```ts
+const age = z.string().min(1, '入力してください').pipe(z.coerce.number());
+
+age.safeParse('');   // ✗ 失敗（未入力として弾ける）
+age.safeParse('30'); // 30
+```
+
+[前章までに見た](/books/zod/refine-and-transform) `pipe` で「まず文字列として検証 → それから数値に変換」の順に並べるのがポイントです。
+
+<Figure src="/images/boomerang_woman_color.png" alt="投げたものが戻ってくるイメージのイラスト" maxWidth="300px" />
+
+---
+
+## 落とし穴2: `"false"` が `true` になる
+
+こちらの方が事故になりやすいかもしれません。
+
+```ts
+z.coerce.boolean().parse('false'); // true
+```
+
+`Boolean('false')` は `true` です（空でない文字列はすべて真）。つまり `z.coerce.boolean()` は「文字が入っているか」**しか見ていません**。
+
+| 入力 | `z.coerce.boolean()` | `z.stringbool()` |
+| --- | --- | --- |
+| `'false'` | **`true`** | `false` |
+| `'true'` | `true` | `true` |
+| `'0'` | **`true`** | `false` |
+| `''` | `false` | ✗ 失敗 |
+
+文字列で来る真偽値には、**`z.stringbool()` を使ってください**。`'true'` / `'false'` / `'0'` / `'1'` などを正しく解釈します。
+
+```ts
+z.stringbool().parse('false'); // false
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`FEATURE_FLAG=false` にしたのに機能がオンのままだった、ってこれか…
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+環境変数でいちばん多い事故だね。しかも**エラーにならず静かに逆の動作をする**から気づきにくい。文字列の真偽値は `z.stringbool()`、と覚えておこう。
+</SpeechBubble>
+
+---
+
+## 環境変数を起動時に検証する
+
+`process.env` の値は `string | undefined` です。型のうえでは常に「未設定かもしれない」状態で、しかも設定ミスに気づくのはたいてい本番で動かした後です。
+
+起動時にまとめて検証してしまえば、**設定が壊れているアプリを起動させない**ようにできます。
+
+```ts
+// env.ts
+import { z } from 'zod';
+
+const envSchema = z.object({
+  DATABASE_URL: z.string().min(1),
+  API_BASE_URL: z.url(),
+  PORT: z.coerce.number().int().positive(),
+  DEBUG: z.stringbool().default(false),
+});
+
+// 失敗したら起動させたくないので safeParse ではなく parse
+export const env = envSchema.parse(process.env);
+```
+
+```ts
+import { env } from './env';
+
+env.PORT; // number 型。すでに検証済み
+env.DEBUG; // boolean 型
+```
+
+ここで `parse` を使うのは意図的です。[parseとsafeParseの章](/books/zod/parse-and-safeparse)で整理したとおり、**設定不備はユーザーに伝えるエラーではなく、起動を止めるべき異常**だからです。
+
+未設定のまま起動しようとすると、こう出ます。
+
+```
+[
+  { path: ['PORT'], message: 'Invalid input: expected number, received NaN' },
+  { path: ['API_BASE_URL'], message: 'Invalid input: expected string, received undefined' }
+]
+```
+
+<Callout type="info" title="`PORT` 未設定が NaN になる理由">
+`process.env.PORT` が `undefined` のとき、`z.coerce.number()` は `Number(undefined)` = `NaN` を経由します。メッセージが「未設定」ではなく `received NaN` になるのはこのためです。分かりにくいので、`z.coerce.number({ error: 'PORTを設定してください' })` のようにメッセージを添えておくと親切です。
+</Callout>
+
+---
+
+## URLクエリを検証する
+
+クエリパラメータも全部文字列です。ページネーションのような数値パラメータでよく使う形です。
+
+```ts
+const querySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  keyword: z.string().trim().default(''),
+});
+
+const params = Object.fromEntries(new URL(request.url).searchParams);
+const { page, keyword } = querySchema.parse(params);
+```
+
+`.default()` があるので、パラメータが無いときは既定値になります。手で書き換えられる場所なので、`?page=-5` のような値も `.min(1)` で弾けます。
+
+## よくあるハマりどころ
+
+### 未入力が0で保存される
+
+前述のとおりです。`z.string().min(1).pipe(z.coerce.number())` の形にします。
+
+### `z.coerce.boolean()` を使ってしまう
+
+文字列の真偽値には `z.stringbool()` を使います。
+
+### すべてを coerce で受ける
+
+`z.coerce` は「文字列でしか届かない場所」のための道具です。JSONのAPIリクエストのように型が保たれる経路まで `coerce` にすると、`true` が `1` になるような意図しない変換を許すことになります。**境界の性質に合わせて使い分けてください。**
+
+## ちゃんと使うためのポイント
+
+- フォーム・クエリ・環境変数は**すべて文字列**で届く。素の `z.number()` では受けられない
+- <Marker>`z.coerce.number()` は空文字と `null` を `0` にする。未入力を弾くなら先に `z.string().min(1)`</Marker>
+- 文字列の真偽値は `z.coerce.boolean()` ではなく **`z.stringbool()`**
+- 環境変数は起動時に `parse` でまとめて検証し、壊れていれば起動させない
+- JSON経由のデータまで `coerce` にしない
+
+---
+
+次の章では、ここまでのスキーマを画面につなぐ **[React Hook FormとZodの連携](/books/zod/react-hook-form)** を扱います。
+
+## 参考リンク
+
+- [Coercion - Zod](https://zod.dev/api) — `z.coerce` と `z.stringbool` の公式リファレンス（英語）
+- [Number() - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Number/Number) — 空文字が `0` になる変換規則の一次情報
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

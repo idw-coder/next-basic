@@ -1,0 +1,188 @@
+---
+title: 'React Hook FormとZodでフォームを検証する'
+description: 'React Hook FormのresolverにZodスキーマを渡して、入力検証とエラー表示を実装する方法を整理します。フォームの型にz.inputを使う理由、Server Actionと組み合わせるときのサーバー側検証も扱います。'
+order: 13
+---
+
+ここまで書いてきたスキーマを、実際の入力画面につなぎます。Reactでフォームを扱うときの定番である[React Hook Form](https://react-hook-form.com/)には、Zodのスキーマをそのまま検証に使う仕組みが用意されています。
+
+## 必要なパッケージ
+
+React Hook Form本体と、Zodをつなぐアダプタ（resolver）を入れます。
+
+```bash
+npm install react-hook-form @hookform/resolvers
+```
+
+`@hookform/resolvers` はZod以外のライブラリにも対応した共通パッケージで、Zod用の関数はサブパスから読み込みます。
+
+```ts
+import { zodResolver } from '@hookform/resolvers/zod';
+```
+
+## 基本形
+
+スキーマを1つ書いて、`useForm` の `resolver` に渡すだけです。
+
+```tsx
+'use client';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const schema = z.object({
+  name: z.string().trim().min(1, '名前を入力してください'),
+  email: z.email('メールアドレスの形式が正しくありません'),
+  age: z.coerce.number().int().min(0, '0以上で入力してください'),
+});
+
+type FormValues = z.input<typeof schema>;
+
+export function ProfileForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+  });
+
+  return (
+    <form onSubmit={handleSubmit(async (values) => { await save(values); })}>
+      <input {...register('name')} />
+      {errors.name && <p>{errors.name.message}</p>}
+
+      <input {...register('email')} />
+      {errors.email && <p>{errors.email.message}</p>}
+
+      <input {...register('age')} />
+      {errors.age && <p>{errors.age.message}</p>}
+
+      <button disabled={isSubmitting}>送信</button>
+    </form>
+  );
+}
+```
+
+`errors.name.message` には、スキーマに書いたメッセージがそのまま入ります。**入力欄への振り分けは `path` を見て自動で行われる**ので、自分で紐づける必要はありません。
+
+<Marker>検証ルールの定義がスキーマ1か所に集まり、画面側は表示だけを担当する形になります。</Marker>
+
+---
+
+## フォームの型には `z.input` を使う
+
+`useForm<FormValues>` に渡す型は、[型推論の章](/books/zod/type-inference)で扱った `z.input` です。`z.infer` ではありません。
+
+理由は、フォームが扱うのが**検証を通す前の値**だからです。
+
+```ts
+const schema = z.object({
+  age: z.coerce.number(), // 入力は string、出力は number
+  role: z.string().default('user'), // 入力では省略可、出力では必須
+});
+```
+
+| 型 | `age` | `role` |
+| --- | --- | --- |
+| `z.input` | `unknown`（文字列を渡す） | 省略可 |
+| `z.infer`（= output） | `number` | 必須 |
+
+`z.infer` を使うと、`<input>` が返す文字列と型が噛み合わず、初期値も入れられません。**フォームは input、送信後の処理は infer**——と覚えてください。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`handleSubmit` に渡ってくる値はどっちの型なの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+検証を通った後だから、実体は**変換後の値**だよ。`age` は数値になっている。型注釈と実体がずれて気持ち悪ければ、`handleSubmit` の中でもう一度 `schema.parse(values)` を通して、`z.infer` の型で受け直すのが確実だね。
+</SpeechBubble>
+
+<Figure src="/images/pc-work-woman01.png" alt="パソコンで作業している人のイラスト" maxWidth="300px" />
+
+---
+
+## サーバー側の検証を省略しない
+
+ここが最重要です。フォームの検証は**ブラウザ上で動いているだけ**なので、開発者ツールやcurlで簡単に回避できます。
+
+```ts
+// app/actions.ts
+'use server';
+
+import { z } from 'zod';
+
+const schema = z.object({
+  name: z.string().trim().min(1),
+  email: z.email(),
+});
+
+export async function saveProfile(input: unknown) {
+  const result = schema.safeParse(input); // サーバーでも必ず検証する
+  if (!result.success) {
+    return { ok: false, errors: z.flattenError(result.error).fieldErrors };
+  }
+  await db.save(result.data);
+  return { ok: true };
+}
+```
+
+<Callout type="warning" title="フロントの検証はUXのため、サーバーの検証は安全のため">
+役割がまったく違います。フロント側を省略すると体験が悪くなるだけですが、**サーバー側を省略すると安全性が失われます**。省略してよいのは前者だけです。この考え方は [バリデーション設計の章](/books/system-design/11-validation-design)で詳しく扱っています。
+</Callout>
+
+スキーマは共通ファイルに置いて、クライアントとサーバーの両方から読み込むのが定石です。同じルールが二重に書かれることを防げます。
+
+```
+src/schemas/profile.ts   ← スキーマの置き場所
+  ├─ ProfileForm.tsx（クライアント）から import
+  └─ actions.ts（サーバー）から import
+```
+
+<Callout type="info" title="Server Actionと組み合わせる場合">
+Server Actionは公開されたエンドポイントと同じで、クライアントから直接呼び出せます。[Next.jsのServer Actionsの章](/books/next-js/10-server-actions)でも触れているとおり、**入力検証と認可はサーバー側で必ず行ってください**。`FormData` で受け取る場合は `Object.fromEntries(formData)` でオブジェクトに変換してから `safeParse` に渡します。
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### 数値の入力欄で型エラーが出る
+
+`<input>` の値は常に文字列です。`z.number()` ではなく `z.coerce.number()` を使うか、`valueAsNumber` を使います。ただし空欄が `0` になる落とし穴があるので、[変換の章](/books/zod/coercion-and-env)の対処を併せて確認してください。
+
+### エラーメッセージが英語で出る
+
+スキーマ側にメッセージを書いていない箇所です。`.min(1, 'メッセージ')` のように、表示する可能性のある検証にはメッセージを添えます。
+
+### チェックボックスやセレクトの初期値で型が合わない
+
+`z.input` を使っているか確認してください。`.default()` を使っているスキーマで `z.infer` を指定すると、初期値を省略できません。
+
+### パスワード確認のエラーが表示されない
+
+オブジェクト全体に掛ける `refine` は `path` の指定が必須です。[refineの章](/books/zod/refine-and-transform)のとおり、`path: ['confirm']` を書かないとどの入力欄にも紐づきません。
+
+## ちゃんと使うためのポイント
+
+- `zodResolver(schema)` を `useForm` に渡すだけで、検証とエラーの振り分けが繋がる
+- <Marker>フォームの型は `z.input`。`z.infer` だと入力前の値と型が噛み合わない</Marker>
+- エラーメッセージはスキーマ側に書く。画面は表示だけを担当する
+- **フロントの検証はUXのため、サーバーの検証は安全のため。後者は省略できない**
+- スキーマは共通ファイルに置き、クライアントとサーバーで共有する
+
+---
+
+次の章では、フォーム以外の入り口——**[APIの入力とレスポンスの検証](/books/zod/api-validation)** を扱います。
+
+## 参考リンク
+
+- [React Hook Form 公式](https://react-hook-form.com/) — `useForm` と `register` の詳細（英語）
+- [Schema Validation - React Hook Form](https://react-hook-form.com/get-started#SchemaValidation) — resolverを使った検証の公式ガイド（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

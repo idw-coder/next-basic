@@ -2,7 +2,6 @@
 title: 'Zodは空文字やnullを通すのか — デフォルト挙動の早見表'
 description: '`z.string()` は空文字を通すのか、nullとundefinedはどちらが弾かれるのか。毎回迷うデフォルト挙動を、実際に動かした結果の早見表にまとめました。optional・nullable・nullish・default・catchの違いもここで整理します。'
 order: 5
-draft: true
 ---
 
 Zodを書いていると、必ずこの手の疑問に突き当たります。
@@ -169,7 +168,7 @@ APIやDBは「値なし」を `null` で返すことが多く、`.optional()` �
 
 ### `z.coerce.number()` を使ったら空欄が `0` になった
 
-`z.coerce.number()` は変換してから検証するため、空文字も `null` も**エラーにならず `0` になります**。フォームの空欄が0で保存される事故につながるので、変換系は別の注意が必要です。詳しくは [z.coerceで文字列を変換する](/books/zod/coercion-and-env) の章で扱います。
+`z.coerce.number()` は変換してから検証するため、空文字も `null` も**エラーにならず `0` になります**（`Number("")` が `0` になるのと同じ理屈です）。フォームの空欄が0で保存される事故につながるので、変換を挟むときは「変換後の値」で早見表を引き直してください。
 
 ## ちゃんと使うためのポイント
 
@@ -188,3 +187,9 @@ APIやDBは「値なし」を `null` で返すことが多く、`.optional()` �
 
 - [Defining schemas - Zod](https://zod.dev/api) — 各スキーマとメソッドの一覧（英語）
 - [Nullish coalescing operator - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing) — `null` と `undefined` をまとめて「nullish」と呼ぶJavaScript側の背景
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

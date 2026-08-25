@@ -1,4 +1,19 @@
 export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
+  zod: [
+    'safeParse',
+    'z.object',
+    'optional',
+    'nullable',
+    '空文字',
+    'デフォルト値',
+    '未知のキー',
+    'strictObject',
+    'z.infer',
+    'ZodError',
+    'z.email',
+    'strict',
+  ],
+
   'ai-agent-development': [
     'AGENTS.md',
     'CLAUDE.md',

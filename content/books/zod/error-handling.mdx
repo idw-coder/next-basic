@@ -1,0 +1,192 @@
+---
+title: 'ZodErrorの中身とエラーメッセージの日本語化'
+description: '検証に失敗したときに返るZodErrorの構造と、issuesの読み方を整理します。項目ごとのメッセージに整形するtreeifyError・flattenError、日本語ロケールの適用方法、メッセージを自分で書く3つの方法を扱います。'
+order: 11
+---
+
+`safeParse` が失敗したとき、`result.error` に入っているのが `ZodError` です。既定のメッセージは**英語で、開発者向けの文言**なので、そのままユーザーに見せることはできません。この章でその整形方法を扱います。
+
+## issues — 失敗の一覧
+
+`ZodError` の中身は `issues` という配列です。失敗した項目の数だけ要素が入ります。
+
+```ts
+const schema = z.object({ name: z.string().min(1), age: z.number() });
+const result = schema.safeParse({ name: '', age: 'x' });
+
+result.error.issues;
+// [
+//   { code: 'too_small', path: ['name'],
+//     message: 'Too small: expected string to have >=1 characters' },
+//   { code: 'invalid_type', path: ['age'],
+//     message: 'Invalid input: expected number, received string' }
+// ]
+```
+
+主なプロパティです。
+
+| プロパティ | 内容 |
+| --- | --- |
+| `code` | 失敗の種類（`invalid_type` / `too_small` / `custom` など） |
+| `path` | どの項目か。ネストは `['user', 'name']`、配列は `['tags', 1]` |
+| `message` | 人が読むメッセージ |
+
+<Marker>`path` があるので「どの入力欄のエラーか」を機械的に振り分けられます。</Marker>
+
+---
+
+## 整形用のヘルパー
+
+`issues` の配列をそのまま画面に流すのは扱いづらいので、用途別の変換関数が用意されています。
+
+| 関数 | 返る形 | 向いている用途 |
+| --- | --- | --- |
+| `z.treeifyError(error)` | 構造をそのまま辿れる入れ子オブジェクト | ネストしたフォーム |
+| `z.flattenError(error)` | `fieldErrors` / `formErrors` の平坦な形 | 1階層のフォーム |
+| `z.prettifyError(error)` | 人が読む複数行の文字列 | ログ・開発時の確認 |
+
+```ts
+z.flattenError(result.error);
+// {
+//   formErrors: [],
+//   fieldErrors: {
+//     name: ['Too small: expected string to have >=1 characters'],
+//     age: ['Invalid input: expected number, received string']
+//   }
+// }
+```
+
+```ts
+z.treeifyError(result.error);
+// { errors: [], properties: {
+//     name: { errors: ['Too small: ...'] },
+//     age:  { errors: ['Invalid input: ...'] } } }
+```
+
+```ts
+console.log(z.prettifyError(result.error));
+// ✖ Too small: expected string to have >=1 characters
+//   → at name
+// ✖ Invalid input: expected number, received string
+//   → at age
+```
+
+`fieldErrors` は「項目名 → メッセージ配列」なので、フォームの各入力欄の下に出すのがそのまま書けます。ネストの無いフォームなら `flattenError` が一番扱いやすいです。
+
+<Figure src="/images/marubatsu.png" alt="正誤を判定するイメージのイラスト" maxWidth="280px" />
+
+---
+
+## メッセージを日本語にする3つの方法
+
+### 1. ロケールを適用してまとめて日本語にする
+
+Zodには日本語ロケールが同梱されています。アプリの起動時に1回設定すれば、既定のメッセージがすべて日本語になります。
+
+```ts
+import { z } from 'zod';
+
+z.config(z.locales.ja());
+```
+
+適用の前後で、同じ検証のメッセージがこう変わります。
+
+| 検証 | 適用前 | 適用後 |
+| --- | --- | --- |
+| `z.string()` に数値 | `Invalid input: expected string, received number` | `無効な入力: stringが期待されましたが、数値が入力されました` |
+| `z.string().min(8)` | `Too small: expected string to have >=8 characters` | `小さすぎる値: stringは8文字以上である必要があります` |
+| `z.email()` | `Invalid email address` | `無効なメールアドレス` |
+
+<Callout type="warning" title="ロケールだけではユーザー向けの文章にならない">
+「stringが期待されましたが」のように、翻訳はされていても**開発者向けの語彙が残ります**。エンドユーザーに見せる画面では、次の方法で項目ごとに文言を書く方が親切です。ロケールは「書き漏らした箇所の受け皿」と考えるとちょうどよいです。
+</Callout>
+
+### 2. メソッドの第2引数で指定する
+
+個別の検証にメッセージを添えます。もっとも手軽で、実務でよく使う形です。
+
+```ts
+z.string().min(8, 'パスワードは8文字以上で入力してください');
+z.array(z.string()).min(1, 'タグを1つ以上選んでください');
+```
+
+### 3. スキーマ生成時に `error` で指定する
+
+型そのものが違う場合（文字列を期待したのに数値が来た等）のメッセージは、スキーマの引数で指定します。
+
+```ts
+z.string({ error: '文字列で入力してください' });
+```
+
+<Callout type="warning" title="v3の `required_error` は v4では効きません">
+Zod 3にあった `z.string({ required_error: '必須です' })` は、v4では**エラーにも警告にもならず、単に無視されます**。メッセージが英語のまま変わらないときは、この書き方が残っていないか確認してください。v4では `error` に統一されています。
+</Callout>
+
+---
+
+## 実務での組み立て方
+
+APIのハンドラでは、`safeParse` の失敗をそのまま400として返す形が定番です。
+
+```ts
+const result = createUserSchema.safeParse(body);
+
+if (!result.success) {
+  return Response.json(
+    { message: '入力内容を確認してください', errors: z.flattenError(result.error).fieldErrors },
+    { status: 400 },
+  );
+}
+```
+
+<Marker>全項目分のエラーがまとめて返るので、フロントは1回のレスポンスですべての入力欄にエラーを表示できます。</Marker>1件ずつ指摘して何度も送信させる、という体験を避けられます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+エラーの中身をそのままレスポンスに載せて大丈夫なの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`fieldErrors` くらいなら問題ないよ。ただし `error` オブジェクト全体をJSONにするのは避けよう。内部のスキーマ構造が推測できる情報が混ざることがあるからね。返すのは「項目名」と「メッセージ」だけに絞るのが安全だよ。
+</SpeechBubble>
+
+---
+
+## よくあるハマりどころ
+
+### 英語のメッセージがそのまま画面に出る
+
+既定のメッセージは英語です。ロケール適用か、項目ごとのメッセージ指定が必要です。
+
+### `required_error` を書いても変わらない
+
+v3の書き方です。v4では `error` を使います。
+
+### `refine` のメッセージが `Invalid input` になる
+
+[refineの章](/books/zod/refine-and-transform)のとおり、`refine` は第2引数を省略すると `Invalid input` になります。
+
+### エラーが画面に出ない
+
+`path` が空だと、どの入力欄にも紐づきません。オブジェクト全体に掛けた `refine` では `path` を指定してください。
+
+## ちゃんと使うためのポイント
+
+- `ZodError` の本体は `issues` の配列。`code` / `path` / `message` を持つ
+- <Marker>1階層のフォームなら `z.flattenError()` の `fieldErrors` が一番扱いやすい</Marker>
+- `z.config(z.locales.ja())` で既定メッセージを日本語化できるが、語彙は開発者向けのまま
+- ユーザーに見せる文言は、メソッドの第2引数か `{ error: '...' }` で個別に書く
+- v3の `required_error` はv4では無視される
+
+---
+
+次の章では、フォームやURLクエリのように**すべてが文字列で届く**データを扱う **[z.coerceと環境変数の検証](/books/zod/coercion-and-env)** に進みます。ここには「空欄が0になる」という有名な落とし穴があります。
+
+## 参考リンク
+
+- [Error handling - Zod](https://zod.dev/error-customization) — エラーのカスタマイズ方法の公式解説（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

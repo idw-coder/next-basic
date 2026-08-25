@@ -1,0 +1,207 @@
+---
+title: 'z.objectでオブジェクトを検証する — 未知のキーの扱い'
+description: 'オブジェクトの検証をz.objectで書く方法を整理します。定義していないキーが黙って捨てられるデフォルト挙動、strictObjectとlooseObjectの使い分け、extendやpickでスキーマを組み立てる方法を扱います。'
+order: 6
+---
+
+実務で検証する対象は、単体の文字列よりも**オブジェクト**であることがほとんどです。APIのリクエストボディ、フォームの送信値、設定ファイル——どれもキーと値の集まりです。
+
+## z.object の基本
+
+**構文：** `z.object(shape)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `shape` | キーとスキーマのオブジェクト | どのキーにどのスキーマを適用するか |
+
+**戻り値：** オブジェクトスキーマ
+
+```ts
+const userSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.email(),
+});
+```
+
+値にスキーマを書くだけなので、そのまま入れ子にできます。
+
+```ts
+const postSchema = z.object({
+  title: z.string(),
+  author: z.object({
+    name: z.string(),
+  }),
+  tags: z.array(z.string()),
+});
+```
+
+オブジェクト以外を渡すと弾かれます。`null` は `expected object, received null`、配列は `expected object, received array` というメッセージになります。JavaScriptでは `typeof null === 'object'` ですが、Zodは区別してくれます。
+
+---
+
+## 定義していないキーは黙って捨てられる
+
+ここが最初につまずくところです。スキーマに書いていないキーが入力に含まれていても、**エラーにはなりません。結果から静かに取り除かれます。**
+
+```ts
+const schema = z.object({ id: z.number(), name: z.string() });
+
+schema.parse({ id: 1, name: 'A', extra: 'x' });
+// { id: 1, name: 'A' } — extra は消えている
+```
+
+<Marker>「送ったはずのフィールドが保存されていない」という不具合の犯人は、たいていこの挙動です。</Marker>スキーマにキーを足し忘れると、リクエストには乗っているのに検証後のデータからは消えてしまいます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+エラーにしてくれた方が気づけるのに、どうして黙って捨てるの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+安全側に倒しているんだ。知らないキーをそのまま通すと、想定外の値がDBやログに流れ込む。捨てておけば「スキーマに書いたものだけ」が下流に届く、と保証できる。エラーにしたいなら、次の表のように書き方を変えればいい。
+</SpeechBubble>
+
+### 4つの書き方
+
+| 書き方 | 余分なキーがあると |
+| --- | --- |
+| `z.object({...})` | **黙って取り除く**（デフォルト） |
+| `z.strictObject({...})` | エラーにする（`Unrecognized key: "x"`） |
+| `z.looseObject({...})` | そのまま通す |
+| `z.object({...}).catchall(スキーマ)` | 余分なキーの**値**を指定スキーマで検証する |
+
+```ts
+z.strictObject({ id: z.number() }).safeParse({ id: 1, x: 2 });
+// エラー: Unrecognized key: "x"
+
+z.looseObject({ id: z.number() }).parse({ id: 1, x: 2 });
+// { id: 1, x: 2 } — x も残る
+
+z.object({ id: z.number() }).catchall(z.string()).parse({ id: 1, x: 'ok' });
+// { id: 1, x: 'ok' } — 追加キーは文字列であることを要求する
+```
+
+使い分けの目安です。
+
+- **設定ファイルやCLIの引数** — `strictObject`。書き間違えたキーを黙って無視されると、設定が効かない理由が分からなくなる
+- **APIレスポンス** — デフォルトの `object`。サーバー側がフィールドを追加しても壊れない
+- **フォームやリクエストボディ** — デフォルトの `object`。余計な値を下流に流さない
+
+<Callout type="warning" title="`strictObject` はAPIレスポンスに使わない">
+外部APIは予告なくフィールドを追加します。`strictObject` で受けていると、**相手が項目を1つ足しただけで自分のアプリが壊れます**。厳しくするほど安全とは限りません。
+</Callout>
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="画面を見て驚いている人のイラスト" maxWidth="300px" />
+
+---
+
+## エラーはどの項目で起きたか分かる
+
+オブジェクトを検証すると、`issues` の各要素に **`path`** が入ります。どのキーで失敗したかを示す配列です。
+
+```ts
+const schema = z.object({
+  user: z.object({ name: z.string() }),
+  tags: z.array(z.string()),
+});
+
+schema.safeParse({ user: { name: 1 }, tags: ['a'] }).error.issues[0].path;
+// ['user', 'name'] — ネストした位置も分かる
+
+schema.safeParse({ user: { name: 'a' }, tags: ['a', 2] }).error.issues[0].path;
+// ['tags', 1] — 配列の場合はインデックスが入る
+```
+
+そして重要なのが、**最初のエラーで止まらない**ことです。
+
+```ts
+schema.safeParse({ user: { name: 1 }, tags: [2] }).error.issues.length;
+// 2 — 両方のエラーが集まる
+```
+
+<Marker>全項目を検証してから、失敗した項目をまとめて返します。</Marker>だからフォームで「5個の入力ミスを一度に表示する」ことができます。1件ずつ指摘して5回送信させる、という体験にならずに済むのはこの仕組みのおかげです。
+
+---
+
+## スキーマを組み立てる
+
+一度書いたオブジェクトスキーマは、部品として使い回せます。
+
+| メソッド | 引数 | 何をするか |
+| --- | --- | --- |
+| `.extend(shape)` | 追加するキーとスキーマ | キーを足した新しいスキーマ |
+| `.pick({ キー: true })` | 残すキー | 指定したキーだけのスキーマ |
+| `.omit({ キー: true })` | 除くキー | 指定したキーを外したスキーマ |
+| `.partial()` | なし | 全キーを `optional` にする |
+| `.required()` | なし | 全キーを必須に戻す |
+| `.keyof()` | なし | キー名のenumスキーマ |
+| `.shape` | （プロパティ） | 個々のキーのスキーマを取り出す |
+
+**戻り値：** `.shape` 以外はすべて新しいスキーマ。元のスキーマは変わらない
+
+実際に効くのは、**同じリソースに対して用途別のスキーマを作る**場面です。
+
+```ts
+const userSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.email(),
+});
+
+// 新規作成: idはサーバーが採番するので受け取らない
+const createUserSchema = userSchema.omit({ id: true });
+
+// 部分更新: 送られてきた項目だけ更新する
+const updateUserSchema = createUserSchema.partial();
+```
+
+`userSchema` を1か所直せば、作成用も更新用も追従します。項目が増えるたびに3つのスキーマを手で直す、という状態を避けられます。
+
+別のスキーマと合成したいときは、`.shape` を渡します。
+
+```ts
+const timestamps = z.object({ createdAt: z.iso.datetime() });
+const userWithTime = userSchema.extend(timestamps.shape);
+```
+
+---
+
+## よくあるハマりどころ
+
+### 送ったはずの項目が消える
+
+前述のデフォルト挙動です。検証後のデータに項目が無いときは、まずスキーマにそのキーを書いたかを確認してください。
+
+### `.partial()` を使うと空オブジェクトが通る
+
+`.partial()` は全キーを任意にするため、`{}` が検証を通ります。部分更新のAPIでは「1項目以上必須」を別途チェックする必要があります。
+
+```ts
+updateUserSchema.safeParse({}).success; // true — 何も更新しない更新リクエスト
+```
+
+### 配列を渡したのにobjectエラーが出る
+
+`z.object()` は配列を受け付けません。配列を検証したいなら `z.array()` を使います。`z.array(userSchema)` のように、オブジェクトスキーマを中に入れる形になります。
+
+## ちゃんと使うためのポイント
+
+- <Marker>`z.object()` は定義していないキーをエラーにせず、黙って取り除く</Marker>
+- 厳しくしたいなら `strictObject`、通したいなら `looseObject`
+- `strictObject` を外部APIのレスポンスに使うと、相手の項目追加で壊れる
+- エラーは `path` でどのキーかが分かり、**全項目分がまとめて返る**
+- `.omit()` や `.partial()` で、1つのスキーマから作成用・更新用を派生させる
+
+---
+
+ここまでで、単体の値からオブジェクトまで検証できるようになりました。値が「通るか通らないか」の基準に迷ったときは、[デフォルト挙動の早見表](/books/zod/default-behavior)に戻ってきてください。
+
+## 参考リンク
+
+- [Objects - Zod](https://zod.dev/api) — オブジェクトスキーマの公式リファレンス（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

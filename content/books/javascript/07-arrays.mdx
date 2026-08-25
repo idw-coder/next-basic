@@ -1,5 +1,5 @@
 ---
-title: '配列メソッド早見表 — やりたいことから選ぶチートシート'
+title: '【配列メソッド早見表】やりたいことから選ぶチートシート'
 description: 'JavaScriptの配列メソッドを、変換・絞り込み・検索・コピー・結合・破壊的操作などの目的別に整理します。map・filter・reduce・forEach・find・some・every・slice・concat・fillなどの詳細ページへの入口です。'
 order: 7
 ---
@@ -24,33 +24,33 @@ APIのレスポンスを加工する、フォームの入力値をまとめる�
 
 ## やりたいことから選ぶ早見表
 
-| やりたいこと                       | 使うメソッド              | 詳細                                                                                          |
-| ---------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| 新しい配列を作りたい               | 配列リテラル `[]`         | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#create-array)   |
-| 各要素を別の形に変換したい         | `map`                     | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#map)                      |
-| 各要素に処理を実行したい           | `forEach`                 | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#foreach)                  |
-| 条件に合う要素だけ残したい         | `filter`                  | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#filter)                   |
-| 配列全体を1つの値にまとめたい      | `reduce`                  | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#reduce)                   |
-| 複数の加工をつなげたい             | メソッドチェーン          | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#chaining)                 |
-| 最初の1件を探したい                | `find`                    | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#find)                  |
-| 最初のインデックスを探したい       | `findIndex` / `indexOf`   | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#findindex)             |
-| 1つでも条件を満たすか確認したい    | `some`                    | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#some)                  |
-| すべて条件を満たすか確認したい     | `every`                   | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#every)                 |
-| 値が含まれるか確認したい           | `includes`                | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#includes)              |
-| 配列の一部を取り出したい           | `slice`                   | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#slice)               |
-| 配列を結合したい                   | `concat`                  | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#concat)              |
-| コピーしつつ要素を足したい         | スプレッド構文            | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#spread)              |
-| 配列を文字列にしたい               | `join`                    | [文字列操作と正規表現](/books/javascript/08-string-methods#section-8)                         |
-| 配列ではないものから配列を作りたい | `Array.from`              | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#array-from)     |
-| 同じ値で埋めたい                   | `fill`                    | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#fill)           |
-| ネストした配列を平坦化したい       | `flat`                    | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flat)           |
-| 変換して平坦化したい               | `flatMap`                 | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flatmap)        |
-| 並び替えたい                       | `sort` / `toSorted`       | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#sort)                    |
-| 逆順にしたい                       | `reverse` / `toReversed`  | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#reverse)                 |
-| 末尾に追加・削除したい             | `push` / `pop`            | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#push-pop)                |
-| 先頭に追加・削除したい             | `unshift` / `shift`       | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#shift-unshift)           |
-| 途中を挿入・削除・置換したい       | `splice` / `toSpliced`    | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#splice)                  |
-| 1要素だけ差し替えたい（非破壊）    | `with`                    | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#with)                    |
+| やりたいこと                       | 使うメソッド             | 詳細                                                                                        |
+| ---------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------- |
+| 新しい配列を作りたい               | 配列リテラル `[]`        | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#create-array) |
+| 各要素を別の形に変換したい         | `map`                    | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#map)                    |
+| 各要素に処理を実行したい           | `forEach`                | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#foreach)                |
+| 条件に合う要素だけ残したい         | `filter`                 | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#filter)                 |
+| 配列全体を1つの値にまとめたい      | `reduce`                 | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#reduce)                 |
+| 複数の加工をつなげたい             | メソッドチェーン         | [配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#chaining)               |
+| 最初の1件を探したい                | `find`                   | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#find)                |
+| 最初のインデックスを探したい       | `findIndex` / `indexOf`  | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#findindex)           |
+| 1つでも条件を満たすか確認したい    | `some`                   | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#some)                |
+| すべて条件を満たすか確認したい     | `every`                  | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#every)               |
+| 値が含まれるか確認したい           | `includes`               | [配列の検索・判定メソッド](/books/javascript/07-arrays2-search-methods#includes)            |
+| 配列の一部を取り出したい           | `slice`                  | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#slice)             |
+| 配列を結合したい                   | `concat`                 | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#concat)            |
+| コピーしつつ要素を足したい         | スプレッド構文           | [配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#spread)            |
+| 配列を文字列にしたい               | `join`                   | [文字列操作と正規表現](/books/javascript/08-string-methods#section-8)                       |
+| 配列ではないものから配列を作りたい | `Array.from`             | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#array-from)   |
+| 同じ値で埋めたい                   | `fill`                   | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#fill)         |
+| ネストした配列を平坦化したい       | `flat`                   | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flat)         |
+| 変換して平坦化したい               | `flatMap`                | [配列の初期化・平坦化メソッド](/books/javascript/07-arrays5-fill-flat-methods#flatmap)      |
+| 並び替えたい                       | `sort` / `toSorted`      | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#sort)                  |
+| 逆順にしたい                       | `reverse` / `toReversed` | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#reverse)               |
+| 末尾に追加・削除したい             | `push` / `pop`           | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#push-pop)              |
+| 先頭に追加・削除したい             | `unshift` / `shift`      | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#shift-unshift)         |
+| 途中を挿入・削除・置換したい       | `splice` / `toSpliced`   | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#splice)                |
+| 1要素だけ差し替えたい（非破壊）    | `with`                   | [配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#with)                  |
 
 <a id="recommended-pages"></a>
 
@@ -120,11 +120,11 @@ ReactなどのUI実装では、状態を直接変更しないために非破壊�
 
 配列メソッドは、**元の配列を直接変更する「破壊的メソッド」**と、**元の配列はそのままに新しい配列や値を返す「非破壊メソッド」**に分けられます。
 
-| 種類               | メソッド                                                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 破壊的             | `push` / `pop` / `shift` / `unshift` / `splice` / `sort` / `reverse` / `fill` / `copyWithin`                                          |
+| 種類               | メソッド                                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 破壊的             | `push` / `pop` / `shift` / `unshift` / `splice` / `sort` / `reverse` / `fill` / `copyWithin`                                                      |
 | 非破壊             | `map` / `filter` / `reduce` / `forEach` / `find` / `findIndex` / `some` / `every` / `slice` / `concat` / `flat` / `flatMap` / `includes` / `join` |
-| ES2023の非破壊代替 | `toSorted` / `toReversed` / `toSpliced` / `with`                                                                                      |
+| ES2023の非破壊代替 | `toSorted` / `toReversed` / `toSpliced` / `with`                                                                                                  |
 
 破壊的メソッドとES2023の非破壊代替の対応は、[配列の破壊的メソッド](/books/javascript/07-arrays4-mutating-methods#overview) に一覧があります。
 
@@ -173,7 +173,8 @@ flowchart TB
 
 <Callout type="note" title="hasOwnProperty 自体もプロトタイプ由来">
   上のコードで使っている `arr.hasOwnProperty` も、`arr` 自身のプロパティではなく `Object.prototype`
-  から継承したものです。チェーンの終端にある `Object.prototype` のメソッドなので、配列でもオブジェクトでも同じように呼べます。
+  から継承したものです。チェーンの終端にある `Object.prototype`
+  のメソッドなので、配列でもオブジェクトでも同じように呼べます。
 </Callout>
 
 配列っぽく見えるが `Array` インスタンスではないもの（例: `document.querySelectorAll()` の戻り値である `NodeList`）では、そのままでは `.map()` が使えません。

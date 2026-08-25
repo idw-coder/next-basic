@@ -1,0 +1,200 @@
+---
+title: 'union・discriminatedUnion・enumの使い分け'
+description: '「AかBのどちらか」を表す4つの書き方を整理します。literalとenumで値を限定する方法、unionとdiscriminatedUnionの違い、そしてdiscriminatedUnionにするとエラーメッセージがどれだけ具体的になるかを実例で比べます。'
+order: 8
+---
+
+「ステータスは `draft` か `published` のどちらか」「レスポンスは成功形か失敗形のどちらか」——選択肢を表すスキーマの書き方です。似たものが4つあるので、使い分けを先に示します。
+
+| やりたいこと | 使うもの |
+| --- | --- |
+| 特定の値ちょうど1つに限定する | `z.literal()` |
+| 決まった値の**集合**に限定する | `z.enum()` |
+| 型の違うスキーマの**どれか** | `z.union()` |
+| 目印のキーで**形が切り替わる**オブジェクト | `z.discriminatedUnion()` |
+
+---
+
+## z.literal — 値そのものを固定する
+
+**構文：** `z.literal(値)`
+
+**戻り値：** その値ちょうどしか通さないスキーマ
+
+```ts
+z.literal('a').safeParse('b');
+// エラー: Invalid input: expected "a"
+```
+
+配列を渡すと、複数の値のどれかを許せます。
+
+```ts
+z.literal(['a', 'b']).safeParse('b').success; // true
+```
+
+単体で使うことは少なく、次に説明する `discriminatedUnion` の目印として使うのが主な役割です。
+
+## z.enum — 決まった選択肢に限定する
+
+**構文：** `z.enum(値の配列)`
+
+**戻り値：** 配列に含まれる値だけを通すスキーマ
+
+```ts
+const status = z.enum(['draft', 'published', 'archived']);
+
+status.safeParse('green');
+// エラー: Invalid option: expected one of "draft"|"published"|"archived"
+```
+
+<Marker>エラーメッセージに選択肢が全部並ぶので、そのままユーザーへの案内に使えます。</Marker>
+
+`.options` で選択肢の配列を取り出せます。セレクトボックスの選択肢をスキーマから生成すれば、**画面と検証がずれません**。
+
+```ts
+status.options; // ['draft', 'published', 'archived']
+```
+
+TypeScriptの `enum` やオブジェクトを渡すこともできます。
+
+```ts
+const Role = { Admin: 'admin', User: 'user' } as const;
+z.enum(Role).safeParse('admin').success; // true
+```
+
+<Figure src="/images/idea_drawing_woman.png" alt="選択肢を整理している人のイラスト" maxWidth="300px" />
+
+---
+
+## z.union — どれか1つに当てはまればよい
+
+**構文：** `z.union([スキーマ1, スキーマ2, ...])`
+
+**戻り値：** どれか1つでも通れば成功するスキーマ
+
+```ts
+const idSchema = z.union([z.string(), z.number()]);
+idSchema.safeParse(1).success; // true
+```
+
+`.or()` を使っても同じです。`z.string().or(z.number())` と書けます。
+
+型が根本的に違うもの（文字列と数値など）を受けたいときに向きます。ただし、**失敗したときのエラーが弱い**という弱点があります。
+
+```ts
+z.union([z.string(), z.number()]).safeParse(true).error.issues[0];
+// { code: 'invalid_union', message: 'Invalid input' }
+```
+
+「どれにも当てはまらなかった」としか分かりません。オブジェクト同士の union だと、これがかなり困ります。
+
+---
+
+## z.discriminatedUnion — 目印のキーで形を切り替える
+
+**構文：** `z.discriminatedUnion(目印のキー名, [スキーマの配列])`
+
+| 引数 | 説明 |
+| --- | --- |
+| 目印のキー名 | どのオブジェクトかを判別するキー（`type` など） |
+| スキーマの配列 | 目印のキーを `z.literal()` で持つオブジェクトスキーマたち |
+
+**戻り値：** 目印の値を見て、対応するスキーマだけで検証するスキーマ
+
+```ts
+const event = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('click'), x: z.number(), y: z.number() }),
+  z.object({ type: z.literal('input'), value: z.string() }),
+]);
+```
+
+`type` の値を見て、それに対応するスキーマ**だけ**を適用します。これがエラーメッセージに効きます。
+
+### エラーの具体性がまるで違う
+
+同じ不正データを、通常の `union` と `discriminatedUnion` に流した結果を比べます。
+
+```ts
+// 入力: { type: 'input', value: 123 }  ← value が数値になっている
+```
+
+| 使ったもの | 得られるエラー |
+| --- | --- |
+| `z.union()` | `invalid_union` / `Invalid input` の**1件だけ**。どこが悪いか不明 |
+| `z.discriminatedUnion()` | `path: ['value']` / `expected string, received number` |
+
+<Marker>目印のキーがあるオブジェクトの選択肢なら、迷わず `discriminatedUnion` を使ってください。</Marker>ユーザーに返せるエラーになるかどうかが変わります。
+
+目印の値そのものが未知の場合は、それ専用のエラーが出ます。
+
+```ts
+event.safeParse({ type: 'scroll' }).error.issues[0];
+// { code: 'invalid_union', path: ['type'],
+//   message: "Invalid discriminator value. Expected 'click' | 'input'" }
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`union` でも動くのに、わざわざ `discriminatedUnion` にする意味ってそこだけ？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+速度も違うよ。`union` は候補を**片っ端から試す**けど、`discriminatedUnion` は目印を見て**1つに決め打ち**する。選択肢が増えるほど差が出るし、何よりエラーが読める。オブジェクトの選択肢なら基本はこっちだね。
+</SpeechBubble>
+
+### 実務での典型例
+
+APIレスポンスの成功・失敗を1つのスキーマで表す場合です。
+
+```ts
+const apiResult = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('success'), data: z.object({ id: z.number() }) }),
+  z.object({ status: z.literal('error'), message: z.string() }),
+]);
+
+const result = apiResult.parse(json);
+
+if (result.status === 'success') {
+  result.data.id; // ここでは data が存在する型になる
+} else {
+  result.message; // ここでは message が存在する型になる
+}
+```
+
+検証を通した後、`status` で分岐すると**TypeScript側も型を絞り込んでくれます**。判別可能なユニオンの仕組みは [TypeScriptの絞り込み](/books/typescript/05-narrowing)の章で詳しく扱っています。
+
+---
+
+## よくあるハマりどころ
+
+### unionのエラーをユーザーに出しても意味が通じない
+
+前述のとおり `Invalid input` としか出ません。ユーザー向けのメッセージが必要なら、`discriminatedUnion` にするか、`z.union()` の第2引数でメッセージを指定します。
+
+### enumに数値を入れたい
+
+`z.enum()` が扱うのは文字列です。数値の選択肢は `z.literal([1, 2, 3])` か `z.union([z.literal(1), z.literal(2)])` で表します。
+
+### 選択肢を2か所に書いてしまう
+
+セレクトボックスの選択肢と、検証用の `z.enum()` を別々に書くと、片方だけ更新されてずれます。`.options` を使ってスキーマを唯一の定義元にしてください。
+
+## ちゃんと使うためのポイント
+
+- 値の限定は `z.literal()`（1つ）と `z.enum()`（集合）
+- <Marker>目印キーを持つオブジェクトの選択肢は `discriminatedUnion`。エラーが具体的になり、速度も有利</Marker>
+- 素の `z.union()` のエラーは `Invalid input` だけで、原因が読めない
+- `z.enum().options` を画面の選択肢に使えば、検証とUIがずれない
+
+---
+
+ここまでは「形が正しいか」の検証でした。[z.object](/books/zod/object-schema) や [z.array](/books/zod/arrays-and-records) と組み合わせれば、たいていのデータ構造は表現できます。
+
+## 参考リンク
+
+- [Unions - Zod](https://zod.dev/api) — union・discriminatedUnion・enumの公式リファレンス（英語）
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

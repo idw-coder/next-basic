@@ -2,7 +2,6 @@
 title: 'parseとsafeParseの違い — 例外で落とすか結果で受けるか'
 description: 'Zodでスキーマを実行する4つのメソッドを整理します。parseは失敗時に例外を投げ、safeParseは結果オブジェクトを返します。どちらを使うべきかの判断基準と、戻り値を使わないと変換が反映されない落とし穴も扱います。'
 order: 4
-draft: true
 ---
 
 スキーマを書いただけでは何も起きません。実際に値を通すには `parse` か `safeParse` を呼びます。同じ検証をしますが、**失敗したときの伝え方**がまったく違います。
@@ -113,7 +112,7 @@ schema.parse('abc');
 // $ZodAsyncError: Encountered Promise during synchronous parse. Use .parseAsync() instead.
 ```
 
-エラーメッセージが「`.parseAsync()` を使え」と教えてくれるので、出たら差し替えれば済みます。非同期の検証そのものは [refineとtransform](/books/zod/refine-and-transform) の章で扱います。
+エラーメッセージが「`.parseAsync()` を使え」と教えてくれるので、出たら差し替えれば済みます。非同期の検証が必要になるのは、`refine` に `async` 関数を渡す場合だけです。同期の検証しか書いていないなら `parse` / `safeParse` のままで構いません。
 
 ## 戻り値を使わないと変換が反映されない
 
@@ -141,7 +140,7 @@ input.name; // "  Alice  " — 元のまま
 
 ### エラーをそのままユーザーに表示する
 
-`ZodError` のメッセージは既定では英語で、`Invalid input: expected string, received undefined` のような開発者向けの文言です。そのまま画面に出さず、項目ごとのメッセージに整形してください。方法は [エラーメッセージの日本語化](/books/zod/error-handling) の章で扱います。
+`ZodError` のメッセージは既定では英語で、`Invalid input: expected string, received undefined` のような開発者向けの文言です。そのまま画面に出さず、項目ごとのメッセージに整形してください。`z.treeifyError(error)` を使うと項目名をキーにしたオブジェクトが得られ、`.min(1, "1文字以上で入力してください")` のように各メソッドの第2引数で日本語のメッセージを指定できます。
 
 ### 失敗したときだけログを出して処理を続ける
 
@@ -163,3 +162,9 @@ input.name; // "  Alice  " — 元のまま
 
 - [Parsing data - Zod](https://zod.dev/basics) — parse系メソッドの公式解説（英語）
 - [try...catch - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/try...catch) — 例外処理の基本と `instanceof` による分岐
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>

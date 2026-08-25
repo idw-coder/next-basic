@@ -15,7 +15,9 @@ ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
 ARG NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID
 
-RUN npm run build
+# .next/cache はビルド用のwebpack/SWCキャッシュ（約1GB）で実行時には不要。
+# 本番ステージへコピーすると巨大レイヤーになりGHCRへのpushが失敗しやすくなるため、ここで削除する。
+RUN npm run build && rm -rf .next/cache
 
 FROM node:20-alpine
 

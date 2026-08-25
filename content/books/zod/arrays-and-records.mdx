@@ -1,0 +1,219 @@
+---
+title: '配列・タプル・Recordの検証 — z.arrayとz.recordの使い分け'
+description: '配列の要素をまとめて検証するz.array、位置ごとに型が違うz.tuple、キーが決まっていないオブジェクトを扱うz.recordの書き方を整理します。エラーがどの要素で起きたかを示すpathの読み方も扱います。'
+order: 7
+---
+
+前章のオブジェクトに続いて、複数の値をまとめて持つ構造を検証します。「同じ形の値が並ぶ」のか「位置ごとに意味が違う」のか「キーが決まっていない」のかで、使うスキーマが変わります。
+
+| 構造 | 使うスキーマ | 例 |
+| --- | --- | --- |
+| 同じ形の値が並ぶ | `z.array()` | タグの一覧、ユーザーの配列 |
+| 位置ごとに型が違う | `z.tuple()` | 座標 `[x, y]`、`[名前, 年齢]` |
+| キーが決まっていないオブジェクト | `z.record()` | 言語コードごとの翻訳、ID→値のマップ |
+
+---
+
+## z.array — 同じ形の値が並ぶ
+
+**構文：** `z.array(要素のスキーマ)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| 要素のスキーマ | 任意のスキーマ | 配列の**すべての要素**に適用される |
+
+**戻り値：** 配列スキーマ
+
+```ts
+z.array(z.string()); // 文字列の配列
+z.array(z.object({ id: z.number() })); // オブジェクトの配列
+```
+
+要素数の検証はメソッドで足します。
+
+| メソッド | 何を検証するか |
+| --- | --- |
+| `.min(n)` | `n` 件以上か |
+| `.max(n)` | `n` 件以下か |
+| `.length(n)` | ちょうど `n` 件か |
+| `.nonempty()` | 1件以上か（`.min(1)` と同じ） |
+
+[デフォルト挙動の章](/books/zod/default-behavior)で見たとおり、**素の `z.array()` は空配列を通します**。「1件以上必須」を表したいなら `.min(1)` が要ります。
+
+```ts
+z.array(z.string()).min(1).safeParse([]);
+// エラー: Too small: expected array to have >=1 items
+```
+
+### エラーは要素の位置で分かる
+
+配列の中で失敗すると、`path` にインデックスが入ります。しかも**失敗した要素の分だけ**エラーが出ます。
+
+```ts
+z.array(z.string()).safeParse(['a', 1, 2]).error.issues.map((i) => i.path);
+// [[1], [2]] — 2番目と3番目が不正
+```
+
+<Marker>1件目で止まらないので、「3件目と7件目が不正」といった案内をそのまま作れます。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+CSVを取り込むときに「何行目がダメか」を出したかったんだけど、これ使えそう。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+まさにその用途に向いているよ。`path[0]` が行番号（0始まり）、オブジェクトの配列なら `path[1]` が列名になる。エラー表示の材料が最初から揃っているんだ。
+</SpeechBubble>
+
+---
+
+## z.tuple — 位置ごとに型が違う
+
+**構文：** `z.tuple([スキーマ1, スキーマ2, ...])`
+
+**戻り値：** タプルスキーマ。要素数と各位置の型の両方を検証する
+
+```ts
+const point = z.tuple([z.number(), z.number()]);
+point.parse([10, 20]); // [10, 20]
+
+const entry = z.tuple([z.string(), z.number()]);
+entry.parse(['Alice', 30]); // ['Alice', 30]
+```
+
+`z.array()` との違いは、**要素数が固定**で、位置ごとに別のスキーマが適用される点です。多すぎても少なすぎても失敗します。
+
+```ts
+z.tuple([z.string(), z.number()]).safeParse(['a']);
+// エラー: Too small: expected array to have >=2 items
+
+z.tuple([z.string()]).safeParse(['a', 'b']).success;
+// false — 余分な要素も許されない
+```
+
+末尾に可変長の要素を許したい場合は、第2引数に「残り」のスキーマを渡します。
+
+```ts
+z.tuple([z.string()], z.number()).parse(['a', 1, 2]);
+// ['a', 1, 2] — 先頭は文字列、それ以降は数値
+```
+
+<Callout type="info" title="タプルが向く場面">
+座標、RGB値、`[キー, 値]` のペアなど「順番に意味がある固定長の並び」に使います。逆に、順番に意味がないならオブジェクトの方が読みやすくなります。`[10, 20]` より `{ x: 10, y: 20 }` の方が、後から読む人に優しいことは多いです。
+</Callout>
+
+<Figure src="/images/inspiration_color.png" alt="ひらめきのイラスト" maxWidth="300px" />
+
+---
+
+## z.record — キーが決まっていないオブジェクト
+
+**構文：** `z.record(キーのスキーマ, 値のスキーマ)`
+
+| 引数 | 説明 |
+| --- | --- |
+| キーのスキーマ | キー名の検証（通常は `z.string()`） |
+| 値のスキーマ | すべての値に適用されるスキーマ |
+
+**戻り値：** レコードスキーマ
+
+`z.object()` は「どんなキーがあるか」を先に決めますが、`z.record()` は**キー名が事前に分からない**場合に使います。
+
+```ts
+const scores = z.record(z.string(), z.number());
+
+scores.parse({ alice: 80, bob: 95 });
+// { alice: 80, bob: 95 } — キー名は何でもよく、値が数値であればよい
+```
+
+翻訳データ、IDをキーにしたマップ、集計結果など「キーがデータ側で決まる」構造に向きます。値のエラーは `path` にキー名が入ります。
+
+```ts
+z.record(z.string(), z.number()).safeParse({ a: 'x' }).error.issues[0].path;
+// ['a']
+```
+
+### キーをenumで縛ると「全キー必須」になる
+
+キーのスキーマに `z.enum()` を渡すと、**そのenumのキーがすべて揃っていることが要求されます**。
+
+```ts
+const R = z.record(z.enum(['a', 'b']), z.number());
+
+R.safeParse({ a: 1 });
+// エラー: path ['b'] / Invalid input: expected number, received undefined
+
+R.safeParse({ a: 1, b: 2 }).success; // true
+```
+
+一部だけでよい場合は `z.partialRecord()` を使います。
+
+```ts
+z.partialRecord(z.enum(['a', 'b']), z.number()).safeParse({ a: 1 }).success;
+// true
+```
+
+<Callout type="warning" title="`z.record()` は余分なキーを取り除かない">
+`z.object()` と違い、`z.record()` は「キー名を限定しない」スキーマなので、どんなキーでも値さえ合っていれば通り、そのまま残ります。キーを限定したいなら `z.object()` か、enumキーの `z.record()` を使ってください。
+</Callout>
+
+---
+
+## Set と Map
+
+JavaScriptの `Set` / `Map` オブジェクトにもスキーマがあります。
+
+| スキーマ | 検証対象 |
+| --- | --- |
+| `z.set(要素のスキーマ)` | `Set` オブジェクト |
+| `z.map(キーのスキーマ, 値のスキーマ)` | `Map` オブジェクト |
+
+```ts
+z.set(z.string()).safeParse(new Set(['a'])).success; // true
+z.map(z.string(), z.number()).safeParse(new Map([['a', 1]])).success; // true
+```
+
+ただし**JSONには `Set` も `Map` も存在しません**。APIレスポンスをこれらで検証しようとすると失敗します。
+
+```ts
+z.set(z.string()).safeParse(['a']);
+// エラー: Invalid input: expected set, received array
+```
+
+JSON由来のデータは `z.array()` や `z.record()` で受けてから、必要ならアプリ側で `Set` に変換してください。
+
+## よくあるハマりどころ
+
+### 空配列が通ってしまう
+
+`z.array()` に要素数の指定がないと、`[]` は正当な配列として通ります。必須の一覧なら `.min(1)` を付けます。
+
+### 配列にオブジェクトスキーマを直接渡す
+
+`z.object()` は配列を受け付けません。オブジェクトの配列は `z.array(z.object({...}))` のように包みます。
+
+### `z.record()` でキーの打ち間違いに気づけない
+
+キー名を検証しないのが `z.record()` の役割なので、`nmae` のような打ち間違いもそのまま通ります。キーが事前に分かっているなら `z.object()` を使う方が安全です。
+
+## ちゃんと使うためのポイント
+
+- 同じ形が並ぶなら `z.array()`、位置ごとに違うなら `z.tuple()`、キーが不定なら `z.record()`
+- <Marker>`z.array()` は空配列を通す。1件以上必須なら `.min(1)`</Marker>
+- 配列のエラーは `path` にインデックスが入り、**失敗した要素の分だけ**返る
+- キーをenumで縛った `z.record()` は全キー必須。一部でよければ `z.partialRecord()`
+- `Set` / `Map` はJSONに存在しないので、APIレスポンスの検証には使わない
+
+---
+
+前章の [z.object](/books/zod/object-schema) とこの章のスキーマを組み合わせれば、実務で扱うデータ構造はほぼ表現できます。値そのものの扱いに迷ったら [デフォルト挙動の早見表](/books/zod/default-behavior)へ戻ってください。
+
+## 参考リンク
+
+- [Arrays - Zod](https://zod.dev/api) — 配列・タプル・レコードの公式リファレンス（英語）
+- [Set - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Set) — JavaScriptの `Set` の基本
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだ型と検証の知識を、4択クイズでアウトプットして定着させよう"
+/>
