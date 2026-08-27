@@ -35,6 +35,28 @@ order: 17
 
 `z.email()` / `z.url()` / `z.uuid()` / `z.iso.date()` / `z.iso.datetime()` / `z.iso.time()` / `z.ipv4()` / `z.ipv6()` / `z.jwt()` / `z.base64()` / `z.nanoid()` / `z.ulid()` / `z.cuid2()`
 
+#### `z.email()` が弾くもの・通すもの
+
+デフォルトは実用重視の正規表現1本で、RFC 5322準拠ではありません。よく引っかかるところだけ。
+
+| 入力 | 結果 | 理由 |
+| --- | --- | --- |
+| `a@b.com` / `user.name+tag@example.co.jp` | 通る | |
+| `a@b` / `user@localhost` | ✗ | TLDが必須 |
+| `a@b.c` | ✗ | TLDは2文字以上 |
+| `user@127.0.0.1` | ✗ | IPアドレスのドメインは不可 |
+| `user@例え.テスト` | ✗ | 非ASCIIは不可 |
+| `.user@example.com` / `us..er@example.com` | ✗ | 先頭のドット・連続ドット |
+| `"user@example.com "` | ✗ | 前後の空白（`.trim()` を先に挟む） |
+| `user@example-.com` | 通る | ドメインラベル末尾のハイフンは見ていない |
+| 300文字のローカル部 | 通る | 長さ制限がない。`z.email().max(255)` で自分で止める |
+
+厳しさを変えたいときは `pattern` を差し替えます。
+
+```ts
+z.email({ pattern: z.regexes.html5Email }) // ブラウザの input[type=email] と同じ。localhost も通る
+```
+
 ---
 
 ## デフォルト挙動の早見表
