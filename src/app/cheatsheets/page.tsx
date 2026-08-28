@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 export const metadata: Metadata = {
   title: 'プログラミングチートシート一覧｜目的からすぐ引ける早見表',
   description:
-    'HTML文字参照、JavaScript、正規表現、Git、GitHub Actions、Zod、AIエージェント開発のチートシートをまとめています。構文やコマンドを目的別に素早く確認できます。',
+    'HTML文字参照、JavaScript、正規表現、Docker、Git、GitHub Actions、Zod、AIエージェント開発のチートシートをまとめています。構文やコマンドを目的別に素早く確認できます。',
   alternates: { canonical: '/cheatsheets' },
   openGraph: {
     title: 'プログラミングチートシート一覧',
@@ -62,6 +62,12 @@ const CHEATSHEET_SHORTCUTS = [
     summary: 'add・commit・push',
     bookSlug: 'git-basic',
     chapterSlug: '11-cheatsheet',
+  },
+  {
+    label: 'Dockerコマンド',
+    summary: 'pull・run・ps・stop',
+    bookSlug: 'docker',
+    chapterSlug: 'image-and-container-basics',
   },
   {
     label: 'GitHub Actions',
@@ -167,7 +173,7 @@ export default function CheatsheetsPage() {
           <p className="shrink-0 text-sm font-bold text-ink-muted">全{items.length}件</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const { book } = item;
             const theme = getBookTheme(book.bookSlug);
@@ -177,37 +183,37 @@ export default function CheatsheetsPage() {
                 key={item.label}
                 href={item.href}
                 className={cn(
-                  'group relative flex min-h-36 flex-col overflow-hidden rounded-[18px] border border-ink/10 p-4 shadow-[0_10px_25px_rgba(35,35,35,0.06)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_16px_35px_rgba(35,35,35,0.11)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue',
+                  'group relative flex min-h-[6.5rem] items-center gap-3 overflow-hidden rounded-2xl border border-ink/10 p-3 shadow-[0_8px_20px_rgba(35,35,35,0.06)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_16px_35px_rgba(35,35,35,0.11)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue sm:min-h-36 sm:flex-col sm:items-stretch sm:gap-0 sm:rounded-[18px] sm:p-4 sm:shadow-[0_10px_25px_rgba(35,35,35,0.06)]',
                   theme.cardBg,
                 )}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <span
-                    className={cn(
-                      'relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/80 shadow-sm',
-                      theme.iconBg,
-                    )}
-                  >
-                    {book.coverImage ? (
-                      <Image
-                        src={book.coverImage}
-                        alt=""
-                        fill
-                        sizes="44px"
-                        className="object-contain p-1.5"
-                      />
-                    ) : (
-                      <NotebookTabs className={cn('size-5', theme.iconText)} strokeWidth={1.8} />
-                    )}
-                  </span>
-                  <ArrowRight className="size-4 text-ink-muted transition-transform group-hover:translate-x-1 group-hover:text-brand-blue" />
-                </div>
+                <span
+                  className={cn(
+                    'relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/80 shadow-sm sm:size-11',
+                    theme.iconBg,
+                  )}
+                >
+                  {book.coverImage ? (
+                    <Image
+                      src={book.coverImage}
+                      alt=""
+                      fill
+                      sizes="44px"
+                      className="object-contain p-1.5"
+                    />
+                  ) : (
+                    <NotebookTabs className={cn('size-5', theme.iconText)} strokeWidth={1.8} />
+                  )}
+                </span>
+                <ArrowRight className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted transition-transform group-hover:translate-x-1 group-hover:text-brand-blue sm:right-4 sm:top-4 sm:translate-y-0" />
 
-                <div className="mt-auto pt-4">
-                  <h2 className="text-xl font-black leading-tight text-ink transition-colors group-hover:text-brand-blue">
+                <div className="min-w-0 pr-7 sm:mt-auto sm:pr-0 sm:pt-4">
+                  <h2 className="text-lg font-black leading-tight text-ink transition-colors group-hover:text-brand-blue sm:text-xl">
                     {item.label}
                   </h2>
-                  <p className={cn('mt-1 text-sm font-bold', theme.accent)}>{item.summary}</p>
+                  <p className={cn('mt-1 text-xs font-bold sm:text-sm', theme.accent)}>
+                    {item.summary}
+                  </p>
                 </div>
               </Link>
             );
