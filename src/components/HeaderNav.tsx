@@ -35,6 +35,7 @@ import {
   Database,
   Hash,
   Bot,
+  NotebookTabs,
   type LucideIcon,
 } from "lucide-react";
 import { createAvatar } from "@dicebear/core";
@@ -123,11 +124,11 @@ export default function HeaderNav({ books }: HeaderNavProps) {
 
   const linkClass = (active = false) =>
     cn(
-      "relative flex items-center gap-2.5 px-4 py-3 text-sm font-bold transition-colors hover:text-brand-blue sm:px-3 sm:py-2",
+      "relative flex items-center gap-2.5 px-4 py-3 text-sm font-bold transition-colors hover:text-brand-blue lg:px-3 lg:py-2",
       "after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:bg-brand-blue after:transition-transform",
       active
         ? "text-brand-blue after:scale-x-100"
-        : "text-ink sm:text-ink-body",
+        : "text-ink lg:text-ink-body",
     );
   const iconClass = "size-4 text-ink-muted shrink-0";
   const closeMenu = () => {
@@ -136,11 +137,11 @@ export default function HeaderNav({ books }: HeaderNavProps) {
   };
 
   return (
-    <div className="sm:static">
+    <div className="lg:static">
       <Button
         variant="ghost"
         size="icon"
-        className="rounded-none text-ink hover:bg-transparent hover:text-brand-blue sm:hidden"
+        className="rounded-none text-ink hover:bg-transparent hover:text-brand-blue lg:hidden"
         aria-label={open ? 'メニューを閉じる' : 'メニューを開く'}
         aria-expanded={open}
         aria-controls="header-nav"
@@ -153,8 +154,8 @@ export default function HeaderNav({ books }: HeaderNavProps) {
         id="header-nav"
         className={`
           fixed inset-x-0 top-14 z-50 border-b border-cream-line bg-cream-deep/96 shadow-[0_18px_40px_rgba(35,35,35,0.08)] backdrop-blur-xl
-          sm:static sm:flex sm:items-center sm:gap-1 sm:border-0 sm:bg-transparent sm:shadow-none sm:backdrop-blur-none
-          ${open ? "block" : "hidden sm:flex"}
+          lg:static lg:flex lg:items-center lg:gap-1 lg:border-0 lg:bg-transparent lg:shadow-none lg:backdrop-blur-none
+          ${open ? "block" : "hidden lg:flex"}
         `}
       >
         <div
@@ -180,7 +181,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
             クイズ
             <ChevronDown
               className={cn(
-                "hidden size-3.5 text-muted-foreground transition-transform sm:block",
+                "hidden size-3.5 text-muted-foreground transition-transform lg:block",
                 quizMenuOpen && "rotate-180",
               )}
             />
@@ -188,7 +189,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
 
           <div
             className={cn(
-              "hidden sm:block",
+              "hidden lg:block",
               "absolute left-1/2 top-full z-50 w-56 -translate-x-1/2 pt-2",
               "transition duration-150 ease-out",
               quizMenuOpen
@@ -262,7 +263,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
             教科書
             <ChevronDown
               className={cn(
-                "hidden size-3.5 text-muted-foreground transition-transform sm:block",
+                "hidden size-3.5 text-muted-foreground transition-transform lg:block",
                 booksMenuOpen && "rotate-180",
               )}
             />
@@ -271,7 +272,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
           {books.length > 0 && (
             <div
               className={cn(
-                "hidden sm:block",
+                "hidden lg:block",
                 "absolute left-1/2 top-full z-50 w-[34rem] -translate-x-1/2 pt-2",
                 "transition duration-150 ease-out",
                 booksMenuOpen
@@ -343,6 +344,14 @@ export default function HeaderNav({ books }: HeaderNavProps) {
             </div>
           )}
         </div>
+        <Link
+          href="/cheatsheets"
+          className={linkClass(pathname.startsWith('/cheatsheets'))}
+          onClick={closeMenu}
+        >
+          <NotebookTabs className={iconClass} />
+          チートシート
+        </Link>
         <Link href="/#news" className={linkClass(false)} onClick={closeMenu}>
           <Bell className={iconClass} />
           お知らせ
@@ -379,7 +388,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
         {isLoggedIn ? (
           <Link
             href="/profile"
-            className={cn(linkClass(pathname === '/profile'), 'sm:ml-1')}
+            className={cn(linkClass(pathname === '/profile'), 'lg:ml-1')}
             aria-label="プロフィール"
             onClick={closeMenu}
           >
@@ -389,19 +398,19 @@ export default function HeaderNav({ books }: HeaderNavProps) {
                 alt=""
                 width={16}
                 height={16}
-                className="rounded-full border bg-muted size-4 sm:size-7"
+                className="rounded-full border bg-muted size-4 lg:size-7"
                 unoptimized
               />
             ) : (
               <UserIcon className={iconClass} />
             )}
-            <span className="sm:hidden">プロフィール</span>
+            <span className="lg:hidden">プロフィール</span>
           </Link>
         ) : (
           <>
             <Link
               href="/login"
-              className={cn(linkClass(pathname === '/login'), 'sm:hidden')}
+              className={cn(linkClass(pathname === '/login'), 'lg:hidden')}
               onClick={closeMenu}
             >
               <LogIn className={iconClass} />
@@ -410,7 +419,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
             <Button
               variant="outline"
               size="sm"
-              className="ml-2 hidden rounded-none border-0 border-b-2 border-ink bg-transparent px-1 font-black text-ink shadow-none transition-colors hover:bg-transparent hover:text-brand-blue sm:inline-flex"
+              className="ml-2 hidden rounded-none border-0 border-b-2 border-ink bg-transparent px-1 font-black text-ink shadow-none transition-colors hover:bg-transparent hover:text-brand-blue lg:inline-flex"
               asChild
             >
               <Link href="/login" onClick={closeMenu}>

@@ -110,6 +110,24 @@ export function getChaptersByBook(bookSlug: string) {
   return chapters.filter((c) => c.bookSlug === bookSlug).sort((a, b) => a.order - b.order);
 }
 
+/**
+ * 公開中のチートシート章を、書籍一覧と同じ順序で返す。
+ * チートシート集約ページの更新日時をサイトマップへ反映するために使用する。
+ */
+export function getCheatsheetChapters() {
+  const bookOrder = new Map<string, number>(
+    BOOK_ORDER.map((bookSlug, index) => [bookSlug, index]),
+  );
+
+  return chapters
+    .filter((chapter) => !chapter.draft && chapter.title.includes('チートシート'))
+    .sort((a, b) => {
+      const ai = bookOrder.get(a.bookSlug) ?? Infinity;
+      const bi = bookOrder.get(b.bookSlug) ?? Infinity;
+      return ai - bi || a.order - b.order;
+    });
+}
+
 /** bookSlug + chapterSlug に一致する章を1件返す。見つからなければ undefined */
 export function getChapter(bookSlug: string, chapterSlug: string) {
   return chapters.find((c) => c.bookSlug === bookSlug && c.chapterSlug === chapterSlug);

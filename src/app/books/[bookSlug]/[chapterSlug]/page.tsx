@@ -14,6 +14,7 @@ import { MDXContent } from '@/components/mdx-content';
 import QuizLink from '../../_components/QuizLink';
 import { buildChapterOriginParam } from '@/lib/quizOrigin';
 import { ChapterNav } from '../../_components/ChapterNav';
+import { HashAnchorScroller } from '../../_components/HashAnchorScroller';
 import { ChapterTocDesktop, ChapterTocMobile } from '../../_components/TableOfContents';
 import { getChapterLabel } from '@/lib/chapter-label';
 
@@ -200,6 +201,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
                 ),
               }}
             />
+            <HashAnchorScroller />
           </div>
           <ChapterNav prev={prev} next={next} bookSlug={bookSlug} />
         </div>

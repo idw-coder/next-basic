@@ -33,7 +33,7 @@ Mapは **キーと値のペアを格納する** コレクションです。
 
 オブジェクトのキーは文字列（またはSymbol）に限定されるのに対し、Mapは **オブジェクト・関数・数値など、あらゆる型をキーにできます**。
 
-他に個人的にポイントとなる特徴は、[便利なメソッド（`get`、`set`、`has`、`delete`、`clear`、`forEach`）](/books/javascript/17-map-set-weakref#mapの主要メソッド)があることです。
+他に個人的にポイントとなる特徴は、[便利なメソッド（`get`、`set`、`has`、`delete`、`clear`、`forEach`、`keys`、`values`、`entries`）](/books/javascript/17-map-set-weakref#mapの主要メソッド)があることです。
 
 ### 基本の使い方
 
@@ -134,6 +134,9 @@ console.log(m.get(key)); // "Alice"
 | `delete(key)`     | キーと値のペアを削除           | 削除できたら `true` |
 | `clear()`         | 全要素を削除                   | `undefined`         |
 | `forEach(fn)`     | 各ペアに対してコールバック実行 | `undefined`         |
+| `keys()`          | キーのイテレータを取得         | イテレータ          |
+| `values()`        | 値のイテレータを取得           | イテレータ          |
+| `entries()`       | ペアのイテレータを取得         | イテレータ          |
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
   `forEach` って `(値, キー)` の順番なんですか？直感と逆な感じがして…

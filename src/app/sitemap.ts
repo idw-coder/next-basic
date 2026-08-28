@@ -1,6 +1,6 @@
 import { MetadataRoute } from "next";
 import { unstable_cache } from "next/cache";
-import { getAllBooks, getChaptersByBook } from "@/lib/books";
+import { getAllBooks, getChaptersByBook, getCheatsheetChapters } from "@/lib/books";
 import { getQuizCategoryQuizzes } from "@/lib/server/quizCategoryQuizzes";
 import { getQuizCategories } from "@/lib/server/quizCategories";
 
@@ -53,6 +53,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const categories = quizzesByCategory.map(({ category }) => category);
+  const cheatsheetChapters = getCheatsheetChapters();
+  const cheatsheetsLastModified = cheatsheetChapters.length
+    ? new Date(
+        Math.max(...cheatsheetChapters.map((chapter) => new Date(chapter.updated).getTime()))
+      )
+    : new Date();
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -77,6 +83,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${SITE_URL}/search`,
       lastModified: new Date(),
       changeFrequency: "daily",
+      priority: 0.7,
+    },
+    {
+      url: `${SITE_URL}/cheatsheets`,
+      lastModified: cheatsheetsLastModified,
+      changeFrequency: "weekly",
       priority: 0.7,
     },
   ];
