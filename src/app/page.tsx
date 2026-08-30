@@ -690,7 +690,7 @@ export default async function Home() {
               </p>
             </div>
             <div className="mx-auto grid max-w-4xl grid-cols-3 gap-2 sm:gap-4">
-              {bookList.slice(0, 6).map((book) => {
+              {bookList.slice(0, 9).map((book) => {
                 const chapters = getChaptersByBook(book.bookSlug);
                 return (
                   <BookCard
