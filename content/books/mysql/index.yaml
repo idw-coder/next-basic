@@ -1,0 +1,2 @@
+title: 'MySQL入門 — 接続・InnoDB・コネクションプールを実務目線で'
+description: 'MySQLのクライアント/サーバー構造、mysqlコマンドでの接続確認、max_connectionsとwait_timeout、Node.jsのmysql2によるコネクションプールまで、Web開発でMySQLを扱うために必要な知識を整理する教科書です。SQLの文法そのものではなく、MySQLならではの部分に絞って扱います。'

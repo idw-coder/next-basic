@@ -28,6 +28,7 @@ const categoryToBookMap: Record<string, string> = {
 
 /** 書籍一覧の表示順（先頭が先に表示される） */
 export const BOOK_ORDER = [
+  'mysql',
   'zod',
   'ai-agent-development',
   'csharp',
@@ -56,6 +57,7 @@ export const BOOK_ORDER = [
 
 /** NEW バッジを付ける書籍 */
 export const NEW_BOOK_SLUGS = new Set<string>([
+  'mysql',
   'zod',
   'ai-agent-development',
   'csharp',

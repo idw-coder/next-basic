@@ -181,7 +181,7 @@ type User = { age: number }; // エラー — 同じ名前のtypeは宣言でき
 
 ### typeはオブジェクト以外にも使える
 
-`type` はプリミティブ、ユニオン型、タプル、関数型など、あらゆる型に名前を付けられます。`interface` はオブジェクトの形状（とクラス）にしか使えません。
+`type` はプリミティブ、ユニオン型、タプル、関数型など、あらゆる型に名前を付けられます。`interface` はオブジェクトの形状（と[クラス](/books/typescript/classes-and-implements)）にしか使えません。
 
 ```tsx
 // typeでしかできないこと
@@ -216,7 +216,7 @@ type Formatter = (value: number) => string;       // 関数型
 
 <Marker>`interface` は宣言のマージができますが、`type` はオブジェクト以外にも使えます。</Marker>チームで統一するのが最も重要で、どちらかに固執する必要はありません。
 
-次の章では、TypeScriptの強力な機能である**ユニオン型**と**リテラル型**を扱います。
+[次の章](/books/typescript/classes-and-implements)では、この `interface` をクラスへの契約として使う **implements** を扱います。
 
 ## 参考リンク
 

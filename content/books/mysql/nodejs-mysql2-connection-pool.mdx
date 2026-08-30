@@ -1,0 +1,342 @@
+---
+title: 'Node.jsからMySQLに接続する — mysql2のコネクションプール入門'
+description: 'createConnectionとcreatePoolの違い、connectionLimitなどのオプションと既定値、pool.queryとgetConnectionの使い分け、トランザクションで接続を固定しなければならない理由を整理します。'
+order: 3
+---
+
+[前の章](/books/mysql/connect-and-max-connections)では、`SHOW PROCESSLIST` に `Sleep` の接続が何本も並んでいる様子を見ました。
+あれを作り出していたのが、アプリケーション側の**コネクションプール**です。
+
+この章では、Node.jsからMySQLに接続し、そのプールを自分の手で組み立てます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+接続して、クエリを投げて、閉じる。それだけの話じゃないんですか？
+</SpeechBubble>
+
+その「それだけ」を素直に書くと、リクエストが増えた瞬間に破綻します。なぜ破綻するのかを先に見ましょう。
+
+## まず素直に書いてみる
+
+Node.jsからMySQLを使うライブラリは `mysql2` が定番です。
+
+```bash
+npm install mysql2
+```
+
+<Callout type="note" title="mysql2/promise を使う">
+`mysql2` にはコールバック版とPromise版があります。現在のNode.jsで書くなら、`mysql2/promise` をインポートして `await` で書く形が素直です。この章のコードはすべてPromise版です。
+</Callout>
+
+もっとも単純な形が `createConnection` です。
+
+```js
+import mysql from 'mysql2/promise';
+
+const conn = await mysql.createConnection({
+  host: 'localhost',
+  user: 'app',
+  password: process.env.DB_PASSWORD,
+  database: 'myapp',
+});
+
+const [rows] = await conn.query('SELECT id, name FROM users WHERE id = ?', [1]);
+console.log(rows);
+
+await conn.end();
+```
+
+動きます。しかし、これをWebアプリのリクエストハンドラの中に書くとどうなるでしょうか。
+
+```js
+// これをやってはいけない
+app.get('/users/:id', async (req, res) => {
+  const conn = await mysql.createConnection(config); // 毎回作る
+  const [rows] = await conn.query('SELECT * FROM users WHERE id = ?', [req.params.id]);
+  await conn.end(); // 毎回閉じる
+  res.json(rows);
+});
+```
+
+[第1章](/books/mysql/what-is-mysql)で見た通り、接続の確立にはTCPのハンドシェイクと認証の往復があります。
+このコードは、**たった1行のSELECTのために、毎回その往復を丸ごと払っています**。
+
+<Marker>接続の確立コストは、クエリそのものの実行時間より大きくなることが珍しくありません。</Marker>
+
+さらに悪いことに、同時アクセスが増えれば増えるだけ接続が同時に作られます。100件同時に来れば100本。`max_connections` の151はあっという間です。
+
+<Figure
+  src="/images/boomerang_woman_color.png"
+  alt="ブーメランを投げる人のイラスト"
+  caption="毎回作って毎回捨てる。動くけれど、負荷が上がると返ってくる"
+  maxWidth="340px"
+/>
+
+## コネクションプールという解き方
+
+コネクションプールの発想は単純です。
+
+<Marker>あらかじめ数本の接続を作って持っておき、使うときに借りて、使い終わったら閉じずに返す。</Marker>
+
+レンタル自転車のような仕組みです。乗るたびに自転車を製造せず、返却された自転車を次の人が使う。台数は決まっているので、全部出払っていれば次の人は待ちます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["リクエスト1"] -->|借りる| P["プール"]
+    B["リクエスト2"] -->|借りる| P
+    C["リクエスト3"] -->|待つ| P
+    P -->|接続1| M["MySQL"]
+    P -->|接続2| M
+`}
+/>
+
+これで、最初に挙げた2つの問題が同時に解けます。
+
+| 問題 | プールでどうなるか |
+| --- | --- |
+| 接続の確立が毎回発生する | 最初に作った接続を使い回すので、確立は起動時などに数回だけ |
+| 同時アクセスで接続が増えすぎる | 上限を決めておけるので、それ以上は増えない |
+
+## createPool
+
+書き方は `createConnection` とほとんど変わりません。
+
+**構文：** `mysql.createPool(オプション)`
+
+```js
+import mysql from 'mysql2/promise';
+
+export const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  connectionLimit: 10,
+  waitForConnections: true,
+  queueLimit: 0,
+});
+```
+
+**戻り値：** `Pool` オブジェクト（`await` は不要。この時点ではまだ接続していない）
+
+<Callout type="info" title="createPool は接続しない">
+`createPool` を呼んだ瞬間に接続が10本張られるわけではありません。接続は**必要になったときに作られ**、`connectionLimit` に達するまで増えていきます。だから `createPool` に `await` は要りませんし、MySQLが起動していなくてもこの行自体はエラーになりません。接続エラーは最初のクエリで初めて表面化します。
+</Callout>
+
+### 主なオプション
+
+接続情報（`host` など）に加えて、プールの挙動を決めるオプションがあります。
+
+| オプション | 既定値 | 説明 |
+| --- | --- | --- |
+| `connectionLimit` | `10` | 同時に持てる接続の最大本数 |
+| `waitForConnections` | `true` | 全部出払っているとき待つか。`false` なら即エラー |
+| `queueLimit` | `0` | 待ち行列の最大数。`0` は無制限 |
+| `maxIdle` | `connectionLimit` と同値 | アイドル接続を何本まで保持するか |
+| `idleTimeout` | `60000` | アイドル接続を閉じるまでのミリ秒 |
+
+いちばん重要なのは `connectionLimit` です。ここを **1アプリケーションプロセスが同時に持てる接続の本数** として捉えてください。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`waitForConnections` は `true` のままでいい。`false` にすると、混雑した瞬間にリクエストがエラーになる。待たせたほうがマシな場面がほとんどだよ。
+</SpeechBubble>
+
+## クエリを投げる
+
+プールから直接クエリを投げられます。
+
+**構文：** `pool.query(sql[, values])`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `sql`（第1引数） | 文字列 | 実行するSQL。値の部分は `?` で書く |
+| `values`（第2引数） | 配列 | `?` に埋める値。省略可 |
+
+**戻り値：** `[rows, fields]` の配列。`rows` が結果行、`fields` が列のメタ情報
+
+```js
+const [rows] = await pool.query('SELECT id, name FROM users WHERE id = ?', [userId]);
+```
+
+第1要素だけ使うことがほとんどなので、`const [rows] = ...` と分割代入で受けるのが定番です。
+
+<Callout type="warning" title="値を文字列連結しない">
+`` `SELECT * FROM users WHERE id = ${userId}` `` のように書くと、SQLインジェクションの入口になります。必ず `?` を使い、値は第2引数で渡してください。仕組みそのものについては [SQLインジェクション対策](/books/sql-basics/indexes-transactions-and-security) を参照してください。
+</Callout>
+
+### query と execute の違い
+
+`mysql2` にはよく似た2つのメソッドがあります。
+
+| メソッド | 中身 |
+| --- | --- |
+| `pool.query()` | 値をエスケープしてSQL文を組み立て、通常のクエリとして送る |
+| `pool.execute()` | サーバー側でプリペアドステートメントを作って実行する |
+
+同じSQLを繰り返し実行するなら `execute` に利があります。まずは `execute` を既定にして、動的にSQL構造そのものが変わる箇所だけ `query` を使う、という整理で困りません。
+
+<Callout type="note" title="pool.query は借りて返すまでを1行でやっている">
+`pool.query()` は内部で「接続を借りる → クエリを投げる → 接続を返す」を自動でやってくれます。だから返却を書かなくても接続は漏れません。**ただし、これが次の落とし穴の原因になります。**
+</Callout>
+
+## トランザクションでは接続を固定する
+
+ここがこの章でもっとも重要な部分です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`pool.query` が接続を自動でやってくれるなら、トランザクションもこう書けますよね？
+</SpeechBubble>
+
+```js
+// 動かない
+await pool.query('BEGIN');
+await pool.query('UPDATE accounts SET balance = balance - 1000 WHERE id = 1');
+await pool.query('UPDATE accounts SET balance = balance + 1000 WHERE id = 2');
+await pool.query('COMMIT');
+```
+
+このコードは、**SQLとしては完全に正しいのに壊れます**。
+
+理由は、いま確認した `pool.query` の性質にあります。1回ごとに接続を借りて返しているので、4本のSQLが**それぞれ別の接続で実行される可能性がある**のです。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["BEGIN"] -->|接続1| M["MySQL"]
+    B["UPDATE 1"] -->|接続2| M
+    C["UPDATE 2"] -->|接続3| M
+    D["COMMIT"] -->|接続1| M
+`}
+/>
+
+MySQLのトランザクションは**接続ごとに独立**しています。接続1で `BEGIN` しても、接続2から見ればトランザクションは始まっていません。
+結果として、2本のUPDATEはトランザクションの外で即座に確定し、`ROLLBACK` しても戻りません。送金元だけ減って送金先が増えない、という最悪の壊れ方をします。
+
+<Marker>トランザクションを使うときは、必ず1本の接続を借りたまま最後まで持ち続けます。プール経由の使い捨てでは成立しません。</Marker>
+
+正しくは `getConnection` で接続を取り出します。
+
+**構文：** `pool.getConnection()`
+
+**戻り値：** `PoolConnection`（`release()` で必ず返却する必要がある）
+
+```js
+const conn = await pool.getConnection();
+try {
+  await conn.beginTransaction();
+
+  await conn.execute('UPDATE accounts SET balance = balance - ? WHERE id = ?', [1000, 1]);
+  await conn.execute('UPDATE accounts SET balance = balance + ? WHERE id = ?', [1000, 2]);
+
+  await conn.commit();
+} catch (err) {
+  await conn.rollback();
+  throw err;
+} finally {
+  conn.release();
+}
+```
+
+ポイントは3つです。
+
+1. **`conn` を使い回す** — `pool` ではなく取り出した接続に対してクエリを投げる
+2. **`catch` で `rollback`** — 例外時に確実に巻き戻す
+3. **`finally` で `release`** — 成功でも失敗でも必ず返す
+
+<Callout type="warning" title="release を忘れると静かに死ぬ">
+`release()` を書き忘れた接続は、プールに戻らないまま占有され続けます。`connectionLimit` が10なら、10回そのコードを通った時点でプールが枯渇し、以降のリクエストは全部待ち状態になります。エラーは出ず、ただ応答が返らなくなる——原因を追いにくい壊れ方なので、`finally` に書く習慣を最初から付けてください。
+</Callout>
+
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="チェックしている人のイラスト"
+  caption="release は成功パスだけでなく、例外パスでも必ず通る場所に置く"
+  maxWidth="360px"
+/>
+
+## connectionLimit をいくつにするか
+
+「大きいほど速い」ではありません。ここは前章の `max_connections` と直結します。
+
+計算はシンプルです。
+
+```
+connectionLimit × アプリのプロセス数 ≦ max_connections（既定151）
+```
+
+たとえば `connectionLimit: 10` のアプリを4インスタンス動かせば40本。ここに管理ツールやバッチ、監視、手元の `mysql` コマンドが乗ります。
+
+<Callout type="info" title="まずは既定の10のままでよい">
+`connectionLimit` の既定値10は、多くのWebアプリにとって妥当な出発点です。MySQLは接続1本につきスレッド1本を使うので、大きくしすぎるとサーバー側の負荷が上がり、かえって全体が遅くなります。増やすのは「プール待ちが実際に発生している」ことを確認してからにしてください。
+</Callout>
+
+## アイドル接続が切られる問題
+
+前章で見た `wait_timeout`（既定8時間）を思い出してください。**サーバーは、長時間使われない接続を一方的に切ります。**
+
+プールはそれを知らないので、切れた接続を「まだ使える」と思って保持し続けます。次にそれを借りたリクエストがエラーになります。
+
+```
+Error: Connection lost: The server closed the connection.
+```
+
+`mysql2` の `idleTimeout`（既定60000ミリ秒＝60秒）は、まさにこの対策です。**サーバーが切るより先に、プール側からアイドル接続を閉じてしまう**という考え方です。
+
+<Marker>idleTimeout は wait_timeout より十分短く保つ。これがアイドル切断エラーを防ぐ基本の考え方です。</Marker>
+
+既定の60秒は8時間よりはるかに短いので、通常はそのままで問題ありません。設定を触るときだけ、この関係を崩していないか確認してください。
+
+## よくあるハマりどころ
+
+### リクエストごとに createPool してしまう
+
+```js
+// これでは意味がない
+app.get('/users', async (req, res) => {
+  const pool = mysql.createPool(config); // リクエストごとに新しいプール
+  const [rows] = await pool.query('SELECT * FROM users');
+  res.json(rows);
+});
+```
+
+プールは**アプリケーション全体で1つ**作り、モジュールとして共有します。リクエストごとに作ると、`createConnection` を毎回呼んでいたのと同じか、それ以上に悪い状態になります。
+
+### プロセスが終了しない
+
+スクリプトやバッチで、処理が終わったのにプロセスが終了しないことがあります。プールが接続を保持したままだと、Node.jsはイベントループが空にならないと判断します。
+
+```js
+await pool.end();
+```
+
+<Callout type="note" title="Webサーバーでは end を呼ばない">
+`pool.end()` はプールを閉じるメソッドです。使い終わりが明確なバッチ処理では最後に呼びますが、常駐するWebサーバーでは呼びません。呼ぶとしても、シャットダウン処理の中だけです。
+</Callout>
+
+### 接続を返す前に return してしまう
+
+```js
+// release されないパスがある
+const conn = await pool.getConnection();
+const [rows] = await conn.query('SELECT * FROM users');
+if (rows.length === 0) return null; // ここで漏れる
+conn.release();
+```
+
+早期リターン、例外、`throw`——`release()` の手前で抜けるパスがひとつでもあると接続は漏れます。`try/finally` はこれを構造的に防ぐための書き方です。
+
+## ちゃんと使うためのポイント
+
+- リクエストごとの `createConnection` は、確立コストと接続数の両方で破綻する
+- プールはアプリケーション全体で1つだけ作り、共有する
+- `createPool` は接続を張らない。接続は必要になってから作られる
+- `connectionLimit` の既定は10。`connectionLimit × プロセス数 ≦ max_connections` で見積もる
+- 単発のクエリは `pool.query` / `pool.execute` でよい
+- **トランザクションは `getConnection` で接続を固定し、`try/catch/finally` で `commit` / `rollback` / `release` を書く**
+- `idleTimeout` はサーバーの `wait_timeout` より十分短く保つ
+
+## 参考リンク
+
+- [mysql2 — createPool の例](https://sidorares.github.io/node-mysql2/docs/examples/connections/create-pool)
+- [mysql2 ドキュメント](https://sidorares.github.io/node-mysql2/docs)
+- [MySQL 8.4 Reference Manual — Too many connections](https://dev.mysql.com/doc/refman/8.4/en/too-many-connections.html)

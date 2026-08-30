@@ -309,6 +309,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/08/30',
+    text: '教科書「MySQL入門 — 接続・InnoDB・コネクションプールを実務目線で」を公開しました。MySQLがサーバーであること、SHOW PROCESSLISTでの接続確認、mysql2のコネクションプールまで、まず3章を公開し順次追加していきます',
+    isNew: true,
+    link: '/books/mysql',
+  },
+  {
     date: '2026/08/25',
     text: '教科書「Zod入門 — TypeScriptで実行時の入力検証を型と一緒に書く」を公開しました。基本スキーマ、parseとsafeParseの違い、空文字やnullを通すかどうかの早見表、オブジェクトの検証まで、順次章を追加中です',
     isNew: true,

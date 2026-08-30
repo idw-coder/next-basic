@@ -1,0 +1,257 @@
+---
+title: '接続を確認する — mysqlコマンド・SHOW PROCESSLIST・wait_timeout'
+description: 'Dockerで動かしたMySQLに接続し、いま何本の接続が開いているかをSHOW PROCESSLISTとSHOW STATUSで確認する方法、max_connectionsとwait_timeoutの意味、Too many connectionsの調べ方を整理します。'
+order: 2
+---
+
+[前の章](/books/mysql/what-is-mysql)では、MySQLがサーバーであり、接続には確立コストと本数の上限があることを見ました。
+
+この章では、それを**実際に自分の目で確認**します。
+いま何本の接続が開いているのか、誰が開いているのか、それはいつ切れるのか。ここが見えるようになると、コネクションプールの挙動もそのまま観察できるようになります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+接続って目に見えないものだと思っていました。数えられるんですか？
+</SpeechBubble>
+
+数えられます。しかも1本ずつ、誰が何をしているかまで見えます。
+
+## Dockerで動かす
+
+ローカルにMySQLを直接インストールしなくても、Dockerがあれば1ファイルで起動できます。
+
+```yaml
+services:
+  mysql:
+    image: mysql:8.4.0
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: myapp
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+```
+
+```bash
+docker compose up -d
+```
+
+<Callout type="info" title="volumesを付ける理由">
+`volumes` を書かないと、コンテナを作り直したときにデータが消えます。MySQLはデータを `/var/lib/mysql` に置くので、そこを名前付きボリュームに逃がしておきます。学習用でも、テーブルを作り直すたびに全部消えるのはつらいので最初から付けておくのがおすすめです。
+</Callout>
+
+## mysqlコマンドで接続する
+
+コンテナの中に入って接続します。
+
+```bash
+docker compose exec mysql mysql -uroot -p
+```
+
+接続に成功すると、プロンプトが `mysql>` に変わります。
+
+| オプション | 意味 |
+| --- | --- |
+| `-u ユーザー名` | 接続するユーザー |
+| `-p` | パスワードを対話的に入力する |
+| `-h ホスト名` | 接続先。省略時は `localhost` |
+| `-P ポート番号` | ポート。省略時は `3306` |
+| `-e "SQL"` | SQLを1本実行して終了する（対話に入らない） |
+
+<Callout type="warning" title="-p のあとにスペースを空けない">
+`-p rootpass` のようにスペースを空けると、`rootpass` はパスワードではなく**データベース名**として解釈されます。パスワードをコマンドラインに書く場合は `-prootpass` と詰めて書きます。ただしシェルの履歴に残るため、実務では `-p` だけ書いて対話入力するか、設定ファイルに逃がしてください。
+</Callout>
+
+接続できたら、まずは足元を確認します。
+
+```sql
+SELECT VERSION();
+SHOW DATABASES;
+```
+
+<Figure
+  src="/images/search_woman_color.png"
+  alt="虫眼鏡で調べている人のイラスト"
+  caption="接続できたら、まず「今どうなっているか」を見るところから"
+  maxWidth="360px"
+/>
+
+## いま開いている接続を見る
+
+ここがこの章の中心です。`SHOW PROCESSLIST` を実行すると、**その瞬間にサーバーへ繋がっている接続が一覧で出ます**。
+
+```sql
+SHOW PROCESSLIST;
+```
+
+```
+Id     User             Host                db     Command  Time     State                    Info
+5      event_scheduler  localhost           NULL   Daemon   1650425  Waiting on empty queue   NULL
+93020  app              172.19.0.1:58270    myapp  Sleep    5962                              NULL
+93021  app              172.19.0.1:58292    myapp  Sleep    5962                              NULL
+93022  app              172.19.0.1:58272    myapp  Sleep    5962                              NULL
+93023  app              172.19.0.1:58306    myapp  Sleep    5962                              NULL
+93024  app              172.19.0.1:58296    myapp  Sleep    5962                              NULL
+93025  app              172.19.0.1:58322    myapp  Sleep    5962                              NULL
+93619  root             localhost           NULL   Query    0        init                     SHOW PROCESSLIST
+```
+
+列の意味は次の通りです。
+
+| 列 | 意味 |
+| --- | --- |
+| `Id` | 接続に振られた番号。`KILL` で指定するのはこれ |
+| `User` | 接続しているMySQLユーザー |
+| `Host` | 接続元のアドレスとポート |
+| `db` | 選択中のデータベース |
+| `Command` | いま何をしているか。`Sleep` は「何もしていない」 |
+| `Time` | その状態が続いている秒数 |
+| `State` | クエリ実行中の内部状態 |
+| `Info` | 実行中のSQL文 |
+
+この出力、よく見ると面白いことが分かります。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`app` ユーザーの接続が6本、全部 `Sleep` で `Time` が5962秒。1時間半以上、何もしていないのに繋ぎっぱなしだね。
+</SpeechBubble>
+
+これは**コネクションプールが動いている姿**です。アプリケーションが起動時に接続を数本作り、使い終わっても閉じずに保持している。だから `Sleep` のまま何時間も居座ります。
+
+<Marker>`Sleep` で長時間居座っている接続は、異常ではなくプールが正常に働いている証拠であることが多いです。</Marker>
+
+逆に、この行数がじわじわ増え続けているなら、それは**接続を閉じ忘れているサイン**です。
+
+## 本数を数える
+
+一覧を目で数える代わりに、集計値を直接見ることもできます。
+
+```sql
+SHOW STATUS WHERE Variable_name IN (
+  'Threads_connected', 'Threads_running', 'Max_used_connections', 'Connections'
+);
+```
+
+```
+Variable_name         Value
+Connections           93619
+Max_used_connections  31
+Threads_connected     7
+Threads_running       2
+```
+
+ここは名前が紛らわしいので、表で整理します。
+
+| 変数 | 意味 |
+| --- | --- |
+| `Threads_connected` | **いま**開いている接続の本数 |
+| `Threads_running` | そのうち、実際にクエリを実行中の本数 |
+| `Max_used_connections` | 起動してから記録した同時接続の**最大値** |
+| `Connections` | 起動してからの**のべ**接続試行回数 |
+
+見るべきものは目的で変わります。
+
+- **いま危ないか** を知りたい → `Threads_connected` と `max_connections` を比べる
+- **これまで危なかったか** を知りたい → `Max_used_connections` を見る
+- `Connections` は累積なので、大きくても異常ではありません
+
+<Callout type="note" title="Threads_running が小さいのは正常">
+上の例では、7本繋がっていて実行中は2本だけです。Webアプリの接続はほとんどの時間アイドルなので、`Threads_connected` に比べて `Threads_running` が小さいのはむしろ健全な状態です。`Threads_running` が常時高い場合は、クエリが詰まっている可能性を疑います。
+</Callout>
+
+## 上限と、切断のタイミング
+
+接続まわりで最初に覚えるべき設定は2つです。
+
+```sql
+SHOW VARIABLES WHERE Variable_name IN ('max_connections', 'wait_timeout');
+```
+
+```
+Variable_name    Value
+max_connections  151
+wait_timeout     28800
+```
+
+| 変数 | デフォルト | 意味 |
+| --- | --- | --- |
+| `max_connections` | 151 | 同時に開ける接続の上限 |
+| `wait_timeout` | 28800（8時間） | 何もしない接続を切るまでの秒数 |
+
+`wait_timeout` の 28800秒 は8時間です。**8時間まったく使われなかった接続は、サーバー側から一方的に切られます。**
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+サーバーが勝手に切るなら、アプリ側はそれを知らないままですよね？
+</SpeechBubble>
+
+その通りで、ここが実務で厄介なところです。アプリのプールは「まだ使える接続」だと思って持っているのに、実体はもう切れている。次にその接続を使おうとした瞬間にエラーになります。
+
+```
+Error: Connection lost: The server closed the connection.
+```
+
+夜間にアクセスが途絶えるサービスで、朝いちばんのリクエストだけ失敗する——という現象の典型的な原因がこれです。対処は[コネクションプールの章](/books/mysql/nodejs-mysql2-connection-pool)で扱います。
+
+## 接続が埋まったときの調べ方
+
+`Too many connections` が出たとき、やることは決まっています。
+
+```sql
+SELECT User, Host, db, Command, COUNT(*) AS cnt
+FROM information_schema.PROCESSLIST
+GROUP BY User, Host, db, Command
+ORDER BY cnt DESC;
+```
+
+`SHOW PROCESSLIST` と同じ情報がテーブルとして引けるので、**どのユーザー・どのホストが何本占有しているか**を集計できます。犯人がアプリなのか、バッチなのか、誰かの開発環境なのかがここで分かります。
+
+特定の接続を切りたい場合は `Id` を指定します。
+
+```sql
+KILL 93020;
+```
+
+<Callout type="warning" title="KILLは対症療法">
+`KILL` で接続を切っても、原因のアプリが動き続けていれば数秒後にまた繋ぎ直してきます。緊急避難としては有効ですが、必ず「なぜその本数になったのか」を追ってください。`max_connections` を引き上げるのも同じで、接続を閉じ忘れているコードがあるなら、上限を上げても到達が遅くなるだけです。
+</Callout>
+
+<Figure
+  src="/images/harry_man_color.png"
+  alt="慌てている人のイラスト"
+  caption="上限に達してから調べ始めると慌てる。平常時の本数を知っておくことが予防になる"
+  maxWidth="340px"
+/>
+
+## よくあるハマりどころ
+
+### Sleepの接続を見て「無駄だ」と切ってしまう
+
+`Sleep` はプールが接続を保持している正常な状態です。ここを切って回ると、アプリ側は次のリクエストで接続の作り直しが発生し、かえって遅くなります。
+問題にすべきは `Sleep` の**存在**ではなく、**本数が想定を超えて増え続けていないか**です。
+
+### localhostとホスト名の違いでハマる
+
+MySQLクライアントは、ホストに `localhost` を指定するとTCPではなくUNIXソケットで繋ごうとします。`127.0.0.1` を指定するとTCPになります。
+Dockerのコンテナ内から `localhost` を指定して繋がらない場合、それはコンテナ自身を指しているためです。別コンテナからは、Composeで定義したサービス名（上の例なら `mysql`）をホストに指定します。
+
+### wait_timeout を短くして解決しようとする
+
+「切れるのが困る」からと `wait_timeout` を伸ばすと、死んだ接続が長く残ります。逆に短くすると、切断エラーの頻度が上がります。
+<Marker>wait_timeout はアプリ側のプール設定と組みで考えるものです。サーバー側だけをいじって解決しようとすると、たいてい別の問題に移動するだけになります。</Marker>
+
+## ちゃんと使うためのポイント
+
+- `SHOW PROCESSLIST` で、いま繋がっている接続を1本ずつ確認できる
+- `Command` が `Sleep` の接続は、プールが保持しているアイドル接続であることが多い
+- `Threads_connected` が現在値、`Max_used_connections` が最大の記録値
+- `max_connections` は既定で151、`wait_timeout` は既定で8時間
+- 接続が埋まったら `information_schema.PROCESSLIST` を集計して占有元を特定する
+
+次の章では、いよいよアプリケーション側に移ります。Node.jsから接続し、ここで観察した `Sleep` の接続を**自分の手で作り出します**。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — Server System Variables](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html)
+- [MySQL 8.4 Reference Manual — Connection Interfaces](https://dev.mysql.com/doc/refman/8.4/en/connection-interfaces.html)

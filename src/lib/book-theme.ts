@@ -213,6 +213,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-fuchsia-700',
     iconName: 'Database',
   },
+  mysql: {
+    cardBg: 'bg-yellow-50',
+    iconBg: 'bg-yellow-100',
+    iconText: 'text-yellow-700',
+    accent: 'text-yellow-700',
+    accentHover: 'group-hover:text-yellow-800',
+    accentBg: 'bg-yellow-500',
+    badgeBg: 'bg-yellow-50',
+    badgeText: 'text-yellow-800',
+    iconName: 'Database',
+  },
   sqlite: {
     cardBg: 'bg-pink-50',
     iconBg: 'bg-pink-100',

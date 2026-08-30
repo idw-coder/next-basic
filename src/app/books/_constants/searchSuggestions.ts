@@ -121,6 +121,21 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'SQLインジェクション',
   ],
 
+  mysql: [
+    'コネクションプール',
+    'mysql2',
+    'createPool',
+    'connectionLimit',
+    'max_connections',
+    'wait_timeout',
+    'Too many connections',
+    'SHOW PROCESSLIST',
+    'getConnection',
+    'release',
+    'idleTimeout',
+    'トランザクション',
+  ],
+
   sqlite: [
     'sqlite3',
     '型親和性',
@@ -225,7 +240,15 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'CORS',
   ],
 
-  typescript: ['ユニオン型', 'ジェネリクス', '型ガード', 'Utility Types', 'tsconfig'],
+  typescript: [
+    'ユニオン型',
+    'ジェネリクス',
+    '型ガード',
+    'Utility Types',
+    'tsconfig',
+    'implements',
+    'abstract',
+  ],
 
   'react-learning': ['useState', 'useEffect', 'useMemo', 'useCallback', '依存配列'],
 

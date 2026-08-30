@@ -1,0 +1,483 @@
+---
+title: 'クラスとimplements — インターフェースを実装の契約にする'
+description: 'TypeScriptのクラス構文と、interfaceをクラスに実装させるimplementsを解説します。アクセス修飾子・readonly・パラメータプロパティ・abstract、extendsとimplementsの違い、implementsで型推論が効かない落とし穴まで扱います。'
+order: 3.5
+chapterLabel: 'クラスとimplements'
+---
+
+[前章](/books/typescript/03-type-alias-and-interface)の最後に、`interface` は「オブジェクトの形状（とクラス）にしか使えない」と書きました。このカッコの中を回収するのがこの章です。
+
+`interface` はオブジェクトリテラルの型を決めるだけの道具ではありません。**クラスに対して「このプロパティとメソッドを必ず持て」と要求する契約**としても使えます。それを宣言するキーワードが `implements` です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`class User implements Person` っていうコードを見たんだけど、`const user: Person = ...` と型注釈を書くのと何が違うの？
+</SpeechBubble>
+
+結論を先に言うと、`implements` は**クラスの定義そのものを検査する**ための構文です。型注釈は「作り終えた値」を検査しますが、`implements` は「クラスを書いている最中」に不足を教えてくれます。この違いが実務でどう効くのかを、この章で見ていきます。
+
+<Callout type="note">
+`class` はTypeScript独自の機能ではなく、ES2015で標準化されたJavaScriptの構文です。TypeScriptはそこに型注釈・アクセス修飾子・`implements` などを足しています。まずJavaScript側のクラスを最小限おさらいしてから、TypeScriptが足している部分に進みます。
+</Callout>
+
+---
+
+## クラスの基本をおさらいする
+
+クラスは「同じ形のオブジェクトを何個も作るための設計図」です。`new` で呼び出すと、その設計図どおりのオブジェクト（インスタンス）ができます。
+
+```tsx
+class User {
+  name: string;
+  age: number;
+
+  constructor(name: string, age: number) {
+    this.name = name;
+    this.age = age;
+  }
+
+  greet(): string {
+    return `こんにちは、${this.name}さん`;
+  }
+}
+
+const alice = new User('Alice', 25);
+console.log(alice.greet()); // こんにちは、Aliceさん
+```
+
+JavaScriptとの違いは、冒頭の2行です。
+
+```tsx
+name: string;
+age: number;
+```
+
+TypeScriptでは、クラスが持つプロパティを**あらかじめ宣言して型を付ける**必要があります。この宣言がないと、`this.name = name` の時点で「`User` に `name` は存在しない」というエラーになります。
+
+<Callout type="warning">
+プロパティを宣言したのにコンストラクタで代入し忘れると、`Property 'name' has no initializer and is not definitely assigned in the constructor.` というエラーになります。`tsconfig.json` の `strictPropertyInitialization`（`strict` に含まれる）による検査で、初期化漏れを防いでくれる仕組みです。
+</Callout>
+
+### パラメータプロパティ — 宣言と代入をまとめる
+
+先ほどのコードは、`name` という単語が3回出てきました。宣言・引数・代入です。同じ名前を3回書くのは冗長なので、TypeScriptには短縮構文があります。
+
+```tsx
+class User {
+  constructor(
+    public name: string,
+    public age: number,
+  ) {}
+}
+
+const alice = new User('Alice', 25);
+console.log(alice.name); // Alice
+```
+
+コンストラクタの引数にアクセス修飾子（`public` / `private` / `protected` / `readonly`）を付けると、**同名のプロパティ宣言と代入を自動で行ってくれます**。これを**パラメータプロパティ**と呼びます。
+
+<Marker>アクセス修飾子を付けたときだけプロパティになります。修飾子なしの引数は、ただの引数のままです。</Marker>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`public` を付け忘れると「なぜかプロパティが生えない」と悩むことになる。短縮構文のスイッチは修飾子そのものだと覚えておこう。
+</SpeechBubble>
+
+---
+
+## implements — クラスに契約を課す
+
+ここからが本題です。`implements` は、クラス宣言に「このインターフェースを満たしている」と宣言するためのキーワードです。
+
+```tsx
+interface Greetable {
+  name: string;
+  greet(): string;
+}
+
+class User implements Greetable {
+  constructor(public name: string) {}
+
+  greet(): string {
+    return `こんにちは、${this.name}さん`;
+  }
+}
+```
+
+`User` は `Greetable` が要求する `name` と `greet()` を両方持っているので、問題なくコンパイルされます。
+
+では、`greet()` を書き忘れるとどうなるでしょうか。
+
+```tsx
+class Robot implements Greetable {
+  name = 'R2-D2';
+}
+```
+
+```
+エラー: Class 'Robot' incorrectly implements interface 'Greetable'.
+  Property 'greet' is missing in type 'Robot' but required in type 'Greetable'.
+```
+
+<Marker>エラーは `Robot` を「使った場所」ではなく、`Robot` を「定義した場所」に出ます。</Marker>これが `implements` の価値です。
+
+### 型注釈との違い
+
+冒頭の学習者の疑問に答えます。`implements` を書かず、型注釈だけで済ませることもできます。
+
+```tsx
+// implementsなし
+class Robot {
+  name = 'R2-D2';
+}
+
+const robot: Greetable = new Robot(); // ここでエラーになる
+```
+
+このコードもエラーにはなります。ただし、エラーが出るのは `Robot` を `Greetable` として**使おうとした場所**です。
+
+<Figure src="/images/meeting_color.png" alt="契約内容を確認し合うイメージ" maxWidth="200px" caption="implementsは「作る側」に契約を課す" />
+
+`Robot` を定義したファイルと、`Robot` を使うファイルが離れていると、この差は大きくなります。クラスを書いた本人はエラーに気づかず、数日後に別の担当者が使おうとして初めてエラーに遭遇する、ということが起こります。
+
+|                | エラーが出る場所            | 気づくタイミング       |
+| -------------- | --------------------------- | ---------------------- |
+| 型注釈だけ     | クラスを**使う**場所        | 使う人が使うとき       |
+| `implements`   | クラスを**定義する**場所    | 書いた人が書いているとき |
+
+実装漏れは「作る側」の責任なので、作る側に即座に知らせたほうが直しやすい、というのが `implements` を使う理由です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+じゃあ `implements` を書けば、`interface` に書いたメソッドが自動で使えるようになるってこと？
+</SpeechBubble>
+
+いいえ、そこが最大の誤解ポイントです。次の節で説明します。
+
+---
+
+## implementsは検査であって、継承ではない
+
+`implements` が行うのは**チェックだけ**です。インターフェースから実装をもらってくることは一切ありません。
+
+```tsx
+interface Greetable {
+  greet(): string;
+}
+
+class User implements Greetable {
+  // greet() を自分で書かなければエラー。
+  // Greetable は「持っているか」を確認するだけで、中身はくれない
+}
+```
+
+インターフェースはそもそも実装（メソッドの中身）を持っていないので、渡せるものが何もないのです。
+
+<Callout type="note" title="公式ドキュメントの表現">
+TypeScript Handbookのimplements clausesの節では、`implements` 句はクラスをそのインターフェース型として扱えるかの検査にすぎず、クラスやそのメソッドの型を変えることはない、と明記されています。この章で挙げる落とし穴の多くは、この一文から導かれます。
+</Callout>
+
+一方で、契約は複数同時に課せます。
+
+```tsx
+interface Greetable {
+  greet(): string;
+}
+
+interface Serializable {
+  toJSON(): string;
+}
+
+class User implements Greetable, Serializable {
+  constructor(public name: string) {}
+
+  greet(): string {
+    return `こんにちは、${this.name}さん`;
+  }
+
+  toJSON(): string {
+    return JSON.stringify({ name: this.name });
+  }
+}
+```
+
+カンマ区切りで並べるだけです。「持っているかの確認」を増やしているだけなので、いくつ並べても衝突は起きません。
+
+---
+
+## extendsとimplementsの違い
+
+クラスに関わるキーワードには `extends` もあります。混同しやすいので整理します。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["親クラス"] -->|extends| B["子クラス"]
+    C["インターフェース"] -->|implements| D["クラス"]
+    B --> E["実装を受け継ぐ"]
+    D --> F["形だけ検査される"]
+`}
+/>
+
+|                    | `extends`          | `implements`     |
+| ------------------ | ------------------ | ---------------- |
+| 対象               | クラス（親クラス） | インターフェース |
+| 実装を受け継ぐか   | ✅ 受け継ぐ        | ❌ 受け継がない  |
+| 個数               | 1つだけ            | 何個でも         |
+| コンパイル後のJS   | 残る               | 消える           |
+| `super` が使えるか | ✅ 使える          | ❌ 使えない      |
+
+`extends` は**コードの再利用**、`implements` は**形の保証**が目的だと考えると区別しやすくなります。
+
+両方を同時に書くこともできます。順序は `extends` が先です。
+
+```tsx
+class AdminUser extends User implements Serializable {
+  // Userから実装を受け継ぎつつ、Serializableの契約も満たす
+}
+```
+
+<Callout type="column" title="なぜimplementsは消えるのか">
+TypeScriptは型に関する情報をすべて取り除いてJavaScriptを出力します。`implements` は「型の検査をしてほしい」という指示であって、実行時の振る舞いを一切変えないため、出力されるJavaScriptには残りません。逆に `extends` はJavaScript本来の継承の構文なので、そのまま残ります。<Marker>ブラウザやNode.jsは `implements` の存在を知りません。</Marker>
+</Callout>
+
+---
+
+## TypeScriptがクラスに足すもの
+
+`implements` のほかにも、TypeScriptはクラスにいくつか機能を足しています。実務でよく見るものをまとめます。
+
+### アクセス修飾子
+
+| 修飾子      | クラスの外から | 子クラスから | 備考         |
+| ----------- | -------------- | ------------ | ------------ |
+| `public`    | ✅             | ✅           | 省略時の既定 |
+| `protected` | ❌             | ✅           |              |
+| `private`   | ❌             | ❌           |              |
+
+```tsx
+class Account {
+  constructor(
+    public name: string,
+    private balance: number,
+  ) {}
+
+  deposit(amount: number): void {
+    this.balance += amount;
+  }
+}
+
+const account = new Account('Alice', 1000);
+account.name; // OK
+account.balance; // エラー: Property 'balance' is private and only accessible within class 'Account'.
+```
+
+### readonly — 初期化後は変更できない
+
+```tsx
+class Config {
+  constructor(readonly apiUrl: string) {}
+}
+
+const config = new Config('https://example.com');
+config.apiUrl = 'https://evil.example.com'; // エラー: Cannot assign to 'apiUrl' because it is a read-only property.
+```
+
+`readonly` はコンストラクタの中でだけ代入できます。設定値やIDのように、生成後に変わってほしくない値に付けます。
+
+### privateと#privateの違い
+
+JavaScript側にも、あとから**プライベートフィールド**（`#` で始まる名前）が追加されました。似ていますが、効き方が違います。
+
+|                        | `private`（TypeScript） | `#`（JavaScript） |
+| ---------------------- | ----------------------- | ----------------- |
+| 検査のタイミング       | コンパイル時のみ        | 実行時            |
+| JSに残るか             | 消える                  | 残る              |
+| 実行時に外から読めるか | ✅ 読めてしまう         | ❌ 読めない       |
+
+```tsx
+class A {
+  private secret = 1; // 型チェックは通らないが、実行時は読める
+  #realSecret = 2; // 実行時も読めない
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`private` はあくまで型レベルの約束事。本当に外部から隠したい値なら `#` を使おう。とはいえ普段のアプリ開発では `private` で十分なことがほとんどだよ。
+</SpeechBubble>
+
+---
+
+## abstract — 実装を持てる契約
+
+`interface` は実装を持てませんが、「共通の実装は親に置きつつ、一部だけ子に強制したい」ことがあります。そのための仕組みが**抽象クラス**です。
+
+```tsx
+abstract class Animal {
+  constructor(protected name: string) {}
+
+  // 実装を持つ（共通処理）
+  introduce(): string {
+    return `${this.name}です。${this.cry()}`;
+  }
+
+  // 実装を持たない（子クラスに強制する）
+  abstract cry(): string;
+}
+
+class Dog extends Animal {
+  cry(): string {
+    return 'ワンワン';
+  }
+}
+
+const dog = new Dog('ポチ');
+console.log(dog.introduce()); // ポチです。ワンワン
+
+new Animal('名前'); // エラー: Cannot create an instance of an abstract class.
+```
+
+`abstract` を付けたクラスは `new` できません。子クラスに継承されて、`abstract` メソッドが実装されてはじめて使えるようになります。
+
+### interfaceと抽象クラスの使い分け
+
+|                          | `interface` | `abstract class` |
+| ------------------------ | ----------- | ---------------- |
+| 実装を持てるか           | ❌          | ✅               |
+| 複数を組み合わせられるか | ✅ いくつでも | ❌ 継承は1つだけ |
+| コンパイル後のJS         | 消える      | 残る             |
+| フィールドの初期値       | 持てない    | 持てる           |
+
+<Marker>共有したい実装があるなら抽象クラス、形だけ揃えたいなら `interface` を選びます。</Marker>迷ったらまず `interface` から始め、共通処理の重複が実際に苦痛になってから抽象クラスへ移すのが安全です。
+
+---
+
+## よくあるハマりどころ
+
+<Figure src="/images/harry_man_color.png" alt="想定外のエラーに慌てるイメージ" maxWidth="140px" />
+
+`implements` は「検査するだけ」という性質から、直感に反する挙動がいくつかあります。実務で遭遇しやすい順に並べます。
+
+### 引数の型は推論されない
+
+最も引っかかりやすい落とし穴です。
+
+```tsx
+interface Checkable {
+  check(name: string): boolean;
+}
+
+class NameChecker implements Checkable {
+  check(s) {
+    // s は暗黙のany。noImplicitAnyが有効ならエラーになる
+    return s.toLowerCase() === 'ok';
+  }
+}
+```
+
+`Checkable` が `check(name: string)` と定めているのだから `s` は `string` に推論されそうですが、そうはなりません。前述のとおり `implements` はクラスの型を変えないため、`s` の型を決める材料にはならないのです。
+
+```tsx
+// 引数の型は自分で書く
+class NameChecker implements Checkable {
+  check(s: string): boolean {
+    return s.toLowerCase() === 'ok';
+  }
+}
+```
+
+<Callout type="warning">
+この挙動はTypeScript Handbookでも「Cautions」として明示的に注意喚起されています。`implements` を書いたからといって、実装側の型注釈を省略できるわけではありません。
+</Callout>
+
+### 省略可能プロパティは生えない
+
+```tsx
+interface User {
+  name: string;
+  nickname?: string;
+}
+
+class Person implements User {
+  name = 'Alice';
+}
+
+const p = new Person();
+p.nickname; // エラー: Property 'nickname' does not exist on type 'Person'.
+```
+
+`nickname` は `?` 付きなので実装しなくても契約は満たせます。しかし実装しなかった以上、`Person` にそのプロパティは存在しません。`implements` はクラスにメンバーを追加しないからです。
+
+### privateなメンバーで契約は満たせない
+
+```tsx
+interface Greetable {
+  greet(): string;
+}
+
+class User implements Greetable {
+  private greet(): string {
+    return 'こんにちは';
+  }
+}
+```
+
+```
+エラー: Class 'User' incorrectly implements interface 'Greetable'.
+  Property 'greet' is private in type 'User' but not in type 'Greetable'.
+```
+
+インターフェースのメンバーはすべて公開されている前提なので、実装側で隠すことはできません。
+
+### コンストラクタは検査されない
+
+`implements` が検査するのは**インスタンス側**だけです。`new` のシグネチャを書いても意図通りには働きません。
+
+```tsx
+interface WithFactory {
+  new (name: string): User;
+}
+
+class User implements WithFactory {
+  constructor(public name: string) {}
+}
+```
+
+```
+エラー: Class 'User' incorrectly implements interface 'WithFactory'.
+  Type 'User' provides no match for the signature 'new (name: string): User'.
+```
+
+`User` の**インスタンス**が `new` シグネチャを持っているかを見にいくため、このエラーになります。コンストラクタの形を型で縛りたい場合は、`implements` ではなくクラスそのものを値として型注釈する方法をとります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ハマりどころが多いね…。結局、実務では `implements` を書いたほうがいいの？
+</SpeechBubble>
+
+書いたほうがよい場面ははっきりしています。<Marker>同じインターフェースを満たすクラスが複数あり、差し替えて使う予定があるときです。</Marker>APIクライアントの本番実装とモック実装、通知手段のメール版とSlack版、といったケースが典型です。逆に、そのクラスが1つしかなく差し替えの予定もないなら、`implements` を足す価値は小さくなります。
+
+---
+
+## ちゃんと使うためのポイント
+
+- `implements` は**検査だけ**を行う。インターフェースから実装もプロパティも受け取れない
+- エラーの発生場所が「使う側」から「作る側」に移るのが最大の利点
+- 実装側のメソッド引数には**自分で型注釈を書く**。推論は効かない
+- `extends` は実装の再利用で1つだけ、`implements` は形の保証で何個でも
+- 共通の実装を配りたいなら `abstract class`、形を揃えたいだけなら `interface`
+- パラメータプロパティは、アクセス修飾子を付けたときだけ有効になる
+- 差し替える予定のあるクラス（本番実装とモックなど）でこそ `implements` が効く
+
+<Figure src="/images/highfive_hi_color.png" alt="理解できて喜ぶイメージ" maxWidth="180px" />
+
+---
+
+## まとめ
+
+`class` はJavaScriptの構文で、TypeScriptはそこに型注釈・アクセス修飾子・`implements` を足しています。`implements` は `interface` をクラスへの契約として使う仕組みで、実装漏れをクラスの定義時点で検出できます。
+
+ただし `implements` が行うのは検査だけです。実装も型推論も与えてくれないため、メソッドの引数には自分で型を書く必要があります。
+
+[次の章](/books/typescript/04-union-and-literal)では、TypeScriptの表現力を大きく広げる**ユニオン型**と**リテラル型**を扱います。
+
+## 参考リンク
+
+- [TypeScript Handbook — Classes（英語）](https://www.typescriptlang.org/docs/handbook/2/classes.html) — `implements` 句・アクセス修飾子・パラメータプロパティ・`abstract` の公式な説明。この章で扱った落とし穴は「implements Clauses」のCautionsに記載がある
+- [MDN — クラス](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Classes) — JavaScript側のクラス構文とプライベートフィールド（`#`）の仕様
