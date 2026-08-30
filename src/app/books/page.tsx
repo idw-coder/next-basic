@@ -258,7 +258,7 @@ export default function BooksPage() {
         <SectionHeading className="mb-7" subtitle={`${books.length}冊の教科書から選べます`}>
           教科書一覧
         </SectionHeading>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-4 lg:gap-5">
           {books.map((book) => {
             const chapters = getChaptersByBook(book.bookSlug);
             return (
@@ -276,6 +276,7 @@ export default function BooksPage() {
                   chapterSlug: c.chapterSlug,
                 }))}
                 isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
+                compact
               />
             );
           })}

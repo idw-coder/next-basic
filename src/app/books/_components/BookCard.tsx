@@ -13,6 +13,7 @@ import { getBookTheme } from '@/lib/book-theme';
 import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { getChapterListLabel } from '@/lib/chapter-label';
+import { getBookShortTitle } from '@/lib/book-title';
 
 const iconMap: Record<string, LucideIcon> = {
   BookOpen, Blocks, Braces, FileCode2, Atom, Paintbrush, Wind,
@@ -35,6 +36,8 @@ interface BookCardProps {
   chapterCount: number;
   chapters: ChapterLink[];
   isNew?: boolean;
+  /** スマホで3列に並べる一覧用。表紙の下を説明文から短い書名に差し替え、余白を詰める。 */
+  compact?: boolean;
 }
 
 export default function BookCard({
@@ -45,8 +48,10 @@ export default function BookCard({
   chapterCount,
   chapters,
   isNew = false,
+  compact = false,
 }: BookCardProps) {
   const theme = getBookTheme(bookSlug);
+  const shortTitle = getBookShortTitle(title);
   const BgIcon = iconMap[theme.iconName] ?? BookOpen;
   const [showChapters, setShowChapters] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -68,7 +73,11 @@ export default function BookCard({
     >
       <Link
         href={`/books/${bookSlug}`}
-        className="relative flex flex-col rounded-xl bg-white p-3 sm:p-4 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border border-gray-100"
+        className={cn(
+          'relative flex flex-col rounded-xl bg-white transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border border-gray-100',
+          // 3列だと書名が1行の本と2行の本が混ざるので、カードの下端を揃える
+          compact ? 'h-full p-2 sm:p-4' : 'p-3 sm:p-4',
+        )}
       >
         {/* 表紙 */}
         <div className="relative mx-auto w-full max-w-[8rem] sm:max-w-[9.5rem]">
@@ -93,7 +102,7 @@ export default function BookCard({
                 'text-[9px] font-bold leading-tight line-clamp-2 sm:text-[10px]',
                 theme.iconText,
               )}>
-                {title}
+                {shortTitle}
               </p>
             </div>
 
@@ -137,8 +146,18 @@ export default function BookCard({
           </div>
         </div>
 
-        {/* 説明（カード下部） */}
-        <p className="mt-2 text-[10px] sm:text-[11px] leading-relaxed text-gray-500 line-clamp-2">
+        {/* カード下部。compactのスマホ表示だけは、幅が狭く説明文が読めないので書名を出す */}
+        {compact && (
+          <p className="mt-1.5 line-clamp-2 text-[10px] font-bold leading-snug text-gray-700 sm:hidden">
+            {shortTitle}
+          </p>
+        )}
+        <p
+          className={cn(
+            'mt-2 line-clamp-2 text-[10px] leading-relaxed text-gray-500 sm:text-[11px]',
+            compact && 'max-sm:hidden',
+          )}
+        >
           {description}
         </p>
       </Link>
