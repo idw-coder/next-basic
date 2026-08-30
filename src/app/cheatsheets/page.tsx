@@ -183,7 +183,13 @@ export default function CheatsheetsPage() {
                 key={item.label}
                 href={item.href}
                 className={cn(
-                  'group relative flex min-h-[6.5rem] items-center gap-3 overflow-hidden rounded-2xl border border-ink/10 p-3 shadow-[0_8px_20px_rgba(35,35,35,0.06)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_16px_35px_rgba(35,35,35,0.11)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue sm:min-h-36 sm:flex-col sm:items-stretch sm:gap-0 sm:rounded-[18px] sm:p-4 sm:shadow-[0_10px_25px_rgba(35,35,35,0.06)]',
+                  'group relative overflow-hidden',
+                  'flex min-h-[3rem] items-center gap-3 p-3',
+                  'rounded-2xl border border-ink/10',
+                  'shadow-[0_8px_20px_rgba(35,35,35,0.06)]',
+                  'transition duration-200 hover:-translate-y-1 hover:shadow-[0_16px_35px_rgba(35,35,35,0.11)]',
+                  'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue',
+                  'sm:min-h-30 sm:flex-col sm:items-stretch sm:gap-0 sm:rounded-[18px] sm:p-4 sm:shadow-[0_10px_25px_rgba(35,35,35,0.06)]',
                   theme.cardBg,
                 )}
               >

@@ -1,0 +1,339 @@
+---
+title: 'テーブルを作ってデータを入れる — CREATE TABLE・AUTO_INCREMENT・INSERT'
+description: 'MySQLでテーブルを作り、データを追加・更新・削除する基本を、AUTO_INCREMENT、ON UPDATE CURRENT_TIMESTAMP、LAST_INSERT_ID、DELETEとTRUNCATEの違いまで実際の出力とあわせて整理します。'
+order: 3
+---
+
+[MySQLとは何か](/books/mysql/what-is-mysql)でサーバーに接続できるようになりました。
+ここからは、実際にテーブルを作ってデータを出し入れします。
+
+<Callout type="note" title="この章で扱う範囲">
+どんなテーブルに分けるべきか、正規化をどうするかといった**設計の話**は [テーブル設計・正規化・制約の基本](/books/sql-basics/table-design-normalization-and-constraints) の担当です。この章は「MySQLではどう書くか」に絞ります。`SELECT` や `JOIN` も [SQLとデータベースの基礎](/books/sql-basics/select-basics) で学んだ内容がそのまま通用します。
+</Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`CREATE TABLE` って標準SQLですよね。MySQLで特別に覚えることってあるんですか？
+</SpeechBubble>
+
+あります。しかも、**自分が書いていないものが勝手に足される**という形で現れます。まずそれを見てみましょう。
+
+## 書いたものと、できたもの
+
+次のテーブルを作ります。
+
+```sql
+CREATE TABLE users (
+  id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(100) NOT NULL,
+  email      VARCHAR(255) NOT NULL UNIQUE,
+  is_active  BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+作ったあと、MySQLが実際にどう解釈したかを `SHOW CREATE TABLE` で確認できます。
+
+```sql
+SHOW CREATE TABLE users\G
+```
+
+```
+Create Table: CREATE TABLE `users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+```
+
+書いた通りになっていない箇所が3つあります。
+
+| 書いたもの | できたもの |
+| --- | --- |
+| `BOOLEAN` | `tinyint(1)` |
+| `DEFAULT TRUE` | `DEFAULT '1'` |
+| （何も書いていない） | `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci` |
+
+<Marker>MySQLに真偽値型はありません。`BOOLEAN` は `tinyint(1)` の別名で、`TRUE` は `1`、`FALSE` は `0` として保存されます。</Marker>
+
+書けるけれど、そういう型があるわけではない——という点だけ覚えておけば実用上は困りません。`WHERE is_active = TRUE` も `WHERE is_active = 1` も同じように動きます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`SHOW CREATE TABLE` は「自分の書いたDDLをMySQLがどう受け取ったか」を答え合わせできるコマンド。作った直後に一度は打つ癖をつけるといいよ。
+</SpeechBubble>
+
+末尾の `ENGINE` と `CHARSET` は、指定しなかったので既定値が補われたものです。それぞれInnoDBと文字コードの章で扱います。
+
+## AUTO_INCREMENT
+
+`AUTO_INCREMENT` は、値を省略したときにMySQLが連番を振ってくれる指定です。主キーとセットで使うのが定番です。
+
+```sql
+INSERT INTO users (name, email) VALUES ('田中', 'tanaka@example.com');
+```
+
+`id` を書いていませんが、自動で `1` が入ります。
+
+ここで実際の挙動を見てください。3件入れたあと、`UNIQUE` に違反する行を1件失敗させ、そのあともう1件入れます。
+
+```sql
+INSERT INTO t (name) VALUES ('a'), ('b'), ('c');
+INSERT IGNORE INTO t (name) VALUES ('a');   -- UNIQUE違反で失敗
+INSERT INTO t (name) VALUES ('d');
+SELECT * FROM t;
+```
+
+```
++----+------+
+| id | name |
++----+------+
+|  1 | a    |
+|  2 | b    |
+|  3 | c    |
+|  5 | d    |
++----+------+
+```
+
+**4番が飛んでいます。** 失敗したINSERTが採番だけ済ませてしまったためです。
+
+<Callout type="warning" title="連番に「欠番がない」ことを期待しない">
+`AUTO_INCREMENT` が保証するのは**重複しないこと**だけで、**連続していること**は保証しません。失敗したINSERT、ロールバックされたトランザクション、削除された行——どれでも欠番は生まれます。「IDの最大値＝レコード件数」と考えたコードは、いつか必ずずれます。件数は `COUNT(*)` で数えてください。
+</Callout>
+
+<Figure
+  src="/images/surprise_pc_woman_color.png"
+  alt="パソコンを見て驚いている人のイラスト"
+  caption="欠番はバグではなく仕様。IDを連番として扱う設計のほうが危ない"
+  maxWidth="360px"
+/>
+
+### 採番したIDを受け取る
+
+アプリケーションからINSERTしたあと、「いま挿入された行のID」が欲しくなります。
+
+**構文：** `LAST_INSERT_ID()`
+
+**戻り値：** 直前のINSERTで採番された `AUTO_INCREMENT` の値（同じ接続の中でのみ有効）
+
+ここに引っかかりやすい仕様があります。複数行をまとめてINSERTした場合、返るのは**最初の行のID**です。
+
+```sql
+INSERT INTO t (name) VALUES ('a'), ('b'), ('c');
+SELECT LAST_INSERT_ID();
+```
+
+```
++------------------+
+| LAST_INSERT_ID() |
++------------------+
+|                1 |
++------------------+
+```
+
+3件入れて最後は `3` なのに、返るのは `1` です。名前から想像する挙動と逆なので注意してください。
+
+<Marker>`LAST_INSERT_ID()` は接続ごとに独立しています。他のユーザーが同時にINSERTしても、自分の値が混ざることはありません。</Marker>
+
+この「接続ごと」という性質は、[コネクションプール](/books/mysql/nodejs-mysql2-connection-pool)を使うときに効いてきます。INSERTと `LAST_INSERT_ID()` が別々の接続で実行されると、まったく無関係な値が返ります。
+
+## created_at と updated_at
+
+MySQLには、更新日時を自動で書き換える指定があります。
+
+```sql
+updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+```
+
+| 指定 | 効果 |
+| --- | --- |
+| `DEFAULT CURRENT_TIMESTAMP` | INSERT時、値を省略すると現在時刻が入る |
+| `ON UPDATE CURRENT_TIMESTAMP` | UPDATE時、その行の値が自動で現在時刻に更新される |
+
+`created_at` には前者だけ、`updated_at` には両方を付ける、というのが定番の組み合わせです。アプリケーション側で日時をセットする必要がなくなります。
+
+<Callout type="info" title="ORMを使う場合は片方に寄せる">
+TypeORMやPrismaにも更新日時を自動管理する機能があります。DB側とORM側の両方で設定すると、どちらが書いた値なのか追いにくくなります。どちらか一方に決めておくのが無難です。
+</Callout>
+
+## テーブルを確認する
+
+作ったテーブルを調べるコマンドは3つ覚えれば十分です。
+
+| コマンド | 何が分かるか |
+| --- | --- |
+| `SHOW TABLES;` | データベース内のテーブル一覧 |
+| `DESCRIBE users;` | 列名・型・NULL可否・既定値の一覧 |
+| `SHOW CREATE TABLE users;` | 実際のDDL全文（エンジン・文字コード・インデックス込み） |
+
+`DESCRIBE` は普段の確認用、`SHOW CREATE TABLE` は「本当のところどうなっているか」を見たいときに使います。`DESC users;` と省略しても同じです。
+
+<Figure
+  src="/images/planning_suit_man_color.png"
+  alt="設計図を確認している人のイラスト"
+  caption="作った直後の確認を習慣にすると、型や既定値のズレに早く気づける"
+  maxWidth="380px"
+/>
+
+## データを入れる
+
+INSERTには2つの書き方があります。
+
+```sql
+-- 1行ずつ
+INSERT INTO users (name, email) VALUES ('田中', 'tanaka@example.com');
+
+-- まとめて
+INSERT INTO users (name, email) VALUES
+  ('鈴木', 'suzuki@example.com'),
+  ('佐藤', 'sato@example.com'),
+  ('高橋', 'takahashi@example.com');
+```
+
+件数が多いときは、まとめて書くほうが圧倒的に速くなります。1行ずつのINSERTは、その都度クライアントとサーバーの往復が発生するためです。
+
+<Marker>列名リストは省略できますが、省略しないでください。テーブルに列が追加された瞬間に、値の対応がずれて壊れます。</Marker>
+
+### 型に合わない値は「エラーになる」
+
+現在のMySQLは、既定で厳格モード（`STRICT_TRANS_TABLES`）が有効です。
+
+```sql
+CREATE TABLE t (code VARCHAR(3), qty INT NOT NULL);
+INSERT INTO t (code, qty) VALUES ('ABCDE', 1);
+```
+
+```
+ERROR 1406 (22001): Data too long for column 'code' at row 1
+```
+
+`VARCHAR(3)` に5文字を入れようとして、**エラーで拒否されました**。
+
+<Callout type="column" title="昔のMySQLは黙って切り詰めていた">
+厳格モードが既定になる前のMySQLは、この場合に警告だけ出して `ABC` として保存していました。「MySQLはデータを勝手に壊す」という評判はここから来ています。現在は既定で拒否されるため、この心配はほぼありません。ネット上の古い記事を読むときは、それがいつの話なのかを意識してください。設定は `SELECT @@sql_mode;` で確認できます。
+</Callout>
+
+## データを更新する・削除する
+
+`UPDATE` と `DELETE` は、文法そのものは標準SQLと同じです。
+
+```sql
+UPDATE users SET is_active = FALSE WHERE id = 3;
+DELETE FROM users WHERE id = 3;
+```
+
+危険なのは `WHERE` を書き忘れたときです。
+
+```sql
+UPDATE users SET is_active = FALSE;  -- 全行が更新される
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+さすがに全行更新は止めてくれますよね？
+</SpeechBubble>
+
+止まりません。既定では通ります。
+
+```sql
+SHOW VARIABLES LIKE 'sql_safe_updates';
+```
+
+```
++------------------+-------+
+| Variable_name    | Value |
++------------------+-------+
+| sql_safe_updates | OFF   |
++------------------+-------+
+```
+
+`sql_safe_updates` を `ON` にすると、主キーやインデックスを使わない `UPDATE` / `DELETE` が拒否されるようになります。本番のデータベースに手作業で繋ぐときは、有効にしておくと事故を1段階防げます。
+
+```sql
+SET sql_safe_updates = 1;
+```
+
+<Callout type="warning" title="実行前にSELECTで確認する">
+`WHERE` 句を書いたら、まず `SELECT` で対象行を確認してから `UPDATE` / `DELETE` に書き換える——この順番を習慣にしてください。`sql_safe_updates` はあくまで保険で、`WHERE id > 0` のような条件は普通に通ってしまいます。
+</Callout>
+
+### DELETE と TRUNCATE の違い
+
+全行消す方法は2つあり、結果が違います。
+
+```sql
+-- どちらも中身は空になる
+DELETE FROM t;
+TRUNCATE TABLE t;
+```
+
+空にしたあと、もう1行INSERTしてIDを見ると差が出ます。
+
+| 実行したもの | 次に入る `id` |
+| --- | --- |
+| `DELETE FROM t;` | `4`（続きから） |
+| `TRUNCATE TABLE t;` | `1`（リセット） |
+
+| | `DELETE` | `TRUNCATE` |
+| --- | --- | --- |
+| `WHERE` で絞る | できる | できない（常に全行） |
+| `AUTO_INCREMENT` | 引き継ぐ | リセットされる |
+| ロールバック | できる | **できない** |
+| 速度 | 行数に比例 | 行数によらず速い |
+
+<Marker>TRUNCATE はトランザクションの中でもロールバックできません。「消してみて、ダメなら戻す」が通用しない操作です。</Marker>
+
+テスト用のデータを作り直すときは `TRUNCATE`、業務データを条件付きで消すときは `DELETE`、という使い分けで困りません。
+
+## よくあるハマりどころ
+
+### IDの最大値を件数として使う
+
+```sql
+-- 危ない
+SELECT MAX(id) FROM users;
+```
+
+欠番があるため、これは件数になりません。削除された行があればさらにずれます。件数は `COUNT(*)` を使ってください。
+
+### 複数行INSERTのあとにLAST_INSERT_ID()を使う
+
+上で見た通り、返るのは最初の行のIDです。まとめてINSERTした全行のIDが欲しい場合は、1行ずつINSERTするか、採番を自分で管理する設計に変える必要があります。
+
+### 削除フラグとUNIQUEを併用する
+
+`is_deleted` のような論理削除フラグを使いつつ `email` に `UNIQUE` を付けると、**同じメールアドレスで再登録できなくなります**。削除済みの行が制約を占有し続けるためです。
+
+論理削除を採用するなら、UNIQUE制約をどう扱うかを設計時に決めておく必要があります。
+
+### TRUNCATE をトランザクションで囲む
+
+```sql
+BEGIN;
+TRUNCATE TABLE orders;  -- ここで暗黙にコミットされる
+ROLLBACK;               -- 戻らない
+```
+
+`TRUNCATE` はDDLとして扱われるため、暗黙のコミットが発生します。囲んでも意味がありません。
+
+## ちゃんと使うためのポイント
+
+- 作った直後に `SHOW CREATE TABLE` で答え合わせをする
+- MySQLに真偽値型はない。`BOOLEAN` は `tinyint(1)` の別名
+- `AUTO_INCREMENT` は一意性のみ保証。欠番は正常に発生する
+- `LAST_INSERT_ID()` は複数行INSERTでは**最初の行**のIDを返す
+- `updated_at` には `ON UPDATE CURRENT_TIMESTAMP` を付けると自動更新される
+- 既定で厳格モードが有効なので、型に合わない値はエラーになる
+- `UPDATE` / `DELETE` は `WHERE` 忘れが止められない。先に `SELECT` で確認する
+- `TRUNCATE` は速いがロールバックできず、`AUTO_INCREMENT` もリセットされる
+
+ここまでは `mysql` コマンドから手で書き込んできました。アプリケーションから同じことをするときは、[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)で扱うコネクションプールが必要になります。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — CREATE TABLE Statement](https://dev.mysql.com/doc/refman/8.4/en/create-table.html)
+- [MySQL 8.4 Reference Manual — Using AUTO_INCREMENT](https://dev.mysql.com/doc/refman/8.4/en/example-auto-increment.html)
+- [MySQL 8.4 Reference Manual — Server SQL Modes](https://dev.mysql.com/doc/refman/8.4/en/sql-mode.html)

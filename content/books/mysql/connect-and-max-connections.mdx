@@ -4,7 +4,7 @@ description: 'Dockerで動かしたMySQLに接続し、いま何本の接続が�
 order: 2
 ---
 
-[前の章](/books/mysql/what-is-mysql)では、MySQLがサーバーであり、接続には確立コストと本数の上限があることを見ました。
+[MySQLとは何か](/books/mysql/what-is-mysql)では、MySQLがサーバーであり、接続には確立コストと本数の上限があることを見ました。
 
 この章では、それを**実際に自分の目で確認**します。
 いま何本の接続が開いているのか、誰が開いているのか、それはいつ切れるのか。ここが見えるようになると、コネクションプールの挙動もそのまま観察できるようになります。
@@ -249,7 +249,9 @@ Dockerのコンテナ内から `localhost` を指定して繋がらない場合�
 - `max_connections` は既定で151、`wait_timeout` は既定で8時間
 - 接続が埋まったら `information_schema.PROCESSLIST` を集計して占有元を特定する
 
-次の章では、いよいよアプリケーション側に移ります。Node.jsから接続し、ここで観察した `Sleep` の接続を**自分の手で作り出します**。
+[テーブルを作ってデータを入れる](/books/mysql/create-table-and-write-data)では、接続したその先へ進みます。テーブルを作り、データを追加・更新・削除する MySQL ならではの書き方を扱います。
+
+ここで観察した `Sleep` の接続を自分の手で作り出すのは、[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)です。
 
 ## 参考リンク
 

@@ -134,6 +134,9 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'release',
     'idleTimeout',
     'トランザクション',
+    'AUTO_INCREMENT',
+    'LAST_INSERT_ID',
+    'TRUNCATE',
   ],
 
   sqlite: [

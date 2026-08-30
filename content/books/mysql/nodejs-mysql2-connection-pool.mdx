@@ -1,10 +1,10 @@
 ---
 title: 'Node.jsからMySQLに接続する — mysql2のコネクションプール入門'
 description: 'createConnectionとcreatePoolの違い、connectionLimitなどのオプションと既定値、pool.queryとgetConnectionの使い分け、トランザクションで接続を固定しなければならない理由を整理します。'
-order: 3
+order: 10
 ---
 
-[前の章](/books/mysql/connect-and-max-connections)では、`SHOW PROCESSLIST` に `Sleep` の接続が何本も並んでいる様子を見ました。
+[接続を確認する](/books/mysql/connect-and-max-connections)では、`SHOW PROCESSLIST` に `Sleep` の接続が何本も並んでいる様子を見ました。
 あれを作り出していたのが、アプリケーション側の**コネクションプール**です。
 
 この章では、Node.jsからMySQLに接続し、そのプールを自分の手で組み立てます。
@@ -57,7 +57,7 @@ app.get('/users/:id', async (req, res) => {
 });
 ```
 
-[第1章](/books/mysql/what-is-mysql)で見た通り、接続の確立にはTCPのハンドシェイクと認証の往復があります。
+[MySQLとは何か](/books/mysql/what-is-mysql)で見た通り、接続の確立にはTCPのハンドシェイクと認証の往復があります。
 このコードは、**たった1行のSELECTのために、毎回その往復を丸ごと払っています**。
 
 <Marker>接続の確立コストは、クエリそのものの実行時間より大きくなることが珍しくありません。</Marker>
@@ -256,7 +256,7 @@ try {
 
 ## connectionLimit をいくつにするか
 
-「大きいほど速い」ではありません。ここは前章の `max_connections` と直結します。
+「大きいほど速い」ではありません。ここは [`max_connections`](/books/mysql/connect-and-max-connections) と直結します。
 
 計算はシンプルです。
 
@@ -272,7 +272,7 @@ connectionLimit × アプリのプロセス数 ≦ max_connections（既定151�
 
 ## アイドル接続が切られる問題
 
-前章で見た `wait_timeout`（既定8時間）を思い出してください。**サーバーは、長時間使われない接続を一方的に切ります。**
+[接続を確認する](/books/mysql/connect-and-max-connections)で見た `wait_timeout`（既定8時間）を思い出してください。**サーバーは、長時間使われない接続を一方的に切ります。**
 
 プールはそれを知らないので、切れた接続を「まだ使える」と思って保持し続けます。次にそれを借りたリクエストがエラーになります。
 

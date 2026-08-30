@@ -202,6 +202,98 @@ class User implements Greetable, Serializable {
 
 ---
 
+## なぜ検査だけで済むのか — 型と値を分けて考える
+
+「`implements` は検査だけ」と言われても、腑に落ちないかもしれません。ここを納得するには、TypeScriptが**型**と**値**をはっきり分けて扱っていることを知る必要があります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`interface` と `class` って、どっちも「オブジェクトの設計図」に見えるんだけど、何が違うの？
+</SpeechBubble>
+
+### インターフェースは「型」でしかない
+
+`interface` は、型に名前を付けているだけです。
+
+```tsx
+interface B {
+  x: number;
+}
+```
+
+これは、次の型エイリアスとほぼ同じ意味です。
+
+```tsx
+type B = { x: number };
+```
+
+<Marker>インターフェースは値ではないので、実行時には存在しません。</Marker>コンパイルすると完全に消えます。`new B()` はできませんし、`console.log(B)` も書けません。「`x: number` を持つ形」という説明書きが、コンパイラの中だけに存在している状態です。
+
+### クラスは「値」と「型」の両方を作る
+
+ここが混乱の元です。`class A {}` と書くと、TypeScriptは**2つのものを同時に定義します**。
+
+```tsx
+class A {
+  x = 1;
+}
+
+const a: A = new A();
+//       ↑型     ↑値
+```
+
+| | 実体 | JSに残るか |
+| ---- | ---- | ---- |
+| **値**としての `A` | `new A()` で呼べるコンストラクタ | ✅ 残る |
+| **型**としての `A` | 「`x: number` を持つオブジェクト」という型 | ❌ 残らない |
+
+同じ `A` という名前ですが、`const a: A` の `A` と `new A()` の `A` は別物を指しています。型を書く位置に現れた `A` は型として、値を書く位置に現れた `A` は値として解釈されます。
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+`interface` は型だけ、`class` は値と型の両方。この非対称さが分かると、`implements` の挙動はほとんど説明がつくよ。
+</SpeechBubble>
+
+`implements Greetable` が要求しているのは、**クラスが作る「型のほう」が `Greetable` と噛み合うか**です。`Greetable` は型でしかなく、渡せる実体を何も持っていません。だから検査しかできないのです。
+
+<Callout type="note">
+型と値が別の名前空間に存在することは、`import type` やenumの扱いにも効いてきます。[モジュールとインポート](/books/typescript/10-modules)の「型と値の名前空間」で改めて扱います。
+</Callout>
+
+### 型は名前ではなく構造で判定される
+
+もう1つ、`implements` の性質を決めている仕組みがあります。TypeScriptの型は「名前が一致するか」ではなく<Marker>「形が一致するか」で判定されます</Marker>。これを**構造的型付け**と呼びます。
+
+```tsx
+interface Greetable {
+  greet(): string;
+}
+
+// implementsを書いていないクラス
+class Cat {
+  greet(): string {
+    return 'にゃー';
+  }
+}
+
+const g: Greetable = new Cat(); // OK。形が合っているので通る
+```
+
+`Cat` は `Greetable` の名前をどこにも書いていませんが、`greet(): string` を持っているので `Greetable` として扱えます。<Marker>`implements` は「その型として使えるようにする」ためのものではありません。</Marker>形さえ合っていれば、書かなくても使えてしまうのです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+えっ、じゃあ `implements` って本当に要らない子なんじゃ…？
+</SpeechBubble>
+
+そうではありません。構造的型付けは「合っていれば通す」だけで、**合っているかどうかを教えてはくれません**。`Cat` から `greet` を消しても、`Cat` を定義した場所は静かなままで、`const g: Greetable = new Cat()` と書いた場所が初めて赤くなります。`implements` は、この判定をクラスの定義時点に前倒しするためのスイッチです。
+
+| | 型として使えるか | 実装漏れに気づく場所 |
+| ---- | ---- | ---- |
+| `implements` なし | ✅ 形が合えば使える | 使う場所 |
+| `implements` あり | ✅ 形が合えば使える | **定義する場所** |
+
+役割は「使えるようにすること」ではなく「**意図の宣言と、その場での検証**」だと捉えると正確です。
+
+---
+
 ## extendsとimplementsの違い
 
 クラスに関わるキーワードには `extends` もあります。混同しやすいので整理します。
@@ -235,7 +327,7 @@ class AdminUser extends User implements Serializable {
 ```
 
 <Callout type="column" title="なぜimplementsは消えるのか">
-TypeScriptは型に関する情報をすべて取り除いてJavaScriptを出力します。`implements` は「型の検査をしてほしい」という指示であって、実行時の振る舞いを一切変えないため、出力されるJavaScriptには残りません。逆に `extends` はJavaScript本来の継承の構文なので、そのまま残ります。<Marker>ブラウザやNode.jsは `implements` の存在を知りません。</Marker>
+`implements` はTypeScriptが独自に足したキーワードで、**JavaScriptには存在しません**。TypeScriptは型に関する情報をすべて取り除いてJavaScriptを出力します。`implements` は「型の検査をしてほしい」という指示であって、実行時の振る舞いを一切変えないため、出力されるJavaScriptには一切残りません。逆に `extends` はJavaScript本来の継承の構文なので、そのまま残ります。<Marker>ブラウザやNode.jsは `implements` の存在を知りません。</Marker>
 </Callout>
 
 ---
