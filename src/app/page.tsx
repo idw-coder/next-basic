@@ -689,7 +689,7 @@ export default async function Home() {
                 クイズで曖昧だったところは、教科書に戻って確認。迷ったときの次の一手がすぐ見つかります。
               </p>
             </div>
-            <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+            <div className="mx-auto grid max-w-4xl grid-cols-3 gap-2 sm:gap-4">
               {bookList.slice(0, 6).map((book) => {
                 const chapters = getChaptersByBook(book.bookSlug);
                 return (
@@ -707,6 +707,7 @@ export default async function Home() {
                       chapterSlug: c.chapterSlug,
                     }))}
                     isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
+                    compact
                   />
                 );
               })}
