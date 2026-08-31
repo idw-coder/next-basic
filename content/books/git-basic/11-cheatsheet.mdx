@@ -4,13 +4,15 @@ description: '日常的に使うGitコマンドを「やりたいこと」から
 order: 11
 ---
 
-ここまでの章で、Gitの考え方とコマンドを一通り学びました。この章は、それらを**「やりたいこと」から逆引き**できるチートシートです。コマンドを忘れたとき・手早く確認したいときのリファレンスとして使ってください。各セクションの末尾に、詳しい解説のある章へのリンクを置いています。
+ここまでの章で、Gitの考え方とコマンドを一通り学びました。この章は、それらを「やりたいこと」から**逆引きできる**チートシートです。コマンドを忘れたとき・手早く確認したいときのリファレンスとして使ってください。各セクションの末尾に、詳しい解説のある章へのリンクを置いています。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 コマンドの意味は分かったけど、いざという時に「あれ、どう打つんだっけ？」ってなる…。サッと見られる一覧が欲しい！
 </SpeechBubble>
 
 <Figure src="/images/plan_selection_man_color.png" alt="目的からコマンドを逆引きするイメージ" maxWidth="130px" />
+
+表のなかで<Pick />が付いている行は、日常の作業でとくに出番が多いものです。迷ったらここから覚えてください。
 
 ---
 
@@ -25,17 +27,17 @@ order: 11
 | 変更をステージに上げる | `git add ファイル名` |
 | すべての変更をステージに上げる | `git add .` |
 | 削除・リネームも含めて全部上げる | `git add -A` |
-| 変更を一部分ずつ選んで上げる | `git add -p` |
+| <Pick />変更を一部分ずつ選んで上げる | `git add -p` |
 | ステージした内容を確認する | `git status` / `git diff --staged` |
 | コミットする | `git commit -m "メッセージ"` |
 | add と commit をまとめて（追跡中ファイルのみ） | `git commit -am "メッセージ"` |
 | 直前のコミットにメッセージ込みで修正 | `git commit --amend` |
-| 直前のコミットにメッセージを変えず追加 | `git commit --amend --no-edit` |
+| <Pick />直前のコミットにメッセージを変えず追加 | `git commit --amend --no-edit` |
 | 空コミットを作る（CI起動用など） | `git commit --allow-empty -m "メッセージ"` |
 | リモートへ送る | `git push` |
 | 初回プッシュ（上流ブランチを設定） | `git push -u origin ブランチ名` |
 | 特定のブランチへ送る | `git push origin ブランチ名` |
-| 履歴を書き換えた後に安全に送る | `git push --force-with-lease` |
+| <Pick />履歴を書き換えた後に安全に送る | `git push --force-with-lease` |
 
 > 詳しくは[第3章 add・commit・pushの基本フロー](/books/git-basic/03-basic-flow)へ。
 
@@ -51,12 +53,12 @@ order: 11
 | 変更状況を簡潔に見る | `git status -s` |
 | 履歴を見る | `git log` |
 | 履歴を1行ずつ簡潔に見る | `git log --oneline` |
-| 履歴を図（グラフ）で見る | `git log --oneline --graph --all` |
+| <Pick />履歴を図（グラフ）で見る | `git log --oneline --graph --all` |
 | 直近 n 件だけ見る | `git log -n 5` |
 | 特定ファイルの履歴を見る | `git log ファイル名` |
 | 特定の作者の履歴を見る | `git log --author="名前"` |
 | 変更内容（未ステージ）を見る | `git diff` |
-| ステージ済みの変更を見る | `git diff --staged` |
+| <Pick />ステージ済みの変更を見る | `git diff --staged` |
 | 2つのブランチの差分を見る | `git diff main..feature` |
 | あるコミットの内容を見る | `git show コミットID` |
 | 行ごとに最後に変更した人を見る | `git blame ファイル名` |
@@ -78,8 +80,8 @@ order: 11
 | 今いるブランチ名を確認する | `git branch --show-current` |
 | ブランチを作る | `git branch ブランチ名` |
 | ブランチを切り替える | `git switch ブランチ名` |
-| 作って切り替えを同時に | `git switch -c ブランチ名` |
-| 直前にいたブランチに戻る | `git switch -` |
+| <Pick />作って切り替えを同時に | `git switch -c ブランチ名` |
+| <Pick />直前にいたブランチに戻る | `git switch -` |
 | ブランチ名を変更する | `git branch -m 新しい名前` |
 | ブランチを削除する（マージ済み） | `git branch -d ブランチ名` |
 | ブランチを強制削除する（未マージ） | `git branch -D ブランチ名` |
@@ -103,9 +105,9 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | ------------ | -------- |
 | 作業中の変更を捨てる（ファイル単位） | `git restore ファイル名` |
 | 作業中の変更を全部捨てる | `git restore .` |
-| ステージから下ろす（変更は残す） | `git restore --staged ファイル名` |
+| <Pick />ステージから下ろす（変更は残す） | `git restore --staged ファイル名` |
 | 特定コミットの内容でファイルを復元 | `git restore --source=コミットID ファイル名` |
-| 直前のコミットを取り消す（変更は残す） | `git reset --soft HEAD^` |
+| <Pick />直前のコミットを取り消す（変更は残す） | `git reset --soft HEAD^` |
 | 直近 3 件のコミットを取り消す（変更は残す） | `git reset --soft HEAD~3` |
 | 直前のコミットを取り消す（変更も捨てる） | `git reset --hard HEAD^` |
 | コミットを打ち消す新コミットを作る | `git revert コミットID` |
@@ -131,9 +133,9 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | 登録済みリモートを確認する | `git remote -v` |
 | リモートのURLを変更する | `git remote set-url origin URL` |
 | リモートの最新を取得（マージしない） | `git fetch` |
-| リモートで消えたブランチを掃除する | `git fetch --prune` |
+| <Pick />リモートで消えたブランチを掃除する | `git fetch --prune` |
 | リモートの最新を取得してマージ | `git pull` |
-| リベース型で取り込む | `git pull --rebase` |
+| <Pick />リベース型で取り込む | `git pull --rebase` |
 | 自分の変更を送る | `git push` |
 | リモートのブランチ一覧を見る | `git branch -r` |
 | リモートのブランチを取得して切り替える | `git switch ブランチ名`（自動追跡） |
@@ -150,14 +152,14 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | やりたいこと | コマンド |
 | ------------ | -------- |
 | 変更を退避する | `git stash` |
-| メッセージを付けて退避する | `git stash push -m "メッセージ"` |
+| <Pick />メッセージを付けて退避する | `git stash push -m "メッセージ"` |
 | 未追跡ファイルも含めて退避する | `git stash -u` |
 | 退避の一覧を見る | `git stash list` |
 | 退避の中身を確認する | `git stash show -p` |
 | 最後の退避を戻す（退避は消す） | `git stash pop` |
 | 退避を戻す（退避は残す） | `git stash apply` |
 | 特定の退避を戻す | `git stash apply stash@{1}` |
-| 退避から特定のファイルだけ復元する | `git restore --source=stash@{0} -- src/...` |
+| <Pick />退避から特定のファイルだけ復元する | `git restore --source=stash@{0} -- src/...` |
 | 退避を1つ破棄する | `git stash drop` |
 | 退避をすべて破棄する | `git stash clear` |
 
@@ -206,7 +208,7 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 | やりたいこと | コマンド |
 | ------------ | -------- |
 | 特定のコミットだけ取り込む | `git cherry-pick コミットID` |
-| HEADが動いた全履歴を見る | `git reflog` |
+| <Pick />HEADが動いた全履歴を見る | `git reflog` |
 | reflog で見つけた状態へ戻す | `git reset --hard コミットID` |
 | 直近のコミットを対話的に編集する | `git rebase -i HEAD~3` |
 | 過去の状態を見るだけ（切替なし） | `git switch --detach コミットID` |

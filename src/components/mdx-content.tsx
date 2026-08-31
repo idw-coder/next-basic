@@ -5,6 +5,7 @@ import Figure from '@/app/books/_components/Figure';
 import Callout from '@/app/books/_components/Callout';
 import SpeechBubble from '@/app/books/_components/SpeechBubble';
 import Marker from '@/app/books/_components/Marker';
+import Pick from '@/app/books/_components/Pick';
 import TailwindPreview from '@/app/books/_components/TailwindPreview';
 import QuizLink from '@/app/books/_components/QuizLink';
 import CodeBlock from '@/app/books/_components/CodeBlock';
@@ -46,6 +47,7 @@ const sharedComponents = {
   Callout,
   SpeechBubble,
   Marker,
+  Pick,
   TailwindPreview,
   QuizLink,
   a: Anchor,
