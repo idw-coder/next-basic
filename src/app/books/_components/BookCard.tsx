@@ -99,7 +99,7 @@ export default function BookCard({
             {/* タイトル（表紙上部） */}
             <div className="absolute inset-x-[10%] top-[10%] z-10 text-center">
               <p className={cn(
-                'text-[9px] font-bold leading-tight line-clamp-2 sm:text-[10px]',
+                'text-[9px] font-bold leading-tight line-clamp-2 sm:text-[10px] lg:text-xs',
                 theme.iconText,
               )}>
                 {shortTitle}
@@ -130,14 +130,14 @@ export default function BookCard({
             <div className="absolute inset-x-[24%] bottom-[9%] h-1 rounded-full bg-current/14" />
 
             {isNew && (
-              <span className="absolute right-0 top-0 z-30 inline-flex items-center gap-0.5 rounded-bl-md bg-red-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:text-[9px]">
+              <span className="absolute right-0 top-0 z-30 inline-flex items-center gap-0.5 rounded-bl-md bg-red-500 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-white sm:text-[9px] lg:text-[10px]">
                 <Sparkles className="size-2" />
                 NEW
               </span>
             )}
 
             <span className={cn(
-              'absolute left-1.5 bottom-1.5 z-30 rounded-full px-1.5 py-0.5 text-[8px] font-bold sm:text-[9px]',
+              'absolute left-1.5 bottom-1.5 z-30 rounded-full px-1.5 py-0.5 text-[8px] font-bold sm:text-[9px] lg:text-[10px]',
               'bg-white/85 backdrop-blur-sm',
               theme.badgeText,
             )}>
@@ -154,7 +154,7 @@ export default function BookCard({
         )}
         <p
           className={cn(
-            'mt-2 line-clamp-2 text-[10px] leading-relaxed text-gray-500 sm:text-[11px]',
+            'mt-2 line-clamp-2 text-[10px] leading-relaxed text-gray-500 sm:text-[11px] lg:text-sm',
             compact && 'max-sm:hidden',
           )}
         >
