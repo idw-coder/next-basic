@@ -253,7 +253,15 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'abstract',
   ],
 
-  'react-learning': ['useState', 'useEffect', 'useMemo', 'useCallback', '依存配列'],
+  'react-learning': [
+    'useState',
+    'useContext',
+    'Context API',
+    'useEffect',
+    'useMemo',
+    'useCallback',
+    '依存配列',
+  ],
 
   'css-basics': ['Flexbox', 'Grid', 'レスポンシブ', '詳細度', 'CSS変数'],
 

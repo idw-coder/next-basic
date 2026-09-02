@@ -1,19 +1,19 @@
 ---
 title: 'Hooksの使い分け — 判断フローと横断比較'
-description: 'useState・useRef・useEffect・useMemo・useCallbackの5つを横断的に比較し、「どの場面でどのフックを使うか」の判断フローを整理します。'
+description: 'useState・useContext・useRef・useEffect・useMemo・useCallbackの6つを横断的に比較し、「どの場面でどのフックを使うか」の判断フローを整理します。'
 order: 10
 ---
 
-ここまで5つのフックを個別に学んできました。
+ここまで6つのフックを個別に学んできました。
 この章では全体を俯瞰して、「この場面ではどのフックを使うべきか」を迷わず判断できるようにします。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-フックが5つも出てきて頭がごちゃごちゃ…。結局どの場面でどれを使えばいいの？
+フックが6つも出てきて頭がごちゃごちゃ…。結局どの場面でどれを使えばいいの？
 </SpeechBubble>
 
 ---
 
-## 5つのフックの横断比較
+## 6つのフックの横断比較
 
 各フックの性質を整理します。
 
@@ -24,9 +24,13 @@ flowchart TD
     classDef ref fill:#8b5cf6,color:#fff,stroke:#7c3aed
     classDef effect fill:#22c55e,color:#fff,stroke:#16a34a
     classDef memo fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef context fill:#06b6d4,color:#fff,stroke:#0891b2
 
     subgraph "再レンダーを起こす"
         S["useState\n状態の管理\n値の変更 → 再レンダー → UI更新"]
+    end
+    subgraph "ツリーへ値を共有"
+        C["useContext\n共有値の読み取り\nProviderの変更 → 利用側を更新"]
     end
     subgraph "再レンダーを起こさない"
         R["useRef\n値の保持\n変更してもUIに影響しない"]
@@ -38,6 +42,7 @@ flowchart TD
     end
 
     class S state
+    class C context
     class R ref
     class M,CB memo
     class E effect
@@ -46,6 +51,8 @@ flowchart TD
 />
 
 **useState** — UIに影響する値を管理する。値を変更すると再レンダーが走り、画面が更新される。
+
+**useContext** — Providerがサブツリーへ提供した値を読み取る。テーマやログインユーザーなど、離れた複数のコンポーネントで共有する値に使う。
 
 **useRef** — UIに影響しない値を保持する。DOM参照、タイマーID、前回の値など。変更しても再レンダーは起きない。
 
@@ -59,7 +66,7 @@ flowchart TD
 
 ## 判断フローチャート
 
-「値を持ちたい」「処理を実行したい」「パフォーマンスを改善したい」という3つの出発点から、どのフックに辿り着くかを示します。
+「値を持ちたい」「値を共有したい」「処理を実行したい」「パフォーマンスを改善したい」という4つの出発点から、どのフックに辿り着くかを示します。
 
 ### 値を持ちたい場合
 
@@ -80,6 +87,26 @@ flowchart TD
 
     class A,B,D,E question
     class C,F,G,H answer
+
+`}
+/>
+
+### 値を共有したい場合
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef question fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef answer fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["値を子へ渡したい"] --> B{"離れた複数箇所で\n必要か？"}
+    B -->|いいえ| C["propsで渡す"]
+    B -->|はい| D{"サブツリー全体で\n同じ意味を持つか？"}
+    D -->|はい| E["useContextで読む"]
+    D -->|いいえ| F["propsやchildrenで\n構造を見直す"]
+
+    class A,B,D question
+    class C,E,F answer
 
 `}
 />
@@ -135,6 +162,12 @@ flowchart TD
 
 <Figure src="/images/readingbook_woman_color.png" alt="フック全体を振り返って整理するイメージ" maxWidth="120px" />
 
+### useStateとuseContextはどう使い分ける？
+
+`useState` は値を保持して更新するフックです。`useContext` は、上位のProviderが持つ値を離れたコンポーネントから読み取るフックです。
+
+値を実際に所有するのは `useState` を呼び出したコンポーネントで、Contextはその値を配下へ届けます。ローカルな値なら `useState` だけで十分です。サブツリー内の離れた複数箇所で同じ値を使う必要が出たときに、Contextとの組み合わせを検討します。
+
 ### useMemoとuseCallbackはどう使い分ける？
 
 メモ化したい対象が「値」なら `useMemo`、「関数」なら `useCallback` です。`useCallback` は `useMemo` の関数特化版なので、`useMemo(() => () => { ... }, [deps])` と書けば `useCallback` と同じことができますが、意図の明確さから関数には `useCallback` を使います。
@@ -169,7 +202,7 @@ flowchart TD
 
 ## カスタムフックへの導線
 
-5つのフックを組み合わせた処理が複数のコンポーネントで重複するようになったら、**カスタムフック**として切り出せます。
+6つのフックを使う処理が複数のコンポーネントで重複するようになったら、**カスタムフック**として切り出せます。
 
 ```tsx
 // useWindowSize — ウィンドウサイズを監視するカスタムフック
@@ -197,22 +230,22 @@ function Header() {
 
 カスタムフックは `use` で始まる関数で、中で他のフックを自由に使えます。「イベントリスナーの登録（`useEffect`）+ 値の管理（`useState`）」のような定型パターンを1つの関数にまとめられます。
 
-カスタムフック自体は本書のスコープ外ですが、5つのフックを理解していれば、既存のカスタムフックのコードを読んだときに「ああ、useEffectで購読してuseStateで値を管理しているのか」と構造がわかるようになります。
+カスタムフック自体は本書のスコープ外ですが、6つのフックを理解していれば、既存のカスタムフックのコードを読んだときに「ああ、useEffectで購読してuseStateで値を管理しているのか」と構造がわかるようになります。
 
 ---
 
 ## まとめ
 
-5つのフックはそれぞれ異なる役割を持っています。
+6つのフックはそれぞれ異なる役割を持っています。
 
-`useState` はUIに影響する状態を管理し、変更時に再レンダーを引き起こします。`useRef` はUIに影響しない値を再レンダーなしに保持します。`useEffect` はレンダー後に外部との同期処理を実行します。`useMemo` は重い計算結果をキャッシュし、`useCallback` は関数オブジェクトをキャッシュします。
+`useState` はUIに影響する状態を管理し、`useContext` はProviderが提供した共有値を読み取ります。`useRef` はUIに影響しない値を再レンダーなしに保持します。`useEffect` はレンダー後に外部との同期処理を実行します。`useMemo` は重い計算結果をキャッシュし、`useCallback` は関数オブジェクトをキャッシュします。
 
-<Marker>判断の起点は「その値は画面に映るか」「その処理はレンダーの結果として必要か」「参照の安定性を受け取る側が活用するか」の3つです。</Marker>
+<Marker>判断の起点は「その値は画面に映るか」「どの範囲で共有するか」「その処理はレンダーの結果として必要か」「参照の安定性を受け取る側が活用するか」の4つです。</Marker>
 
 これでReactのHooksの土台は固まりました。この先Next.jsなどのフレームワークに進むと、Server ComponentやApp Routerなど新しい概念が出てきますが、それらの理解もここで学んだHooksの知識が基盤になります。
 
 <QuizLink
   href="/quiz/react-basic"
   title="Reactクイズに挑戦する"
-  description="useState、useRef、useEffect、useMemo、useCallbackの使い分けを総復習クイズで確認しよう"
+  description="useState、useContext、useRef、useEffect、useMemo、useCallbackの使い分けを総復習クイズで確認しよう"
 />

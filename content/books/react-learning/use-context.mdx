@@ -1,0 +1,413 @@
+---
+title: 'useContextとContext API — propsを経由せずデータを渡す'
+description: 'prop drillingの問題から、createContext・Provider・useContextの基本、stateとの組み合わせ、再レンダーと使いすぎの注意点までを整理します。'
+order: 4.5
+chapterLabel: 'useContext'
+---
+
+親から子へデータを渡す基本は `props` です。しかし、同じ値をツリーの深い場所にある複数のコンポーネントが必要とすると、途中のコンポーネントまで値を受け取り、次へ渡すだけのコードが増えていきます。
+
+ReactのContext APIを使うと、上位のコンポーネントが提供した値を、その配下にあるコンポーネントから直接読み取れます。この章では、Contextを作る `createContext`、値を提供するProvider、値を読み取る `useContext` の3つを順番に整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+propsを何段も渡すのが面倒なら、最初から全部Contextに入れればいいの？
+</SpeechBubble>
+
+便利だからこそ、使う範囲の見極めが重要です。まずはContextが解決する問題から見ていきましょう。
+
+---
+
+## propsのバケツリレー — prop drilling
+
+ログイン中のユーザー名を、ページの奥にある `Avatar` で表示する例を考えます。
+
+```tsx
+function App() {
+  const userName = 'Ada';
+  return <Layout userName={userName} />;
+}
+
+function Layout({ userName }: { userName: string }) {
+  return <Header userName={userName} />;
+}
+
+function Header({ userName }: { userName: string }) {
+  return <Avatar userName={userName} />;
+}
+
+function Avatar({ userName }: { userName: string }) {
+  return <p>{userName}</p>;
+}
+```
+
+`userName` を実際に使うのは `Avatar` だけですが、`Layout` と `Header` もpropsを受け取って次へ渡しています。このように、値を必要な場所まで中継し続ける状態を **prop drilling** と呼びます。
+
+小さなツリーならpropsの方がデータの流れを追いやすく、問題ありません。Contextが役立つのは、次の条件が重なる場面です。
+
+- 同じ値を離れた複数のコンポーネントが必要とする
+- 間にあるコンポーネントは、その値を使わず中継するだけ
+- テーマ、ログインユーザー、言語設定など、サブツリー全体で共有する意味がある
+
+<Marker>Contextは「propsを省略する道具」ではなく、サブツリー全体に共有する意味がある値を届ける仕組みです。</Marker>
+
+---
+
+## Contextの3つの役割
+
+Context APIは、作成・提供・読み取りの3段階で使います。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["createContext\nContextを作る"] --> B["Provider\n値を提供する"]
+    B --> C["useContext\n値を読み取る"]
+`}
+/>
+
+| 役割 | API | 行うこと |
+| --- | --- | --- |
+| 作成 | `createContext` | 共有する情報の種類を表すContextオブジェクトを作る |
+| 提供 | `<SomeContext value={...}>` | 配下のコンポーネントへ値を公開する |
+| 読み取り | `useContext(SomeContext)` | 最も近いProviderが公開した値を受け取る |
+
+Contextは値をどこにでも置けるグローバル変数ではありません。Providerで囲んだ範囲にだけ値を提供し、同じContextを読むコンポーネントだけがその値を受け取ります。
+
+---
+
+## `createContext` — Contextを作る
+
+まず、コンポーネントの外側で `createContext` を呼び出します。
+
+**構文：** `createContext(defaultValue)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `defaultValue` | 任意の値 | 上位に対応するProviderがない場合に返すフォールバック値。不要なら `null` を指定する |
+
+**戻り値：** 値の提供と読み取りに使うContextオブジェクト
+
+```tsx
+import { createContext } from 'react';
+
+type Theme = 'light' | 'dark';
+
+export const ThemeContext = createContext<Theme>('light');
+```
+
+`createContext` はフックではなく、Contextオブジェクトを作るReact APIです。コンポーネントがレンダーされるたびに作り直さないよう、通常はモジュールのトップレベルで1回だけ呼び出します。
+
+### デフォルト値は更新されない
+
+`createContext('light')` の `'light'` は、Providerが見つからないときのフォールバックです。Providerの初期値ではなく、あとから自動で変わるstateでもありません。
+
+```tsx
+const ThemeContext = createContext<'light' | 'dark'>('light');
+
+function Button() {
+  // 上位にProviderがなければ 'light'
+  const theme = useContext(ThemeContext);
+  return <button className={theme}>保存</button>;
+}
+```
+
+テストや独立した部品で妥当なフォールバックがあるなら、実際の値を指定して構いません。一方、Providerなしで使うこと自体をエラーにしたい場合は、後述するように `null` を使います。
+
+---
+
+## Provider — 配下へ値を提供する
+
+React 19では、作成したContextオブジェクトをコンポーネントとしてレンダーし、`value` に共有したい値を渡します。
+
+```tsx
+import { ThemeContext } from './ThemeContext';
+
+export default function App() {
+  return (
+    <ThemeContext value="dark">
+      <Page />
+    </ThemeContext>
+  );
+}
+```
+
+**Providerのprops：**
+
+| prop | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `value` | 任意の値 | Provider配下で同じContextを読むコンポーネントへ渡す値 |
+| `children` | React要素 | Contextの値を利用できる子要素 |
+
+**レンダー結果：** `children` をそのまま描画し、配下へ `value` を提供する
+
+React 18以前のコードでは、次の `.Provider` 形式をよく見かけます。
+
+```tsx
+<ThemeContext.Provider value="dark">
+  <Page />
+</ThemeContext.Provider>
+```
+
+React 19では `<ThemeContext value="dark">` と短く書けます。既存プロジェクトを読むために両方の形を知っておくとよいでしょう。
+
+---
+
+## `useContext` — 最も近い値を読み取る
+
+Providerが提供した値は、配下のコンポーネントから `useContext` で読み取ります。
+
+**構文：** `useContext(SomeContext)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `SomeContext` | `createContext` の戻り値 | 読み取りたいContextオブジェクト |
+
+**戻り値：** 上位にある最も近いProviderの `value`。Providerがなければ `createContext` の `defaultValue`
+
+```tsx
+import { useContext } from 'react';
+import { ThemeContext } from './ThemeContext';
+
+export function SaveButton() {
+  const theme = useContext(ThemeContext);
+
+  return (
+    <button className={theme === 'dark' ? 'button-dark' : 'button-light'}>
+      保存
+    </button>
+  );
+}
+```
+
+`useContext` はフックなので、コンポーネントのトップレベルで呼び出します。条件分岐やループの中では呼び出せません。
+
+### 最も近いProviderが選ばれる
+
+同じContextのProviderはネストできます。その場合、読み取り側から見て最も近いProviderの値が使われます。
+
+```tsx
+<ThemeContext value="light">
+  <Header />
+
+  <ThemeContext value="dark">
+    <AdminPanel />
+  </ThemeContext>
+</ThemeContext>
+```
+
+この例では `Header` は `'light'`、`AdminPanel` は `'dark'` を読み取ります。ページ全体の設定を、一部のサブツリーだけ上書きしたいときに使えます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+useContextは「一番上の値」を探すのではなく、自分から親方向へたどって最初に見つかったProviderの値を読む、と考えよう。
+</SpeechBubble>
+
+---
+
+## `useState`と組み合わせて値を更新する
+
+Contextには固定値だけでなく、stateと更新関数をまとめて渡せます。Providerの `value` が変わると、そのContextを読んでいる配下のコンポーネントは新しい値で再レンダーされます。
+
+```tsx
+import { createContext, useContext, useState } from 'react';
+
+type Theme = 'light' | 'dark';
+
+type ThemeContextValue = {
+  theme: Theme;
+  toggleTheme: () => void;
+};
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Theme>('light');
+
+  function toggleTheme() {
+    setTheme((current) => (current === 'light' ? 'dark' : 'light'));
+  }
+
+  return (
+    <ThemeContext value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext>
+  );
+}
+
+function ThemeButton() {
+  const context = useContext(ThemeContext);
+
+  if (context === null) {
+    throw new Error('ThemeButtonはThemeProviderの内側で使用してください');
+  }
+
+  return <button onClick={context.toggleTheme}>現在: {context.theme}</button>;
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <ThemeButton />
+    </ThemeProvider>
+  );
+}
+```
+
+stateそのものは `ThemeProvider` が所有しています。Contextは、そのstateと更新手段を配下へ届ける役割です。
+
+<Marker>Contextはstateを保存する仕組みではありません。stateの置き場所は上位コンポーネントであり、Contextはその値を配る経路です。</Marker>
+
+---
+
+## TypeScriptでは専用フックで安全に読む
+
+前の例のような `null` チェックを利用側で毎回書くと、コードが重複します。専用のカスタムフックへまとめると、Providerの置き忘れを早く発見できます。
+
+```tsx
+import { createContext, useContext } from 'react';
+
+type ThemeContextValue = {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+};
+
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+export function useTheme() {
+  const context = useContext(ThemeContext);
+
+  if (context === null) {
+    throw new Error('useThemeはThemeProviderの内側で使用してください');
+  }
+
+  return context;
+}
+```
+
+利用側はContextオブジェクトを直接意識せず、`useTheme()` からnullではない値を受け取れます。
+
+```tsx
+function ThemeButton() {
+  const { theme, toggleTheme } = useTheme();
+  return <button onClick={toggleTheme}>現在: {theme}</button>;
+}
+```
+
+この形には次の利点があります。
+
+- 利用側でnullチェックを繰り返さなくてよい
+- Providerの外で呼び出したとき、原因が分かるエラーを出せる
+- Contextの読み取り方法を1か所にまとめられる
+
+---
+
+## Contextによる再レンダー
+
+Providerの `value` が変わると、そのContextを読んでいるコンポーネントは再レンダーされます。`value` の比較には `Object.is` が使われるため、オブジェクトや関数を毎回新しく作ると、内容が同じでも別の値と判定されます。
+
+```tsx
+function AppProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+
+  // AppProviderが再レンダーされるたび、新しいオブジェクトになる
+  const value = { user, setUser };
+
+  return <UserContext value={value}>{children}</UserContext>;
+}
+```
+
+小規模な画面で最初から最適化する必要はありません。ただし、Contextに無関係な値まで大量に詰め込むと、1項目の変更で多くの利用側が再レンダーされます。
+
+対策の基本は次のとおりです。
+
+- 役割が異なる値は別のContextへ分ける
+- Providerを必要な範囲まで下げる
+- 大きなオブジェクトを何でも1つのContextへ集約しない
+- 実測して問題がある場合に、`useMemo` や `useCallback` で参照を安定させる
+
+`useMemo` と `useCallback` は後の章で詳しく扱います。まずはContextの責務を小さく保つことを優先してください。
+
+---
+
+## Contextを使う前に検討すること
+
+Contextを使うとpropsの記述は減りますが、値がどこから来たのかは見えにくくなります。次の順番で考えると、過剰なContextを避けられます。
+
+1. 近い親子間ならpropsで渡す
+2. 中間コンポーネントがレイアウトだけを担当するなら、`children` としてJSXを渡せないか考える
+3. 離れた複数箇所が同じ値を必要とするならContextを検討する
+
+| 状況 | 適した方法 |
+| --- | --- |
+| 親から直接の子へ値を渡す | props |
+| UIの入れ子構造を組み替える | `children` |
+| サブツリー内の離れた複数箇所で共有する | Context |
+| サーバーから取得したデータをキャッシュ・再取得する | データ取得ライブラリやフレームワークの仕組みも検討 |
+
+テーマ、現在のユーザー、言語、ルーティング情報のように「ツリー内の広い範囲で同じ意味を持つ値」はContextと相性がよいです。一方、1つのフォーム内だけで使う入力値や、1組の親子だけが使う値までContextにすると、かえって追いにくくなります。
+
+---
+
+## よくあるハマりどころ
+
+### Providerを同じコンポーネントの下に置いている
+
+`useContext` が読むのは、呼び出したコンポーネントより上にあるProviderです。同じコンポーネントがreturnするProviderは、そのコンポーネント自身の `useContext` には影響しません。
+
+```tsx
+// NG — useContextを呼んだ時点では上位にProviderがない
+function App() {
+  const theme = useContext(ThemeContext);
+
+  return (
+    <ThemeContext value="dark">
+      <p>{theme}</p>
+    </ThemeContext>
+  );
+}
+```
+
+Providerをさらに上へ移すか、値を読む処理を子コンポーネントへ分けます。
+
+```tsx
+function ThemeText() {
+  const theme = useContext(ThemeContext);
+  return <p>{theme}</p>;
+}
+
+function App() {
+  return (
+    <ThemeContext value="dark">
+      <ThemeText />
+    </ThemeContext>
+  );
+}
+```
+
+### デフォルト値が更新されると思っている
+
+`createContext` に渡す値は静的なフォールバックです。変更可能な値を共有したいなら、Providerの上で `useState` を使い、そのstateを `value` に渡します。
+
+### Contextを巨大なストアにしている
+
+アプリの全状態を1つのContextへ入れると、更新の影響範囲が広がり、どの変更で何が再レンダーされるのか分かりにくくなります。「認証」「テーマ」「言語」のように責務で分け、Providerの範囲も必要最小限にします。
+
+---
+
+## まとめ
+
+`createContext` は共有する情報の種類を表すContextオブジェクトを作り、Providerはその配下へ値を提供します。`useContext` は、上位にある最も近いProviderの値を読み取り、値の変更を受け取ります。
+
+Contextはprop drillingを減らせますが、propsの完全な代替ではありません。まずpropsや `children` を検討し、サブツリー内の離れた複数コンポーネントが同じ値を必要とするときに使います。
+
+次の章では、値を保持しても再レンダーを引き起こさない `useRef` を扱います。
+
+## 参考リンク
+
+- [useContext（React公式）](https://ja.react.dev/reference/react/useContext)
+- [createContext（React公式）](https://ja.react.dev/reference/react/createContext)
+- [コンテクストで深くデータを受け渡す（React公式）](https://ja.react.dev/learn/passing-data-deeply-with-context)
+
+<QuizLink
+  href="/quiz/react-basic"
+  title="Reactクイズに挑戦する"
+  description="Context API、createContext、Provider、useContext、prop drillingの理解を4択クイズで確認しよう"
+/>
