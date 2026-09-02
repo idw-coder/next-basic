@@ -86,8 +86,17 @@ order: 11
 | ブランチを削除する（マージ済み） | `git branch -d ブランチ名` |
 | ブランチを強制削除する（未マージ） | `git branch -D ブランチ名` |
 | マージ済みのブランチ一覧を見る | `git branch --merged` |
-| ブランチを統合する | `git merge ブランチ名` |
+| ブランチを統合する | `git merge 取り込みたいブランチ名` |
 | ブランチの根元を付け替える | `git rebase ブランチ名` |
+
+`git merge` では、**現在いるブランチが統合先**です。コマンドに指定したブランチの変更を、現在のブランチへ取り込みます。
+
+```bash
+git switch main
+git merge feature/login
+```
+
+この例では、`feature/login` の変更を `main` に取り込みます。
 
 <Callout type="note" title="checkout より switch / restore">
 ブランチの切り替えは古くは `git checkout` で行っていましたが、現在は用途が分かれた `git switch`（ブランチ切替）と `git restore`（ファイル復元）が推奨です。意図が明確でミスしにくくなります。
