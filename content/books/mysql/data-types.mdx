@@ -1,0 +1,426 @@
+---
+title: 'データ型の選び方 — INT・DECIMAL・VARCHAR・DATETIME・JSON'
+description: 'MySQLで列の型を決めるときの判断基準を、INTとBIGINTの分かれ目、金額をDECIMALにする理由、VARCHARの長さとインデックスの上限、DATETIMEとTIMESTAMPの違い、JSON型を使ってよい場面まで整理します。'
+order: 4
+---
+
+[テーブルを作ってデータを入れる](/books/mysql/create-table-and-write-data)では、`CREATE TABLE` を書いて `SHOW CREATE TABLE` で答え合わせをしました。
+そこでは型をほぼ既定のまま流しましたが、実務でテーブルを作るとき、時間を使うのは**列の型を決めるところ**です。
+
+<Callout type="note" title="この章で扱う範囲">
+どんなテーブルに分けるか、どの列に制約を付けるかという**設計の話**は [テーブル設計・正規化・制約の基本](/books/sql-basics/table-design-normalization-and-constraints) の担当です。`SELECT` や `WHERE` の書き方も [SQLとデータベースの基礎](/books/sql-basics/select-basics) で学んだ内容がそのまま通用します。この章は、**MySQLにどんな型があり、どれを選ぶか**だけに絞ります。
+</Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+数値は `INT`、文字列は `VARCHAR`。だいたいそれで動いてしまうので、選んでいる感覚がありません。
+</SpeechBubble>
+
+動きます。型を適当に決めても、アプリが正しい値だけを送っているうちは何も起きません。
+問題が出るのは、**正しくない値が来たとき**です。そこで型がどう振る舞うかが、選び方の基準になります。
+
+## 型は「入るもの」ではなく「入らないもの」を決める
+
+MySQL 8系は既定で厳格モード（`STRICT_TRANS_TABLES`）が有効です。型に合わない値は、警告ではなくエラーになります。
+
+```sql
+CREATE TABLE members (
+  id  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  age TINYINT UNSIGNED NOT NULL
+);
+
+INSERT INTO members (age) VALUES (300);
+```
+
+```
+ERROR 1264 (22003): Out of range value for column 'age' at row 1
+```
+
+`age` を `INT` にしていれば、この `300` は静かに保存されていました。人間の年齢として `300` は明らかにおかしいのに、テーブルは受け入れます。
+
+<Marker>型は「その値が入るか」ではなく「おかしな値をどこで止められるか」で選びます。</Marker>
+
+広い型を選ぶのは安全に見えて、実際には**アプリケーションのバグが発覚する場所を後ろにずらしているだけ**です。
+
+<Figure
+  src="/images/plan_selection_man_color.png"
+  alt="複数の選択肢の前で考えている人のイラスト"
+  caption="型選びは「入るか」ではなく「何を弾きたいか」で決める"
+  maxWidth="360px"
+/>
+
+## 整数 — INTとBIGINTの分かれ目
+
+MySQLの整数型は5種類あり、違いは**サイズと表せる範囲**だけです。
+
+| 型 | バイト数 | 符号ありの範囲 | `UNSIGNED` の範囲 |
+| --- | --- | --- | --- |
+| `TINYINT` | 1 | -128 〜 127 | 0 〜 255 |
+| `SMALLINT` | 2 | -32,768 〜 32,767 | 0 〜 65,535 |
+| `MEDIUMINT` | 3 | -8,388,608 〜 8,388,607 | 0 〜 16,777,215 |
+| `INT` | 4 | -2,147,483,648 〜 2,147,483,647 | 0 〜 4,294,967,295 |
+| `BIGINT` | 8 | 約 -922京 〜 922京 | 0 〜 約1,844京 |
+
+実務での目安はこうなります。
+
+- **主キーの `AUTO_INCREMENT`** — `BIGINT UNSIGNED`。8バイトを惜しむ場面はほとんどない
+- **個数・回数・点数** — `INT` か、範囲が確実に狭いなら `SMALLINT` / `TINYINT`
+- **フラグ** — `BOOLEAN`（実体は `tinyint(1)`）
+
+主キーを `INT UNSIGNED` にすると、上限は約42億です。届かないように見えますが、`AUTO_INCREMENT` は削除した行の番号を再利用しないため、[テーブルを作ってデータを入れる](/books/mysql/create-table-and-write-data)で見た欠番の分だけ、実際の行数より早く消費されます。上限に達するとこうなります。
+
+```
+ERROR 1062 (23000): Duplicate entry '4294967295' for key 'PRIMARY'
+```
+
+<Callout type="warning" title="このエラーは復旧が重い">
+主キーの枯渇は、列の型を `BIGINT` に広げる `ALTER TABLE` で直します。数千万行のテーブルでは長時間かかり、外部キーで参照している側の型も揃える必要があります。**最初に `BIGINT UNSIGNED` にしておくほうが圧倒的に安い**というのは、この作業を一度でもやると実感できます。
+</Callout>
+
+### int(11) の11は桁数ではない
+
+古い記事やダンプでは `INT(11)` という書き方をよく見ます。この `11` は**表示幅**で、保存できる桁数とは無関係です。`INT(1)` にしても `2147483647` は保存できます。
+
+MySQL 8.0.17以降、この表示幅は非推奨になり、`SHOW CREATE TABLE` の出力からも消えました。
+
+```
+`price` int NOT NULL,
+```
+
+例外は `tinyint(1)` です。これは `BOOLEAN` として書いた列で、クライアント側が真偽値として扱うための目印になっているため、幅の表示が残っています。
+
+### UNSIGNEDの引き算
+
+`UNSIGNED` は「マイナスを保存させない」制約として便利ですが、**計算結果にも効きます**。
+
+```sql
+CREATE TABLE items (
+  id    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  stock INT UNSIGNED NOT NULL
+);
+INSERT INTO items (stock) VALUES (3);
+
+SELECT stock - 10 FROM items;
+```
+
+```
+ERROR 1690 (22003): BIGINT UNSIGNED value is out of range in '(`myapp`.`items`.`stock` - 10)'
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+保存する値がマイナスにならないだけだと思っていました。計算の途中まで止まるんですか。
+</SpeechBubble>
+
+止まります。`SELECT` の式でも、`UPDATE items SET stock = stock - 10` でも同じです。
+在庫を減らす処理のように**途中でマイナスになりうる計算**を書くなら、`CAST(stock AS SIGNED) - 10` のように符号ありへ変換するか、そもそも `UNSIGNED` を付けないかを決めておきます。
+
+## 小数 — 金額をDOUBLEにしてはいけない
+
+MySQLで小数を扱う型は3つあります。
+
+| 型 | 内部表現 | 用途 |
+| --- | --- | --- |
+| `DECIMAL(M, D)` | 10進の正確な値 | 金額・数量・料率など、1円ずれてはいけないもの |
+| `FLOAT` | 4バイトの浮動小数点 | 精度が要らない実数（センサー値など） |
+| `DOUBLE` | 8バイトの浮動小数点 | 同上。座標・統計値 |
+
+**構文：** `DECIMAL(M, D)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `M` | 1〜65 | 全体の桁数。既定は10 |
+| `D` | 0〜30（`M` 以下） | 小数点以下の桁数。既定は0 |
+
+**戻り値（保存される値）：** 指定した桁で丸められた正確な10進数。`DECIMAL(10, 2)` なら整数部8桁・小数部2桁
+
+金額を `DOUBLE` にすると何が起きるのか、MySQLの上で確かめられます。
+
+```sql
+SELECT 0.1 + 0.2 = 0.3;
+```
+
+```
++-----------------+
+| 0.1 + 0.2 = 0.3 |
++-----------------+
+|               1 |
++-----------------+
+```
+
+一致します。**MySQLでは `0.1` のような小数リテラルが `DECIMAL` として扱われる**ためです。ここで安心してしまうのが落とし穴で、浮動小数点として計算させると結果は変わります。
+
+```sql
+SELECT 0.1e0 + 0.2e0 = 0.3e0;
+```
+
+```
++-----------------------+
+| 0.1e0 + 0.2e0 = 0.3e0 |
++-----------------------+
+|                     0 |
++-----------------------+
+```
+
+`0.1e0` は指数表記の浮動小数点リテラルです。列を `DOUBLE` で作れば、保存された値はこちら側の世界に入ります。
+
+<Marker>お金・数量・料率は `DECIMAL`。`FLOAT` と `DOUBLE` は「合計が合わなくてもよい値」に限って使います。</Marker>
+
+<Callout type="info" title="整数で持つという選択肢もある">
+金額を「円」ではなく「銭」や「最小通貨単位」の整数で持ち、表示時に割る設計もあります。`BIGINT` 1本で済み、丸めのルールをアプリ側に集約できるのが利点です。多通貨を扱うサービスでは、通貨ごとに小数桁が違う（日本円は0桁、米ドルは2桁）ため、この形にすることが多くなります。
+</Callout>
+
+<Figure
+  src="/images/deta_man_color.png"
+  alt="データを扱っている人のイラスト"
+  caption="集計して初めて誤差に気づく、が浮動小数点の典型的な壊れ方"
+  maxWidth="340px"
+/>
+
+## 文字列 — VARCHARの長さは何を決めているのか
+
+`VARCHAR(N)` の `N` は**文字数**です。バイト数ではありません。`VARCHAR(10)` には絵文字10文字も日本語10文字も入ります。
+
+| 型 | 長さ | 末尾の空白 | 使いどころ |
+| --- | --- | --- | --- |
+| `CHAR(N)` | 固定長 | 取り出すとき削られる | 桁数が確実に一定のコード（国コード、ハッシュ値） |
+| `VARCHAR(N)` | 可変長 | そのまま保持される | ほとんどの文字列 |
+| `TEXT` 系 | 可変長・行外に退避 | そのまま保持される | 本文・説明文など長いもの |
+
+`TEXT` 系は4種類あり、上限は**バイト数**で決まっています。
+
+| 型 | 最大バイト数 |
+| --- | --- |
+| `TINYTEXT` | 255 |
+| `TEXT` | 65,535（約64KB） |
+| `MEDIUMTEXT` | 16,777,215（約16MB） |
+| `LONGTEXT` | 4,294,967,295（約4GB） |
+
+utf8mb4では1文字が最大4バイトなので、`TEXT` に確実に入る日本語はおよそ16,000文字です。「64KBだから6万文字」ではありません。
+
+### 長さの上限は2か所にある
+
+`VARCHAR` の長さを大きく取りたくなったとき、ぶつかる壁は2つです。
+
+1つは**1行の合計サイズ**で、65,535バイトが上限です。列を並べすぎるとテーブル作成の時点で止まります。
+
+```
+ERROR 1118 (42000): Row size too large. The maximum row size for the used table type, not counting BLOBs, is 65535.
+```
+
+もう1つは**インデックスのキー長**で、InnoDBでは3,072バイトです。utf8mb4なら768文字ぶんしかありません。
+
+```sql
+CREATE TABLE pages (
+  id   BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(1000) NOT NULL,
+  UNIQUE KEY uk_pages_slug (slug)
+);
+```
+
+```
+ERROR 1071 (42000): Specified key was too long; max key length is 3072 bytes
+```
+
+メールアドレスの `VARCHAR(255)` に `UNIQUE` を張れるのは、255文字 × 4バイト = 1,020バイトで上限に収まっているからです。<Marker>インデックスを張る予定の文字列列は、utf8mb4なら768文字以内に収めます。</Marker>
+
+### VARCHAR(255)に意味はあるのか
+
+「`VARCHAR(255)` までは1バイトで済むから効率がいい」という話を見たことがあるかもしれません。これは**列の最大バイト長が255以下のとき、長さの記録に1バイトしか使わない**というMySQLの仕様から来ています。
+
+utf8mb4では1文字4バイトなので、この境界は `VARCHAR(63)`（63 × 4 = 252バイト）です。`VARCHAR(255)` はとっくに2バイト側に入っており、**255という数字自体に効率上の意味はありません**。
+
+とはいえ、チーム内で長さの基準を揃える値としては使えます。効率のためではなく、**アプリ側のバリデーションと一致させる**ことに意味があります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+悩むくらいなら、全部 `TEXT` にしてしまえば長さで困らないのでは？
+</SpeechBubble>
+
+そのぶん困ることが増えます。`TEXT` 系はインデックスを張るときに接頭辞の長さ指定（`INDEX (body(100))`）が必須になり、既定値も直接は書けません。
+
+```sql
+CREATE TABLE notes (
+  id   BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  body TEXT NOT NULL DEFAULT ''
+);
+```
+
+```
+ERROR 1101 (42000): BLOB, TEXT, GEOMETRY or JSON column 'body' can't have a default value
+```
+
+MySQL 8.0.13以降は `DEFAULT ('')` のように括弧を付けた式なら書けますが、`VARCHAR` を使えば起きない手間です。
+なにより、`VARCHAR(100)` と書いてある列は「100文字までのものが入る」という設計の記録になります。全部 `TEXT` にすると、その情報が消えます。
+
+## 日付と時刻 — DATETIMEとTIMESTAMP
+
+MySQLで日時を保存する型は主に2つで、**タイムゾーンの扱いが決定的に違います**。
+
+| | `DATETIME` | `TIMESTAMP` |
+| --- | --- | --- |
+| 範囲 | 1000-01-01 〜 9999-12-31 | 1970-01-01 〜 2038-01-19 |
+| サイズ | 5バイト（+秒未満） | 4バイト（+秒未満） |
+| タイムゾーン変換 | しない | 保存時にUTCへ、取り出し時に戻す |
+| 保存されるもの | 書いた文字列そのままの日時 | UTCの時点 |
+
+`TIMESTAMP` は、書き込み時にセッションの `time_zone` からUTCへ変換して保存し、読み出し時にそのときの `time_zone` へ戻します。同じ行を、接続のタイムゾーンを変えて読むと違う値に見えます。
+
+```sql
+SET time_zone = '+00:00';
+SELECT created_dt, created_ts FROM logs WHERE id = 1;
+SET time_zone = '+09:00';
+SELECT created_dt, created_ts FROM logs WHERE id = 1;
+```
+
+`created_dt`（`DATETIME`）は2回とも同じ値、`created_ts`（`TIMESTAMP`）は9時間ずれた値が返ります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+勝手に変換してくれるなら `TIMESTAMP` のほうが便利そうに聞こえます。
+</SpeechBubble>
+
+便利ですが、2038年の壁と引き換えです。`TIMESTAMP` の上限は2038-01-19で、これは4バイトに秒数を詰めている以上動かせません。未来の日付を入れる列（契約終了日、有効期限）には使えません。
+
+<Figure
+  src="/images/fork_suit_man_color.png"
+  alt="分かれ道の前で考えている人のイラスト"
+  caption="DATETIMEとTIMESTAMPの分岐点は「未来の日時を入れるかどうか」"
+  maxWidth="340px"
+/>
+
+実務ではこう分けるのが無難です。
+
+- **未来の日時を入れる可能性がある列** — `DATETIME` 一択
+- **`created_at` / `updated_at`** — どちらでもよいが、**プロジェクト内で混在させない**
+- **アプリ側でタイムゾーンを扱う方針なら** — `DATETIME` にUTCで統一して保存し、表示のときだけ変換する
+
+<Callout type="warning" title="秒未満は勝手に丸められる">
+`DATETIME` の既定は秒までです（`fsp` が0）。ミリ秒付きの値を入れると、切り捨てではなく**四捨五入**されます。
+
+```sql
+INSERT INTO logs (created_dt) VALUES ('2026-01-01 12:00:00.999');
+-- 2026-01-01 12:00:01 として保存される
+```
+
+ミリ秒が必要なら `DATETIME(3)`、マイクロ秒なら `DATETIME(6)` と桁を指定し、既定値も `NOW(3)` のように揃えます。ログの並び順が1秒単位でしか決まらない、という事故はここから起きます。
+</Callout>
+
+日付だけなら `DATE`（3バイト）、時刻の長さなら `TIME` を使います。なお `'0000-00-00'` のようなゼロ日付は、MySQL 8系の既定の `sql_mode`（`NO_ZERO_DATE`）では受け付けられません。古いシステムからの移行でよく引っかかる場所です。
+
+## JSON — 使ってよい場面と、そうでない場面
+
+MySQLには `JSON` 型があります。`TEXT` にJSON文字列を入れるのと何が違うのか、というと3つです。
+
+- 保存時に**JSONとして妥当か検証**される（壊れていればエラー）
+- 内部でバイナリ形式に変換され、**パスでの取り出しが速い**
+- 専用の関数と演算子が使える
+
+**構文：** `JSON_EXTRACT(json_doc, path[, path] ...)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `json_doc` | `JSON` 列 / JSON文字列 | 取り出す対象 |
+| `path` | パス式（`$.key`、`$[0]`、`$.a.b`） | どこを取り出すか。複数指定すると配列で返る |
+
+**戻り値：** 該当するJSON値。パスが存在しなければ `NULL`
+
+よく使うのは関数そのものではなく、短く書ける演算子のほうです。
+
+| 書き方 | 同じ意味 | 戻り値 |
+| --- | --- | --- |
+| `payload->'$.name'` | `JSON_EXTRACT(payload, '$.name')` | JSON値（文字列なら `"田中"` と引用符付き） |
+| `payload->>'$.name'` | `JSON_UNQUOTE(JSON_EXTRACT(payload, '$.name'))` | 引用符を外した文字列 |
+
+```sql
+CREATE TABLE events (
+  id      BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  payload JSON NOT NULL
+);
+
+INSERT INTO events (payload) VALUES ('{"user_id": 12, "tags": ["a", "b"]}');
+
+SELECT payload->>'$.user_id' AS user_id FROM events;
+```
+
+### JSONの中身にインデックスは張れない
+
+`JSON` 列に直接インデックスを作ることはできません。検索条件に使う値があるなら、**生成列**として取り出してからインデックスを張ります。
+
+```sql
+ALTER TABLE events
+  ADD COLUMN user_id BIGINT UNSIGNED
+    AS (CAST(payload->>'$.user_id' AS UNSIGNED)) STORED,
+  ADD INDEX idx_events_user_id (user_id);
+```
+
+<Callout type="note" title="STORED と VIRTUAL">
+`STORED` は値を実際に書き込み、`VIRTUAL` は読むときに計算します。どちらもセカンダリインデックスを張れるので、行サイズを増やしたくなければ `VIRTUAL` で十分な場面が多くなります。
+</Callout>
+
+ここまでやるなら、と気づくところが判断の分かれ目です。
+
+<Marker>検索・並び替え・集計の条件に使う値は、最初から列にします。JSONに向いているのは「保存はするが、条件には使わない」データです。</Marker>
+
+向いている例は、外部APIのレスポンスをそのまま残す、監査ログの詳細、項目が案件ごとに変わるフォームの回答など。
+向いていないのは、「ユーザーの状態」「価格」「公開フラグ」のような、必ず `WHERE` に出てくる値です。
+
+## Node.jsから取り出すと型はどう見えるか
+
+型の選択はSQLの中だけで完結しません。[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)で使った `mysql2` は、MySQLの型をJavaScriptの値に変換して返します。
+
+| MySQLの型 | 返ってくる値 | 注意 |
+| --- | --- | --- |
+| `INT` / `SMALLINT` など | `number` | — |
+| `BIGINT` | `number` | 2^53を超えると精度が落ちる。`supportBigNumbers: true` で文字列にできる |
+| `DECIMAL` | `string` | `decimalNumbers: true` で数値にできるが、浮動小数点の誤差が戻ってくる |
+| `DATETIME` / `TIMESTAMP` | `Date` | 変換にはNode側のタイムゾーンが使われる（既定 `timezone: 'local'`）。`dateStrings: true` で文字列のまま受け取れる |
+| `TINYINT(1)` | `number`（`0` / `1`） | `true` / `false` にはならない |
+| `JSON` | パース済みのオブジェクト | `JSON.parse` は不要 |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`DECIMAL` が文字列で返ってくるのは不便では？
+</SpeechBubble>
+
+不便ですが、正しい挙動です。`DECIMAL` の正確さをJavaScriptの `number` は表現できないため、数値に変換した時点で、わざわざ `DECIMAL` にした意味が消えます。金額を扱うなら文字列のまま受け取り、計算が必要なところだけ専用のライブラリを使うか、SQL側で計算させます。
+
+## よくあるハマりどころ
+
+### 金額を DOUBLE で持ち、合計だけ合わない
+
+1件ずつ見ると正しい金額が入っているのに、`SUM()` の結果が請求書と1円ずれる。行数が増えるほどずれます。
+`DOUBLE` から `DECIMAL` への変更は `ALTER TABLE` でできますが、**すでに保存された誤差は戻りません**。
+
+### 「あとで広げればいい」で決めた型が広げられない
+
+型の変更は `ALTER TABLE` です。行数が多いテーブルでは時間がかかり、外部キーで参照されていれば相手側の型も揃える必要があります。
+<Marker>「あとから直せる」は正しいのですが、「あとから直すのは高い」もまた正しいです。</Marker>
+
+### ENUM に選択肢を足すたびに ALTER TABLE
+
+`ENUM('draft', 'published')` は少ない容量で選択肢を表現できますが、値を1つ足すだけでテーブル定義の変更になります。
+さらに `ORDER BY status` は**アルファベット順ではなく定義順**で並び、数値と比較すると添字（1始まり）として扱われます。選択肢が増えうるならステータス用のテーブルを作るか、`VARCHAR` + `CHECK` 制約のほうが扱いやすい場面が多くなります。
+
+### JSONに入れた値で検索して、全行スキャンになる
+
+`WHERE payload->>'$.user_id' = '12'` は動きますが、インデックスが使えず全行を読みます。
+開発中のデータ量では気づけず、本番で表面化します。条件に使うと分かった時点で生成列に切り出します。
+
+## ちゃんと使うためのポイント
+
+- 型は「入る値」ではなく「弾きたい値」で選ぶ。広い型はバグの発覚を遅らせる
+- 主キーの `AUTO_INCREMENT` は `BIGINT UNSIGNED`。枯渇後の `ALTER TABLE` は高い
+- `INT(11)` の `11` は表示幅で、桁数制限ではない（8.0.17以降は非推奨）
+- `UNSIGNED` は計算結果にも効く。マイナスになりうる式は `CAST(... AS SIGNED)` を挟む
+- 金額・数量・料率は `DECIMAL`。`FLOAT` / `DOUBLE` は誤差が許される値だけ
+- `VARCHAR(N)` の `N` は文字数。インデックスを張る列はutf8mb4で768文字まで
+- `TIMESTAMP` は2038年で頭打ち。未来の日時を入れる列には使わない
+- `DATETIME` の既定は秒まで。ミリ秒が要るなら `DATETIME(3)` と `NOW(3)` を揃える
+- `JSON` は「条件に使わないデータ」向け。`WHERE` に出るなら生成列か通常の列にする
+
+型が決まると、次に効いてくるのは**その文字列が実際に何バイトで保存され、どう比較されるか**です。`VARCHAR(255)` が1,020バイトになるのも、`ABC` と `abc` が同じ値として扱われるのも、列に設定された文字コードと照合順序が決めています。
+
+アプリケーション側からこれらの型をどう受け取るかは、[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)のコードとあわせて確認してください。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — Data Types](https://dev.mysql.com/doc/refman/8.4/en/data-types.html)
+- [MySQL 8.4 Reference Manual — The JSON Data Type](https://dev.mysql.com/doc/refman/8.4/en/json.html)
+- [MySQL 8.4 Reference Manual — CREATE TABLE Statement](https://dev.mysql.com/doc/refman/8.4/en/create-table.html)
+- [MySQL 8.4 Reference Manual — Server SQL Modes](https://dev.mysql.com/doc/refman/8.4/en/sql-mode.html)

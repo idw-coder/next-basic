@@ -330,6 +330,8 @@ ROLLBACK;               -- 戻らない
 - `UPDATE` / `DELETE` は `WHERE` 忘れが止められない。先に `SELECT` で確認する
 - `TRUNCATE` は速いがロールバックできず、`AUTO_INCREMENT` もリセットされる
 
+この章では型をほぼ既定のまま流しました。どの列にどの型を選ぶかは、[データ型の選び方](/books/mysql/data-types)で扱います。
+
 ここまでは `mysql` コマンドから手で書き込んできました。アプリケーションから同じことをするときは、[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)で扱うコネクションプールが必要になります。
 
 ## 参考リンク
