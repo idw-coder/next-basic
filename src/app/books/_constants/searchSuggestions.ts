@@ -130,7 +130,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'wait_timeout',
     'Too many connections',
     'SHOW PROCESSLIST',
-    'getConnection',
+    'JSON',
     'DECIMAL',
     'DATETIME',
     'トランザクション',
