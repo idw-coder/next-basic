@@ -1,0 +1,271 @@
+---
+title: '文字コードと照合順序 — utf8mb4・collationと絵文字が保存できない理由'
+description: 'MySQLの utf8 が utf8mb4 ではない理由、character_setとcollationの違い、utf8mb4_0900_ai_ciの読み方、Illegal mix of collationsの直し方、あとから文字コードを変換するときの注意点を整理します。'
+order: 5
+---
+
+[MySQLとは何か](/books/mysql/what-is-mysql)で、SQLの文法を覚えても解決しない問題の例として「絵文字を保存したらエラーになる」を挙げました。
+この章は、その回収です。
+
+<Callout type="note" title="この章で扱う範囲">
+文字コードそのものの一般論（UTF-8とShift_JISの違いなど）ではなく、**MySQLの設定としてどう現れるか**に絞ります。`SELECT` や `WHERE` の書き方は [SQLとデータベースの基礎](/books/sql-basics/select-basics) で学んだ内容がそのまま通用します。
+</Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+文字コードは `utf8` にしてあるので大丈夫だと思っていました。それでも絵文字だけ入らないんです。
+</SpeechBubble>
+
+その `utf8` が原因です。MySQLの `utf8` は、私たちが普段UTF-8と呼んでいるものではありません。
+
+## MySQLの utf8 は utf8mb4 ではない
+
+MySQLには、名前の似た2つの文字コードがあります。
+
+| 名前 | 1文字あたりの最大バイト数 | 絵文字（4バイト文字） |
+| --- | --- | --- |
+| `utf8mb3`（＝ 従来の `utf8`） | 3バイト | **保存できない** |
+| `utf8mb4` | 4バイト | 保存できる |
+
+絵文字や一部の漢字（𠮟など）はUTF-8で4バイトになります。3バイトまでしか扱えない `utf8mb3` の列に入れようとすると、厳格モードではエラーになります。
+
+```sql
+INSERT INTO users (name) VALUES ('寿司🍣');
+```
+
+```
+ERROR 1366 (HY000): Incorrect string value: '\xF0\x9F\x8D\xA3' for column 'name' at row 1
+```
+
+`\xF0\x9F\x8D\xA3` は 🍣 のUTF-8バイト列です。「4バイト目が受け取れない」と言われています。
+
+<Marker>MySQLで文字コードを指定するときは、`utf8` とは書かず必ず `utf8mb4` と書きます。</Marker>
+
+MySQL 8.4の時点で `utf8` は `utf8mb3` の別名であり、非推奨です。将来のバージョンで `utf8mb4` の別名に変わることが予告されていますが、**どちらの意味で解釈されるかがバージョン依存になる名前を設定ファイルに書かない**のが安全です。
+
+<Callout type="info" title="8.0以降の新規テーブルは既定でutf8mb4">
+[テーブルを作ってデータを入れる](/books/mysql/create-table-and-write-data)で `SHOW CREATE TABLE` を見たとき、末尾に `DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci` が付いていました。MySQL 8系では既定がutf8mb4なので、**新しく作るぶんには何もしなくてよい**というのが現在の状況です。問題になるのは、5.7以前から引き継いだデータベースや、`utf8` と明示された古い設定ファイルです。
+</Callout>
+
+## 文字コードと照合順序は別のもの
+
+設定を見ていると `character_set` と `collation` が必ずペアで出てきます。役割は別です。
+
+| | 決めていること | 例 |
+| --- | --- | --- |
+| 文字コード（character set） | 文字を**どう保存するか** | `utf8mb4`、`latin1` |
+| 照合順序（collation） | 文字を**どう比較し、どう並べるか** | `utf8mb4_0900_ai_ci` |
+
+<Marker>「保存できるか」は文字コードの問題、「同じ値とみなされるか」「どの順に並ぶか」は照合順序の問題です。</Marker>
+
+文字化けは文字コード側、`WHERE name = 'ABC'` が `abc` にヒットするのは照合順序側の話になります。
+
+<Figure
+  src="/images/marubatsu.png"
+  alt="丸とバツのイラスト"
+  caption="同じ値とみなすかどうかを決めているのは、文字コードではなく照合順序"
+  maxWidth="300px"
+/>
+
+## 照合順序の名前を読む
+
+`utf8mb4_0900_ai_ci` は暗号のようですが、区切って読むと意味があります。
+
+| 部分 | 意味 |
+| --- | --- |
+| `utf8mb4` | 対象の文字コード |
+| `0900` | Unicode照合アルゴリズム（UCA）9.0.0にもとづく |
+| `ai` | accent insensitive。アクセント記号を区別しない（`e` と `é` が同じ） |
+| `ci` | case insensitive。大文字小文字を区別しない（`A` と `a` が同じ） |
+
+よく使う組み合わせはこれだけ押さえておけば足ります。
+
+| 照合順序 | 特徴 |
+| --- | --- |
+| `utf8mb4_0900_ai_ci` | MySQL 8系の既定。大文字小文字・アクセントを区別しない |
+| `utf8mb4_0900_as_cs` | アクセントも大文字小文字も区別する |
+| `utf8mb4_ja_0900_as_cs` | 日本語向け。かなや濁点の扱いが日本語の慣習に沿う |
+| `utf8mb4_bin` | バイト列としてそのまま比較する。何も同一視しない |
+| `utf8mb4_general_ci` | 5.7以前の既定。互換のために残っているが、新規で選ぶ理由はない |
+
+### 大文字小文字を区別しないのは仕様
+
+既定の `_ci` では、次の比較が真になります。
+
+```sql
+SELECT 'ABC' = 'abc';
+```
+
+```
++-----------------+
+| 'ABC' = 'abc'   |
++-----------------+
+|               1 |
++-----------------+
+```
+
+検索で便利な一方、`UNIQUE` 制約にもそのまま効きます。`taro@example.com` が登録済みなら、`Taro@Example.com` は**重複として弾かれます**。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+それは困る場面もありそうですが、助かる場面もありますね。
+</SpeechBubble>
+
+どちらもあります。メールアドレスは大文字小文字を区別しない運用が普通なので既定のままで都合がよく、逆にトークンやAPIキーのように**1文字でも違えば別物**として扱いたい列では事故になります。その列だけ `COLLATE utf8mb4_bin` を指定します。
+
+```sql
+CREATE TABLE api_keys (
+  id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  token  VARCHAR(64) COLLATE utf8mb4_bin NOT NULL UNIQUE
+);
+```
+
+<Callout type="warning" title="5.7から8.0に上げると挙動が変わる">
+`utf8mb4_general_ci`（5.7の既定）は末尾の空白を無視して比較しますが、`utf8mb4_0900_ai_ci`（8.0の既定）は**末尾の空白を区別します**。`'abc'` と `'abc '` が、前者では同じ値、後者では別の値です。
+
+`UNIQUE` 制約や `WHERE` の一致件数がバージョン移行の前後で変わるのは、たいていここが原因です。
+</Callout>
+
+### 日本語の扱いは実際に試して決める
+
+かな・カタカナ・濁点・半角全角を同一視するかどうかは、照合順序によって変わります。仕様書を読むより、使う予定の照合順序で確かめるのが確実です。
+
+```sql
+SELECT 'は' = 'ハ' COLLATE utf8mb4_0900_ai_ci;
+SELECT 'は' = 'ハ' COLLATE utf8mb4_ja_0900_as_cs;
+```
+
+日本語の並び順や区別が要件に入るなら `utf8mb4_ja_0900_as_cs`、そうでなければ既定のままでほぼ困りません。<Marker>照合順序は「厳しいほど良い」ものではなく、その列で何を同じ値とみなしたいかで決めます。</Marker>
+
+## 設定は4段階ある
+
+文字コードと照合順序は、サーバー・データベース・テーブル・列の4か所で指定でき、**下が指定されていなければ上を引き継ぎます**。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["サーバー"] -->|既定を継承| B["データベース"]
+    B -->|既定を継承| C["テーブル"]
+    C -->|既定を継承| D["列"]
+`}
+/>
+
+実際に効いているのは**列の設定**です。テーブルを `utf8mb4` にしても、古い列が `utf8mb3` のまま残っていれば、その列だけ絵文字が入りません。
+
+```sql
+SHOW FULL COLUMNS FROM users;
+```
+
+`Collation` 列を見れば、列ごとの照合順序（つまり文字コード）が分かります。
+
+接続にも文字コードがあり、こちらはサーバー変数で確認します。
+
+| 変数 | 意味 |
+| --- | --- |
+| `character_set_client` | クライアントが送ってくるSQL文の文字コード |
+| `character_set_connection` | サーバーが受け取った文字列を変換して扱う文字コード |
+| `character_set_results` | 結果セットを返すときの文字コード |
+| `character_set_server` | サーバー全体の既定 |
+
+```sql
+SHOW VARIABLES LIKE 'character\_set\_%';
+```
+
+列がutf8mb4でも接続がlatin1なら、保存の途中で文字が失われます。**保存は成功するのに `?????` になる**タイプの文字化けは、たいていここが原因です。
+
+## アプリケーションからの接続
+
+[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)で使った `mysql2` は、**既定でutf8mb4（`utf8mb4_unicode_ci`）で接続します**。そのため、いまのNode.jsアプリで接続側だけが原因の文字化けはあまり起きません。
+
+明示したい場合は接続設定に書きます。
+
+```js
+const pool = mysql.createPool({
+  host: 'localhost',
+  user: 'app',
+  password: process.env.DB_PASSWORD,
+  database: 'myapp',
+  charset: 'utf8mb4_unicode_ci',
+});
+```
+
+<Callout type="note" title="接続の照合順序と列の照合順序は別">
+接続の照合順序は、SQL文中に書いたリテラル同士の比較などに使われます。**列と比較する場合は、原則として列側の照合順序が優先されます**。接続設定を変えても、テーブルの並び順や `UNIQUE` の判定は変わりません。
+</Callout>
+
+## あとから変換する
+
+すでに `utf8mb3` で運用しているテーブルは、変換できます。
+
+```sql
+ALTER TABLE users
+  CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```
+
+これはテーブル全体を書き換える操作です。実行前に確認しておくことが3つあります。
+
+1. **インデックスのキー長** — [データ型の選び方](/books/mysql/data-types)で見た通り、InnoDBの上限は3,072バイトです。1文字3バイトから4バイトになるぶん、長い `VARCHAR` に張ったインデックスが上限を超えることがあります
+2. **`CHAR` 列のサイズ** — `CHAR(255)` は固定長なので、確保されるバイト数がそのまま増えます
+3. **行数と所要時間** — 大きなテーブルでは長時間かかります。本番では実行タイミングを選ぶ必要があります
+
+列単位で変えることもできます。
+
+```sql
+ALTER TABLE users
+  MODIFY name VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL;
+```
+
+<Figure
+  src="/images/readingbook_woman_color.png"
+  alt="本を読んでいる人のイラスト"
+  caption="変換の前に、インデックス長と所要時間を確認しておく"
+  maxWidth="320px"
+/>
+
+<Callout type="warning" title="すでに壊れているデータは変換では直らない">
+文字化けしたまま保存されたデータ（誤った文字コードで解釈されたバイト列がそのまま入っている状態）は、`CONVERT TO` を実行しても正しい文字には戻りません。むしろ壊れ方が固定されます。
+
+既存データに文字化けがある場合は、変換ではなく**元の入力からの再投入**か、バイト列を取り出して正しい文字コードで解釈し直す作業が必要になります。どちらも一発では決まらないので、本番の前に必ずコピーで試します。
+</Callout>
+
+## よくあるハマりどころ
+
+### 絵文字だけが保存できない
+
+`ERROR 1366` が出たら、まず該当の**列**の文字コードを `SHOW FULL COLUMNS` で確認します。テーブルやデータベースがutf8mb4でも、列が古いままということがあります。
+
+### 照合順序が違う列を JOIN できない
+
+```
+ERROR 1267 (HY000): Illegal mix of collations (utf8mb4_0900_ai_ci,IMPLICIT) and (utf8mb4_general_ci,IMPLICIT) for operation '='
+```
+
+移行の途中でテーブルごとに照合順序が混ざると起きます。`COLLATE` 句を付ければその場は通りますが、**インデックスが使われなくなって遅くなる**ため、応急処置です。テーブル側を揃えるのが正解です。
+
+### `?????` になる
+
+列はutf8mb4なのに、取り出すと `?` が並ぶ。これは保存の時点で情報が失われています。接続の文字コード（`character_set_client` / `character_set_connection`）を確認します。
+
+### 大文字小文字を区別したいのに区別されない
+
+既定は `_ci` です。区別が必要な列にだけ `COLLATE utf8mb4_bin` や `_as_cs` を指定します。テーブル全体を `_bin` にすると、検索の使い勝手が大きく変わるので避けます。
+
+## ちゃんと使うためのポイント
+
+- MySQLの `utf8` は `utf8mb3` の別名。**必ず `utf8mb4` と明示する**
+- 4バイト文字（絵文字・一部の漢字）が `ERROR 1366` になったら、疑うのは列の文字コード
+- 文字コードは「保存できるか」、照合順序は「同じ値とみなすか・どう並ぶか」
+- `utf8mb4_0900_ai_ci` は大文字小文字を区別しない。`UNIQUE` 制約にもそのまま効く
+- 5.7の `general_ci` は末尾の空白を無視、8.0の `0900_ai_ci` は区別する
+- 実際に効くのは列の設定。`SHOW FULL COLUMNS` で列ごとに確認する
+- `mysql2` は既定でutf8mb4接続なので、接続側だけが原因の文字化けは起きにくい
+- `CONVERT TO CHARACTER SET` の前に、インデックス長・`CHAR` 列・所要時間を確認する
+- すでに文字化けしているデータは、変換では直らない
+
+型と文字コードが決まると、テーブルの見た目の定義はひととおり揃います。ここから先は、その定義が**ディスク上でどう置かれ、どう読まれるか**——InnoDBの話になります。
+
+書き込みと読み出しをアプリケーションから行う形は、[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)で扱っています。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — Character Sets, Collations, Unicode](https://dev.mysql.com/doc/refman/8.4/en/charset.html)
+- [MySQL 8.4 Reference Manual — ALTER TABLE Statement](https://dev.mysql.com/doc/refman/8.4/en/alter-table.html)
+- [MySQL 8.4 Reference Manual — Server System Variables](https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html)

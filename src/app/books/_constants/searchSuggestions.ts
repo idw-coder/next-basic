@@ -124,7 +124,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
   mysql: [
     'コネクションプール',
     'mysql2',
-    'createPool',
+    'utf8mb4',
     'connectionLimit',
     'max_connections',
     'wait_timeout',
@@ -136,7 +136,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'トランザクション',
     'AUTO_INCREMENT',
     'LAST_INSERT_ID',
-    'TRUNCATE',
+    '照合順序',
   ],
 
   sqlite: [
