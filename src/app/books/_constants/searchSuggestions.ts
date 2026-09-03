@@ -125,7 +125,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'コネクションプール',
     'mysql2',
     'utf8mb4',
-    'connectionLimit',
+    'InnoDB',
     'max_connections',
     'wait_timeout',
     'Too many connections',
