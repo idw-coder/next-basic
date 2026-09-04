@@ -1,0 +1,249 @@
+---
+title: 'ストレージエンジンとInnoDB — クラスタ化インデックスの仕組み'
+description: 'MySQLのストレージエンジンとは何か、InnoDBが既定で使われる理由、主キーを中心に行データを保存するクラスタ化インデックスとセカンダリインデックスの関係を解説します。'
+order: 6
+---
+
+[文字コードと照合順序](/books/mysql/character-sets-and-collations)までで、テーブルへ保存する値と文字列の扱いを決められるようになりました。`SHOW CREATE TABLE` を見ると、定義の末尾にはもう1つ重要な指定があります。
+
+```sql
+ENGINE=InnoDB
+```
+
+`SELECT` や `JOIN` の書き方は [SQLとデータベースの基礎](/books/sql-basics/select-basics) で学んだ内容がそのまま通用します。この章では、**MySQLがデータを実際に保存する仕組み**に絞ります。
+
+## ストレージエンジンとは
+
+MySQLは、SQLを解析するサーバー部分と、データを保存・検索するストレージエンジンを分けています。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["アプリからSQL"] --> S["MySQLサーバー"]
+    S --> P["SQL解析・実行計画"]
+    P --> E["ストレージエンジン"]
+    E --> D["テーブルとインデックス"]
+`}
+/>
+
+<Marker>ストレージエンジンは、トランザクション・ロック・インデックス・ディスク保存を担当するMySQL内部の実装です。</Marker>
+
+利用できるエンジンは `SHOW ENGINES` で確認できます。
+
+```sql
+SHOW ENGINES;
+```
+
+代表的なものだけ整理します。
+
+| エンジン | 主な用途 |
+| --- | --- |
+| `InnoDB` | 通常の業務テーブル。トランザクション・行ロック・外部キーに対応 |
+| `MEMORY` | メモリ上の一時的なデータ。サーバー停止で消える |
+| `MyISAM` | 古い非トランザクション型エンジン。新規採用は通常しない |
+
+MySQL 8.4の既定は `InnoDB` です。
+
+```sql
+SELECT @@default_storage_engine;
+```
+
+```
++--------------------------+
+| @@default_storage_engine |
++--------------------------+
+| InnoDB                   |
++--------------------------+
+```
+
+テーブルごとに明示することもできます。
+
+```sql
+CREATE TABLE orders (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  total DECIMAL(10, 2) NOT NULL
+) ENGINE=InnoDB;
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+既定がInnoDBなら、ストレージエンジンを意識しなくてもよさそうですが……。
+</SpeechBubble>
+
+普段はそれで動きます。ただし、主キーやインデックスの設計がディスク上の保存方法へ直結するため、仕組みを知っているかどうかで性能設計が変わります。
+
+## InnoDBが既定である理由
+
+Webアプリのデータ保存に必要な機能を、InnoDBは一通り備えています。
+
+| 機能 | 何を守るか |
+| --- | --- |
+| トランザクション | 複数の更新をまとめて確定・取り消しできる |
+| 行レベルロック | 別の行への更新をできるだけ同時進行させる |
+| MVCC | 更新中でも、通常のSELECTが一貫したスナップショットを読める |
+| 外部キー | 関連するテーブル間の参照整合性を守る |
+| クラッシュリカバリ | 障害後にログを使って整合した状態へ復旧する |
+
+これらは独立した機能ではありません。トランザクション中の変更をログへ記録し、MVCCで読み取りと書き込みの競合を減らし、必要な範囲だけロックすることで、複数ユーザーからの同時アクセスを処理します。
+
+<Callout type="note" title="行ロックはSQLではなくインデックスに掛かる">
+InnoDBの「行ロック」は、内部的には検索で走査したインデックスレコードへ掛かります。適切なインデックスがなく広い範囲を走査すると、意図より多くの行がロック対象になることがあります。
+</Callout>
+
+トランザクションとロックの具体的な挙動は [トランザクションとロック](/books/mysql/transactions-and-locks) で扱います。
+
+## 主キーが行データの置き場所になる
+
+InnoDBの各テーブルには、**クラスタ化インデックス**が1つあります。通常は主キーがそのままクラスタ化インデックスになります。
+
+一般的な「索引」は、索引から別の場所にある行を探すイメージです。InnoDBの主キーは違い、B-treeの末端に行データそのものが格納されます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    R["主キーB-treeのルート"] --> L["小さいID"]
+    R --> H["大きいID"]
+    L --> D1["id=1の行データ"]
+    L --> D2["id=2の行データ"]
+    H --> D3["id=1000の行データ"]
+`}
+/>
+
+主キー検索が速いのは、索引をたどった先に目的の行がそのままあるためです。
+
+```sql
+SELECT * FROM orders WHERE id = 1000;
+```
+
+<Marker>InnoDBでは主キーは「行を識別する制約」であると同時に、「行データを並べて保存する軸」です。</Marker>
+
+### 主キーがない場合
+
+InnoDBは次の順でクラスタ化インデックスを決めます。
+
+1. 明示された `PRIMARY KEY`
+2. 全列が `NOT NULL` の最初の `UNIQUE` インデックス
+3. どちらもなければ、内部の6バイト行IDによる `GEN_CLUST_INDEX`
+
+内部行IDはSQLから安定して参照できません。主キーなしでもテーブルは作れますが、アプリケーションが行を一意に扱いにくく、レプリケーションや更新の調査も難しくなります。
+
+<Callout type="warning" title="主キーを省略しない">
+論理的な主キーが見つからなければ、`BIGINT UNSIGNED AUTO_INCREMENT` のような代理キーを用意してください。InnoDBに隠し主キーを作らせるより、アプリから見える主キーを明示する方が安全です。
+</Callout>
+
+## セカンダリインデックスは主キーを持つ
+
+主キー以外のインデックスを、InnoDBではセカンダリインデックスと呼びます。
+
+```sql
+CREATE INDEX idx_orders_created_at ON orders (created_at);
+```
+
+このインデックスの末端には、`created_at` と対応する**主キー値**が保存されます。主キー以外の列まで必要なら、取得は2段階です。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    S["created_atの索引"] --> K["主キー id=1000"]
+    K --> P["主キー索引の行データ"]
+`}
+/>
+
+1. セカンダリインデックスで主キーを見つける
+2. 主キーのクラスタ化インデックスをたどって行を読む
+
+この2段階目を、一般に**テーブルルックアップ**や**主キーへのルックアップ**と呼びます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+すべてのセカンダリインデックスに主キーが付いてくる。だから主キーが長いと、インデックスを増やすたびに影響が広がるんだ。
+</SpeechBubble>
+
+## 主キーは短く・安定させる
+
+クラスタ化インデックスの仕組みから、主キーの判断基準が導けます。
+
+| 性質 | 理由 |
+| --- | --- |
+| 短い | すべてのセカンダリインデックスに含まれるため |
+| 一意 | 行を特定するため |
+| `NOT NULL` | 主キーの必須条件 |
+| 変更しない | 値の変更が行の移動と全インデックスの更新につながるため |
+| できるだけ単調に増える | ランダムな位置への挿入とページ分割を減らしやすいため |
+
+```sql
+id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+```
+
+この形がよく使われるのは、短く、安定し、末尾方向へ増えるからです。
+
+UUIDを主キーにする設計が常に間違いというわけではありません。複数システムで事前採番できる利点があります。ただし、36文字の文字列表現をそのまま主キーにすると、クラスタ化インデックスと全セカンダリインデックスが大きくなります。採用するなら `BINARY(16)` などの保存形式やUUIDの生成方式まで含めて検討します。
+
+<Figure
+  src="/images/planning_suit_man_color.png"
+  alt="データの保存構造を設計している人のイラスト"
+  caption="主キーの選択は、すべてのインデックスの大きさと書き込み方へ影響する"
+  maxWidth="370px"
+/>
+
+## テーブルのエンジンを確認・変更する
+
+現在のエンジンは `SHOW TABLE STATUS` または `SHOW CREATE TABLE` で確認できます。
+
+```sql
+SHOW TABLE STATUS LIKE 'orders'\G
+SHOW CREATE TABLE orders\G
+```
+
+既存テーブルをInnoDBへ変える構文は次の通りです。
+
+```sql
+ALTER TABLE legacy_orders ENGINE=InnoDB;
+```
+
+これは単なる設定値の書き換えではなく、テーブルをInnoDB形式で作り直す処理です。大きなテーブルでは実行時間・ディスク空き容量・ロック・外部キーの互換性を確認してから行います。
+
+<Callout type="column" title="MyISAMが残っている理由">
+古いMySQLではMyISAMが既定だった時代があり、長く運用されている環境には今も残っています。MyISAMはトランザクションや外部キーに対応せず、更新時はテーブル単位のロックが中心です。既存だからという理由だけで新しいテーブルにも合わせないでください。
+</Callout>
+
+## よくあるハマりどころ
+
+### PRIMARY KEYを付けずにAUTO_INCREMENTだけ使う
+
+`AUTO_INCREMENT` 列にはインデックスが必要ですが、それだけで良い主キー設計になるとは限りません。行を一意に参照する目的を明確にし、通常は `PRIMARY KEY` と組み合わせます。
+
+### メールアドレスを主キーにする
+
+メールアドレスは長く、変更される可能性があります。主キーを更新するとクラスタ化インデックス上の行とセカンダリインデックスも影響を受けます。メールには `UNIQUE` を付け、主キーは別の短いIDにする設計が扱いやすくなります。
+
+### 行ロックだから1行しかロックしないと思う
+
+インデックスがなければ広い範囲を走査し、多数のインデックスレコードをロックすることがあります。ロック範囲を考えるときも、実行計画とインデックスを確認します。
+
+### ENGINEの変更を小さな設定変更だと思う
+
+エンジン変換はデータ全体の再構築になり得ます。本番で直接試さず、同程度のデータ量で時間と容量を測ります。
+
+## ちゃんと使うためのポイント
+
+- MySQLは保存処理をストレージエンジンへ委ねる
+- 通常の業務テーブルではInnoDBを使う
+- InnoDBはトランザクション、行ロック、MVCC、外部キー、クラッシュリカバリに対応する
+- 主キーのB-tree末端に行データが保存される
+- 主キーがなければUNIQUE NOT NULL、さらに無ければ隠し行IDが使われる
+- セカンダリインデックスには主キー値も保存される
+- 主キーは短く、変更せず、可能なら単調に増える値にする
+- エンジン変換はテーブル再構築として計画する
+
+[インデックスとEXPLAIN](/books/mysql/indexes-and-explain)では、B-treeの列順をどう決め、MySQLが実際にどのインデックスを選んだかを確認する方法へ進みます。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — Introduction to InnoDB](https://dev.mysql.com/doc/refman/8.4/en/innodb-introduction.html)
+- [MySQL 8.4 Reference Manual — Clustered and Secondary Indexes](https://dev.mysql.com/doc/refman/8.4/en/innodb-index-types.html)
+- [MySQL 8.4 Reference Manual — The InnoDB Storage Engine](https://dev.mysql.com/doc/refman/8.4/en/innodb-storage-engine.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="主キーとインデックスの基礎を、4択クイズでアウトプットして定着させよう"
+/>

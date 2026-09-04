@@ -11,17 +11,17 @@
 | 2 | 接続を確認する — mysqlコマンド・SHOW PROCESSLIST・wait_timeout | `connect-and-max-connections.mdx` | 公開済み |
 | 3 | テーブルを作ってデータを入れる（CREATE TABLE / AUTO_INCREMENT / INSERT / UPDATE / DELETE） | `create-table-and-write-data.mdx` | 公開済み |
 | 4 | データ型の選び方（INT / DECIMAL / VARCHAR / DATETIME / JSON） | `data-types.mdx` | 公開済み |
-| 5 | 文字コードと照合順序（utf8mb4・collation） | — | 未執筆 |
-| 6 | ストレージエンジンとInnoDB（クラスタ化インデックス） | — | 未執筆 |
-| 7 | インデックスとEXPLAIN | — | 未執筆 |
-| 8 | トランザクションとロック（分離レベル・ギャップロック） | — | 未執筆 |
-| 9 | MySQLの方言（ON DUPLICATE KEY UPDATE / GROUP_CONCAT / ウィンドウ関数） | — | 未執筆 |
+| 5 | 文字コードと照合順序（utf8mb4・collation） | `character-sets-and-collations.mdx` | 公開済み |
+| 6 | ストレージエンジンとInnoDB（クラスタ化インデックス） | `innodb-and-storage-engines.mdx` | 公開済み |
+| 7 | インデックスとEXPLAIN | `indexes-and-explain.mdx` | 公開済み |
+| 8 | トランザクションとロック（分離レベル・ギャップロック） | `transactions-and-locks.mdx` | 公開済み |
+| 9 | MySQLの方言（ON DUPLICATE KEY UPDATE / GROUP_CONCAT / ウィンドウ関数） | `mysql-specific-sql.mdx` | 公開済み |
 | 10 | Node.jsからMySQLに接続する — mysql2のコネクションプール入門 | `nodejs-mysql2-connection-pool.mdx` | 公開済み |
 | 11 | スキーマ変更とマイグレーション（ALTER TABLE / オンラインDDL） | — | 未執筆 |
 | 12 | ユーザーと権限（GRANT / 最小権限） | — | 未執筆 |
 | 13 | 運用（mysqldump / スロークエリログ / my.cnf） | — | 未執筆 |
 
-公開済みは1・2・3・4・10の5章だけなので、サイドバーの章番号は飛ぶ。これは意図的で、**あとから振り直さなくて済むように最終番号を先に確定させている**。
+公開済みは1〜10の10章。基礎からNode.jsでの接続まで連続して読める状態で、11〜13は未執筆。
 
 章と章のあいだに差し込みたくなった場合は、既存の `order` を動かさず**小数**を使う（`order: 5.5`）。`chapterLabel` を添えれば読者向けの表示も自然にできる。javascript本の `7.1`〜`7.5` が実例。
 

@@ -471,6 +471,8 @@ ALTER TABLE events
 
 型が決まると、次に効いてくるのは**その文字列が実際に何バイトで保存され、どう比較されるか**です。`VARCHAR(255)` が1,020バイトになるのも、`ABC` と `abc` が同じ値として扱われるのも、列に設定された文字コードと照合順序が決めています。
 
+文字列型まで決まったら、[文字コードと照合順序](/books/mysql/character-sets-and-collations)で保存できる文字と比較規則を決めます。
+
 アプリケーション側からこれらの型をどう受け取るかは、[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)のコードとあわせて確認してください。
 
 ## 参考リンク

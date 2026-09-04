@@ -1,0 +1,317 @@
+---
+title: 'トランザクションとロック — 分離レベル・FOR UPDATE・ギャップロック'
+description: 'MySQL InnoDBのトランザクションとロックを、autocommit、REPEATABLE READ、MVCC、SELECT FOR UPDATE、ギャップロック、ロック待ち、デッドロックの対処まで解説します。'
+order: 8
+---
+
+[インデックスとEXPLAIN](/books/mysql/indexes-and-explain)では、MySQLがどのインデックス範囲を走査するかを確認しました。同時更新が起きると、その走査範囲はロック範囲にも関係します。
+
+トランザクションの基本概念は [インデックス・トランザクション・SQLインジェクション対策](/books/sql-basics/indexes-transactions-and-security) でも扱っています。この章では、**InnoDBのMVCC・分離レベル・行ロック**に絞ります。
+
+## 何も書かなくてもトランザクションは動く
+
+MySQLは既定で `autocommit` が有効です。
+
+```sql
+SELECT @@autocommit;
+```
+
+```
++--------------+
+| @@autocommit |
++--------------+
+|            1 |
++--------------+
+```
+
+この状態では、各SQL文がそれぞれ1つのトランザクションとして自動的にコミットされます。
+
+```sql
+UPDATE products SET stock = stock - 1 WHERE id = 10;
+-- 成功した時点でコミット済み
+```
+
+複数のSQLをひとまとまりにするときは、明示的に開始します。
+
+```sql
+START TRANSACTION;
+
+UPDATE accounts SET balance = balance - 1000 WHERE id = 1;
+UPDATE accounts SET balance = balance + 1000 WHERE id = 2;
+
+COMMIT;
+```
+
+| 文 | 効果 |
+| --- | --- |
+| `START TRANSACTION` | 明示的なトランザクションを開始する |
+| `COMMIT` | ここまでの変更を確定する |
+| `ROLLBACK` | ここまでの変更を取り消す |
+
+<Marker>トランザクションは接続ごとに独立しています。開始からCOMMIT・ROLLBACKまで同じ接続を使います。</Marker>
+
+[mysql2のコネクションプール](/books/mysql/nodejs-mysql2-connection-pool)で `pool.query()` を並べるだけではトランザクションにならないのは、SQLごとに別の接続が選ばれる可能性があるためです。
+
+<Callout type="warning" title="DDLは暗黙にコミットする">
+`CREATE TABLE`、`ALTER TABLE`、`TRUNCATE TABLE` など多くのDDLは、実行前後に暗黙のコミットを起こします。`START TRANSACTION` で囲んでも、通常のUPDATEと同じようにはロールバックできません。
+</Callout>
+
+## 通常のSELECTはロックせずスナップショットを読む
+
+InnoDBはMVCC（Multi-Version Concurrency Control）を使います。更新前の行バージョンを参照できるため、通常の `SELECT` は多くの場合、更新中の行があっても待たずに一貫したスナップショットを読みます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["接続AのSELECT"] --> S["スナップショット"]
+    B["接続Bの更新"] --> C["新しい行バージョン"]
+    S --> R["接続Aの再SELECT"]
+    C --> R
+`}
+/>
+
+<Callout type="note" title="図の要点">
+通常のSELECTは「現在ロックされている最新行」を必ず読むのではなく、分離レベルに応じた過去の行バージョンを読みます。更新待ちを減らせる一方、別接続がコミットした直後の値が見えない場合があります。
+</Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+SELECTで読んだ直後なら、その値を使って安全にUPDATEできますか？
+</SpeechBubble>
+
+通常の `SELECT` はロックしないため、読んでから更新するまでに別の接続が同じ行を変えられます。更新前提で現在値を読むなら、ロック読み取りを使います。
+
+## FOR UPDATEで更新対象を確保する
+
+在庫を確認してから減らす例を見ます。
+
+```sql
+START TRANSACTION;
+
+SELECT stock
+FROM products
+WHERE id = 10
+FOR UPDATE;
+
+UPDATE products
+SET stock = stock - 1
+WHERE id = 10;
+
+COMMIT;
+```
+
+`FOR UPDATE` は、検索したインデックスレコードへ排他ロックを設定します。別のトランザクションが同じ行を更新しようとすると、こちらがコミットまたはロールバックするまで待ちます。
+
+**構文：** `SELECT ... FROM ... WHERE ... FOR UPDATE | FOR SHARE`
+
+| 指定 | 用途 |
+| --- | --- |
+| `FOR UPDATE` | 読んだ行を後で更新する。競合する更新とロック読み取りを待たせる |
+| `FOR SHARE` | 行が変わらないことを確認しながら読む。参照中の更新を待たせる |
+
+**戻り値：** 通常のSELECT結果。ただしトランザクション終了まで対象へロックを保持する
+
+<Marker>「読んで判断してから更新する」処理では、読み取りと更新を同じトランザクション・同じ接続に置きます。</Marker>
+
+ただし、在庫を1減らして成功可否だけ知りたいなら、1文へまとめる方が単純です。
+
+```sql
+UPDATE products
+SET stock = stock - 1
+WHERE id = 10
+  AND stock > 0;
+```
+
+更新件数が1なら成功、0なら在庫切れです。1つのUPDATEはそれ自体が原子的に実行されるため、SELECTとUPDATEの間へ別処理が割り込む問題を避けられます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+まず1文で表せないか考える。複数の判断や更新をまとめる必要があるときに、明示トランザクションとFOR UPDATEを使おう。
+</SpeechBubble>
+
+## 4つの分離レベル
+
+分離レベルは、同時実行中のトランザクションからどこまで変更が見えるかを決めます。InnoDBは4段階すべてに対応し、既定は `REPEATABLE READ` です。
+
+```sql
+SELECT @@transaction_isolation;
+```
+
+```
++-------------------------+
+| @@transaction_isolation |
++-------------------------+
+| REPEATABLE-READ         |
++-------------------------+
+```
+
+| 分離レベル | 通常のSELECTの見え方 | 特徴 |
+| --- | --- | --- |
+| `READ UNCOMMITTED` | 未コミット変更も見える | ダーティリードが起こり得る |
+| `READ COMMITTED` | SELECTごとに新しいスナップショット | 同じ行を再読すると値が変わり得る |
+| `REPEATABLE READ` | 最初の通常SELECTのスナップショットを維持 | InnoDBの既定。通常SELECTを繰り返しても一貫しやすい |
+| `SERIALIZABLE` | 通常SELECTも共有ロックを取る形になる | 競合を強く制限する |
+
+セッション単位で変える場合は次のようにします。
+
+```sql
+SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
+```
+
+次の1トランザクションだけに指定するなら、開始前に `SESSION` を付けずに実行します。
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+START TRANSACTION;
+```
+
+<Callout type="warning" title="分離レベルを途中で変えない">
+トランザクション開始後に、そのトランザクションの分離レベルを変更することはできません。コネクションプールでセッション設定を変える場合は、返却後の接続へ設定が残る点にも注意が必要です。
+</Callout>
+
+## REPEATABLE READのスナップショット
+
+既定の `REPEATABLE READ` では、トランザクション内の最初の通常SELECTで読み取りビューが作られます。
+
+```sql
+-- 接続A
+START TRANSACTION;
+SELECT stock FROM products WHERE id = 10; -- 5
+
+-- この間に接続Bがstockを4へ更新してCOMMIT
+
+SELECT stock FROM products WHERE id = 10; -- 接続Aでは5のまま
+COMMIT;
+```
+
+一方、`SELECT ... FOR UPDATE` や `UPDATE` はロックを伴い、更新可能な最新状態を読みます。通常SELECTの古いスナップショットと、ロック読み取りの最新状態を無計画に混在させると、同じトランザクション内で見え方が変わります。
+
+<Marker>表示・集計目的の通常SELECTと、更新判断のロック読み取りを区別してください。</Marker>
+
+## ギャップロックは「存在しない行」への挿入も止める
+
+InnoDBの既定 `REPEATABLE READ` で範囲をロック読み取りすると、存在するインデックスレコードだけでなく、その間の隙間もロックすることがあります。
+
+```sql
+START TRANSACTION;
+
+SELECT *
+FROM reservations
+WHERE room_id = 3
+  AND starts_at >= '2026-09-04 10:00:00'
+  AND starts_at <  '2026-09-04 11:00:00'
+FOR UPDATE;
+```
+
+この時間帯に予約が0件でも、該当するインデックス範囲の隙間がロックされ、別接続から同じ範囲へ挿入しようとすると待たされる場合があります。これが**ギャップロック**です。
+
+レコードロックと直前のギャップロックを組み合わせたものは**ネクストキーロック**と呼ばれます。
+
+<Figure
+  src="/images/meeting_color.png"
+  alt="複数の利用者が同じ予定を調整しているイラスト"
+  caption="予約の重複防止では、存在する行だけでなく挿入される範囲も競合する"
+  maxWidth="390px"
+/>
+
+| 検索条件 | 代表的なロック範囲 |
+| --- | --- |
+| 一意インデックスへの完全一致 | 見つかったレコードだけ |
+| 非一意インデックスや範囲条件 | 走査したレコードと周辺のギャップ |
+| 適切なインデックスなし | 広い範囲を走査し、多数のレコードへ影響 |
+
+`READ COMMITTED` では、外部キー検査と重複キー検査などを除き、検索・走査時のギャップロックが抑えられます。ただし、分離レベルを下げれば自動的に設計が正しくなるわけではありません。予約重複のような業務制約は、可能なら `UNIQUE` 制約でも表します。
+
+## ロック待ちとデッドロックは別物
+
+### ロック待ちタイムアウト
+
+別トランザクションが必要なロックを持っていると、解放まで待ちます。既定の `innodb_lock_wait_timeout` は50秒です。
+
+```text
+ERROR 1205 (HY000): Lock wait timeout exceeded; try restarting transaction
+```
+
+長時間のトランザクション、コミット忘れ、インデックス不足による広いロック範囲を調べます。単にタイムアウトを長くすると、待ち行列が伸びるだけの場合があります。
+
+### デッドロック
+
+2つのトランザクションが互いのロックを待つと、どちらも進めません。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["接続A<br/>行1をロック"] -->|行2を待つ| B["接続B<br/>行2をロック"]
+    B -->|行1を待つ| A
+`}
+/>
+
+InnoDBはデッドロックを検出すると、一方のトランザクションをロールバックして解消します。
+
+```text
+ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction
+```
+
+<Marker>デッドロックは完全には排除できません。アプリケーションはトランザクション全体を再実行できるように作ります。</Marker>
+
+直近のデッドロックは次で確認できます。
+
+```sql
+SHOW ENGINE INNODB STATUS\G
+```
+
+`LATEST DETECTED DEADLOCK` に、関係したSQLとロック情報が表示されます。
+
+## デッドロックを減らす設計
+
+- トランザクションを短く保ち、外部API呼び出しやユーザー入力待ちを中に置かない
+- 複数行を更新するときは、すべての処理で同じ順序にする
+- `WHERE` とロック読み取りに合うインデックスを作り、走査範囲を狭める
+- 更新件数が多い処理は、小さな単位へ分割できないか検討する
+- 1213を受けたら、少し待ってトランザクション全体を最初から再試行する
+
+<Callout type="warning" title="失敗したSQLだけを再実行しない">
+デッドロックではトランザクションの片方がロールバックされます。最後のUPDATEだけを再送しても、それより前の変更は戻ったままです。BEGIN相当の処理から一式を再実行します。
+</Callout>
+
+## よくあるハマりどころ
+
+### トランザクション中にHTTP APIを呼ぶ
+
+外部通信が遅れている間もロックを保持し続けます。必要な外部情報は開始前に集め、コミット後にできる処理は外へ出します。
+
+### FOR UPDATEをトランザクション外で使う
+
+`autocommit=1` のまま単独で実行すると、文の終了時にトランザクションも終わり、ロックはすぐ解放されます。後続UPDATEまで守りたいなら明示トランザクションにします。
+
+### ロック待ちをMySQLの停止と勘違いする
+
+一部のクエリだけが止まっているなら、別トランザクションのロックを待っている可能性があります。`SHOW PROCESSLIST` とInnoDBのトランザクション・ロック情報を確認します。
+
+### 例外時にROLLBACKせず接続をプールへ返す
+
+未完了のトランザクションを持つ接続を再利用すると、次のリクエストへ状態が漏れます。アプリでは `catch` でROLLBACKし、`finally` で接続を返します。
+
+## ちゃんと使うためのポイント
+
+- `autocommit=1` では各SQL文が自動的にコミットされる
+- 複数文のトランザクションは同じ接続で完結させる
+- 通常のSELECTはMVCCのスナップショットを読み、通常は行ロックを取らない
+- 更新前提の読み取りには `FOR UPDATE`、共有ロックには `FOR SHARE` を使う
+- InnoDBの既定分離レベルは `REPEATABLE READ`
+- 範囲検索ではギャップロックが新しい行の挿入も待たせることがある
+- ロック待ちの1205とデッドロックの1213を区別する
+- デッドロック時はトランザクション全体を再試行する
+
+[MySQLの方言](/books/mysql/mysql-specific-sql)では、競合時にINSERTとUPDATEを1文へまとめる `ON DUPLICATE KEY UPDATE` と、集約・順位付けに使うMySQL固有の書き方を扱います。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — InnoDB Transaction Isolation Levels](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-isolation-levels.html)
+- [MySQL 8.4 Reference Manual — Consistent Nonlocking Reads](https://dev.mysql.com/doc/refman/8.4/en/innodb-consistent-read.html)
+- [MySQL 8.4 Reference Manual — InnoDB Locking](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking.html)
+- [MySQL 8.4 Reference Manual — Deadlocks in InnoDB](https://dev.mysql.com/doc/refman/8.4/en/innodb-deadlocks.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="トランザクションとロックの知識を、4択クイズでアウトプットして定着させよう"
+/>

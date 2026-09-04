@@ -1,0 +1,261 @@
+---
+title: '文字コードと照合順序 — utf8mb4・collation・文字化けの調べ方'
+description: 'MySQL 8.4の文字コードと照合順序を、utf8mb4とutf8mb3の違い、utf8mb4_0900_ai_ciの読み方、接続時の文字コード、Illegal mix of collationsの調べ方まで整理します。'
+order: 5
+---
+
+[データ型の選び方](/books/mysql/data-types)では、文字列の列に `VARCHAR` や `TEXT` を選びました。しかし、型だけでは「どの文字を保存できるか」「大文字と小文字を同じとみなすか」は決まりません。
+
+`SELECT` や `WHERE` の基本は [SQLとデータベースの基礎](/books/sql-basics/select-basics) で学んだ内容がそのまま通用します。この章では、**MySQLの文字コードと照合順序**だけに絞って扱います。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+文字コードは `utf8` にしてあります。それなら絵文字も保存できますよね？
+</SpeechBubble>
+
+MySQLでは、その名前が落とし穴です。`utf8` は完全なUTF-8ではなく、非推奨の `utf8mb3` を指します。
+
+## 文字コードと照合順序は役割が違う
+
+MySQLの文字列設定には、2つの役割があります。
+
+| 設定 | 決めること | 例 |
+| --- | --- | --- |
+| 文字コード（character set） | どの文字を、どのバイト列で保存するか | `utf8mb4` |
+| 照合順序（collation） | 文字をどう比較し、どう並べるか | `utf8mb4_0900_ai_ci` |
+
+<Marker>文字コードは「保存できる文字」、照合順序は「同じとみなす文字と並び順」を決めます。</Marker>
+
+たとえば、同じ `utf8mb4` でも照合順序を変えると、大文字と小文字を同一視するかどうかが変わります。
+
+```sql
+SELECT
+  _utf8mb4'A' = _utf8mb4'a' COLLATE utf8mb4_0900_ai_ci AS insensitive,
+  _utf8mb4'A' = _utf8mb4'a' COLLATE utf8mb4_0900_as_cs AS sensitive;
+```
+
+```
++-------------+-----------+
+| insensitive | sensitive |
++-------------+-----------+
+|           1 |         0 |
++-------------+-----------+
+```
+
+文字列の内容は同じでも、比較規則によって結果が変わります。これは `WHERE`、`ORDER BY`、`UNIQUE` 制約にも影響します。
+
+## utf8ではなくutf8mb4を選ぶ
+
+MySQL 8.4の新規設計では `utf8mb4` を使います。
+
+| 文字コード | 1文字の最大バイト数 | 絵文字 | 状態 |
+| --- | ---: | --- | --- |
+| `utf8mb4` | 4バイト | 保存できる | 推奨 |
+| `utf8mb3` | 3バイト | 保存できない | 非推奨 |
+| `utf8` | 3バイト | 保存できない | `utf8mb3` の非推奨エイリアス |
+
+`utf8mb3` の列へ4バイト文字を入れると、次のようなエラーになります。
+
+```text
+ERROR 1366 (HY000): Incorrect string value: ... for column 'name'
+```
+
+<Callout type="warning" title="utf8という名前を信用しない">
+一般的なUTF-8と、MySQLの `utf8` は意味が違います。新しく書くDDLでは省略名を使わず、`utf8mb4` と明記してください。既存テーブルが `utf8` なら、実体は `SHOW CREATE TABLE` で確認します。
+</Callout>
+
+データベースとテーブルを作るときは、次のように指定できます。
+
+```sql
+CREATE DATABASE myapp
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_ai_ci;
+
+CREATE TABLE users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL
+) CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_ai_ci;
+```
+
+MySQL 8.4ではサーバーの既定値も `utf8mb4` と `utf8mb4_0900_ai_ci` ですが、既存環境・移行済みデータベース・接続設定まで同じとは限りません。明示したDDLは、環境が変わっても意図を保ちやすくなります。
+
+## collationの名前を読む
+
+`utf8mb4_0900_ai_ci` は長く見えますが、分解すれば意味を読めます。
+
+| 部分 | 意味 |
+| --- | --- |
+| `utf8mb4` | 対応する文字コード |
+| `0900` | Unicode Collation Algorithm 9.0.0ベース |
+| `ai` | accent-insensitive。アクセントを区別しない |
+| `ci` | case-insensitive。大文字と小文字を区別しない |
+
+よく使う接尾辞は次の通りです。
+
+| 接尾辞 | 意味 |
+| --- | --- |
+| `_ai` | アクセントを区別しない |
+| `_as` | アクセントを区別する |
+| `_ci` | 大文字と小文字を区別しない |
+| `_cs` | 大文字と小文字を区別する |
+| `_ks` | ひらがなとカタカナを区別する |
+| `_bin` | 文字コード値に基づいて比較する |
+
+たとえば `utf8mb4_ja_0900_as_cs_ks` は、日本語向けでアクセント・大文字小文字・かな種を区別する照合順序です。
+
+```sql
+SELECT
+  _utf8mb4'は' = _utf8mb4'ハ' COLLATE utf8mb4_ja_0900_as_cs AS no_ks,
+  _utf8mb4'は' = _utf8mb4'ハ' COLLATE utf8mb4_ja_0900_as_cs_ks AS with_ks;
+```
+
+```
++-------+---------+
+| no_ks | with_ks |
++-------+---------+
+|     1 |       0 |
++-------+---------+
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+検索欄なら大文字小文字を区別しない方が便利だけど、ログインIDや外部コードでは区別したいこともある。用途から決めよう。
+</SpeechBubble>
+
+<Callout type="note" title="パスワードは照合順序で比較しない">
+パスワードは平文を文字列比較するのではなく、Argon2やbcryptなどでハッシュ化して検証します。大文字小文字を区別するためにcollationを選ぶ、という問題ではありません。
+</Callout>
+
+## 設定は4段階で引き継がれる
+
+文字コードと照合順序は、サーバー → データベース → テーブル → 列の順に既定値が引き継がれます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    S["サーバー"] --> D["データベース"]
+    D --> T["テーブル"]
+    T --> C["列"]
+`}
+/>
+
+列で明示すれば、その列の設定が最優先です。
+
+```sql
+CREATE TABLE accounts (
+  display_name VARCHAR(100),
+  external_code VARCHAR(64) COLLATE utf8mb4_0900_as_cs
+) CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_ai_ci;
+```
+
+この例では `display_name` は大文字小文字を区別せず、`external_code` は区別します。
+
+現在の設定は次のコマンドで確認できます。
+
+```sql
+SHOW VARIABLES LIKE 'character_set_server';
+SHOW VARIABLES LIKE 'collation_server';
+SHOW CREATE DATABASE myapp;
+SHOW CREATE TABLE users\G
+SHOW FULL COLUMNS FROM users;
+```
+
+`SHOW FULL COLUMNS` まで見ると、列ごとのcollationを確認できます。
+
+## 接続にも文字コードがある
+
+テーブルが `utf8mb4` でも、アプリとMySQLの通信設定がずれていれば文字化けします。
+
+```sql
+SHOW VARIABLES WHERE Variable_name IN (
+  'character_set_client',
+  'character_set_connection',
+  'character_set_results',
+  'collation_connection'
+);
+```
+
+| 変数 | 役割 |
+| --- | --- |
+| `character_set_client` | クライアントが送るSQLの文字コード |
+| `character_set_connection` | サーバーが文字列リテラルを解釈する文字コード |
+| `character_set_results` | サーバーが結果を返す文字コード |
+| `collation_connection` | 文字列リテラル同士の比較規則 |
+
+これらは接続ごとの設定です。同じテーブルへ接続しても、アプリと `mysql` コマンドで値が違うことがあります。
+
+**構文：** `SET NAMES 文字コード [COLLATE 照合順序]`
+
+| 指定 | 説明 |
+| --- | --- |
+| 文字コード | client・connection・resultsへまとめて設定する文字コード |
+| 照合順序 | connectionで使う照合順序。省略時は文字コードの既定値 |
+
+**結果：** 現在の接続だけに反映され、保存済みの列定義は変わらない
+
+```sql
+SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```
+
+<Marker>文字化けを調べるときは、テーブル設定だけでなく接続の `character_set_*` も確認します。</Marker>
+
+Node.jsのドライバーでは接続オプションから設定するのが基本です。接続後に毎回 `SET NAMES` を投げるより、[mysql2のコネクションプール](/books/mysql/nodejs-mysql2-connection-pool)の設定を全接続で統一してください。
+
+## 既存テーブルを変換する
+
+テーブル内の文字列列をまとめて変換する構文は次の通りです。
+
+```sql
+ALTER TABLE users
+  CONVERT TO CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_ai_ci;
+```
+
+これは既存データを新しい文字コードへ変換し、文字列列の定義も変更します。大きなテーブルでは時間・追加容量・ロックの影響を事前に確認してください。
+
+<Callout type="warning" title="壊れた文字は変換だけでは戻らない">
+すでに文字化けした文字列を `CONVERT TO CHARACTER SET` しても、元の文字は自動復元されません。誤った文字コードで解釈されたのか、保存前に壊れていたのかを調べ、バックアップからの復元や変換手順を別途設計します。
+</Callout>
+
+## よくあるハマりどころ
+
+### テーブルだけutf8mb4にして安心する
+
+接続の `character_set_client` や `character_set_results` が違えば、送受信時に問題が起きます。サーバー・列・接続の3か所を確認します。
+
+### 照合順序を変えたらUNIQUE制約にぶつかる
+
+大文字小文字を区別するcollationから区別しないcollationへ変えると、`User01` と `user01` が同じ値になります。変換前に重複候補を洗い出してください。
+
+### Illegal mix of collationsをCOLLATEで隠す
+
+異なるcollationの列を比較すると、`Illegal mix of collations` が出ることがあります。クエリへ一時的に `COLLATE` を付ければ動いても、根本原因は列定義の不一致です。比較するIDやコードは文字コード・長さ・collationを揃えます。
+
+### utf8mb4_binなら常に正確だと思う
+
+`_bin` は文字コード値に基づく比較です。人間向けの自然な並び順になるとは限りません。機械的なコードには向きますが、人名や商品名の検索・並び替えは実データで比較してください。
+
+## ちゃんと使うためのポイント
+
+- 新規設計では `utf8` ではなく `utf8mb4` を明記する
+- 文字コードは保存できる文字、collationは比較と並び順を決める
+- `utf8mb4_0900_ai_ci` は大文字小文字とアクセントを区別しない
+- ID・コード・日本語検索では、用途に合うcollationを個別に検討する
+- 設定はサーバー、データベース、テーブル、列の順に引き継がれる
+- 文字化け調査では接続の `character_set_*` も確認する
+- 既存テーブルの変換前に、重複・容量・実行時間・復元方法を確認する
+
+[ストレージエンジンとInnoDB](/books/mysql/innodb-and-storage-engines)では、`SHOW CREATE TABLE` の末尾に現れる `ENGINE=InnoDB` の意味と、主キーがデータの保存場所そのものになる仕組みを扱います。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — Character Sets, Collations, Unicode](https://dev.mysql.com/doc/refman/8.4/en/charset.html)
+- [MySQL 8.4 Reference Manual — Collation Naming Conventions](https://dev.mysql.com/doc/refman/8.4/en/charset-collation-names.html)
+- [MySQL 8.4 Reference Manual — Connection Character Sets and Collations](https://dev.mysql.com/doc/refman/8.4/en/charset-connection.html)
+- [MySQL 8.4 Reference Manual — Configuring Application Character Set and Collation](https://dev.mysql.com/doc/refman/8.4/en/charset-applications.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="文字列の比較とテーブル設計の知識を、4択クイズでアウトプットして定着させよう"
+/>

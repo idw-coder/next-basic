@@ -1,0 +1,300 @@
+---
+title: 'インデックスとEXPLAIN — 複合インデックスの列順と実行計画'
+description: 'MySQL 8.4でインデックスを設計し、EXPLAINとEXPLAIN ANALYZEで利用状況を確認する方法を、複合インデックスの左端一致、選択性、Using filesortまで解説します。'
+order: 7
+---
+
+[ストレージエンジンとInnoDB](/books/mysql/innodb-and-storage-engines)では、主キーとセカンダリインデックスがどのように行データへつながるかを見ました。ここでは、実際のクエリに合わせてインデックスを設計します。
+
+`WHERE`、`ORDER BY`、`JOIN` の文法は [SQLとデータベースの基礎](/books/sql-basics/select-basics) で学んだ内容がそのまま通用します。この章では、**MySQLのB-treeインデックスと実行計画**に絞ります。
+
+## インデックスは検索範囲を狭める
+
+インデックスがない検索では、MySQLは先頭から行を調べる必要があります。
+
+```sql
+SELECT * FROM orders WHERE customer_id = 42;
+```
+
+`customer_id` にインデックスを作ると、B-treeをたどって候補の位置へ移動できます。
+
+```sql
+CREATE INDEX idx_orders_customer_id ON orders (customer_id);
+```
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    Q["customer_id = 42"] --> R["B-treeのルート"]
+    R --> B["42を含む枝"]
+    B --> K["該当する主キー"]
+    K --> D["行データ"]
+`}
+/>
+
+**構文：** `CREATE [UNIQUE] INDEX インデックス名 ON テーブル名 (列 [, 列...])`
+
+| 指定 | 説明 |
+| --- | --- |
+| `UNIQUE` | 同じ値の重複も禁止する。省略時は重複可 |
+| インデックス名 | テーブル内で識別する名前 |
+| テーブル名 | インデックスを追加するテーブル |
+| 列 | B-treeに並べる列。複数なら左から順に意味を持つ |
+
+**結果：** インデックスが作成される。既存行が多いほど作成時間と追加容量が必要
+
+<Marker>インデックスは「クエリを速くする魔法」ではなく、特定の列順で作る追加のデータ構造です。</Marker>
+
+追加すると、読み取りの候補を減らせる代わりに、INSERT・UPDATE・DELETEのたびにインデックスも更新します。ディスク容量と書き込みコストも増えるため、使われるものだけを作ります。
+
+## 選択性の高い列が効きやすい
+
+インデックスで候補を大きく絞れる度合いを**選択性**と呼びます。
+
+| 列 | 値の種類 | 単独インデックスの傾向 |
+| --- | ---: | --- |
+| `id` | ほぼ行数と同じ | 1行へ絞れるので高い |
+| `email` | ほぼ行数と同じ | 高い |
+| `status` | 数種類 | 低いことが多い |
+| `is_deleted` | 2種類 | 単独では低いことが多い |
+
+100万行のうち50万行が `is_deleted = 0` なら、インデックスをたどって50万行を取得するより、テーブル全体を読む方が速い場合があります。インデックスが存在しても、オプティマイザが使わないのは正常な判断です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+WHEREに出てくる列へ全部インデックスを付ければ、取りこぼしはないですよね？
+</SpeechBubble>
+
+書き込みが重くなり、似たインデックスが増え、かえって判断しにくくなります。実際に遅いクエリと実行計画を起点にします。
+
+## 複合インデックスは左から使う
+
+複数列を1つにまとめたものが複合インデックスです。
+
+```sql
+CREATE INDEX idx_orders_customer_status_created
+  ON orders (customer_id, status, created_at);
+```
+
+このB-treeは、まず `customer_id`、同じ顧客の中で `status`、さらに同じ状態の中で `created_at` の順に並びます。
+
+| クエリ条件 | 探索に使える可能性 |
+| --- | --- |
+| `customer_id = ?` | 高い |
+| `customer_id = ? AND status = ?` | 高い |
+| `customer_id = ? AND status = ? AND created_at >= ?` | 高い |
+| `status = ?` | 先頭列がないため低い |
+| `created_at >= ?` | 先頭2列がないため低い |
+
+これを**左端一致**または**左端プレフィックス**の考え方と呼びます。
+
+<Marker>複合インデックス `(a, b, c)` は、`(a)`、`(a, b)`、`(a, b, c)` の検索に使えます。`(b)` や `(c)` からは始められません。</Marker>
+
+列順は、単に選択性が高い順では決まりません。
+
+1. 頻繁に使う等価条件（`=`）
+2. そのクエリで使う範囲条件（`>`, `<`, `BETWEEN`）
+3. `ORDER BY` で必要な並び
+
+という順を出発点にし、実際のクエリで確認します。範囲条件より右側の列は、探索範囲をさらに狭める用途へ使えない場合があるためです。
+
+<Callout type="note" title="単独インデックスを重ねても複合インデックスと同じではない">
+`customer_id` と `status` に別々のインデックスを作っても、`(customer_id, status)` と同じ並びにはなりません。MySQLがindex mergeを選ぶ場合はありますが、よく使う条件の組み合わせには複合インデックスを検討します。
+</Callout>
+
+## EXPLAINで実行計画を見る
+
+インデックスを作っただけでは、使われるか分かりません。クエリの先頭に `EXPLAIN` を付けます。
+
+**構文：** `EXPLAIN [FORMAT=TRADITIONAL | JSON | TREE] SELECT ...`
+
+| 指定 | 説明 |
+| --- | --- |
+| 形式省略 | 表形式。主要項目を一覧しやすい |
+| `FORMAT=JSON` | 詳細なコストや使用列をJSONで返す |
+| `FORMAT=TREE` | 処理の親子関係を木構造で返す |
+
+**戻り値：** クエリをどう実行する予定かを示す実行計画。通常の `EXPLAIN` はSELECT結果を取得しない
+
+```sql
+EXPLAIN
+SELECT id, total
+FROM orders
+WHERE customer_id = 42
+  AND status = 'paid'
+ORDER BY created_at DESC
+LIMIT 20;
+```
+
+最初に見る列を絞ると、次の6つです。
+
+| 列 | 見るポイント |
+| --- | --- |
+| `type` | アクセス方法。`ALL` は全件走査、`range` は範囲、`ref` は非一意キーの一致、`const` は最大1行 |
+| `possible_keys` | 候補になったインデックス |
+| `key` | 実際に選ばれたインデックス。`NULL` なら未使用 |
+| `key_len` | インデックスの何バイト分を使うか |
+| `rows` | 調べると見積もった行数 |
+| `Extra` | 追加処理。`Using index`、`Using filesort` など |
+
+出力の一例です。
+
+```text
+type: ref
+possible_keys: idx_orders_customer_status_created
+key: idx_orders_customer_status_created
+rows: 18
+Extra: Using index condition
+```
+
+`rows` は実測値ではなく見積もりです。データ分布の統計が古いと、見積もりが外れて適切でない計画を選ぶことがあります。
+
+```sql
+ANALYZE TABLE orders;
+```
+
+`ANALYZE TABLE` はテーブルのキー分布統計を更新します。インデックスを増やす前に、統計が古くないかも確認します。
+
+<Figure
+  src="/images/search_woman_color.png"
+  alt="実行計画を調べている人のイラスト"
+  caption="遅いクエリは推測で直さず、EXPLAINでMySQLの選択を見る"
+  maxWidth="350px"
+/>
+
+## EXPLAIN ANALYZEで予測と実測を比べる
+
+MySQL 8.0.18以降では `EXPLAIN ANALYZE` が使えます。
+
+**構文：** `EXPLAIN ANALYZE [FORMAT=TREE] SELECT ...`
+
+| 指定 | 説明 |
+| --- | --- |
+| `FORMAT=TREE` | 省略可能。`EXPLAIN ANALYZE` は常にTREE形式 |
+| `SELECT` | 実測したい読み取りクエリ |
+
+**戻り値：** 推定コスト・推定行数に加え、実時間・実際の行数・ループ回数を含む実行計画
+
+```sql
+EXPLAIN ANALYZE
+SELECT id, total
+FROM orders
+WHERE customer_id = 42;
+```
+
+```text
+-> Index lookup on orders using idx_orders_customer_id (customer_id=42)
+   (cost=... rows=...)
+   (actual time=... rows=... loops=1)
+```
+
+<Callout type="warning" title="ANALYZEは実際にクエリを実行する">
+通常の `EXPLAIN` は計画を表示しますが、`EXPLAIN ANALYZE` はSELECTを最後まで実行して時間を測ります。重い集計を本番で実行すれば、その負荷も実際に発生します。対象データ量と実行時間を見積もってから使ってください。
+</Callout>
+
+推定 `rows` と実測 `rows` が大きくずれていれば、統計やデータ分布を疑います。実時間が大きい処理を木構造の下から追うと、どこで行数が膨らんでいるかを特定できます。
+
+## インデックスが効かなくなる書き方
+
+### 列を関数で包む
+
+```sql
+-- created_atの通常インデックスを使いにくい
+WHERE DATE(created_at) = '2026-09-04'
+```
+
+列の値を行ごとに計算するため、そのまま並んだB-treeを探索できません。範囲条件へ書き換えます。
+
+```sql
+WHERE created_at >= '2026-09-04 00:00:00'
+  AND created_at <  '2026-09-05 00:00:00'
+```
+
+### 前方にワイルドカードを置く
+
+```sql
+WHERE name LIKE '%田中%'
+```
+
+B-treeは先頭からの並びを使うため、中間一致は通常のインデックスで開始位置を絞れません。`LIKE '田中%'` の前方一致なら範囲検索に使える可能性があります。
+
+### 型や文字コードが違う列を比較する
+
+JOINする列の型・長さ・文字コードが違うと、暗黙変換が入りインデックスを効率よく使えないことがあります。外部キー相当の列は定義を揃えます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+インデックスがあるかではなく、クエリがその並びを使える形かを見る。最後は必ずEXPLAINで答え合わせしよう。
+</SpeechBubble>
+
+## Extraの表示を読み違えない
+
+| Extra | 意味 |
+| --- | --- |
+| `Using index` | 必要な列をインデックスだけで返せる。カバリングインデックス |
+| `Using index condition` | インデックス上で追加条件を評価する |
+| `Using where` | 取得候補へWHERE条件を適用する |
+| `Using filesort` | インデックス順だけでは並べられず、追加のソート処理を行う |
+| `Using temporary` | 処理途中に内部一時テーブルを使う |
+
+`Using filesort` という名前でも、必ずディスクへファイルを書くわけではありません。また、小さな結果のソートなら問題にならないこともあります。表示をゼロにすることではなく、実時間と処理行数を減らすことが目的です。
+
+<Marker>EXPLAINの項目は合否判定ではありません。遅さの原因を絞る観測値として使います。</Marker>
+
+## 不要なインデックスを整理する
+
+インデックスの一覧は次で確認できます。
+
+```sql
+SHOW INDEX FROM orders;
+```
+
+削除は `DROP INDEX` を使います。
+
+```sql
+DROP INDEX idx_orders_customer_id ON orders;
+```
+
+ただし、複合インデックスの先頭が同じだからといって、短い方が必ず不要とは限りません。長いインデックスは容量が大きく、クエリによっては短い方が効率的です。本番のクエリ利用状況と実行計画を確認して判断します。
+
+## よくあるハマりどころ
+
+### rowsが少なければ必ず速いと思う
+
+`rows` は見積もりであり、1行ごとの処理が重い、何度もループする、ソートや一時テーブルが大きい場合は遅くなります。`EXPLAIN ANALYZE` の実時間とloopsも見ます。
+
+### 複合インデックスの列順をWHEREの記述順に合わせる
+
+SQLに条件を書く順番は、複合インデックスの列順を決めません。等価条件・範囲条件・並び替えと、実際のクエリの組み合わせから決めます。
+
+### typeがALLなら必ずインデックスを作る
+
+小さなテーブルや大半の行を返すクエリでは、全件走査が最適な場合があります。テーブル規模、返す割合、実時間を確認します。
+
+### インデックスを追加して書き込みが遅くなる
+
+各INSERTはすべての対象インデックスへ値を追加します。似たインデックスを増やし続けず、読み取り改善と書き込みコストを両方測ります。
+
+## ちゃんと使うためのポイント
+
+- インデックスは検索用の追加データ構造で、容量と書き込みコストを使う
+- 候補を大きく絞れる、選択性の高い条件ほど効果が出やすい
+- 複合インデックスは左端の列から使う
+- 列順は等価条件・範囲条件・ORDER BYをもとに決める
+- `EXPLAIN` ではまず `type`、`key`、`rows`、`Extra` を見る
+- `EXPLAIN ANALYZE` は実際にSELECTを実行して推定と実測を比べる
+- 列を関数で包む、中間一致、型の不一致はインデックスを使いにくくする
+- 表示上の合否ではなく、実時間と処理行数を改善する
+
+[トランザクションとロック](/books/mysql/transactions-and-locks)では、インデックスの走査範囲がロック範囲にもなる理由と、同時更新で起きる待機・デッドロックを扱います。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — How MySQL Uses Indexes](https://dev.mysql.com/doc/refman/8.4/en/mysql-indexes.html)
+- [MySQL 8.4 Reference Manual — Multiple-Column Indexes](https://dev.mysql.com/doc/refman/8.4/en/multiple-column-indexes.html)
+- [MySQL 8.4 Reference Manual — EXPLAIN Statement](https://dev.mysql.com/doc/refman/8.4/en/explain.html)
+- [MySQL 8.4 Reference Manual — EXPLAIN Output Format](https://dev.mysql.com/doc/refman/8.4/en/explain-output.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="インデックスと実行計画の知識を、4択クイズでアウトプットして定着させよう"
+/>

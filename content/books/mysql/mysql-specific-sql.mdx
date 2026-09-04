@@ -1,0 +1,304 @@
+---
+title: 'MySQLの方言 — ON DUPLICATE KEY UPDATE・GROUP_CONCAT・ウィンドウ関数'
+description: 'MySQL 8.4でよく使う固有構文を、ON DUPLICATE KEY UPDATEによるUPSERT、GROUP_CONCAT、ROW_NUMBERなどのウィンドウ関数に絞って実例と注意点から解説します。'
+order: 9
+---
+
+SQLには標準仕様がありますが、データベース製品ごとに独自の構文や関数があります。MySQL向けに書いたSQLをPostgreSQLやSQLiteへ移すと、そのままでは動かない部分です。
+
+`SELECT`、`JOIN`、`GROUP BY` の基本は [SQLとデータベースの基礎](/books/sql-basics/select-basics) で学んだ内容がそのまま通用します。この章では、**実務でよく使うMySQLならではの書き方**だけに絞ります。
+
+## 方言は便利だが移植性と交換する
+
+MySQL固有構文を避ければ、別のDBMSへ移行しやすくなります。一方、複数のSQLを1文へまとめたり、集計結果を読みやすく返したりできるため、無理に標準SQLだけへ寄せる必要もありません。
+
+<Marker>方言を使うかどうかは、「将来移行するかもしれない」ではなく、得られる単純さと移行可能性のどちらが重要かで決めます。</Marker>
+
+この章では次の3つを扱います。
+
+| 機能 | 解決すること |
+| --- | --- |
+| `ON DUPLICATE KEY UPDATE` | INSERTと更新を1文にする |
+| `GROUP_CONCAT()` | グループ内の複数値を1つの文字列にまとめる |
+| ウィンドウ関数 | 行を畳まずに順位・累計・前後比較を加える |
+
+## ON DUPLICATE KEY UPDATEでUPSERTする
+
+UPSERTは「存在しなければINSERT、存在すればUPDATE」という操作です。MySQLでは `ON DUPLICATE KEY UPDATE` を使います。
+
+```sql
+CREATE TABLE product_stocks (
+  sku VARCHAR(64) PRIMARY KEY,
+  stock INT UNSIGNED NOT NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+新しい値へ行エイリアスを付け、重複時の更新式から参照します。
+
+```sql
+INSERT INTO product_stocks (sku, stock)
+VALUES ('TS-001', 5) AS new
+ON DUPLICATE KEY UPDATE
+  stock = new.stock;
+```
+
+**構文：** `INSERT ... VALUES (...) AS 行エイリアス ON DUPLICATE KEY UPDATE 列 = 式 [, ...]`
+
+| 部分 | 説明 |
+| --- | --- |
+| `INSERT ... VALUES` | 通常どおり挿入したい値を指定する |
+| `AS new` | 挿入しようとした行へ名前を付ける。名前は任意 |
+| `ON DUPLICATE KEY UPDATE` | 主キーまたはUNIQUEキー重複時の更新内容 |
+| `new.stock` | 今回挿入しようとした値を参照する |
+
+**結果：** 重複がなければ新規行を挿入し、重複すれば該当行を更新する
+
+在庫を置き換えるのではなく、加算することもできます。
+
+```sql
+INSERT INTO product_stocks (sku, stock)
+VALUES ('TS-001', 5) AS new
+ON DUPLICATE KEY UPDATE
+  stock = product_stocks.stock + new.stock;
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+先にSELECTで存在確認して、INSERTかUPDATEを選ぶのと何が違うんですか？
+</SpeechBubble>
+
+SELECTとINSERTの間に別接続が同じキーを挿入する競合を避けられます。UNIQUE制約の判定と更新をMySQL側の1文へ任せられるのが利点です。
+
+<Marker>UPSERTの競合判定は、アプリの事前SELECTではなくPRIMARY KEY・UNIQUE制約へ任せます。</Marker>
+
+### VALUES()を使う古い書き方
+
+古い記事では次の構文を見かけます。
+
+```sql
+-- 新規コードでは使わない
+ON DUPLICATE KEY UPDATE stock = VALUES(stock)
+```
+
+更新式の `VALUES()` はMySQL 8.0.20から非推奨です。MySQL 8.4では、先ほどの `VALUES (...) AS new` という行エイリアスを使います。
+
+<Callout type="warning" title="どのUNIQUEキーが衝突したかを指定できない">
+`ON DUPLICATE KEY UPDATE` は、主キーまたはいずれかのUNIQUEキーが重複すると更新へ進みます。複数のUNIQUE制約があるテーブルでは、意図しない別の行が競合対象にならないよう設計と入力を確認してください。
+</Callout>
+
+### INSERT IGNORE・REPLACEとの違い
+
+| 構文 | 重複時の動き |
+| --- | --- |
+| `INSERT ... ON DUPLICATE KEY UPDATE` | 既存行をUPDATEする |
+| `INSERT IGNORE` | エラーを警告へ落とし、重複行を挿入しない |
+| `REPLACE` | 競合する既存行を削除してから新しい行を挿入する |
+
+`REPLACE` は名前からUPDATEに見えますが、DELETE＋INSERTです。指定していない列が既定値へ戻る、外部キーやトリガーへ影響する、`AUTO_INCREMENT` が進むといった違いがあります。既存行を更新したいならUPSERTを使います。
+
+## GROUP_CONCATで複数行を1つにまとめる
+
+カテゴリごとのタグ名を1行に並べたいとします。
+
+```sql
+SELECT
+  category_id,
+  GROUP_CONCAT(tag_name ORDER BY tag_name SEPARATOR ', ') AS tags
+FROM product_tags
+GROUP BY category_id;
+```
+
+```text
+category_id | tags
+------------+-------------------------
+1           | sale, summer, washable
+2           | gift, new
+```
+
+**構文：** `GROUP_CONCAT([DISTINCT] 式 [, ...] [ORDER BY ...] [SEPARATOR 文字列])`
+
+| 引数・指定 | 説明 |
+| --- | --- |
+| `式` | 連結する値。複数指定も可能 |
+| `DISTINCT` | 重複する値を除く。省略可 |
+| `ORDER BY` | 連結する順序を指定。省略可 |
+| `SEPARATOR` | 区切り文字。省略時はカンマ |
+
+**戻り値：** グループ内のNULLでない値を連結した文字列。対象がすべてNULLなら `NULL`
+
+```sql
+SELECT
+  category_id,
+  GROUP_CONCAT(DISTINCT tag_name ORDER BY tag_name SEPARATOR ' / ') AS tags
+FROM product_tags
+GROUP BY category_id;
+```
+
+<Callout type="warning" title="結果は既定で1024バイトまで">
+`GROUP_CONCAT()` の最大長は `group_concat_max_len` で決まり、既定は1024です。超えた部分は切り詰められます。タグ数が多い、長文を連結する、といった用途では設定値と警告を確認してください。
+</Callout>
+
+現在値とセッション単位の変更は次の通りです。
+
+```sql
+SELECT @@group_concat_max_len;
+SET SESSION group_concat_max_len = 16384;
+```
+
+設定を大きくすれば、結果セットとメモリの使用量も増えます。大量データをアプリで扱うなら、1文字列に潰さず行のまま返す方が扱いやすい場合があります。
+
+<Figure
+  src="/images/deta_man_color.png"
+  alt="複数のデータをまとめている人のイラスト"
+  caption="GROUP_CONCATは表示用の小さな一覧に絞り、無制限な集約には使わない"
+  maxWidth="350px"
+/>
+
+## ウィンドウ関数は行を畳まずに集計する
+
+通常の `GROUP BY` は、複数行をグループごとの1行へ畳みます。ウィンドウ関数は元の行を残したまま、順位や累計などの計算結果を追加します。
+
+```sql
+SELECT
+  customer_id,
+  ordered_at,
+  total,
+  ROW_NUMBER() OVER (
+    PARTITION BY customer_id
+    ORDER BY ordered_at DESC
+  ) AS order_no
+FROM orders;
+```
+
+**構文：** `ウィンドウ関数(...) OVER ([PARTITION BY ...] [ORDER BY ...] [フレーム])`
+
+| 部分 | 説明 |
+| --- | --- |
+| ウィンドウ関数 | `ROW_NUMBER()`、`RANK()`、`SUM()` など |
+| `PARTITION BY` | 計算をリセットするグループ。省略時は結果全体 |
+| `ORDER BY` | グループ内の計算順序 |
+| フレーム | 現在行から見て集計対象にする行範囲 |
+
+**戻り値：** 元の各行を維持したまま、ウィンドウ内で計算した値を各行へ返す
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    R["注文の各行"] --> P1["顧客Aの窓"]
+    R --> P2["顧客Bの窓"]
+    P1 --> N1["1, 2, 3と採番"]
+    P2 --> N2["1, 2と採番"]
+`}
+/>
+
+### ROW_NUMBER・RANK・DENSE_RANK
+
+順位付けには3種類あります。
+
+| 関数 | 同順位の扱い | 10, 10, 8への結果 |
+| --- | --- | --- |
+| `ROW_NUMBER()` | 同じ値でも別番号 | 1, 2, 3 |
+| `RANK()` | 同順位にし、次の順位を飛ばす | 1, 1, 3 |
+| `DENSE_RANK()` | 同順位にし、次の順位を詰める | 1, 1, 2 |
+
+**構文：** `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...)`
+
+**引数：** なし
+
+**戻り値：** パーティション内で1から始まる行番号。`ORDER BY` がなければ採番順は不定
+
+顧客ごとの最新注文だけを取り出すには、CTEまたはサブクエリで一度番号を付けます。
+
+```sql
+WITH ranked_orders AS (
+  SELECT
+    id,
+    customer_id,
+    ordered_at,
+    total,
+    ROW_NUMBER() OVER (
+      PARTITION BY customer_id
+      ORDER BY ordered_at DESC, id DESC
+    ) AS rn
+  FROM orders
+)
+SELECT *
+FROM ranked_orders
+WHERE rn = 1;
+```
+
+`ordered_at` が同じ行でも結果を安定させるため、最後に一意な `id` を並び順へ加えています。
+
+<Marker>順位付けの `ORDER BY` には、同値のときも順序が決まる列を加えます。</Marker>
+
+### 累計を計算する
+
+集約関数も `OVER` を付けるとウィンドウ関数になります。
+
+```sql
+SELECT
+  customer_id,
+  ordered_at,
+  total,
+  SUM(total) OVER (
+    PARTITION BY customer_id
+    ORDER BY ordered_at, id
+    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  ) AS running_total
+FROM orders;
+```
+
+`ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` は、パーティションの先頭から現在行までを集計対象にする指定です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+GROUP BYは行をまとめる。ウィンドウ関数は行を残したまま横に計算結果を足す。この違いから選ぶと分かりやすいよ。
+</SpeechBubble>
+
+## よくあるハマりどころ
+
+### ON DUPLICATE KEY UPDATEを制約なしで使う
+
+競合を判断するのはPRIMARY KEYまたはUNIQUEキーです。業務上同じとみなす列に制約がなければ、毎回新しい行がINSERTされます。
+
+### 更新式でVALUES()を使い続ける
+
+MySQL 8.4でも動く場合はありますが非推奨警告の対象です。新規コードは行エイリアスへ置き換えます。
+
+### GROUP_CONCATの順序を暗黙に期待する
+
+関数内の `ORDER BY` を省略すると、連結順は保証されません。表示順に意味があるなら明示します。
+
+### GROUP_CONCATの切り詰めに気づかない
+
+結果が返るため、途中で切れていてもアプリ側が成功扱いすることがあります。想定件数が多い用途では `group_concat_max_len` と警告を確認します。
+
+### ウィンドウ関数の別名を同じSELECTのWHEREで使う
+
+ウィンドウ関数は `WHERE` より後に評価されるため、同じ階層の `WHERE rn = 1` では絞れません。CTEやサブクエリで計算した外側から絞ります。
+
+## ちゃんと使うためのポイント
+
+- `ON DUPLICATE KEY UPDATE` はUNIQUE制約を使ってINSERTとUPDATEを1文にする
+- 挿入値の参照には `VALUES()` ではなく行エイリアスを使う
+- `REPLACE` はUPDATEではなくDELETE＋INSERTなので区別する
+- `GROUP_CONCAT()` は順序と区切り文字を関数内で指定できる
+- `group_concat_max_len` の既定は1024で、超えた結果は切り詰められる
+- ウィンドウ関数は元の行を残したまま順位・累計を計算する
+- 順位付けのORDER BYは同値でも決まるようにする
+- ウィンドウ関数の結果で絞るときはCTEかサブクエリを使う
+
+SQLが決まったら、アプリケーションから安全に実行する接続管理が必要です。[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)では、mysql2のコネクションプール、プレースホルダー、トランザクション中の接続固定を扱います。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — INSERT ON DUPLICATE KEY UPDATE](https://dev.mysql.com/doc/refman/8.4/en/insert-on-duplicate.html)
+- [MySQL 8.4 Reference Manual — Aggregate Function Descriptions](https://dev.mysql.com/doc/refman/8.4/en/aggregate-functions.html)
+- [MySQL 8.4 Reference Manual — Window Function Concepts and Syntax](https://dev.mysql.com/doc/refman/8.4/en/window-functions-usage.html)
+- [MySQL 8.4 Reference Manual — Window Function Descriptions](https://dev.mysql.com/doc/refman/8.4/en/window-function-descriptions.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="UPSERT・集約・ウィンドウ関数の知識を、4択クイズでアウトプットして定着させよう"
+/>
