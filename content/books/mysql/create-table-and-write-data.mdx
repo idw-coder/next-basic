@@ -330,9 +330,9 @@ ROLLBACK;               -- 戻らない
 - `UPDATE` / `DELETE` は `WHERE` 忘れが止められない。先に `SELECT` で確認する
 - `TRUNCATE` は速いがロールバックできず、`AUTO_INCREMENT` もリセットされる
 
-この章では型をほぼ既定のまま流しました。どの列にどの型を選ぶかは、[データ型の選び方](/books/mysql/data-types)で扱います。
+作成した列にどの型を割り当てるべきかは、[データ型の選び方](/books/mysql/data-types)で掘り下げます。`INT` と `BIGINT`、`DECIMAL` と `DOUBLE`、`DATETIME` と `TIMESTAMP` の違いを、実務での判断基準から整理します。
 
-ここまでは `mysql` コマンドから手で書き込んできました。アプリケーションから同じことをするときは、[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)で扱うコネクションプールが必要になります。
+ここまでは `mysql` コマンドから手で書き込んできました。アプリケーションから同じ操作をするときは、[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)で扱うコネクションプールが必要になります。
 
 ## 参考リンク
 
