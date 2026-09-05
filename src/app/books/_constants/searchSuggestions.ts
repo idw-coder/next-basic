@@ -312,6 +312,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'pull',
     'push',
     'conflict',
+    'スカッシュマージ',
   ],
 
   'cs-basics': ['CPU', 'メモリ', 'データ構造', 'ネットワーク', 'SSH', 'デバッグ'],
