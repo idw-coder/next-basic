@@ -1,0 +1,364 @@
+---
+title: 'MySQL運用入門 — mysqldump・復元テスト・スロークエリログ・my.cnf'
+description: 'MySQL 8.4を継続運用するために、mysqldumpによるInnoDBの論理バックアップと復元テスト、スロークエリログの読み方、SET PERSISTとmy.cnfによる設定管理を解説します。'
+order: 13
+---
+
+[MySQLのユーザーと権限](/books/mysql/users-roles-and-privileges)までで、アプリケーションを必要最小限の権限で動かせるようになりました。最後に扱うのは、障害が起きたあとに戻すこと、遅くなった原因を見つけること、設定を再現できる形で管理することです。
+
+MySQLは起動しているだけでは運用できているとは言えません。バックアップが復元できるか、遅いクエリを発見できるか、再起動後も意図した設定になるかを、平常時から確認しておく必要があります。
+
+## バックアップは「復元できる状態」まで含む
+
+バックアップファイルが存在しても、壊れている、必要なオブジェクトが含まれていない、復元手順が分からないなら役に立ちません。
+
+<Marker>バックアップの完了条件はファイル作成ではなく、別環境へ復元して必要なデータを確認できることです。</Marker>
+
+MySQLのバックアップは大きく2種類あります。
+
+| 種類 | 内容 | 特徴 |
+| --- | --- | --- |
+| 論理バックアップ | `CREATE TABLE` や `INSERT` などのSQLとして保存 | 内容を確認しやすく、別環境へ移しやすい |
+| 物理バックアップ | データファイルをバックアップ用ツールで保存 | 大規模DBで高速だが、製品・構成への依存が強い |
+
+この章では、小〜中規模のWebアプリケーションで始めやすい `mysqldump` の論理バックアップを扱います。データ量が増えて取得・復元時間の目標を満たせなくなったら、MySQL Enterprise Backupやクラウドのスナップショットなど、環境に合う物理バックアップも検討します。
+
+<Callout type="note" title="バックアップだけでは任意時点に戻れない">
+日次バックアップだけなら、障害直前から最大1日分の変更を失う可能性があります。より短い復旧地点が必要なら、バイナリログを保管してバックアップ後の変更を適用するポイントインタイムリカバリを組み合わせます。
+</Callout>
+
+## mysqldumpでInnoDBを止めずに取得する
+
+InnoDB中心のデータベースでは、`--single-transaction` と `--quick` を組み合わせます。
+
+```bash
+mysqldump \
+  --host=db.example.internal \
+  --user=backup_reader \
+  --password \
+  --single-transaction \
+  --quick \
+  --triggers \
+  --no-tablespaces \
+  --set-gtid-purged=OFF \
+  myapp > myapp.sql
+```
+
+**構文：** `mysqldump [接続オプション] [取得オプション] データベース名 > 出力.sql`
+
+| オプション | 説明 |
+| --- | --- |
+| `--single-transaction` | `REPEATABLE READ`でトランザクションを開始し、InnoDBの一貫した時点を取得する |
+| `--quick` | 全行をメモリへ載せず、行ごとに読み出す |
+| `--routines` | ストアドプロシージャと関数を含める。使う場合だけ追加する |
+| `--events` | Event Schedulerのイベントを含める。使う場合だけ追加する |
+| `--triggers` | トリガーを含める |
+| `--no-tablespaces` | tablespace文を出力せず、`PROCESS` 権限の要求を避ける |
+| `--set-gtid-purged=OFF` | 単体環境への復元でGTID情報を書き込まない |
+
+**出力：** スキーマ定義とデータを復元するためのSQLテキストを標準出力へ書く
+
+`--password` に値を続けず、対話プロンプトで入力します。`--password=secret` のように書くと、シェル履歴やプロセス一覧へ認証情報が残る可能性があります。自動実行では権限を絞った設定ファイルやシークレット管理を使います。
+
+<Callout type="warning" title="single-transactionはInnoDB向け">
+`--single-transaction` が一貫性を保証するのはInnoDBのようなトランザクション対応テーブルです。取得中に `ALTER TABLE`、`DROP TABLE`、`TRUNCATE TABLE` などのDDLを実行すると、ダンプが失敗したり正しく取得できなかったりするため、バックアップ時間帯のDDLを避けます。
+</Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`mysqldump` が終了コード0なら、そのファイルをバックアップとして保管してよいですか？
+</SpeechBubble>
+
+取得成功は必要条件ですが、十分ではありません。ファイルサイズ、終了コード、暗号化、保管先への転送に加え、復元テストまで自動化します。
+
+## 専用ユーザーへ必要な権限だけを付ける
+
+基本的なテーブルとビュー、トリガーを取得する専用アカウントの例です。先ほどのコマンドは、この範囲の権限で実行できます。
+
+```sql
+CREATE USER 'backup_reader'@'10.0.2.15'
+  IDENTIFIED BY 'replace-with-a-generated-secret'
+  REQUIRE SSL;
+
+GRANT SELECT, SHOW VIEW, TRIGGER
+ON myapp.*
+TO 'backup_reader'@'10.0.2.15';
+```
+
+`--events` を追加するなら対象DBの `EVENT` 権限、`--routines` を追加するならグローバルな `SELECT` 権限が必要です。`--no-tablespaces` を外すと `PROCESS`、GTID設定によっては `RELOAD` または `FLUSH_TABLES` も必要になります。エラーのたびに `ALL PRIVILEGES` を付けず、必要なオブジェクトとオプションから権限を特定します。特にグローバル `SELECT` は他のデータベースも読めるため、ルーチンを使っていない環境では `--routines` を付けない方が権限を狭くできます。
+
+<Marker>バックアップユーザーはデータを読めても、アプリケーションの行を更新・削除できない状態にします。</Marker>
+
+## 復元テストで使えることを確かめる
+
+本番とは別のMySQLへ、空のデータベースを作って復元します。
+
+```sql
+CREATE DATABASE myapp_restore
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_ai_ci;
+```
+
+```bash
+mysql \
+  --host=restore-db.example.internal \
+  --user=restore_operator \
+  --password \
+  myapp_restore < myapp.sql
+```
+
+**構文：** `mysql [接続オプション] データベース名 < バックアップ.sql`
+
+**結果：** SQLファイルを順に実行し、指定データベースへオブジェクトとデータを復元する
+
+復元後は「コマンドが成功した」だけで終わらせず、アプリケーションに必要な状態を確認します。
+
+```sql
+SHOW TABLES FROM myapp_restore;
+
+SELECT COUNT(*) FROM myapp_restore.users;
+SELECT COUNT(*) FROM myapp_restore.orders;
+
+CHECK TABLE
+  myapp_restore.users,
+  myapp_restore.orders;
+```
+
+確認項目の例です。
+
+- 必要なテーブル、ビュー、トリガー、ルーチン、イベントが存在する
+- 主要テーブルの件数が取得時の記録と大きくずれていない
+- 代表的な画面やAPIが復元先へ接続して動作する
+- 復元にかかった時間が目標復旧時間内に収まる
+- バックアップファイルを取得担当以外が読み取れない
+- 古いバックアップを保持方針どおり削除できている
+
+<Figure
+  src="/images/relief_man_color.png"
+  alt="復元確認を終えて安心している人のイラスト"
+  caption="障害当日ではなく、平常時の復元訓練で手順と所要時間を確かめる"
+  maxWidth="340px"
+/>
+
+## スロークエリログで遅いSQLを見つける
+
+スロークエリログは、`long_query_time` 以上かかり、`min_examined_row_limit` 以上の行を調べた文を記録します。MySQL 8.4では既定で無効、`long_query_time` の既定は10秒です。
+
+現在の設定を確認します。
+
+```sql
+SHOW GLOBAL VARIABLES
+WHERE Variable_name IN (
+  'slow_query_log',
+  'slow_query_log_file',
+  'long_query_time',
+  'min_examined_row_limit',
+  'log_output'
+);
+```
+
+運用方針で承認された値へ変更する例です。
+
+```sql
+SET PERSIST slow_query_log = ON;
+SET PERSIST long_query_time = 1;
+SET PERSIST min_examined_row_limit = 100;
+```
+
+**構文：** `SET PERSIST システム変数 = 値`
+
+| 指定 | 説明 |
+| --- | --- |
+| システム変数 | 永続化可能なグローバル変数 |
+| 値 | 適用する値。変数ごとの型と範囲に従う |
+
+**結果：** 現在のグローバル値を変更し、再起動後にも使う値を `mysqld-auto.cnf` へ記録する
+
+ログには、実行時間だけでなく次の情報が含まれます。
+
+| 項目 | 意味 |
+| --- | --- |
+| `Query_time` | 文の実行時間 |
+| `Lock_time` | ロック獲得にかかった時間 |
+| `Rows_sent` | クライアントへ返した行数 |
+| `Rows_examined` | サーバー層で調べた行数 |
+
+`Rows_sent` が少ないのに `Rows_examined` が非常に多いSQLは、条件に合う[インデックスとEXPLAIN](/books/mysql/indexes-and-explain)を確認する候補です。
+
+ファイル形式のログは `mysqldumpslow` で似たSQLをまとめられます。
+
+```bash
+mysqldumpslow -s t -t 10 /var/lib/mysql/mysql-slow.log
+```
+
+**構文：** `mysqldumpslow [-s 並び順] [-t 件数] スローログファイル`
+
+| オプション | 説明 |
+| --- | --- |
+| `-s t` | 平均クエリ時間で並べる |
+| `-t 10` | 上位10件を表示する |
+
+**出力：** 値の違いをまとめたクエリパターンごとに、回数や平均時間などを表示する
+
+<Callout type="warning" title="ログを有効にして終わらない">
+ログには保持期限、ローテーション、容量監視、閲覧権限が必要です。`log_queries_not_using_indexes` を無制限に有効化すると大量出力になることもあります。まず遅いSQLの収集条件と確認担当を決めます。
+</Callout>
+
+## 設定値の適用範囲と永続性を区別する
+
+MySQLのシステム変数は、変更方法によって影響範囲と再起動後の状態が変わります。
+
+| 方法 | 現在の動作 | 再起動後 | 主な用途 |
+| --- | --- | --- | --- |
+| `SET SESSION` | 現在の接続だけ変更 | 戻る | クエリ単位の一時調整 |
+| `SET GLOBAL` | 新しい接続などへ反映 | 戻る | 一時的な運用変更・検証 |
+| `SET PERSIST` | グローバル値を変更 | 維持する | 動的変数の永続変更 |
+| `SET PERSIST_ONLY` | その場では変えない | 維持する | 起動時だけ変えられる変数 |
+| `my.cnf` | 再起動まで変わらない | 維持する | 構成管理された起動設定 |
+
+`SET PERSIST` と `SET PERSIST_ONLY` は、データディレクトリの `mysqld-auto.cnf` へ値を保存します。このファイルはMySQL自身に管理させ、手で編集しません。
+
+```sql
+SELECT
+  VARIABLE_NAME,
+  VARIABLE_SOURCE,
+  VARIABLE_PATH,
+  SET_TIME,
+  SET_USER,
+  SET_HOST
+FROM performance_schema.variables_info
+WHERE VARIABLE_NAME IN (
+  'slow_query_log',
+  'long_query_time'
+);
+```
+
+不要になった永続設定は次で外せます。
+
+```sql
+RESET PERSIST IF EXISTS long_query_time;
+```
+
+`RESET PERSIST` は保存値を削除しますが、現在動いている値はその場で元へ戻しません。必要なら `SET GLOBAL` で現在値も戻し、再起動後の値と分けて確認します。
+
+<Callout type="note" title="設定の正本を決める">
+`my.cnf`、コンテナの起動引数、クラウドDBのパラメータグループ、`SET PERSIST` が混在すると、どれが最終値を決めたか分かりにくくなります。利用環境で認める変更経路を決め、設定をコードレビューできる場所で管理してください。
+</Callout>
+
+## my.cnfへ起動設定を書く
+
+Linux環境では一般に `my.cnf`、Windowsでは `my.ini` というオプションファイルを使います。読み込むファイルと順序はOS、配布形式、起動方法で異なるため、固定のパスを前提にしません。
+
+```ini
+[mysqld]
+slow_query_log=ON
+long_query_time=1
+min_examined_row_limit=100
+
+[client]
+default-character-set=utf8mb4
+```
+
+| セクション | 読み込む主なプログラム |
+| --- | --- |
+| `[mysqld]` | MySQLサーバー |
+| `[client]` | 多くのクライアントプログラム共通 |
+| `[mysql]` | `mysql` コマンド |
+| `[mysqldump]` | `mysqldump` コマンド |
+
+どのオプションファイルを探索するかは、対象環境の `mysqld --verbose --help` で確認します。コンテナやマネージドDBでは、ファイルではなく起動引数やパラメータグループが正本になる場合があります。
+
+変更後は、設定ファイルの内容ではなく実際のサーバー値を確認します。
+
+```sql
+SHOW GLOBAL VARIABLES LIKE 'long_query_time';
+```
+
+<Marker>設定ファイルを書いたことではなく、再起動後にサーバーが意図した値で動いていることを確認して変更完了とします。</Marker>
+
+## 最低限の状態を定期観測する
+
+障害が起きてから初めて値を見ると、正常時との差が分かりません。まず少数の指標を継続して記録します。
+
+```sql
+SHOW GLOBAL STATUS
+WHERE Variable_name IN (
+  'Uptime',
+  'Threads_connected',
+  'Threads_running',
+  'Slow_queries',
+  'Aborted_connects'
+);
+```
+
+| 指標 | 見ること |
+| --- | --- |
+| `Uptime` | 意図しない再起動がなかったか |
+| `Threads_connected` | 接続数が普段より増えていないか |
+| `Threads_running` | 同時に処理中の接続が増えていないか |
+| `Slow_queries` | `long_query_time` を超えた累計件数の増え方 |
+| `Aborted_connects` | 認証失敗や接続確立失敗が増えていないか |
+
+累計値はサーバー再起動でリセットされます。値そのものだけでなく、一定時間あたりの増加量を監視します。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    O["メトリクス・ログ"] --> D["異常を発見"]
+    D --> E["EXPLAINで調査"]
+    E --> C["SQL・設定を変更"]
+    C --> V["効果を確認"]
+    V --> O
+`}
+/>
+
+## よくあるハマりどころ
+
+### バックアップを本番サーバー内だけに置く
+
+ディスク障害やサーバー削除で、データとバックアップを同時に失います。別の障害領域へ転送し、暗号化・アクセス制御・保持期限を設定します。
+
+### 復元テストを一度もしていない
+
+不足オプション、権限不足、文字コード差、ファイル破損は、取得時に見つからないことがあります。定期的に新しい環境へ復元し、所要時間も記録します。
+
+### single-transactionですべて止まらないと思う
+
+InnoDBの通常の読み書きを大きく止めずに取得できますが、DDLとの同時実行は安全ではありません。バックアップとマイグレーションの時間帯を調整します。
+
+### long_query_timeを0にして放置する
+
+すべてのクエリが対象となり、ログI/Oと保存容量を急増させます。短時間の調査で使う場合も、終了条件と戻す値を先に決めます。
+
+### SET GLOBALだけで永続化したと思う
+
+`SET GLOBAL` は再起動すると設定ファイル側の値へ戻ります。永続化するなら、環境の方針に従って `SET PERSIST`、`my.cnf`、パラメータグループなどへ反映します。
+
+### mysqld-auto.cnfを手で編集する
+
+JSONを壊すとサーバーが起動できなくなる可能性があります。永続設定の追加は `SET PERSIST`、削除は `RESET PERSIST` で行います。
+
+## ちゃんと使うためのポイント
+
+- バックアップは別環境へ復元し、必要なデータと所要時間を確認して初めて使える
+- InnoDBの論理バックアップは `--single-transaction` と `--quick` を基本にする
+- ルーチン・イベント・トリガーなど、必要なオブジェクトを明示して取得する
+- バックアップ専用ユーザーへ読み取り中心の権限だけを付ける
+- スロークエリログは `long_query_time` と調査行数を使い、最適化候補を見つける
+- 設定変更はセッション・グローバル・永続・設定ファイルのどこへ効くか区別する
+- `mysqld-auto.cnf` は直接編集せず、`SET PERSIST` と `RESET PERSIST` で管理する
+- 監視値は正常時から記録し、累計値の増加率と再起動を考慮する
+
+これで、接続・テーブル設計・文字コード・InnoDB・インデックス・トランザクション・MySQL固有SQL・Node.js接続・マイグレーション・権限・バックアップと監視まで、一連の基礎がつながりました。必要な章へ戻り、実際のアプリケーションとMySQLの値を照らし合わせながら運用してください。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — mysqldump](https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html)
+- [MySQL 8.4 Reference Manual — The Slow Query Log](https://dev.mysql.com/doc/refman/8.4/en/slow-query-log.html)
+- [MySQL 8.4 Reference Manual — Persisted System Variables](https://dev.mysql.com/doc/refman/8.4/en/persisted-system-variables.html)
+- [MySQL 8.4 Reference Manual — Using Option Files](https://dev.mysql.com/doc/refman/8.4/en/option-files.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="バックアップ・ログ・設定運用の知識を、4択クイズでアウトプットして定着させよう"
+/>

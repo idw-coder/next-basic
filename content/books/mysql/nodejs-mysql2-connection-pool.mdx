@@ -340,3 +340,11 @@ conn.release();
 - [mysql2 — createPool の例](https://sidorares.github.io/node-mysql2/docs/examples/connections/create-pool)
 - [mysql2 ドキュメント](https://sidorares.github.io/node-mysql2/docs)
 - [MySQL 8.4 Reference Manual — Too many connections](https://dev.mysql.com/doc/refman/8.4/en/too-many-connections.html)
+
+接続処理を本番へ出したあとも、テーブル定義は変化します。[スキーマ変更とマイグレーション](/books/mysql/schema-migrations-and-online-ddl)では、`ALTER TABLE` の方式と、旧版・新版を共存させるリリース手順を扱います。
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="接続とトランザクションの知識を、4択クイズでアウトプットして定着させよう"
+/>

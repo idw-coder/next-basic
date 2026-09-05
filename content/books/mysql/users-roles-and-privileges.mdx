@@ -1,0 +1,295 @@
+---
+title: 'MySQLのユーザーと権限 — CREATE USER・GRANT・ロール・最小権限'
+description: 'MySQL 8.4のアカウントをuser@hostとして理解し、CREATE USER、GRANT、SHOW GRANTS、REVOKE、ロールを使ってアプリケーションや運用担当へ最小権限を割り当てる方法を解説します。'
+order: 12
+---
+
+[スキーマ変更とマイグレーション](/books/mysql/schema-migrations-and-online-ddl)では、本番テーブルを安全に変更する方法を扱いました。そのDDLを実行できるのは誰か、アプリケーションがどのテーブルを読めるかは、MySQLのユーザーと権限で決まります。
+
+Webアプリケーションを `root` で接続すれば、権限不足にはなりません。しかし、SQLインジェクションや設定漏れが起きたとき、全データベースの削除やユーザー作成まで許してしまいます。この章では、**用途ごとにアカウントを分け、必要な操作だけを許可する**設計を作ります。
+
+## アカウントはuserとhostの組み合わせ
+
+MySQLのアカウントは、ユーザー名だけではなく `'user'@'host'` で識別されます。
+
+```text
+'app_user'@'localhost'
+'app_user'@'10.0.1.25'
+'app_user'@'%'
+```
+
+これらはすべて別のアカウントです。同じパスワードや権限を持つとは限りません。
+
+| host部分 | 接続元 |
+| --- | --- |
+| `'localhost'` | MySQLサーバーと同じホストからのローカル接続 |
+| `'10.0.1.25'` | 指定したIPアドレスからの接続 |
+| `'%'` | 任意の接続元。便利だが範囲が広い |
+
+現在の認証結果は次で確認できます。
+
+```sql
+SELECT USER(), CURRENT_USER();
+```
+
+`USER()` はクライアントが名乗ったユーザーと接続元、`CURRENT_USER()` はMySQLが権限判定に実際に使ったアカウントを返します。想定外のhost側アカウントへ一致したときの調査に役立ちます。
+
+<Marker>MySQLの権限を確認するときは、ユーザー名だけでなくhost部分まで含めて特定します。</Marker>
+
+## CREATE USERで認証主体を作る
+
+アカウントの作成と権限付与は別の操作です。MySQL 8.4では、先に `CREATE USER`、次に `GRANT` を実行します。
+
+```sql
+CREATE USER 'app_rw'@'10.0.1.25'
+  IDENTIFIED BY 'replace-with-a-generated-secret'
+  REQUIRE SSL;
+```
+
+**構文：** `CREATE USER 'ユーザー名'@'接続元' IDENTIFIED BY 'パスワード' [REQUIRE SSL]`
+
+| 指定 | 説明 |
+| --- | --- |
+| ユーザー名 | 用途が分かる名前。アプリ・読み取り・バックアップなどを分ける |
+| 接続元 | 接続を許可するホストやIPアドレス |
+| `IDENTIFIED BY` | 認証に使うパスワードを設定する |
+| `REQUIRE SSL` | TLSで暗号化された接続だけを受け付ける |
+
+**結果：** 権限を持たない新しいアカウントを作成する
+
+<Callout type="warning" title="サンプルのパスワードを使わない">
+実際のパスワードは十分な長さのランダム値を生成し、シークレット管理サービスや安全な環境変数から渡します。SQLファイル、Git、チャット、コマンドライン引数へ直接残さないでください。
+</Callout>
+
+作成内容のうち、認証方式やTLS要件などは `SHOW CREATE USER` で確認できます。
+
+```sql
+SHOW CREATE USER 'app_rw'@'10.0.1.25';
+```
+
+権限はまだありません。`CREATE USER` が成功しただけでは、アプリケーションのテーブルを読めない状態が正解です。
+
+## GRANTは必要な操作と範囲を指定する
+
+読み書きするアプリケーションへ、1つのデータベース内で必要なDMLだけを付与します。
+
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON myapp.*
+TO 'app_rw'@'10.0.1.25';
+```
+
+**構文：** `GRANT 権限 [, 権限 ...] ON 対象 TO 'ユーザー名'@'接続元'`
+
+| 指定 | 説明 |
+| --- | --- |
+| 権限 | 許可する操作。`SELECT`、`INSERT`、`UPDATE`、`DELETE` など |
+| 対象 | `*.*`、`database.*`、`database.table` などの範囲 |
+| アカウント | 事前に `CREATE USER` した付与先 |
+
+**結果：** 指定したアカウントまたはロールへ、指定範囲の権限を追加する
+
+権限の範囲は、小さいほど事故時の影響を限定できます。
+
+| 範囲 | 例 | 用途 |
+| --- | --- | --- |
+| グローバル | `*.*` | サーバー管理。通常のアプリには付けない |
+| データベース | `myapp.*` | 1つのアプリが使うDB全体 |
+| テーブル | `myapp.orders` | レポートなど対象を限定したい場合 |
+| 列 | `myapp.users (id, display_name)` | 特定列だけ許可したい場合 |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+あとで権限エラーになるのが怖いので、アプリにも `ALL PRIVILEGES` を付けたくなります。
+</SpeechBubble>
+
+権限エラーは、設計から漏れた操作を発見できたということです。本番アプリに `CREATE USER`、`DROP`、`GRANT OPTION` まで渡して障害範囲を広げるより、必要な権限を明示してテストで不足を見つけます。
+
+<Marker>最小権限とは「今動く最小」ではなく、そのアカウントの担当業務を完了できる最小の権限です。</Marker>
+
+## 用途ごとにアカウントを分ける
+
+1つのアカウントをアプリケーション、マイグレーション、バックアップ、分析で共有すると、どの処理にも最も強い権限が必要になります。用途ごとに分ければ、通常時に強い権限を使わずに済みます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["Webアプリ"] --> U1["app_rw"]
+    M["マイグレーション"] --> U2["schema_admin"]
+    B["バックアップ"] --> U3["backup_reader"]
+    R["分析・参照"] --> U4["report_ro"]
+    U1 --> P1["DMLのみ"]
+    U2 --> P2["DDLのみ"]
+    U3 --> P3["読み取り中心"]
+    U4 --> P4["SELECTのみ"]
+`}
+/>
+
+| 用途 | 主な権限 | 付けない権限の例 |
+| --- | --- | --- |
+| Webアプリ | `SELECT, INSERT, UPDATE, DELETE` | `DROP`, `CREATE USER`, `GRANT OPTION` |
+| マイグレーション | `CREATE, ALTER, INDEX, DROP` | ユーザー管理権限 |
+| 読み取り専用 | `SELECT` | 書き込み・DDL |
+| バックアップ | `SELECT, SHOW VIEW, TRIGGER` など | アプリデータの更新 |
+
+本番のWebプロセスには `app_rw` だけを渡し、強い `schema_admin` はデプロイ作業の間だけ使用します。第13章のバックアップも専用アカウントへ分離します。
+
+## SHOW GRANTSで答え合わせする
+
+付与後は、意図した権限になっているか確認します。
+
+```sql
+SHOW GRANTS FOR 'app_rw'@'10.0.1.25';
+```
+
+**構文：** `SHOW GRANTS [FOR 'ユーザー名'@'接続元'] [USING ロール [, ロール ...]]`
+
+| 指定 | 説明 |
+| --- | --- |
+| `FOR` | 確認するアカウント。省略時は現在のユーザー |
+| `USING` | 指定ロールを有効にした場合の権限も表示する |
+
+**戻り値：** 対象アカウントへ付与された権限とロールを、再現可能な `GRANT` 文の形で返す
+
+```text
+GRANT USAGE ON *.* TO `app_rw`@`10.0.1.25`
+GRANT SELECT, INSERT, UPDATE, DELETE ON `myapp`.* TO `app_rw`@`10.0.1.25`
+```
+
+`USAGE` は「何でも使える」という意味ではなく、グローバル権限を付与していないアカウントが存在することを表します。
+
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="設定内容をチェックしている人のイラスト"
+  caption="GRANTしたらSHOW GRANTSで、想定より広くも狭くもないか確認する"
+  maxWidth="360px"
+/>
+
+## ロールで権限セットを再利用する
+
+同じ権限を複数ユーザーへ繰り返し付与すると、変更時に漏れが出ます。ロールは権限をまとめるためのアカウントです。
+
+```sql
+CREATE ROLE 'app_reader', 'app_writer';
+
+GRANT SELECT
+ON myapp.*
+TO 'app_reader';
+
+GRANT INSERT, UPDATE, DELETE
+ON myapp.*
+TO 'app_writer';
+```
+
+作成したロールをユーザーへ割り当て、接続時に有効になる既定ロールを設定します。
+
+```sql
+GRANT 'app_reader', 'app_writer'
+TO 'app_rw'@'10.0.1.25';
+
+SET DEFAULT ROLE 'app_reader', 'app_writer'
+TO 'app_rw'@'10.0.1.25';
+```
+
+<Callout type="note" title="付与しただけでは有効とは限らない">
+ロールはユーザーへ割り当てるだけでなく、既定ロールに設定するか、セッション内で `SET ROLE` して有効化します。確認には `SELECT CURRENT_ROLE();` を使います。
+</Callout>
+
+部署やアプリケーション単位でロールを作ると、「誰に何を許したか」ではなく「この役割に何を許すか」を管理できます。
+
+## REVOKE・ALTER USER・DROP USERで変更する
+
+不要になった権限は明示的に取り消します。
+
+```sql
+REVOKE DELETE
+ON myapp.*
+FROM 'app_rw'@'10.0.1.25';
+```
+
+**結果：** 指定した権限だけを対象アカウントから取り消す
+
+一時的に接続を止めるなら、削除せずロックできます。
+
+```sql
+ALTER USER 'app_rw'@'10.0.1.25' ACCOUNT LOCK;
+
+ALTER USER 'app_rw'@'10.0.1.25' ACCOUNT UNLOCK;
+```
+
+パスワードを更新するときも `ALTER USER` を使います。
+
+```sql
+ALTER USER 'app_rw'@'10.0.1.25'
+  IDENTIFIED BY 'new-generated-secret';
+```
+
+アカウントが完全に不要になったら削除します。
+
+```sql
+DROP USER 'app_rw'@'10.0.1.25';
+```
+
+アプリケーションの設定変更より先に削除すると接続障害になるため、新しい認証情報で接続できることを確認してから古いアカウントを止めます。
+
+## 認証情報を安全に運用する
+
+- 本番アプリケーションは `root` で接続しない
+- ソースコードやDockerイメージへパスワードを埋め込まない
+- 接続元を限定できるなら `'%'` より狭くする
+- ネットワーク越しの接続はTLSを使う
+- 用途ごとに別アカウントを作り、共有を避ける
+- 定期的に `SHOW GRANTS` と利用状況を棚卸しする
+- ローテーションでは新旧認証情報の共存期間を作る
+- 退職者・終了したバッチ・廃止サービスのアカウントを残さない
+
+<Callout type="warning" title="権限テーブルを直接UPDATEしない">
+`mysql.user` などのシステムテーブルを直接変更せず、`CREATE USER`、`ALTER USER`、`GRANT`、`REVOKE` を使います。正式な文を使えば、サーバーが整合性の確認と権限情報の反映を行います。
+</Callout>
+
+## よくあるハマりどころ
+
+### GRANTだけでユーザーも作られると思う
+
+古いMySQLの情報では `GRANT` と同時にアカウントを作る例があります。MySQL 8.4では、`CREATE USER` でアカウントを作ってから `GRANT` します。
+
+### userだけを見てhostを見落とす
+
+`'app'@'localhost'` に権限を付けても、コンテナや別ホストから接続する `'app'@'%'` には反映されません。`CURRENT_USER()` と `SHOW GRANTS` で実際に一致したアカウントを確認します。
+
+### ロールを割り当てただけで有効だと思う
+
+ロールが割り当て済みでも、既定ロールでなければ再接続時に有効になりません。`SET DEFAULT ROLE` と `CURRENT_ROLE()` まで確認します。
+
+### バックアップ処理へ書き込み権限を渡す
+
+バックアップは基本的に読み取り処理です。必要な補助権限だけを追加し、`INSERT`、`UPDATE`、`DELETE` は渡しません。
+
+### WITH GRANT OPTIONをアプリへ付ける
+
+`WITH GRANT OPTION` は、自分が持つ権限を他アカウントへ付与できる権限です。通常のアプリケーションには不要で、侵害時の横展開を容易にします。
+
+## ちゃんと使うためのポイント
+
+- MySQLアカウントは `'user'@'host'` の組み合わせで識別される
+- `CREATE USER` で認証主体を作り、`GRANT` で権限を別に付与する
+- アプリケーションにはDMLだけを付け、DDL・ユーザー管理・`GRANT OPTION` を渡さない
+- アプリ、マイグレーション、参照、バックアップでアカウントを分ける
+- `SHOW GRANTS` で、付与後の実際の権限を確認する
+- 共通の権限セットはロールへまとめ、`SET DEFAULT ROLE` で接続時に有効化する
+- 不要な権限は `REVOKE`、一時停止は `ACCOUNT LOCK`、廃止は `DROP USER` で行う
+- 認証情報はGitへ入れず、TLS・接続元制限・ローテーションを組み合わせる
+
+最小権限を作っても、データを失ったときに戻せなければ運用は完成しません。[バックアップ・スロークエリログ・設定運用](/books/mysql/backup-slow-query-log-and-configuration)では、`mysqldump` の取得と復元テスト、遅いSQLの発見、設定値の永続化を扱います。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — CREATE USER Statement](https://dev.mysql.com/doc/refman/8.4/en/create-user.html)
+- [MySQL 8.4 Reference Manual — GRANT Statement](https://dev.mysql.com/doc/refman/8.4/en/grant.html)
+- [MySQL 8.4 Reference Manual — SHOW GRANTS Statement](https://dev.mysql.com/doc/refman/8.4/en/show-grants.html)
+- [MySQL 8.4 Reference Manual — Using Roles](https://dev.mysql.com/doc/refman/8.4/en/roles.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="ユーザーと権限の知識を、4択クイズでアウトプットして定着させよう"
+/>

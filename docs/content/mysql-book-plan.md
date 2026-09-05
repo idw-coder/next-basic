@@ -17,11 +17,11 @@
 | 8 | トランザクションとロック（分離レベル・ギャップロック） | `transactions-and-locks.mdx` | 公開済み |
 | 9 | MySQLの方言（ON DUPLICATE KEY UPDATE / GROUP_CONCAT / ウィンドウ関数） | `mysql-specific-sql.mdx` | 公開済み |
 | 10 | Node.jsからMySQLに接続する — mysql2のコネクションプール入門 | `nodejs-mysql2-connection-pool.mdx` | 公開済み |
-| 11 | スキーマ変更とマイグレーション（ALTER TABLE / オンラインDDL） | — | 未執筆 |
-| 12 | ユーザーと権限（GRANT / 最小権限） | — | 未執筆 |
-| 13 | 運用（mysqldump / スロークエリログ / my.cnf） | — | 未執筆 |
+| 11 | スキーマ変更とマイグレーション（ALTER TABLE / オンラインDDL） | `schema-migrations-and-online-ddl.mdx` | 公開済み |
+| 12 | ユーザーと権限（GRANT / 最小権限） | `users-roles-and-privileges.mdx` | 公開済み |
+| 13 | 運用（mysqldump / スロークエリログ / my.cnf） | `backup-slow-query-log-and-configuration.mdx` | 公開済み |
 
-公開済みは1〜10の10章。基礎からNode.jsでの接続まで連続して読める状態で、11〜13は未執筆。
+全13章を公開済み。MySQLへの接続からテーブル設計、クエリ改善、Node.jsでの利用、マイグレーション、権限、バックアップと監視まで連続して読める。
 
 章と章のあいだに差し込みたくなった場合は、既存の `order` を動かさず**小数**を使う（`order: 5.5`）。`chapterLabel` を添えれば読者向けの表示も自然にできる。javascript本の `7.1`〜`7.5` が実例。
 

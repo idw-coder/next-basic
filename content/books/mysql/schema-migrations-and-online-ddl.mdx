@@ -1,0 +1,314 @@
+---
+title: 'スキーマ変更とマイグレーション — ALTER TABLE・オンラインDDL・安全なリリース'
+description: 'MySQL 8.4でALTER TABLEを安全に実行するために、ALGORITHM=INSTANT・INPLACE・COPY、LOCK句、メタデータロック、後方互換性を保つマイグレーション手順を解説します。'
+order: 11
+---
+
+[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)までで、アプリケーションからテーブルを利用できるようになりました。しかし、リリース後もテーブル定義は変わります。列の追加、型の変更、インデックスの追加を、本番データが入った状態で行わなければなりません。
+
+開発環境で一瞬だった `ALTER TABLE` が、本番では長時間のロックやディスク不足を起こすことがあります。この章ではSQLの書き方だけでなく、**変更中も旧版と新版のアプリケーションが動ける出し方**まで扱います。
+
+## ALTER TABLEで変更できること
+
+`ALTER TABLE` は既存テーブルの定義を変更する文です。
+
+**構文：** `ALTER TABLE テーブル名 変更内容 [, 変更内容 ...] [ALGORITHM=方式] [LOCK=方式]`
+
+| 指定 | 説明 |
+| --- | --- |
+| テーブル名 | 変更する既存テーブル |
+| 変更内容 | `ADD COLUMN`、`DROP COLUMN`、`MODIFY COLUMN`、`ADD INDEX` など |
+| `ALGORITHM` | 変更を処理する方式。省略時はMySQLが選ぶ |
+| `LOCK` | 処理中に許可する同時アクセス。対応する操作でのみ指定できる |
+
+**結果：** テーブル定義を変更する。行を返さず、処理時間とロック範囲は変更内容・データ量・選ばれたアルゴリズムで変わる
+
+よく使う変更は次のとおりです。
+
+```sql
+-- 列を追加する
+ALTER TABLE users
+  ADD COLUMN nickname VARCHAR(100) NULL;
+
+-- 列名を変える
+ALTER TABLE users
+  RENAME COLUMN nickname TO display_name;
+
+-- 型とNULL可否を変える
+ALTER TABLE users
+  MODIFY COLUMN display_name VARCHAR(200) NOT NULL;
+
+-- インデックスを追加する
+ALTER TABLE users
+  ADD INDEX idx_users_created_at (created_at);
+
+-- 列を削除する
+ALTER TABLE users
+  DROP COLUMN display_name;
+```
+
+<Callout type="warning" title="変更前の定義を省略しない">
+`MODIFY COLUMN` と `CHANGE COLUMN` は、書かなかった属性を維持してくれる構文ではありません。`NOT NULL`、既定値、文字コードなどを含め、変更後の完全な列定義を書きます。先に `SHOW CREATE TABLE users\G` で現在の定義を確認してください。
+</Callout>
+
+## DDLはROLLBACKで戻らない
+
+`ALTER TABLE`、`CREATE TABLE`、`DROP TABLE` などのDDLは、実行前に現在のトランザクションを暗黙にコミットします。`START TRANSACTION` で囲んでも、アプリケーションのデータ更新と一緒には戻せません。
+
+```sql
+START TRANSACTION;
+
+UPDATE users SET status = 'inactive' WHERE id = 10;
+
+ALTER TABLE users ADD COLUMN memo VARCHAR(255);
+-- ALTER TABLEの直前にUPDATEもコミットされる
+
+ROLLBACK;
+-- UPDATEも列追加も元には戻らない
+```
+
+MySQL 8.4の「アトミックDDL」は、サーバー停止などでDDLが途中失敗したときに、定義変更・データ辞書・バイナリログを**すべて反映するか、すべて破棄するか**を保証する仕組みです。ユーザーが `ROLLBACK` できる、という意味ではありません。
+
+<Marker>DDLの失敗時ロールバックはMySQLが行う。リリース後に元へ戻す手順は、利用者が別のマイグレーションとして用意します。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+列を消したあとに不具合へ気づいたら、逆向きのALTER TABLEで戻せばよいですか？
+</SpeechBubble>
+
+定義は戻せても、削除した列のデータは戻りません。破壊的変更を同じリリースで行わず、旧列を残す期間を設ける理由がここにあります。
+
+## オンラインDDLの3つのアルゴリズム
+
+InnoDBの `ALTER TABLE` には、主に3つの処理方式があります。
+
+| アルゴリズム | 主な処理 | 行データの再構築 | 一般的な負荷 |
+| --- | --- | --- | --- |
+| `INSTANT` | データ辞書などのメタデータだけを変更 | なし | 最小 |
+| `INPLACE` | 元テーブルを保ったまま内部処理 | 操作による | 中〜大 |
+| `COPY` | 新しいテーブルを作り、全行をコピー | あり | 最大 |
+
+MySQL 8.4では、対応する操作なら `INSTANT` が既定で優先されます。ただし「ALTER TABLEだからオンライン」ではありません。列の型変更など、`COPY` が必要になる操作もあります。
+
+列追加をメタデータ変更だけに限定したいなら、方式を明示します。
+
+```sql
+ALTER TABLE users
+  ADD COLUMN profile_note VARCHAR(255) NULL,
+  ALGORITHM=INSTANT;
+```
+
+この操作が `INSTANT` に対応していなければ、MySQLは重い方式へ自動で切り替えず、その場でエラーにします。これは本番で予想外の全行コピーを始めないための安全装置になります。
+
+インデックス追加では、書き込みを許可できる方式かも明示できます。
+
+```sql
+ALTER TABLE orders
+  ADD INDEX idx_orders_customer_created (customer_id, created_at),
+  ALGORITHM=INPLACE,
+  LOCK=NONE;
+```
+
+**構文：** `ALGORITHM={INSTANT|INPLACE|COPY}`
+
+| 値 | 意味 |
+| --- | --- |
+| `INSTANT` | 対応するメタデータ変更だけを許可する |
+| `INPLACE` | テーブル全体のコピーを行わない方式だけを許可する |
+| `COPY` | 新しいテーブルへ行をコピーする方式を使う |
+
+**結果：** 指定した方式を使えれば変更を実行し、使えなければエラーで停止する
+
+<Callout type="note" title="INPLACEは一瞬という意味ではない">
+`INPLACE` でも、全行の読み取り、インデックス構築、一時領域が必要になることがあります。名前が示すのは主な実装方式であり、処理時間の短さではありません。
+</Callout>
+
+## LOCK=NONEでもメタデータロックは取る
+
+`LOCK=NONE` は、対応するオンラインDDLの処理中に読み書きを許可する指定です。それでも、DDLの開始時と終了時にはテーブル定義を安全に切り替えるための**メタデータロック**が必要です。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    T["長いトランザクション"] --> M["メタデータロックを保持"]
+    D["ALTER TABLE"] --> W["ロック待ち"]
+    M --> W
+    W --> Q["後続クエリも待機"]
+`}
+/>
+
+別接続がトランザクションを開いたまま対象テーブルを使っていると、DDLはその終了まで待ちます。
+
+```sql
+-- 接続A
+START TRANSACTION;
+SELECT * FROM orders WHERE id = 100;
+-- COMMITせず放置
+
+-- 接続B
+ALTER TABLE orders ADD COLUMN note VARCHAR(255), ALGORITHM=INSTANT;
+-- Waiting for table metadata lock
+```
+
+待機中の接続は、まず次で確認できます。
+
+```sql
+SHOW FULL PROCESSLIST;
+```
+
+詳しく調べる場合はPerformance Schemaを使います。
+
+```sql
+SELECT
+  OBJECT_SCHEMA,
+  OBJECT_NAME,
+  LOCK_TYPE,
+  LOCK_DURATION,
+  LOCK_STATUS,
+  OWNER_THREAD_ID
+FROM performance_schema.metadata_locks
+WHERE OBJECT_SCHEMA = 'myapp'
+  AND OBJECT_NAME = 'orders';
+```
+
+<Marker>オンラインDDLの前には、対象テーブルだけでなく長時間トランザクションとメタデータロック待ちを確認します。</Marker>
+
+## 後方互換性を保つexpand・migrate・contract
+
+アプリケーションとDDLを同時に完全同期させるのは難しいため、旧版・新版のどちらでも動く期間を作ります。典型的なのが **expand → migrate → contract** です。
+
+例として、`users.name` を `users.display_name` へ移行します。
+
+### 1. expand — 新しい定義を足す
+
+まず新しい列をNULL許可で追加します。旧アプリケーションは新しい列を知らなくても動きます。
+
+```sql
+ALTER TABLE users
+  ADD COLUMN display_name VARCHAR(200) NULL,
+  ALGORITHM=INSTANT;
+```
+
+次に、アプリケーションを一時的に新旧両方の列へ書き込む形でリリースします。
+
+### 2. migrate — 既存データを移す
+
+既存行を一度に更新せず、主キー範囲などで小さく分けます。
+
+```sql
+UPDATE users
+SET display_name = name
+WHERE id > 0 AND id <= 10000
+  AND display_name IS NULL;
+```
+
+バッチごとにコミットし、負荷・ロック待ち・レプリケーション遅延がある環境ではその遅延も監視します。完了件数だけでなく、未移行件数が0になったことを確認します。
+
+```sql
+SELECT COUNT(*) AS remaining
+FROM users
+WHERE display_name IS NULL;
+```
+
+### 3. 読み取り先を切り替える
+
+新しい列を読むアプリケーションをリリースします。旧列への書き込みは、切り戻し期間が終わるまで残します。
+
+### 4. contract — 古い定義を消す
+
+すべてのアプリケーションが旧列を使わなくなったことを確認し、別のリリースで削除します。
+
+```sql
+ALTER TABLE users
+  DROP COLUMN name,
+  ALGORITHM=INSTANT;
+```
+
+<Figure
+  src="/images/planning_suit_man_color.png"
+  alt="段階的な作業計画を立てている人のイラスト"
+  caption="追加・移行・切り替え・削除を別々のリリースへ分ける"
+  maxWidth="360px"
+/>
+
+<Marker>追加は先、削除は最後。後方互換性のない変更を1回のデプロイへ詰め込まないことが、切り戻せるマイグレーションの基本です。</Marker>
+
+## マイグレーションファイルを履歴として残す
+
+本番で実行したSQLをチャットや作業メモだけに残すと、別環境を同じ状態へ再現できません。利用するフレームワークの仕組みに合わせ、マイグレーションファイルをアプリケーションと同じリポジトリで管理します。
+
+1つの変更には、少なくとも次を記録します。
+
+| 項目 | 例 |
+| --- | --- |
+| 一意な順序 | タイムスタンプや連番 |
+| 適用するSQL | 列追加、インデックス追加など |
+| 前提 | 対象テーブル、必要なバージョン |
+| 切り戻し方針 | 逆向きDDL、機能フラグ、バックアップから復元など |
+| 実行後の確認 | 列・インデックス・未移行件数の確認SQL |
+
+<Callout type="warning" title="適用済みファイルを書き換えない">
+共有環境へ一度適用したマイグレーションに誤りが見つかったら、過去のファイルを編集せず、修正用の新しいマイグレーションを追加します。過去を書き換えると、すでに適用した環境と新規構築した環境で履歴が食い違います。
+</Callout>
+
+## 実行前に見積もる
+
+DDLを本番へ出す前に、次を確認します。
+
+- `SHOW CREATE TABLE` で現在の定義を保存する
+- MySQL 8.4のオンラインDDL対応表で、対象操作の方式を確認する
+- ステージング環境で、本番に近い行数・データ分布を使って所要時間を測る
+- 一時領域を含め、ディスク空き容量を確認する
+- 長時間トランザクションとメタデータロック待ちを確認する
+- タイムアウト、監視項目、中止条件を作業前に決める
+- 破壊的変更なら、復元できるバックアップを先に確認する
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+SQLが正しいことと、本番で安全に終わることは別問題だよ。方式・時間・ロック・空き容量までがDDLの設計なんだ。
+</SpeechBubble>
+
+## よくあるハマりどころ
+
+### 小さな開発DBの実行時間を信じる
+
+全行コピーやインデックス構築は行数に応じて重くなります。数百行で一瞬だった結果は、数千万行の見積もりにはなりません。
+
+### ALGORITHMを省略して重い方式へ落ちる
+
+MySQLは実行可能な方式を選びます。可用性を優先する変更では `ALGORITHM=INSTANT` や `ALGORITHM=INPLACE` を明示し、使えなければ失敗させます。
+
+### DDLをトランザクションで戻せると思う
+
+DDLは暗黙コミットを起こします。アプリケーションの更新トランザクションへ混ぜず、独立した変更として扱います。
+
+### 列追加と旧列削除を同時に出す
+
+デプロイ中には旧版プロセスが残ることがあります。旧列を消すと、そのプロセスだけが失敗します。削除は利用状況を確認した別リリースで行います。
+
+### ALTER TABLEが待っているだけだから放置する
+
+メタデータロック待ちのDDLが、後続のアクセスまで並ばせることがあります。実行前に長時間トランザクションを解消し、開始後も `SHOW PROCESSLIST` を監視します。
+
+## ちゃんと使うためのポイント
+
+- `ALTER TABLE` はDDLであり、暗黙コミットを起こしてユーザーの `ROLLBACK` では戻らない
+- `INSTANT` はメタデータ中心、`INPLACE` はコピーを避ける方式、`COPY` は全行を新テーブルへ移す方式
+- `ALGORITHM` と `LOCK` を明示すると、許容できない方式へ自動で落ちるのを防げる
+- `LOCK=NONE` でも、定義切り替えに必要なメタデータロックはなくならない
+- 変更はexpand・migrate・contractへ分け、新旧アプリケーションが共存できる期間を作る
+- 適用済みマイグレーションは編集せず、追加のファイルで修正する
+- 本番前に方式・時間・ロック・ディスク・切り戻し方針を確認する
+
+スキーマを安全に変えられても、アプリケーションが管理者権限で接続していれば、誤操作や侵害時の被害は抑えられません。[ユーザーと権限](/books/mysql/users-roles-and-privileges)では、`CREATE USER`、`GRANT`、ロールを使って接続元ごとの権限を分けます。
+
+## 参考リンク
+
+- [MySQL 8.4 Reference Manual — InnoDB and Online DDL](https://dev.mysql.com/doc/refman/8.4/en/innodb-online-ddl.html)
+- [MySQL 8.4 Reference Manual — Online DDL Operations](https://dev.mysql.com/doc/refman/8.4/en/innodb-online-ddl-operations.html)
+- [MySQL 8.4 Reference Manual — Statements That Cause an Implicit Commit](https://dev.mysql.com/doc/refman/8.4/en/implicit-commit.html)
+- [MySQL 8.4 Reference Manual — Metadata Locking](https://dev.mysql.com/doc/refman/8.4/en/metadata-locking.html)
+
+<QuizLink
+  href="/quiz/sql-basic"
+  title="SQLクイズに挑戦する"
+  description="DDLとテーブル設計の知識を、4択クイズでアウトプットして定着させよう"
+/>

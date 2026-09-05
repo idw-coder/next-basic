@@ -122,21 +122,21 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
   ],
 
   mysql: [
-    'コネクションプール',
     'mysql2',
     'max_connections',
-    'wait_timeout',
     'DECIMAL',
     'JSON',
-    'AUTO_INCREMENT',
     'utf8mb4',
-    'collation',
     'InnoDB',
     'EXPLAIN',
     'FOR UPDATE',
     'ON DUPLICATE KEY UPDATE',
-    'GROUP_CONCAT',
     'ROW_NUMBER',
+    'ALTER TABLE',
+    'ALGORITHM=INSTANT',
+    'GRANT',
+    'mysqldump',
+    'slow_query_log',
   ],
 
   sqlite: [
