@@ -1,0 +1,312 @@
+---
+title: 'Fastifyのログ — Pinoで構造化ログを記録する'
+description: 'Fastifyの組み込みロガーを使い、ログレベル、request.log、リクエストID、環境別設定、機密情報のマスキングを学びます。'
+order: 11.5
+chapterLabel: '発展：ログ設計'
+---
+
+APIを公開した後は、利用者から「エラーになった」と連絡を受けても、その場面を自分の画面で再現できるとは限りません。いつ、どのリクエストで、どの処理まで進み、何に失敗したのかを後から調べる手がかりがログです。
+
+FastifyにはPinoベースのロガーが組み込まれています。この章では、単に文字を表示するだけでなく、検索しやすく安全なログを設計します。
+
+## `console.log()`と構造化ログの違い
+
+`console.log()`でも文字は残せますが、すべてを1本の文字列にすると、後から条件を指定して探しにくくなります。
+
+```js
+console.log(`Todo ${todo.id} was created by user ${user.id}`);
+```
+
+Fastifyのロガーでは、値をオブジェクトとして渡せます。
+
+```js
+request.log.info(
+  { todoId: todo.id, userId: user.id },
+  'todo created',
+);
+```
+
+出力されるJSONログは、次のような形です。
+
+```json
+{
+  "level": 30,
+  "time": 1788652800000,
+  "reqId": "req-1",
+  "todoId": 42,
+  "userId": 7,
+  "msg": "todo created"
+}
+```
+
+`todoId`や`userId`が独立した項目なので、「`todoId`が42のログだけを探す」といった検索や集計ができます。このように、機械が項目ごとに扱える形で残すものを**構造化ログ**と呼びます。
+
+<Marker>人が読むメッセージと、検索に使う値を分けるのが構造化ログの基本です。</Marker>
+
+## `fastify.log`と`request.log`を使い分ける
+
+Fastifyには、主に2つのログの入口があります。
+
+| ロガー | 使う場所 | 特徴 |
+| ------ | -------- | ---- |
+| `fastify.log` | 起動、終了、バックグラウンド処理 | アプリケーション全体のロガー |
+| `request.log` | ルートハンドラ、hook、エラー処理 | 処理中のリクエスト情報を引き継ぐロガー |
+
+```js
+fastify.log.info('server is ready');
+
+fastify.get('/todos/:id', async (request) => {
+  request.log.info(
+    { todoId: request.params.id },
+    'fetching todo',
+  );
+
+  return findTodo(request.params.id);
+});
+```
+
+ルートハンドラの中では、基本的に`request.log`を使います。Fastifyがリクエストごとに作る子ロガーなので、同じリクエストのログに`reqId`が自動で付きます。
+
+**構文：** `request.log.info(object?, message?)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `object`（省略可） | object | 検索や集計に使う値。`todoId`や`err`などを渡す |
+| `message`（省略可） | string | 人が読んで処理内容を理解するための短い説明 |
+
+**戻り値：** ありません。指定したレベルが現在の設定で有効な場合にログを出力します。
+
+`info`の部分は、用途に応じて`debug`、`warn`、`error`などへ置き換えます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  IDもメッセージの中に書けば、あとから検索できませんか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  文字列検索は表記の揺れに弱いんだ。値を`todoId`のような項目に分けると、ログが増えても正確に絞り込めるよ。
+</SpeechBubble>
+
+## ログレベルを選ぶ
+
+ログレベルは、その出来事がどれくらい重要かを表します。Fastifyでロガーを有効にした場合、既定では`info`以上が出力されます。
+
+| レベル | 使う場面 | 例 |
+| ------ | -------- | -- |
+| `trace` | 非常に細かい処理経過 | ライブラリ内部の調査 |
+| `debug` | 開発中の調査情報 | 分岐で選ばれた値 |
+| `info` | 正常な重要イベント | 作成完了、サーバー起動 |
+| `warn` | 継続できるが注意が必要 | 外部APIの再試行、非推奨な入力 |
+| `error` | 処理に失敗した | DB接続失敗、予期しない例外 |
+| `fatal` | プロセスを継続できない | 起動に必要な設定がない |
+
+```js
+request.log.debug({ todoId }, 'looking up todo');
+request.log.info({ todoId }, 'todo found');
+request.log.warn({ todoId }, 'todo is already completed');
+```
+
+すべてを`info`にすると、本当に注意したい出来事が埋もれます。一方、正常な入力ミスまで`error`にすると、障害の件数を正しく判断できません。
+
+<Marker>`error`は運用者が調査すべき失敗、`warn`は処理を続けられる異常、`info`は正常な重要イベントに使います。</Marker>
+
+出力する最低レベルは、ロガーの`level`で指定できます。
+
+```js
+const fastify = Fastify({
+  logger: {
+    level: process.env.LOG_LEVEL ?? 'info',
+  },
+});
+```
+
+本番で一時的に詳しい調査が必要になった場合も、コードを書き換えず`LOG_LEVEL=debug`のように切り替えられます。ただし`debug`には情報を詰め込みすぎず、機密情報を出さないルールはどのレベルでも守ります。
+
+## `reqId`で1つのリクエストを追う
+
+1回のHTTPリクエストでも、認証、ルートハンドラ、service、DBアクセスなど複数の処理を通ります。時刻だけを頼りにすると、同時に届いた別のリクエストと見分けにくくなります。
+
+Fastifyは各リクエストにIDを割り当て、`request.id`から参照できるようにします。`request.log`で出したログにも、同じ値が`reqId`として含まれます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["HTTPリクエスト"] --> B["認証"]
+    B --> C["handler"]
+    C --> D["DBアクセス"]
+    D --> E["HTTPレスポンス"]
+    F["同じreqId"] --> B
+    F --> C
+    F --> D
+  `}
+/>
+
+```js
+fastify.get('/todos/:id', async (request) => {
+  request.log.info(
+    { todoId: request.params.id },
+    'fetching todo',
+  );
+
+  return findTodo(request.params.id);
+});
+```
+
+複数プロセスや複数サーバーをまたいでも衝突しにくいIDが必要なら、`genReqId`を設定できます。
+
+```js
+import { randomUUID } from 'node:crypto';
+import Fastify from 'fastify';
+
+const fastify = Fastify({
+  logger: true,
+  genReqId: () => randomUUID(),
+});
+```
+
+<Callout type="warning" title="外部から受け取るリクエストIDを信用しすぎない">
+  `requestIdHeader`を設定すると、指定したHTTPヘッダーの値を`reqId`として利用できます。ただしFastifyはその値を検証しません。長さや文字種を制限せずログへ入れると、ログを読みにくくされたり、不正な値を混ぜられたりする可能性があります。
+</Callout>
+
+## 開発・本番・テストで設定を切り替える
+
+本番のJSONログは検索や集計に向いていますが、ローカル開発では1行が長く感じられます。開発時だけ`pino-pretty`を使うと、色や時刻を付けて読みやすくできます。
+
+```bash
+npm install -D pino-pretty
+```
+
+```js
+const nodeEnv = process.env.NODE_ENV ?? 'development';
+
+const loggerByEnvironment = {
+  development: {
+    level: 'debug',
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'HH:MM:ss',
+        ignore: 'pid,hostname',
+      },
+    },
+  },
+  production: {
+    level: process.env.LOG_LEVEL ?? 'info',
+  },
+  test: false,
+};
+
+const fastify = Fastify({
+  logger: loggerByEnvironment[nodeEnv] ?? true,
+});
+```
+
+| 環境 | 設定 | 目的 |
+| ---- | ---- | ---- |
+| 開発 | `pino-pretty`、`debug` | 人がターミナルで調査しやすくする |
+| 本番 | JSON、`info`以上 | ログ基盤で検索・集計しやすくする |
+| テスト | `false` | 通常のテスト結果を読みやすく保つ |
+
+`pino-pretty`は開発用の依存関係として追加します。本番ではJSONのまま標準出力へ流し、保存、転送、保持期間の管理は実行環境のログ基盤に任せる構成が基本です。
+
+## パスワードやトークンを記録しない
+
+ログは障害調査のために長期間保存されたり、多くの運用担当者が閲覧できたりします。パスワード、アクセストークン、Cookie、決済情報、必要以上の個人情報は記録しません。
+
+Pinoの`redact`を設定すると、指定したパスの値をマスキングできます。
+
+```js
+const fastify = Fastify({
+  logger: {
+    level: 'info',
+    redact: [
+      'req.headers.authorization',
+      'req.headers.cookie',
+      'body.password',
+      'body.token',
+    ],
+  },
+});
+```
+
+```js
+request.log.info(
+  {
+    body: {
+      email: request.body.email,
+      password: request.body.password,
+    },
+  },
+  'sign-in requested',
+);
+```
+
+`redact`は万一の出力を防ぐ安全網です。リクエストボディやヘッダーを丸ごとログへ渡すのではなく、調査に必要な項目だけを選ぶことが先です。
+
+<Figure src="/images/search_woman_color.png" alt="必要なログを検索する人" maxWidth="180px" caption="必要な項目だけを安全に残すと、障害発生時の調査が速くなる" />
+
+## エラーを原因情報と一緒に残す
+
+予期しない例外は、メッセージだけでなく`Error`オブジェクトを`err`というキーで渡します。Pinoのserializerによって、エラー名、メッセージ、スタックトレースなどがログ用の形に変換されます。
+
+```js
+fastify.setErrorHandler((error, request, reply) => {
+  request.log.error(
+    { err: error },
+    'request failed',
+  );
+
+  return reply.code(500).send({
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'サーバーエラーが発生しました',
+    },
+  });
+});
+```
+
+利用者へのレスポンスには内部のエラー詳細を含めず、詳しい原因はログに残します。レスポンスとログの役割分担は、[エラーハンドリングの章](/books/fastify/error-handling)でも確認できます。
+
+## よくあるハマりどころ
+
+### ロガーを後から有効にしようとする
+
+Fastifyのロガーは、インスタンス作成時に有効にします。`logger: false`で作成したインスタンスのロガーを、途中から有効にはできません。環境別の切り替えも`Fastify()`へ渡す設定で行います。
+
+### 同じ情報を文字列と項目へ重複して入れる
+
+```js
+// todoIdが文字列の中にしかない
+request.log.info(`created todo ${todo.id}`);
+
+// 検索する値と説明を分ける
+request.log.info({ todoId: todo.id }, 'todo created');
+```
+
+メッセージは短く安定させ、変化する値はオブジェクトへ分けます。
+
+### 正常なアクセスをすべて手作業で記録する
+
+`logger`を有効にすると、Fastifyはリクエストの受信と完了を記録します。各handlerで同じアクセスログを重ねるのではなく、「Todoを作成した」「外部APIの再試行が発生した」など、アプリケーション固有の出来事を追加します。
+
+## ちゃんと使うためのポイント
+
+- handlerやhookでは、リクエストIDを引き継ぐ`request.log`を使う
+- 検索したい値は、メッセージへ埋め込まずオブジェクトで渡す
+- `info`、`warn`、`error`を出来事の重要度に合わせて選ぶ
+- 開発では読みやすく、本番ではJSON、テストでは必要に応じて無効にする
+- パスワード、トークン、Cookie、必要以上の個人情報を記録しない
+- 予期しない例外は`{ err: error }`の形で残し、利用者には内部情報を返さない
+
+## 参考リンク
+
+- [Fastify Logging](https://fastify.dev/docs/latest/Reference/Logging/)
+- [Fastify Server Reference](https://fastify.dev/docs/latest/Reference/Server/)
+- [Pino公式サイト](https://getpino.io/)
+
+次章では、ログを含めて、CORS、環境変数、終了処理など本番運用前に確認したい項目を整理します。
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="エラー処理や環境変数など、ログ運用の土台になる知識をクイズで確認しよう"
+/>

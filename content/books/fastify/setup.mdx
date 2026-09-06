@@ -64,7 +64,7 @@ fastify.get('/', async () => {
 try {
   await fastify.listen({ port: 3000 });
 } catch (err) {
-  fastify.log.error(err);
+  fastify.log.error({ err }, 'server failed to start');
   process.exit(1);
 }
 ```
@@ -105,7 +105,7 @@ const fastify = Fastify({
 });
 ```
 
-`logger: true` を指定すると、Fastifyが内部で使うロガーが有効になります。リクエストのログやエラーを追いやすくなるため、学習中も本番でも基本的に有効にしておくとよいです。
+`logger: true`を指定すると、Fastifyが内部で使うロガーが有効になります。リクエストのログやエラーを追いやすくなるため、学習中も本番でも基本的に有効にしておくとよいです。構造化ログやログレベルについては、後半の[ログの章](/books/fastify/logging)で詳しく扱います。
 
 ## `listen()` の構文
 

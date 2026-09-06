@@ -1,6 +1,6 @@
 ---
 title: 'Fastifyのルーティング — GET・POST・パスパラメータを定義する'
-description: 'FastifyでHTTPメソッド、URL、パスパラメータ、クエリ文字列を扱う基本を学びます。'
+description: 'FastifyでHTTPメソッド、URL、route options、パスパラメータ、クエリ文字列を扱う基本を学びます。'
 order: 3
 ---
 
@@ -19,12 +19,26 @@ fastify.get('/todos', async () => {
 | 引数 | 型 | 説明 |
 | ---- | -- | ---- |
 | `path` | string | URLのパス。`:id` のようにパスパラメータを定義できる |
-| `options` | object | schema、hooks、ログ設定など。省略できる |
+| `options` | object | schema、hooks、[ログ設定](/books/fastify/logging)など。省略できる |
 | `handler` | function | リクエストを処理する関数 |
 
 **戻り値：** Fastifyインスタンス。通常は戻り値を意識せず、登録処理として使います。
 
-`options` を使わない場合は、第2引数にhandlerを書けます。
+## 第2引数はoptionsにもhandlerにもなる
+
+Fastifyのショートハンドメソッドには、次の2つの書き方があります。
+
+```js
+fastify.get(path, handler);
+fastify.get(path, options, handler);
+```
+
+| 引数の数 | 第2引数 | 第3引数 |
+| -------- | ------- | ------- |
+| 2つ | handler | なし |
+| 3つ | options | handler |
+
+`options`を使わない場合は、第2引数にhandlerを書きます。
 
 ```js
 fastify.get('/health', async () => {
@@ -32,7 +46,196 @@ fastify.get('/health', async () => {
 });
 ```
 
-`schema` などを指定する場合は、第2引数にoptions、第3引数にhandlerを書きます。
+`schema`などを指定する場合は、第2引数にoptions、第3引数にhandlerを書きます。
+
+```js
+fastify.get('/todos', {
+  schema: todoListSchema,
+}, async () => {
+  return todos;
+});
+```
+
+<Marker>引数が2つなら第2引数はhandler、3つなら第2引数はそのルート専用のoptionsです。</Marker>
+
+## ルートを登録するとは
+
+`fastify.get()`や`fastify.post()`を呼ぶと、その場でhandlerが実行されるわけではありません。「このHTTPメソッドとURLにリクエストが届いたら、このhandlerを実行する」という対応関係がFastifyへ登録されます。
+
+```js
+const fastify = Fastify({ logger: true });
+
+// GET /todosとhandlerの対応関係を登録する
+fastify.get('/todos', async () => {
+  return todos;
+});
+
+// 登録を終えてからリクエストの受け付けを開始する
+await fastify.listen({ port: 3000 });
+```
+
+`get()`、`post()`、`patch()`などのショートハンドと`fastify.route()`は、いずれもルートを登録するAPIです。基本的には必要なルートを登録してから`listen()`を呼びます。登録されたHTTPメソッドとURLに一致するリクエストが届いたとき、対応するhandlerが実行されます。
+
+<Marker>ルート登録は処理の予約、handler実行はリクエストが届いた後です。</Marker>
+
+ルートが増えてきたら、Todo関連、ユーザー関連、管理画面関連のようにルート群をplugin関数へ分け、`fastify.register()`で登録します。
+
+```js
+import { todoRoutes } from './routes/todos.js';
+import { userRoutes } from './routes/users.js';
+
+fastify.register(todoRoutes, { prefix: '/todos' });
+fastify.register(userRoutes, { prefix: '/users' });
+```
+
+```js
+// routes/todos.js
+export async function todoRoutes(fastify) {
+  fastify.get('/', async () => {
+    return todos;
+  });
+
+  fastify.get('/:id', async (request) => {
+    return findTodo(request.params.id);
+  });
+}
+```
+
+この例では、plugin内の`/`が`GET /todos`、`/:id`が`GET /todos/:id`として登録されます。`register()`の構文、`prefix`、pluginごとの影響範囲については、[pluginsとencapsulationの章](/books/fastify/plugins-and-encapsulation)で詳しく解説します。
+
+## route optionsで何を設定できるか
+
+route optionsは、特定のルートにだけ適用する設定をまとめたオブジェクトです。入力の検証、認証などの前処理、ログ、リクエストサイズの上限といった振る舞いをhandlerの外側へ分けられます。
+
+よく使う項目は次のとおりです。
+
+| 項目 | 役割 | 詳細 |
+| ---- | ---- | ---- |
+| `schema` | body、params、querystring、responseの形式を定義する | [schema validationの章](/books/fastify/schema-validation) |
+| `onRequest`、`preHandler`など | そのルートだけに前処理や後処理を追加する | [hooksの章](/books/fastify/hooks) |
+| `errorHandler` | そのルート専用のエラー処理を定義する | [エラーハンドリングの章](/books/fastify/error-handling) |
+| `logLevel` | そのルートのログレベルを指定する | [ログの章](/books/fastify/logging) |
+| `bodyLimit` | 受け付けるリクエストボディの最大バイト数を指定する | この章で後述 |
+| `config` | アプリケーション独自のメタデータを保存する | この章で後述 |
+| `attachValidation` | validation errorを自動送信せずrequestへ渡す | 発展的なエラー処理で使用 |
+| `constraints` | HostやAPIバージョンなど、ルートが一致する条件を追加する | 発展的なルーティングで使用 |
+
+Fastifyにはほかにもroute optionsがありますが、最初からすべて覚える必要はありません。まずは`schema`と`preHandler`を中心に、必要になった設定を追加していけば十分です。
+
+## 複数のoptionsを組み合わせる
+
+route optionsの各項目は、1つのオブジェクト内で組み合わせられます。Todo作成APIに入力検証、認証、ボディサイズの上限、独自メタデータを付ける例を見てみましょう。
+
+```js
+const createTodoOptions = {
+  schema: {
+    body: {
+      type: 'object',
+      required: ['title'],
+      properties: {
+        title: { type: 'string', minLength: 1 },
+      },
+    },
+  },
+  preHandler: async (request, reply) => {
+    if (!request.headers.authorization) {
+      return reply.code(401).send({ error: 'UNAUTHORIZED' });
+    }
+  },
+  bodyLimit: 16 * 1024,
+  config: {
+    permission: 'todo:create',
+  },
+};
+
+fastify.post('/todos', createTodoOptions, async (request, reply) => {
+  const todo = createTodo(request.body.title);
+  return reply.code(201).send(todo);
+});
+```
+
+handlerには「Todoを作る」という中心処理を残し、その前後のルールをoptionsへ分けています。`schema`とhookの詳しい動作は後続章で扱うため、ここでは「ルートごとの設定を第2引数にまとめられる」と捉えてください。
+
+## `bodyLimit`で受信サイズを制限する
+
+`bodyLimit`には、そのルートで受け付けるリクエストボディの最大サイズをバイト単位で指定します。
+
+```js
+fastify.post('/todos/import', {
+  bodyLimit: 64 * 1024,
+}, async (request) => {
+  return importTodos(request.body);
+});
+```
+
+この例の上限は64KiBです。上限を超えたリクエストはhandlerへ到達する前に拒否されます。アプリ全体にも上限を設定できますが、route optionsへ書くと、インポートAPIなど特定のルートだけ別の値にできます。
+
+## `config`に独自情報を持たせる
+
+`config`はFastifyが用途を決めていない自由なオブジェクトです。権限名や監査対象かどうかなど、アプリケーション独自の情報をルートへ付けられます。
+
+```js
+fastify.get('/reports', {
+  config: {
+    permission: 'report:read',
+    audit: true,
+  },
+}, async (request) => {
+  const routeConfig = request.routeOptions.config;
+
+  return {
+    requiredPermission: routeConfig.permission,
+  };
+});
+```
+
+handlerやhookからは`request.routeOptions.config`で参照できます。複数ルートで共通のhookを使い、`config.permission`に応じて権限を判定する、といった設計に利用できます。
+
+<Callout type="warning" title="register()のoptionsとは別物">
+  `fastify.get()`の第2引数はroute optionsです。一方、`fastify.register(plugin, options)`の第2引数はpluginへ渡すoptionsです。どちらもoptionsと呼ばれますが、利用できる項目と影響範囲が異なります。pluginのoptionsは[pluginsとencapsulationの章](/books/fastify/plugins-and-encapsulation)で扱います。
+</Callout>
+
+## `fastify.route()`でまとめて書く
+
+ショートハンドを使わず、HTTPメソッド、URL、options、handlerを1つのオブジェクトにまとめる書き方もあります。
+
+**構文：** `fastify.route(options)`
+
+| 項目 | 型 | 説明 |
+| ---- | -- | ---- |
+| `method` | string / string[] | HTTPメソッド。複数指定もできる |
+| `url` | string | URLのパス。`path`も別名として使える |
+| `handler` | function | リクエストを処理する関数 |
+| その他 | - | `schema`、hooks、`bodyLimit`、`config`などのroute options |
+
+**戻り値：** Fastifyインスタンス。ショートハンドと同じく、ルートの登録処理として使います。
+
+次の2つは、同じルートを登録します。
+
+```js
+fastify.get('/todos', {
+  schema: todoListSchema,
+}, listTodosHandler);
+```
+
+```js
+fastify.route({
+  method: 'GET',
+  url: '/todos',
+  schema: todoListSchema,
+  handler: listTodosHandler,
+});
+```
+
+ショートハンドはHTTPメソッドが見やすく、`fastify.route()`はルート定義を1つのオブジェクトとして管理しやすいという違いがあります。プロジェクト内で読みやすい方へ揃えれば構いません。
+
+<Callout type="warning" title="handlerを2か所へ書かない">
+  ショートハンドでは、`options.handler`と第3引数のhandlerを同時に指定できません。handlerをoptions内に含める場合は、`fastify.get('/todos', options)`のように第3引数を省略します。
+</Callout>
+
+## `schema`を指定する例
+
+response schemaをoptionsへ指定すると、Fastifyがレスポンスの形式に合わせてシリアライズします。ここではroute optionsとしてどこへ書くかを確認します。
 
 ```js
 fastify.get('/todos', {
@@ -55,6 +258,8 @@ fastify.get('/todos', {
   return todos;
 });
 ```
+
+schemaによる入力検証、型変換、レスポンスのシリアライズは、[schema validationの章](/books/fastify/schema-validation)で詳しく解説します。
 
 ## HTTPメソッドごとに処理を分ける
 

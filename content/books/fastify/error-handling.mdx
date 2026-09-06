@@ -33,7 +33,7 @@ Fastifyでは、handlerから `throw` したエラーやschema validationのエ�
 
 ```js
 fastify.setErrorHandler((error, request, reply) => {
-  request.log.error(error);
+  request.log.error({ err: error }, 'request failed');
 
   return reply.code(500).send({
     error: {
@@ -60,7 +60,7 @@ fastify.setErrorHandler((error, request, reply) => {
     });
   }
 
-  request.log.error(error);
+  request.log.error({ err: error }, 'request failed');
 
   return reply.code(500).send({
     error: {
@@ -72,7 +72,7 @@ fastify.setErrorHandler((error, request, reply) => {
 ```
 
 <Callout type="warning" title="本番でエラー詳細を返しすぎない">
-  `error.stack` やDBエラーの詳細をレスポンスに含めると、内部構造やSQLが漏れることがあります。詳しい情報はログへ、利用者には整理したメッセージを返します。
+  `error.stack`やDBエラーの詳細をレスポンスに含めると、内部構造やSQLが漏れることがあります。詳しい情報はログへ、利用者には整理したメッセージを返します。安全なエラーログの残し方は[ログの章](/books/fastify/logging)で扱います。
 </Callout>
 
 ## 業務エラーを作る
@@ -115,7 +115,7 @@ fastify.setErrorHandler((error, request, reply) => {
     });
   }
 
-  request.log.error(error);
+  request.log.error({ err: error }, 'request failed');
 
   return reply.code(500).send({
     error: {

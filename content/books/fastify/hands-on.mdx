@@ -84,7 +84,7 @@ export function buildApp(options = {}) {
       });
     }
 
-    request.log.error(error);
+    request.log.error({ err: error }, 'request failed');
 
     return reply.code(500).send({
       error: {
@@ -109,10 +109,12 @@ const port = Number(process.env.PORT ?? 3000);
 try {
   await app.listen({ port, host: '0.0.0.0' });
 } catch (err) {
-  app.log.error(err);
+  app.log.error({ err }, 'server failed to start');
   process.exit(1);
 }
 ```
+
+このハンズオンでは最小構成にしています。環境別の設定、`reqId`、機密情報のマスキングまで加えたい場合は、[ログの章](/books/fastify/logging)を参照してください。
 
 ## Todoルートを作る
 

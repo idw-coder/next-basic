@@ -33,6 +33,8 @@ fastify.post('/todos', async (request) => {
 
 FastifyはJSONリクエストを標準で扱えます。ただし、どんな形のJSONでもよいわけではありません。入力値の形は[schema validationの章](/books/fastify/schema-validation)で制限します。
 
+`request.log`にはリクエストIDが引き継がれます。検索しやすい値の残し方や`fastify.log`との使い分けは、[ログの章](/books/fastify/logging)で詳しく解説しています。
+
 ## 戻り値でレスポンスを返す
 
 async handlerでは、オブジェクトを `return` するだけでJSONレスポンスになります。

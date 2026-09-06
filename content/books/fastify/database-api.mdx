@@ -41,12 +41,12 @@ const app = buildApp();
 try {
   await app.listen({ port: 3000 });
 } catch (err) {
-  app.log.error(err);
+  app.log.error({ err }, 'server failed to start');
   process.exit(1);
 }
 ```
 
-この分割にしておくと、[テストの章](/books/fastify/testing)で `buildApp()` を直接呼べます。
+この分割にしておくと、[テストの章](/books/fastify/testing)で`buildApp()`を直接呼べます。`logger`の設定と`app.log`の使い方は、[ログの章](/books/fastify/logging)で詳しく解説しています。
 
 ## Todoルート
 

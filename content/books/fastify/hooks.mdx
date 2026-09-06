@@ -40,6 +40,8 @@ fastify.addHook('preHandler', async (request, reply) => {
   `onRequest` はボディのパースより前に実行されるため、`request.body` はまだ使えません。bodyを前提にした処理は `preValidation` 以降を検討します。
 </Callout>
 
+Fastifyは`logger`を有効にすると基本的なリクエストログを出力します。hookで独自ログを加える場合の設計は、[ログの章](/books/fastify/logging)で詳しく扱います。
+
 ## 認証をpreHandlerに置く
 
 管理APIだけに認証をかける例です。plugin内にhookを書くことで、影響範囲を `/admin` 配下に閉じ込めます。
@@ -104,6 +106,8 @@ fastify.addHook('preHandler', async (request) => {
   request.log.info('before handler');
 });
 ```
+
+`request.log`を使うと、同じリクエストのログを`reqId`で追跡できます。
 
 <Marker>async hookでは `done` callbackを使いません。asyncとcallbackを混ぜると、処理が二重に進むなど読みにくいバグの原因になります。</Marker>
 

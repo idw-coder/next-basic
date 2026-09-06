@@ -241,6 +241,9 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'validation',
     'inject',
     'CORS',
+    'Pino',
+    '構造化ログ',
+    'ログレベル',
   ],
 
   typescript: [
