@@ -780,7 +780,7 @@ const sectionTagMap: Record<string, SectionTagConfig[]> = {
         {
           bookSlug: 'javascript',
           chapterSlug: '16-dom-manipulation',
-          title: 'DOM操作 — 要素取得・イベント・更新の基本',
+          title: 'DOM操作の基本 — 要素取得・イベント・preventDefault',
         },
       ],
     },

@@ -1,15 +1,687 @@
 ---
-title: 'DOM操作の基本 — 要素取得・イベント・イベント委譲'
-description: 'querySelector・addEventListener・イベントバブリング・イベント委譲など、DOM操作の基本を整理します。'
+title: 'DOM操作の基本 — 要素取得・イベント・preventDefault'
+description: 'querySelectorで要素を取得し、addEventListenerでイベントを受け取り、preventDefault()で既定動作を止めるまでを整理します。イベントの伝播・イベント委譲・innerHTMLの注意点も扱います。'
 order: 16
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+ブラウザはHTMLを読み込むと、その内容を**DOM**（Document Object Model）というオブジェクトの木に変換します。JavaScriptから画面を書き換えられるのは、このDOMを操作できるからです。逆に言えば、DOMを経由しない限り、JavaScriptは画面に何も表示できません。
+
+この章では、要素を取得する → 中身を変える → 要素を作って追加する → イベントを受け取る → ブラウザの既定動作を止める → イベントを親でまとめて処理する、という順に扱います。DOMはJavaScriptの言語仕様（ECMAScript）ではなく、WHATWGの[DOM Standard](https://dom.spec.whatwg.org/)で定義されたブラウザ側のAPIです。そのため、[Web API](/books/javascript/20-web-apis)と同じくNode.jsには標準で存在しません。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  ボタンを取ってクリックを拾うところまでは書けたんですが、フォームの送信ボタンを押すとページが丸ごと再読み込みされて、書いた処理が途中で消えてしまいます。あれって止められるんですか？
+</SpeechBubble>
+
+止められます。その役目を持つのが、この章の後半で扱う `preventDefault()` です。まずは要素の取得から順に見ていきます。
+
+---
+
+<a id="dom-tree"></a>
+
+## DOMとは — HTMLがオブジェクトの木になる
+
+DOMは、HTMLのタグ1つひとつを**ノード**というオブジェクトに置き換え、親子関係のある木構造として並べたものです。`document` が木の根で、そこから `html`、`body`、その中の各要素へとぶら下がります。
+
+```html
+<body>
+  <h1>記事一覧</h1>
+  <ul id="list">
+    <li>1件目</li>
+  </ul>
+</body>
+```
+
+このHTMLは、次のような木としてメモリ上に展開されます。
+
+<MermaidDiagram
+  id="dom-tree-diagram"
+  chart={`
+flowchart TB
+    classDef root fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    classDef el fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef text fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A["document"] --> B["html"]
+    B --> C["head"]
+    B --> D["body"]
+    D --> E["h1"]
+    D --> F["ul#list"]
+    F --> G["li"]
+    E --> H["テキストノード"]
+    G --> I["テキストノード"]
+
+    class A root
+    class B,C,D,E,F,G el
+    class H,I text
+
+`}
+/>
+
+ここで押さえておきたいのは、<Marker>JavaScriptが操作しているのはHTMLの文字列ではなく、ブラウザがメモリ上に組み立てたこの木である</Marker>ということです。`textContent` で文字を書き換えても、サーバー上の `.html` ファイルは変わりません。変わるのは今開いているページのDOMだけです。
+
+タグに対応するノードを**要素ノード**（`Element`）、タグの中の文字に対応するノードを**テキストノード**と呼びます。この章で扱うメソッドの多くは `Element` に生えています。
+
+---
+
+<a id="query-selector"></a>
+
+## 要素を取得する — querySelectorとquerySelectorAll
+
+<Figure src="/images/search_woman_color.png" alt="目的の要素を探しているイメージ" maxWidth="180px" />
+
+DOM操作は「まず対象の要素を手に入れる」ところから始まります。現在の標準的な取得方法は `querySelector` と `querySelectorAll` の2つです。CSSセレクターをそのまま書けるため、CSSを知っていれば新しく覚えることがほとんどありません。
+
+**構文：** `document.querySelector(selectors)`
+
+| 引数                   | 渡せるもの          | 説明                                                                   |
+| ---------------------- | ------------------- | ---------------------------------------------------------------------- |
+| `selectors`（第1引数） | CSSセレクターの文字列 | `'.card'`、`'#list'`、`'ul > li:first-child'` など。CSSで書ける形ならそのまま使える |
+
+**戻り値：** 最初に一致した要素。一致するものが無ければ `null`
+
+**構文：** `document.querySelectorAll(selectors)`
+
+**戻り値：** 一致した全要素を含む `NodeList`。0件でも `null` ではなく空の `NodeList` が返る
+
+```js
+const list = document.querySelector('#list'); // 最初の1件
+const items = document.querySelectorAll('#list li'); // 全件
+
+console.log(list); // <ul id="list">...</ul>
+console.log(items.length); // 1
+```
+
+取得方法は他にもあり、性質が少しずつ違います。
+
+| メソッド                               | 引数               | 戻り値                                   |
+| -------------------------------------- | ------------------ | ---------------------------------------- |
+| `document.getElementById(id)`           | id文字列（`#` は付けない） | 要素 / `null`                     |
+| `document.querySelector(selectors)`     | CSSセレクター       | 最初に一致した要素 / `null`              |
+| `document.querySelectorAll(selectors)`  | CSSセレクター       | 静的な `NodeList`（0件なら空）           |
+| `document.getElementsByClassName(name)` | クラス名           | ライブな `HTMLCollection`                |
+
+迷ったら `querySelector` と `querySelectorAll` の2つで足ります。`getElementById` はid検索専用で最も高速ですが、実務で体感差が出る場面は稀です。
+
+### 見つからなければ null が返る
+
+`querySelector` は例外を投げません。一致しなければ静かに `null` を返します。その `null` に対してプロパティを触った瞬間にエラーになるため、エラーメッセージが出る場所と原因の場所がずれます。
+
+```js
+const title = document.querySelector('.ttile'); // タイポでヒットしない
+title.textContent = 'こんにちは';
+// TypeError: Cannot set properties of null — title が null なのが原因
+```
+
+要素の存在が保証できない場面では、早期リターンで守ります。
+
+```js
+const title = document.querySelector('.title');
+if (!title) return; // 以降、title は要素であることが確定する
+title.textContent = 'こんにちは';
+```
+
+### NodeListは配列ではない
+
+`querySelectorAll` が返す `NodeList` は配列に**似ている**だけの別物です。`forEach` は持っていますが、`map` や `filter` は持っていません。
+
+```js
+const items = document.querySelectorAll('li');
+
+items.forEach((item) => console.log(item.textContent)); // OK
+items.map((item) => item.textContent); // エラー — NodeListにmapは無い
+
+const texts = Array.from(items).map((item) => item.textContent); // OK
+```
+
+[配列メソッド](/books/javascript/07-arrays)を使いたいときは `Array.from(items)` か `[...items]` で本物の配列に変換します。
+
+さらに、`querySelectorAll` の結果は取得した瞬間の**静的なコピー**です。一方 `getElementsByClassName` が返す `HTMLCollection` は**ライブ**で、後からDOMに要素が増えると自動で増えます。
+
+```js
+const staticList = document.querySelectorAll('.item'); // 静的
+const liveList = document.getElementsByClassName('item'); // ライブ
+
+const added = document.createElement('div');
+added.classList.add('item');
+document.body.append(added); // .item を1つ増やす
+
+console.log(staticList.length); // 取得した時点の件数のまま
+console.log(liveList.length); // 追加後の件数に増えている
+```
+
+ライブなコレクションを `for` ループで回しながら要素を削除すると、件数が途中で変わって飛ばし漏れが起きます。ループ中にDOMを変更するなら、静的な `querySelectorAll` を使うほうが安全です。
+
+---
+
+<a id="update-element"></a>
+
+## 要素の中身を変える — textContent・classList・属性
+
+要素を手に入れたら、次は中身の書き換えです。テキストを入れる方法は主に3つあり、どれを選ぶかで安全性が変わります。
+
+| プロパティ    | 何を読み書きするか       | HTMLタグの扱い                             |
+| ------------- | ------------------------ | ------------------------------------------ |
+| `textContent` | 要素内のテキスト全体     | タグとして解釈しない。そのまま文字として表示される |
+| `innerHTML`   | 要素内のHTML             | タグとして解釈され、DOMが作られる          |
+| `innerText`   | 画面に見えているテキスト | CSSの表示状態を反映する。レイアウト計算が走る |
+
+```js
+const box = document.querySelector('#box');
+
+box.textContent = '<b>太字</b>';
+// 画面には <b>太字</b> という文字列がそのまま出る
+
+box.innerHTML = '<b>太字</b>';
+// 画面には 太字 が太字で出る（b要素が作られる）
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  タグごと差し込みたいときは `innerHTML` 一択ですか？危ないと聞いた覚えもあって、どっちなのか分かりません。
+</SpeechBubble>
+
+危ないのは「入れる文字列の出どころ」です。自分で書いた固定の文字列なら問題ありません。危険なのは、ユーザーの入力・URLのクエリ・APIのレスポンスなど、**外部から来た文字列をそのまま `innerHTML` に入れる**場合です。その中に `<img src=x onerror=...>` のようなタグが混ざっていれば、スクリプトとして実行されます。
+
+<Callout type="warning" title="外部由来の文字列をinnerHTMLに入れない">
+  ユーザー入力やAPIのレスポンスを画面に出すときは `textContent`
+  を使います。文字列として扱われるため、タグが混ざっていても実行されません。タグ付きで組み立てたい場合は、`createElement`
+  で要素を作り、テキスト部分だけ `textContent` で入れます。これがXSS（クロスサイトスクリプティング）の基本的な防ぎ方です。
+
+</Callout>
+
+### クラスの付け外し — classList
+
+見た目の切り替えは、スタイルを直接書くより**クラスの付け外し**で行うのが基本です。CSS側に見た目を寄せられるため、JavaScriptが見た目の詳細を知らずに済みます。
+
+| メソッド                        | 引数                             | 戻り値                             |
+| ------------------------------- | -------------------------------- | ---------------------------------- |
+| `classList.add(...names)`       | クラス名（カンマ区切りで複数可） | `undefined`                        |
+| `classList.remove(...names)`    | クラス名（カンマ区切りで複数可） | `undefined`                        |
+| `classList.toggle(name, force?)` | クラス名、付けるかどうかの真偽値 | 実行後に付いていれば `true`        |
+| `classList.contains(name)`      | クラス名                         | `boolean`                          |
+
+```js
+const panel = document.querySelector('#panel');
+
+panel.classList.add('is-open');
+panel.classList.remove('is-open');
+panel.classList.toggle('is-open'); // 付いていれば外す、無ければ付ける
+panel.classList.toggle('is-open', isLoggedIn); // 第2引数で「付ける/外す」を明示できる
+```
+
+`toggle` の第2引数は見落とされがちですが便利です。`if` で分岐して `add` / `remove` を呼び分ける代わりに、真偽値を1つ渡せば済みます。
+
+### 属性とdata属性
+
+| メソッド / プロパティ           | 引数             | 戻り値                     |
+| ------------------------------- | ---------------- | -------------------------- |
+| `setAttribute(name, value)`     | 属性名、値       | `undefined`                |
+| `getAttribute(name)`            | 属性名           | 属性値の文字列 / `null`    |
+| `removeAttribute(name)`         | 属性名           | `undefined`                |
+| `dataset`                       | —                | `data-*` 属性を読み書きするオブジェクト |
+
+`data-*` 属性は、要素にアプリ固有の値を持たせたいときの置き場所です。`dataset` から、ハイフンをキャメルケースに変えた名前で読み書きできます。
+
+```html
+<button data-user-id="12" data-role="admin">編集</button>
+```
+
+```js
+const button = document.querySelector('button');
+
+console.log(button.dataset.userId); // '12' — data-user-id が userId になる
+console.log(button.dataset.role); // 'admin'
+
+button.dataset.userId = '34'; // 属性値も書き換わる
+```
+
+<Marker>dataset から取り出した値は常に文字列です。</Marker>数値として使うなら `Number(button.dataset.userId)` のように変換します。この落とし穴は、イベント委譲でIDを取り回すときに特によく踏みます。
+
+---
+
+<a id="create-element"></a>
+
+## 要素を作って追加する — createElementとappend
+
+一覧の行を増やす、通知を出すといった処理では、要素そのものを作ってDOMに差し込みます。
+
+**構文：** `document.createElement(tagName)`
+
+| 引数                  | 渡せるもの         | 説明                                     |
+| --------------------- | ------------------ | ---------------------------------------- |
+| `tagName`（第1引数）  | タグ名の文字列     | `'div'`、`'li'`、`'button'` など。山括弧は付けない |
+
+**戻り値：** 新しく作られた要素（この時点ではまだ画面に出ていない）
+
+作った要素は、親要素に差し込んで初めて画面に現れます。差し込みには `append` と `appendChild` があります。
+
+| メソッド                      | 渡せるもの                     | 戻り値               |
+| ----------------------------- | ------------------------------ | -------------------- |
+| `parent.append(...nodes)`     | 要素・文字列を複数まとめて     | `undefined`          |
+| `parent.appendChild(node)`    | 要素を1つだけ（文字列は不可）  | 追加したノード       |
+| `element.remove()`            | —                              | `undefined`          |
+
+```js
+const list = document.querySelector('#list');
+const item = document.createElement('li');
+
+item.textContent = '2件目';
+item.classList.add('item');
+
+list.append(item); // ここで初めて画面に出る
+```
+
+<Callout type="note" title="append と appendChild はどちらを使うか">
+  新しく書くコードでは `append` で構いません。文字列をそのまま渡せて、複数の要素を一度に追加できます。`appendChild`
+  は古くからあるメソッドで、戻り値に追加したノードが返る点だけが違います。既存コードで
+  `appendChild` を見かけても、置き換えを急ぐ必要はありません。
+
+</Callout>
+
+複数の要素をループで1つずつ `append` すると、そのたびにDOMの再計算が走る可能性があります。件数が多いときは `DocumentFragment` にまとめてから、1回で差し込みます。
+
+```js
+const fragment = document.createDocumentFragment();
+
+for (const name of ['Taro', 'Hanako', 'Jiro']) {
+  const li = document.createElement('li');
+  li.textContent = name;
+  fragment.append(li); // この時点ではまだ画面のDOMに触っていない
+}
+
+list.append(fragment); // DOMへの差し込みは1回だけ
+```
+
+---
+
+<a id="add-event-listener"></a>
+
+## イベントを受け取る — addEventListener
+
+クリック、入力、送信といったユーザーの操作は**イベント**としてDOMに流れてきます。それを受け取るのが `addEventListener` です。
+
+**構文：** `target.addEventListener(type, listener, options?)`
+
+| 引数                  | 渡せるもの             | 説明                                                             |
+| --------------------- | ---------------------- | ---------------------------------------------------------------- |
+| `type`（第1引数）     | イベント名の文字列     | `'click'`、`'submit'`、`'input'` など。`on` は付けない           |
+| `listener`（第2引数） | 関数                   | イベント発生時に呼ばれる。第1引数にイベントオブジェクトが渡される |
+| `options`（第3引数・省略可） | オブジェクト / 真偽値 | `capture` / `once` / `passive` / `signal` を指定する        |
+
+**戻り値：** `undefined`
+
+```js
+const button = document.querySelector('#save');
+
+button.addEventListener('click', (event) => {
+  console.log('保存ボタンが押されました');
+  console.log(event.type); // 'click'
+});
+```
+
+第3引数のオプションは、知っていると書き方が変わるものが揃っています。
+
+| オプション | 型            | 効果                                                              |
+| ---------- | ------------- | ----------------------------------------------------------------- |
+| `capture`  | `boolean`     | バブリング段階ではなくキャプチャ段階で受け取る                    |
+| `once`     | `boolean`     | 1回実行したら自動的に解除される                                   |
+| `passive`  | `boolean`     | `preventDefault()` を呼ばないと宣言する。スクロール性能のために使う |
+| `signal`   | `AbortSignal` | `abort()` でリスナーを解除できる                                  |
+
+```js
+// モーダルを閉じる処理は1回だけで十分
+closeButton.addEventListener('click', closeModal, { once: true });
+```
+
+### removeEventListenerは「同じ関数」でないと外れない
+
+リスナーを外すときの典型的な失敗がこれです。
+
+```js
+button.addEventListener('click', () => console.log('hi'));
+button.removeEventListener('click', () => console.log('hi'));
+// 外れない — 見た目は同じでも別の関数オブジェクト
+```
+
+<Marker>removeEventListener には、登録したときと同一の関数を渡す必要があります。</Marker>そのため、後から外す予定のリスナーは名前付きの関数として変数に入れておきます。
+
+```js
+const handleClick = () => console.log('hi');
+
+button.addEventListener('click', handleClick);
+button.removeEventListener('click', handleClick); // 外れる
+```
+
+<Callout type="note" title="AbortControllerでまとめて外す">
+  解除したいリスナーが複数あるなら、`signal` を使うと関数の参照を1つずつ保持せずに済みます。`abort()`
+  を1回呼べば、その `signal` で登録したリスナーがすべて外れます。
+
+```js
+const controller = new AbortController();
+const { signal } = controller;
+
+window.addEventListener('resize', onResize, { signal });
+document.addEventListener('keydown', onKeyDown, { signal });
+
+controller.abort(); // 両方まとめて解除
+```
+
+</Callout>
+
+---
+
+<a id="event-object"></a>
+
+## イベントオブジェクト — targetとcurrentTarget
+
+リスナーの第1引数には、そのイベントの情報を持つオブジェクトが渡されます。慣習的に `event` または `e` と名付けます。
+
+| プロパティ         | 何が入っているか                                             |
+| ------------------ | ------------------------------------------------------------ |
+| `type`             | イベント名（`'click'` など）                                 |
+| `target`           | 実際にイベントが起きた要素（クリックされた当の要素）         |
+| `currentTarget`    | いまリスナーが登録されている要素                             |
+| `eventPhase`       | 伝播のどの段階か。`1` キャプチャ / `2` ターゲット / `3` バブリング |
+| `cancelable`       | `preventDefault()` で既定動作を止められるイベントかどうか    |
+| `defaultPrevented` | すでに `preventDefault()` が呼ばれたかどうか                 |
+| `isTrusted`        | ユーザー操作由来なら `true`、`dispatchEvent` による発火なら `false` |
+
+`target` と `currentTarget` の違いは、後で扱うイベント委譲の要になります。ボタンの中にアイコンの `span` が入っている場合、クリックされたのは `span` なので `target` は `span` になり、リスナーを付けた `button` は `currentTarget` に入ります。
+
+```html
+<button id="save"><span class="icon">💾</span>保存</button>
+```
+
+```js
+document.querySelector('#save').addEventListener('click', (event) => {
+  console.log(event.currentTarget); // <button id="save"> — 常にリスナーを付けた要素
+  console.log(event.target); // アイコンを押すと <span class="icon">
+});
+```
+
+---
+
+<a id="prevent-default"></a>
+
+## preventDefault() — ブラウザの既定動作を止める
+
+ブラウザには、要素と操作の組み合わせごとに「何もしなくても起きること」が決められています。これを**既定動作**（デフォルトアクション）と呼びます。
+
+| 操作                             | イベント                | ブラウザの既定動作                             |
+| -------------------------------- | ----------------------- | ---------------------------------------------- |
+| 送信ボタンを押す                 | `submit`（`form`）      | フォームを送信し、ページを再読み込み・遷移する |
+| リンクをクリックする             | `click`（`a[href]`）    | リンク先へ移動する                             |
+| チェックボックスをクリックする   | `click`（`input`）      | チェック状態が切り替わる                       |
+| 右クリックする                   | `contextmenu`           | ブラウザのコンテキストメニューが開く           |
+| 要素の上にファイルをドラッグする | `dragover`              | 受け取りを拒否する（既定のままだと `drop` が起きない） |
+| 入力中にTabキーを押す            | `keydown`               | 次の要素へフォーカスが移る                     |
+
+この既定動作を止めるのが `preventDefault()` です。冒頭の「送信するとページが再読み込みされてしまう」は、`submit` の既定動作がそのまま走っている状態です。
+
+**構文：** `event.preventDefault()`
+
+| 引数 | 説明               |
+| ---- | ------------------ |
+| なし | 引数は受け取らない |
+
+**戻り値：** `undefined`（戻り値で結果を判定するメソッドではない）
+
+### フォームを非同期で送信する
+
+もっとも出番が多いのがこのパターンです。`preventDefault()` でページ遷移を止め、代わりに [fetch](/books/javascript/20-web-apis) で送ります。
+
+```js
+const form = document.querySelector('#signup');
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault(); // ← これが無いとページが再読み込みされ、以降の処理は中断される
+
+  const formData = new FormData(form);
+
+  const response = await fetch('/api/signup', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    form.querySelector('.error').textContent = '送信に失敗しました';
+    return;
+  }
+
+  form.reset();
+});
+```
+
+<Marker>フォームを止めるリスナーは、送信ボタンの `click` ではなく `form` の `submit` に登録します。</Marker>入力欄でEnterキーを押した送信はボタンの `click` を経由しないため、`click` で止める書き方では素通りします。
+
+### 止めたかどうかは defaultPrevented で分かる
+
+`preventDefault()` が呼ばれたかどうかは、同じイベントオブジェクトの `defaultPrevented` で確認できます。伝播の先にある別のリスナーが、既に処理済みかを判断するのに使えます。
+
+```js
+document.addEventListener('click', (event) => {
+  if (event.defaultPrevented) return; // 誰かが既に既定動作を止めている
+  console.log('未処理のクリック');
+});
+```
+
+<Callout type="warning" title="preventDefault()が効かない2つのケース">
+  1つ目は、**キャンセルできないイベント**の場合です。MDNは「キャンセル不可のイベントに対して
+  `preventDefault()` を呼び出しても効果はありません」と明記しています（[Event.preventDefault()](https://developer.mozilla.org/ja/docs/Web/API/Event/preventDefault)）。止められるかどうかは
+  `event.cancelable` で確認できます。
+
+2つ目は、**passiveなリスナー**の場合です。`passive: true` は「このリスナーは既定動作を取り消さない」という宣言なので、中で `preventDefault()` を呼んでも無視されます。MDNによれば、`wheel`・`mousewheel`・`touchstart`・`touchmove` を `Window`・`Document`・`Document.body` に登録した場合、最近のブラウザーでは `passive` の既定値が `true` に変更されています（[addEventListener()](https://developer.mozilla.org/ja/docs/Web/API/EventTarget/addEventListener)）。スクロールを自前で制御したいときは、`{ passive: false }` を明示的に指定します。
+
+</Callout>
+
+### preventDefault()は伝播を止めない
+
+混同されやすい点なので、はっきり分けておきます。
+
+<Marker>preventDefault() が止めるのは「ブラウザの既定動作」だけで、イベントが親要素へ伝わっていくこと自体は止めません。</Marker>伝播を止めるのは次節の `stopPropagation()` です。
+
+```js
+link.addEventListener('click', (event) => {
+  event.preventDefault(); // ページ遷移はしない
+  // ただし、このクリックは親要素のリスナーにも届き続ける
+});
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  遷移もさせたくないし、親のリスナーも動かしたくないときは、どうすればいいんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  そのときは両方呼びます。`event.preventDefault()` と `event.stopPropagation()`
+  は役割が別なので、片方だけではもう片方は止まりません。ただ、親のリスナーまで止めるのは影響範囲が広いので、本当に必要かは一度立ち止まって考えるのがおすすめです。
+</SpeechBubble>
+
+### return false は addEventListener では効かない
+
+jQueryや古い解説記事の影響で「`false` を返せば止まる」と覚えている場合は、そこも整理しておきます。
+
+```js
+// on〜プロパティやHTML属性のハンドラーでは、falseを返すと既定動作が止まる
+link.onclick = () => false;
+
+// addEventListenerで登録したリスナーでは、falseを返しても何も起きない
+link.addEventListener('click', () => false); // 効かない — preventDefault()を呼ぶ
+```
+
+`addEventListener` で登録したリスナーの戻り値は、ブラウザから見れば使い道がありません。既定動作を止めるなら `preventDefault()` を明示的に呼びます。
+
+---
+
+<a id="event-propagation"></a>
+
+## イベントの伝播 — キャプチャ・ターゲット・バブリング
+
+<Figure src="/images/walking_woman_color.png" alt="イベントが要素をたどって伝わっていくイメージ" maxWidth="170px" />
+
+`li` をクリックしたとき、イベントは `li` だけで完結しません。まず `document` から目的の要素へ降りていき（キャプチャ段階）、目的の要素に到達し（ターゲット段階）、そこから親をたどって戻っていきます（バブリング段階）。
+
+<MermaidDiagram
+  id="event-propagation-diagram"
+  chart={`
+flowchart TB
+    classDef capture fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef target fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef bubble fill:#22c55e,color:#fff,stroke:#16a34a
+
+    A["document"] -->|キャプチャ| B["ul"]
+    B -->|キャプチャ| C["li がターゲット"]
+    C -->|バブリング| D["ul"]
+    D -->|バブリング| E["document"]
+
+    class A,B capture
+    class C target
+    class D,E bubble
+
+`}
+/>
+
+`addEventListener` は既定でバブリング段階に反応します。キャプチャ段階で受け取りたい場合だけ `{ capture: true }` を指定します。実務で書くリスナーのほとんどはバブリングで足ります。
+
+伝播を止めるメソッドは2つあり、止める範囲が違います。
+
+| メソッド                          | 止まる範囲                                                       |
+| --------------------------------- | ---------------------------------------------------------------- |
+| `event.stopPropagation()`         | 親要素へ伝わるのを止める。同じ要素に付いた他のリスナーは実行される |
+| `event.stopImmediatePropagation()` | 上に加えて、同じ要素に付いた残りのリスナーも実行しない            |
+
+```js
+inner.addEventListener('click', (event) => {
+  event.stopPropagation(); // outerのリスナーは呼ばれなくなる
+  console.log('内側だけ処理する');
+});
+
+outer.addEventListener('click', () => {
+  console.log('ここには届かない');
+});
+```
+
+`stopPropagation()` は手軽ですが、他の開発者が後から付けたリスナーや、ライブラリが `document` に付けているリスナーまで黙って止めてしまいます。「モーダルの外側クリックで閉じる処理が効かない」といったトラブルの典型的な原因です。使う前に、`defaultPrevented` の確認や条件分岐で済ませられないかを検討します。
+
+---
+
+<a id="event-delegation"></a>
+
+## イベント委譲 — 親要素でまとめて受け取る
+
+バブリングを前提にすると、**子要素1つずつにリスナーを付けず、共通の親に1つだけ付ける**という書き方ができます。これを**イベント委譲**（イベントデリゲーション）と呼びます。
+
+```js
+// 悪くはないが、行が増えるたびにリスナーも増える
+document.querySelectorAll('#list li').forEach((li) => {
+  li.addEventListener('click', onClick);
+});
+
+// 委譲 — 親に1つ付けるだけ
+document.querySelector('#list').addEventListener('click', (event) => {
+  const li = event.target.closest('li');
+  if (!li) return; // li の外側（余白など）がクリックされた場合
+  console.log(li.dataset.id);
+});
+```
+
+委譲には2つの利点があります。1つはリスナーの数が減ること。もう1つは、<Marker>あとからJavaScriptで追加した要素にも、追加作業なしでイベントが効くこと</Marker>です。親に付いたリスナーは、子が増えても減っても関係なく動き続けます。
+
+### closest() で目的の要素まで遡る
+
+委譲で必ず使うのが `closest()` です。
+
+**構文：** `element.closest(selectors)`
+
+| 引数                   | 渡せるもの            | 説明                                                     |
+| ---------------------- | --------------------- | -------------------------------------------------------- |
+| `selectors`（第1引数） | CSSセレクターの文字列 | 自分自身から親方向へ遡り、最初に一致した要素を探す        |
+
+**戻り値：** 一致した要素。自分自身も対象に含まれる。見つからなければ `null`
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  委譲で書いたら、ボタンの中のアイコンを押したときだけ反応しなくなりました。同じボタンなのに…。
+</SpeechBubble>
+
+原因は `event.target` です。`target` には「実際にクリックされた一番深い要素」が入るため、アイコンを押せば `span`、文字を押せば `button` と、クリック位置によって変わります。そこで `target` をそのまま判定に使わず、`closest()` で目的の要素まで遡ります。
+
+```js
+list.addEventListener('click', (event) => {
+  const button = event.target.closest('button.delete');
+  if (!button) return; // 削除ボタン以外のクリックは無視する
+
+  button.closest('li').remove();
+});
+```
+
+<Callout type="column" title="バブリングしないイベントもある">
+  委譲はバブリングが前提です。そのため、バブリングしない `focus` / `blur` /
+  `mouseenter` / `mouseleave` は親でまとめて受け取れません。委譲したい場合は、バブリングする代替イベントを使います。
+
+| 使えないイベント | 代替             |
+| ---------------- | ---------------- |
+| `focus`          | `focusin`        |
+| `blur`           | `focusout`       |
+| `mouseenter`     | `mouseover`      |
+| `mouseleave`     | `mouseout`       |
+
+そのイベントがバブリングするかどうかは、`event.bubbles` でも確認できます。
+
+</Callout>
+
+---
+
+<a id="pitfalls"></a>
+
+## よくあるハマりどころ
+
+### 1. querySelectorがnullになる（スクリプトが先に走っている）
+
+`head` 内で普通の `<script>` を読み込むと、HTMLの解析より先にJavaScriptが実行され、まだ存在しない要素を探しにいきます。`<script>` に `defer` を付けるか、`type="module"` にすると、HTMLの解析後に実行されます。詳しくは[HTMLとJavaScriptの連携](/books/html-basics/connect-css-javascript)と[モジュール](/books/javascript/15-modules)で扱っています。
+
+### 2. リスナーが外れない
+
+無名関数で登録して無名関数で外そうとしているケースです。同じ関数の参照を渡すか、`{ once: true }` や `AbortController` を使います。
+
+### 3. innerHTMLで書き換えたらイベントが効かなくなった
+
+`innerHTML` に代入すると、中の要素はすべて作り直されます。古い要素に付けたリスナーは、その要素ごと捨てられます。イベント委譲で親に付けておけば、この作り直しの影響を受けません。
+
+### 4. preventDefault()したのに止まらない
+
+3つの可能性を順に疑います。(a) `event.cancelable` が `false` のイベントである、(b) `passive` なリスナーである、(c) そもそも止めたかったのは既定動作ではなく伝播で、必要なのは `stopPropagation()` だった、の3つです。
+
+### 5. submitではなくclickで止めている
+
+送信ボタンの `click` を止める書き方では、入力欄でのEnterキー送信を拾えません。`form` の `submit` に登録します。
+
+### 6. 委譲でtargetを直接判定している
+
+`event.target` はクリック位置によって子要素になります。`closest()` で目的の要素まで遡ってから判定します。
+
+---
+
+<a id="key-points"></a>
+
+## ちゃんと使うためのポイント
+
+- 要素の取得は `querySelector` / `querySelectorAll` を基本にする。見つからなければ `null` が返るので、存在チェックを挟む
+- `querySelectorAll` の戻り値は `NodeList`。配列メソッドを使うなら `Array.from()` で変換する
+- 外部由来の文字列は `textContent` で入れる。`innerHTML` に渡さない
+- `addEventListener` の第3引数（`once` / `signal` / `passive`）を知っておくと、解除まわりの書き方が変わる
+- <Marker>preventDefault() は既定動作を止め、stopPropagation() は伝播を止める。名前は似ているが役割は別</Marker>
+- フォーム送信を止めるのは `form` の `submit`。ボタンの `click` ではない
+- 子要素が増減する一覧では、親に1つだけリスナーを付けるイベント委譲を使い、`closest()` で対象を特定する
+
+次の章では、**[Map・Set・WeakRef](/books/javascript/17-map-set-weakref)** を扱います。「この要素にはこのデータが紐づいている」という対応関係を持ちたくなる場面はDOM操作で頻繁に出てきますが、そこで効くのが任意の値をキーにできる `Map` と、要素が消えたら一緒に消える `WeakMap` です。
 
 ## 参考リンク
 
-- [MDN — Document.querySelector](https://developer.mozilla.org/ja/docs/Web/API/Document/querySelector)
-- [MDN — EventTarget.addEventListener](https://developer.mozilla.org/ja/docs/Web/API/EventTarget/addEventListener)
-- [MDN — Event.bubbles](https://developer.mozilla.org/ja/docs/Web/API/Event/bubbles)
+- [MDN — Document.querySelector()](https://developer.mozilla.org/ja/docs/Web/API/Document/querySelector)
+- [MDN — EventTarget.addEventListener()](https://developer.mozilla.org/ja/docs/Web/API/EventTarget/addEventListener)
+- [MDN — Event.preventDefault()](https://developer.mozilla.org/ja/docs/Web/API/Event/preventDefault)
 - [MDN — イベントのバブリング](https://developer.mozilla.org/ja/docs/Learn_web_development/Core/Scripting/Event_bubbling)
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>

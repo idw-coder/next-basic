@@ -39,7 +39,7 @@ var format = function (price) { /* ... */ }; // utils.jsのformatが消えた！
 
 ## ESModules — 標準のimport/export
 
-**ESModules（ESM）**は、ES2015で言語標準になったモジュール方式です。ブラウザもNode.jsもネイティブに対応しており、**新しく書くコードはESM一択**と考えて構いません。
+**ESModules**（ESM）は、ES2015で言語標準になったモジュール方式です。ブラウザもNode.jsもネイティブに対応しており、**新しく書くコードはESM一択**と考えて構いません。
 
 エクスポートには**名前付き**と**デフォルト**の2種類があります。ここが `{}` の有無の分かれ目なので、しっかり区別しましょう。
 
@@ -126,7 +126,7 @@ import Button from './Button.js'; // この名前は自由（MyButtonでも動�
 
 ## CommonJS — Node.js発祥のrequire
 
-ESMが標準化される前、サーバーサイドのNode.jsは独自のモジュール方式**CommonJS（CJS）**を採用しました。`require` で読み込み、`module.exports` で公開します。
+ESMが標準化される前、サーバーサイドのNode.jsは独自のモジュール方式である**CommonJS**（CJS）を採用しました。`require` で読み込み、`module.exports` で公開します。
 
 ```js
 // math.js（CommonJS）
@@ -194,7 +194,7 @@ button.addEventListener('click', async () => {
 });
 ```
 
-初期表示に不要なコードを後回しにしてページの読み込みを速くする、この手法は**コード分割（code splitting）**と呼ばれます。Next.jsのページ単位の自動分割や `next/dynamic` も、この `import()` が土台です。
+初期表示に不要なコードを後回しにしてページの読み込みを速くする、この手法は**コード分割**（code splitting）と呼ばれます。Next.jsのページ単位の自動分割や `next/dynamic` も、この `import()` が土台です。
 
 <Figure src="/images/walking_woman_color.png" alt="必要になってから取りに行くイメージ" maxWidth="130px" caption="全部を最初に抱えて出発せず、必要になった時点で取りに行くのが動的import" />
 

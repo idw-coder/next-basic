@@ -199,15 +199,15 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'filter',
     'reduce',
     'find',
-    'findIndex',
     'some',
-    'every',
     'includes',
     'slice',
-    'concat',
     'sort',
     'splice',
     'flatMap',
+    'querySelector',
+    'addEventListener',
+    'preventDefault',
   ],
 
   'node-js': [
