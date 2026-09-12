@@ -393,6 +393,56 @@ function Card(props: { title: string; children: React.ReactNode }) {
 </Card>;
 ```
 
+## `export default` はReactの構文ではない — コンポーネントをファイルに分ける
+
+実務では、コンポーネントを1ファイルに1つ置いて `export default` で公開するのが定番です。
+
+```tsx
+// Card.tsx
+export default function Card(props: { title: string; children: React.ReactNode }) {
+  return (
+    <article className="card">
+      <h3>{props.title}</h3>
+      <div>{props.children}</div>
+    </article>
+  );
+}
+```
+
+```tsx
+// 使う側
+import Card from './Card';
+```
+
+ここで気になるのが `default` という単語です。**これはReactが用意したものではなく、JavaScript（ES Modules）の構文**です。Reactから見れば「関数がひとつ渡ってきた」だけで、`default` という名前に特別な意味を与えてはいません。
+
+証拠に、名前付きエクスポートで書いても同じように動きます。変わるのは**受け取り側の書き方だけ**です。
+
+```tsx
+// Card.tsx — default を使わない書き方
+export function Card(props: { title: string }) { /* ... */ }
+```
+
+```tsx
+// 使う側は {} が必要で、名前も合わせる
+import { Card } from './Card';
+```
+
+| 公開する側 | 受け取る側 | 名前 |
+| ---------- | ---------- | ---- |
+| `export default function Card()` | `import Card from './Card'` | 自由（`MyCard` でも動く） |
+| `export function Card()` | `import { Card } from './Card'` | エクスポート元と同じ名前 |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Next.jsの `page.tsx` は `export default` じゃないと動かないですよね？あれもJSの話なんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  いい質問。あれは「**そのファイルのデフォルトエクスポートをページとして扱う**」とNext.jsが決めているからで、Next.jsの規約だね。JSの仕組みの上に、フレームワークが意味を乗せている形だよ。
+</SpeechBubble>
+
+`import` / `export` の全パターン（リネーム、名前空間インポート、CommonJSとの違い、`{}` の付け忘れで出るエラー）は、[JavaScript入門のモジュールシステム](/books/javascript/15-modules)でまとめて扱っています。
+
 ---
 
 次の章では、画面内で変化するデータを扱う **`useState` と `useEffect`（Hooks）** に入ります。

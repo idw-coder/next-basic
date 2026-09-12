@@ -14,6 +14,92 @@ order: 11
 全部覚える必要はない。まず `strict` を有効にして、あとはプロジェクトで問題が出たときにピンポイントで調べれば十分だよ。
 </SpeechBubble>
 
+## VS Codeはどうやって型エラーを表示しているのか
+
+VS CodeでTypeScriptファイルを開くと、`tsc` コマンドを実行していなくても、型エラーの赤い波線やコード補完が表示されます。この処理には、VS Codeに内蔵されているTypeScript拡張機能と、TypeScriptの `tsserver` が使われています。
+
+```text
+VS Code
+  ↓ ファイルを開く・文字を入力する・補完を要求する
+VS Code内蔵のTypeScript拡張機能
+  ↓ リクエストを送る
+tsserver
+  ↓ プロジェクトとファイルの状態を管理する
+TypeScript Language Service
+  ↓ 必要な構文解析・型チェックを行う
+型エラー・補完候補・定義位置などをVS Codeへ返す
+```
+
+`tsserver` は、エディタ向けに動き続けるTypeScriptのサーバープログラムです。開いているファイルやその変更内容、ファイル同士のつながりをメモリ上で管理し、VS Codeからの問い合わせに応答します。
+
+その内部で、型エラーの検出、コード補完、定義への移動、名前の変更などを計算するAPIが**TypeScript Language Service**です。Language Serviceは独立して起動するサーバーではなく、`tsserver` が利用する機能です。
+
+一方、`tsc` はターミナルから実行するTypeScriptコンパイラです。`tsc` と `tsserver` はTypeScriptの共通の構文解析・型チェック機能を利用しますが、目的と動き方が異なります。
+
+| | `tsc` | `tsserver` |
+|---|---|---|
+| 主な利用者 | 開発者やCI | VS Codeなどのエディタ |
+| 動き方 | コマンドとして実行する | エディタを開いている間は動き続ける |
+| 主な目的 | 型チェックとファイル出力 | エディタ操作への応答 |
+| 提供するもの | 型エラー、コンパイル結果 | 型エラー、コード補完、定義への移動など |
+
+したがって、VS Codeに表示されるTypeScript由来の赤い波線は、裏側で `tsc` を毎回実行した結果ではありません。`tsserver` がLanguage Serviceから取得し、VS Codeへ返した診断結果です。
+
+<Callout type="info">
+### 赤い波線がすべてTypeScriptとは限らない
+
+ESLintなどの拡張機能も、別の診断結果をVS Codeに表示する。問題の出どころは「問題」パネルの「ソース」欄で確認できる。
+</Callout>
+
+## VS Codeが使っているtsconfigを確認する
+
+`tsserver` は、ファイルをTypeScriptプロジェクトの単位で管理します。通常は、そのファイルを対象に含む `tsconfig.json` を見つけ、そこに書かれた設定を型エラーやコード補完へ反映します。
+
+現在開いているファイルにどの設定ファイルが適用されているかは、VS Codeで確認できます。
+
+1. 確認したい `.ts` または `.tsx` ファイルを開く
+2. コマンドパレットを開く（macOSは `Command + Shift + P`、Windows／Linuxは `Ctrl + Shift + P`）
+3. `TypeScript: Go to Project Configuration (tsconfig)` を実行する
+
+そのファイルが所属しているTypeScriptプロジェクトの `tsconfig.json` が開きます。複数の設定ファイルがあるプロジェクトでは、予想した設定が適用されているかを確認するのに便利です。
+
+設定ファイルが見つからない場合、VS Codeはそのファイルが設定済みのTypeScriptプロジェクトに属していないことを通知します。このとき `tsserver` は、開いているファイルを**推論されたプロジェクト**として扱い、既定の設定でコード補完や型チェックを行います。
+
+<Callout type="warning">
+### 設定ファイルを切り替えるコマンドではない
+
+`TypeScript: Go to Project Configuration (tsconfig)` は、現在適用されている設定ファイルへ移動するコマンド。任意の設定ファイルを選んで適用する機能ではない。
+</Callout>
+
+## tsconfig.dev.jsonをVS Codeの標準設定にできるか
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+プロジェクトルートの `tsconfig.json` を `tsconfig.dev.json` に変更して、VS Codeでも標準の設定ファイルとして使うことはできる？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`tsc` には任意の設定ファイルを指定できるけれど、VS Codeに任意のファイル名を標準設定として直接指定することはできないよ。VS Codeにも使わせるなら、入口となる `tsconfig.json` を残そう。
+</SpeechBubble>
+
+`tsc` では、`--project`（省略形は `-p`）に設定ファイルのパスを渡せます。そのため、任意の名前の設定ファイルを使って型チェックできます。
+
+```bash
+npx tsc -p tsconfig.dev.json
+```
+
+しかし、これはこのコマンドで使う設定ファイルを指定しているだけです。VS Codeの `tsserver` に対して、`tsconfig.dev.json` をこのプロジェクトの標準設定として直接指定する一般的な設定はありません。`tsconfig.dev.json` だけに改名すると、VS Codeからは自動認識されなくなります。
+
+設定の本体を `tsconfig.dev.json` に置きたい場合は、プロジェクトルートに入口となる `tsconfig.json` を残し、`extends` で読み込む方法が確実です。
+
+```json
+// tsconfig.json
+{
+  "extends": "./tsconfig.dev.json"
+}
+```
+
+これなら、VS Codeは `tsconfig.json` をプロジェクト設定として認識し、その先の `tsconfig.dev.json` に書かれた設定も適用します。`TypeScript: Go to Project Configuration (tsconfig)` を実行すると、入口である `tsconfig.json` が開きます。
+
 ## strictモード — まずこれを有効にする
 
 `strict: true` は、複数の厳格チェックをまとめて有効にするフラグです。
@@ -181,6 +267,8 @@ Next.jsやViteは、プロジェクト作成時にtsconfigを自動生成しま�
 
 - [TSConfig リファレンス（日本語）](https://www.typescriptlang.org/ja/tsconfig/) — 全コンパイラオプションの公式リファレンス
 - [What is a tsconfig.json（英語）](https://www.typescriptlang.org/docs/handbook/tsconfig-json.html) — tsconfig.jsonの役割の公式説明
+- [Standalone Server（tsserver）（英語）](https://github.com/microsoft/TypeScript/wiki/Standalone-Server-%28tsserver%29) — エディタとtsserverが通信する仕組み
+- [Transpiling TypeScript（英語）](https://code.visualstudio.com/docs/typescript/typescript-transpiling) — VS CodeのTypeScript対応とtsconfigの解説
 
 <QuizLink
   href="/quiz/ts-general"
