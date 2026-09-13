@@ -264,6 +264,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'useMemo',
     'useCallback',
     '依存配列',
+    'export default',
   ],
 
   'css-basics': ['Flexbox', 'Grid', 'レスポンシブ', '詳細度', 'CSS変数'],
