@@ -170,6 +170,65 @@ for (const [index, fruit] of fruits.entries()) {
 }
 ```
 
+#### `[index, fruit]` の正体は分割代入
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`for (const fruit of fruits)` は素直に読めるのに、`entries()` のときだけ `[index, fruit]` と角かっこで囲むのはなぜですか？
+</SpeechBubble>
+
+<Marker>`entries()` が「インデックスと値のペア」を1つの配列として返しているからです。</Marker>
+
+ここは「`entries()` が何を返しているか」と「左辺の角かっこが何をしているか」の2つに分けて見ると、すっきり理解できます。
+
+**手順1：`entries()` は `[インデックス, 値]` の配列を返す**
+
+`array.entries()` が返すのはイテレータで、そこから順番に出てくるのは要素そのものではなく `[インデックス, 値]` という2要素の配列です。スプレッド構文で中身をまとめて展開すると確認できます。
+
+```js
+const array = ['a', 'b', 'c'];
+
+console.log([...array.entries()]);
+// [
+//   [0, 'a'],
+//   [1, 'b'],
+//   [2, 'c']
+// ]
+```
+
+`for...of` が1周ごとに受け取っているのは `'a'` ではなく `[0, 'a']` という配列である、という点がポイントです。
+
+**手順2：左辺の角かっこは配列の分割代入**
+
+受け取るのが配列なら、`entry[0]` と `entry[1]` でも取り出せます。それを1行で書けるようにしたのが**分割代入**です。次の2つはまったく同じ動きをします。
+
+```js
+// 分割代入を使わない書き方
+for (const entry of array.entries()) {
+  const index = entry[0];
+  const item = entry[1];
+  console.log(index, item);
+}
+
+// 分割代入を使った書き方（上と同じ意味）
+for (const [index, item] of array.entries()) {
+  console.log(index, item);
+}
+```
+
+左辺の `[index, item]` は配列を作っているのではなく、**右辺の配列を先頭から順に取り出して名前を付ける**記法です。1周目には `[0, 'a']` が渡ってくるので、`index` に `0`、`item` に `'a'` が入ります。
+
+<Figure
+  src="/images/fork_suit_man_color.png"
+  alt="1つの配列を2つの変数に振り分けるイメージ"
+  maxWidth="120px"
+/>
+
+つまり `for (const [index, item] of array.entries())` が動くのは、`entries()` がペアの配列を返し、それを分割代入が2つの変数へ振り分けているためです。
+
+<Callout type="info" title="同じ形はこの先も何度も出てくる">
+`[キー, 値]` のペアを分割代入で受け取る書き方は、`Object.entries()` や [`Map`](/books/javascript/17-map-set-weakref) の反復でもそのまま使います。ここで形を押さえておくと、後の章が読みやすくなります。
+</Callout>
+
 ### for...in
 
 オブジェクトの**列挙可能なプロパティキー**を順に処理します。
@@ -592,6 +651,8 @@ flowchart TD
 - [MDN — if...else](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/if...else)
 - [MDN — switch](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/switch)
 - [MDN — for...of](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/for...of)
+- [MDN — Array.prototype.entries()](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/entries)
+- [MDN — 分割代入](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Destructuring)
 - [MDN — throw](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/throw)
 
 <QuizLink

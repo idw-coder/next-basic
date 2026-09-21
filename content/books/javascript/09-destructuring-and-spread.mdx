@@ -2,16 +2,515 @@
 title: '分割代入とスプレッド構文 — 配列・オブジェクト・引数を横断するイディオム'
 description: '配列・オブジェクトの分割代入、ネスト・デフォルト値・リネーム、スプレッド/レスト構文によるコピー・マージ・可変長引数までを横断的に整理します。'
 order: 9
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+`const { name } = user` や `[...array]` のような書き方は、モダンなJavaScriptのコードを読むと必ず出てきます。ライブラリのREADMEも、Reactのサンプルコードも、この記法を知っている前提で書かれています。
 
-> **この章で扱う範囲**：配列・オブジェクトの分割代入、ネストの展開、デフォルト値、リネーム、関数引数での分割代入、スプレッド/レスト構文によるコピー・マージ・可変長引数。「分割代入・スプレッド」は対象が配列でもオブジェクトでも考え方が共通なので、この章に集約します。
-> オブジェクトそのものの操作（プロパティアクセスや `Object.keys` などの静的メソッド）は[オブジェクト操作](/books/javascript/06-objects)（第6章）を参照してください。
+この章では**分割代入**と**スプレッド構文**を扱います。対象が配列でもオブジェクトでも考え方は共通なので、1つの章にまとめました。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`{ }` や `...` が左にあったり右にあったりして、同じ記号なのに意味が違う気がします。どう見分ければいいんでしょう？
+</SpeechBubble>
+
+見分け方はシンプルです。<Marker>左辺（受け取る側）にあれば「取り出す・集める」、右辺（渡す側）にあれば「ばらまく」</Marker>。この軸を先に押さえてから、個別の書き方を見ていきます。
+
+---
+
+<a id="basics"></a>
+
+## 分割代入とは — 構造に合わせて取り出す記法
+
+分割代入（destructuring assignment）は、配列やオブジェクトから値を取り出して変数に代入する記法です。
+
+従来の書き方と比べると、やっていることは同じです。
+
+```js
+const user = { id: 7, name: 'Alice', role: 'admin' };
+
+// 従来の書き方
+const id = user.id;
+const name = user.name;
+
+// 分割代入
+const { id, name } = user;
+```
+
+左辺に**取り出したい構造と同じ形**を書く、と考えると理解しやすいです。右辺がオブジェクトなら左辺も `{ }`、右辺が配列なら左辺も `[ ]` を書きます。
+
+<Callout type="note" title="いつから使える記法か">
+配列・オブジェクトの分割代入とスプレッド構文（配列）はES2015（ES6）、オブジェクトのスプレッド・レストはES2018で標準化されました。現在サポートされているブラウザとNode.jsでは、いずれもそのまま使えます（[MDN — 分割代入](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Destructuring)）。
+</Callout>
+
+---
+
+<a id="array-destructuring"></a>
+
+## 配列の分割代入 — 位置で取り出す
+
+配列は**並び順**で取り出します。左から順に対応するので、変数名は自由に決められます。
+
+```js
+const colors = ['red', 'green', 'blue'];
+
+const [first, second] = colors;
+console.log(first); // 'red'
+console.log(second); // 'green'
+```
+
+<Marker>配列は位置、オブジェクトはキー名。この違いが分割代入の基本です。</Marker>
+
+### 要素を飛ばす
+
+いらない位置はカンマだけ置いて飛ばせます。
+
+```js
+const [, , third] = colors;
+console.log(third); // 'blue'
+```
+
+読み手には分かりにくい記法なので、飛ばすのが2つ以上になるならインデックスでのアクセス（`colors[2]`）の方が親切です。
+
+### デフォルト値を指定する
+
+要素が足りないときの値を `=` で指定できます。
+
+```js
+const [a, b, c, d = 'gray'] = colors;
+console.log(d); // 'gray'（colors[3] は undefined なので採用される）
+```
+
+### 残りをまとめて受け取る
+
+`...` を付けた変数は、**残りの要素を配列として**受け取ります。
+
+```js
+const [head, ...rest] = colors;
+console.log(head); // 'red'
+console.log(rest); // ['green', 'blue']
+```
+
+`...rest` は末尾にしか置けません。途中に書くと `SyntaxError` になります。
+
+### 2つの変数を入れ替える
+
+一時変数を使わずに値を交換できます。
+
+```js
+let x = 1;
+let y = 2;
+
+[x, y] = [y, x];
+console.log(x, y); // 2 1
+```
+
+<Callout type="warning" title="行頭の `[` は前の行とつながる">
+  上の例で、直前の行末にセミコロンがないと `2\n[x, y]` が `2[x, y]`
+  と解釈され、実行時エラーになります。セミコロンを省略するスタイルで書く場合は、行頭を `;[x, y] = [y, x]`
+  のようにセミコロンで始めてください。
+</Callout>
+
+### 実務でよく見る形
+
+文字列を `split` で分解した直後の受け取りは、定番のパターンです。
+
+```js
+const [year, month, day] = '2026-09-21'.split('-');
+console.log(year, month, day); // '2026' '09' '21'
+```
+
+配列を `for...of` で回しながらインデックスも使いたいときの `entries()` も、中身は配列の分割代入です。詳しくは[制御構文](/books/javascript/04-control-flow#index-fruit-の正体は分割代入)（第4章）で解説しています。
+
+---
+
+<a id="object-destructuring"></a>
+
+## オブジェクトの分割代入 — キー名で取り出す
+
+<Figure
+  src="/images/toppa_suit_woman_color.png"
+  alt="オブジェクトから必要なプロパティだけを取り出すイメージ"
+  maxWidth="140px"
+/>
+
+オブジェクトは**プロパティ名**で取り出します。書く順番は結果に影響しません。
+
+```js
+const user = { id: 7, name: 'Alice', role: 'admin' };
+
+const { name, id } = user;
+console.log(id, name); // 7 'Alice'
+```
+
+### 別名を付ける（リネーム）
+
+`元のキー: 新しい変数名` の形で、別の名前として受け取れます。
+
+```js
+const { name: userName, role: userRole } = user;
+console.log(userName); // 'Alice'
+console.log(userRole); // 'admin'
+console.log(role); // ReferenceError: role is not defined
+```
+
+<Marker>リネームすると、元のキー名の変数は作られません。</Marker>
+
+変数名の衝突を避けたいときや、APIのレスポンスに `data` のような曖昧なキーが含まれるときに使います。
+
+```js
+const { data: articles } = await res.json();
+```
+
+### デフォルト値を指定する
+
+プロパティが存在しない（`undefined` の）ときの値を決められます。
+
+```js
+const { nickname = '名無し' } = user;
+console.log(nickname); // '名無し'
+```
+
+リネームとデフォルト値は同時に書けます。順番は「キー名 → 新しい変数名 → デフォルト値」です。
+
+```js
+const { nickname: displayName = '名無し' } = user;
+console.log(displayName); // '名無し'
+```
+
+### ネストしたオブジェクトを展開する
+
+APIレスポンスのように階層が深いデータでも、同じ形を書けば一気に取り出せます。
+
+```js
+const res = {
+  data: {
+    user: { name: 'Alice', address: { city: 'Tokyo' } },
+  },
+};
+
+const {
+  data: {
+    user: {
+      address: { city },
+    },
+  },
+} = res;
+
+console.log(city); // 'Tokyo'
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+これで `data` や `user` も変数として使えるんですか？
+</SpeechBubble>
+
+使えません。<Marker>ネストの途中に書いたキー名は「通り道」であって、変数は作られません。</Marker>上の例で作られる変数は `city` だけです。`user` も欲しいなら `data: { user }` のように、その階層で受け取る必要があります。
+
+深いネストの展開は途中の階層が `undefined` だとエラーになるため、実務では階層ごとに分けて書くか、オプショナルチェーン（`res.data?.user?.address?.city`）を使う方が安全なことも多いです。
+
+### 残りをまとめる / プロパティを除外する
+
+オブジェクトでも `...` で残りをまとめられます。これは「特定のプロパティだけ取り除いたオブジェクトを作る」イディオムとして頻出します。
+
+```js
+const account = { id: 7, name: 'Alice', password: 'secret' };
+
+const { password, ...safeAccount } = account;
+console.log(safeAccount); // { id: 7, name: 'Alice' }
+```
+
+元の `account` は変更されません。ログ出力やAPIレスポンスから機微な項目を落とすときに使えます。
+
+### キー名を変数で指定する
+
+角かっこで囲むと、キー名を動的に決められます（計算されたプロパティ名）。
+
+```js
+const key = 'role';
+const { [key]: value } = user;
+console.log(value); // 'admin'
+```
+
+この形はリネームの `:` が必須です。`[key]` だけでは変数名が決まらないためです。
+
+---
+
+<a id="function-params"></a>
+
+## 関数の引数で使う
+
+分割代入は関数の引数でもそのまま書けます。**名前付き引数**のように呼び出せるため、引数が3つ以上ある関数で特に効きます。
+
+```js
+// 位置で渡す関数 — 呼び出し側が読みにくい
+function createUser(name, role, active) {}
+createUser('Alice', 'member', true);
+
+// オブジェクトで受け取る関数 — 何を渡しているか一目で分かる
+function createUser({ name, role = 'member', active = true }) {
+  return { name, role, active };
+}
+createUser({ name: 'Alice' }); // { name: 'Alice', role: 'member', active: true }
+```
+
+引数側でもデフォルト値が使えるので、省略可能なオプションを表現しやすくなります。
+
+### 引数そのものを省略できるようにする
+
+上の `createUser` は、引数なしで呼ぶとエラーになります。
+
+```js
+createUser(); // TypeError: Cannot destructure property 'name' of 'undefined'
+```
+
+`undefined` からは分割代入できないためです。引数全体にデフォルト値 `= {}` を付けると、引数なしの呼び出しにも耐えられます。
+
+```js
+function connect({ host = 'localhost', port = 3306 } = {}) {
+  return `${host}:${port}`;
+}
+
+connect(); // 'localhost:3306'
+connect({ port: 3307 }); // 'localhost:3307'
+```
+
+<Marker>オプションオブジェクトを受け取る関数には `= {}` を付ける、と覚えておくと安全です。</Marker>
+
+---
+
+<a id="spread"></a>
+
+## スプレッド構文 — 中身をばらまく
+
+<Figure
+  src="/images/creative_color.png"
+  alt="まとまったデータを展開して並べ直すイメージ"
+  maxWidth="140px"
+/>
+
+分割代入が「構造から取り出す」記法なのに対し、スプレッド構文（`...`）は**中身を1つずつ展開して並べ直す**記法です。記号は同じですが、書く位置が逆になります。
+
+| 書く位置             | 呼び方         | 何をするか                     | 例                          |
+| -------------------- | -------------- | ------------------------------ | --------------------------- |
+| 右辺・引数・リテラル | スプレッド構文 | まとまりを1つずつにばらまく    | `Math.max(...scores)`       |
+| 左辺・仮引数         | レスト構文     | ばらばらのものを1つにまとめる  | `function sum(...nums) {}`  |
+
+### 配列をコピー・結合する
+
+```js
+const base = ['red', 'green'];
+const added = [...base, 'blue']; // ['red', 'green', 'blue']
+const merged = [...base, ...added];
+```
+
+配列に対するスプレッドと `concat` の使い分けは、[配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#spread)（第7章）で詳しく扱っています。
+
+### オブジェクトをコピー・マージする
+
+オブジェクトリテラルの中で展開すると、プロパティが展開先にコピーされます。
+
+```js
+const defaults = { theme: 'dark', fontSize: 14 };
+const userPrefs = { fontSize: 16 };
+
+const settings = { ...defaults, ...userPrefs };
+console.log(settings); // { theme: 'dark', fontSize: 16 }
+```
+
+<Marker>同じキーが重なったときは、後に書いた方が勝ちます。</Marker>
+
+この「後勝ち」を利用すると、既存オブジェクトの一部だけを差し替えた新しいオブジェクトが作れます。Reactのstate更新で頻出する形です。
+
+```js
+const user = { id: 7, name: 'Alice', role: 'member' };
+const updated = { ...user, role: 'editor' };
+// user は変更されず、updated が新しいオブジェクトになる
+```
+
+### 条件によってプロパティを足す
+
+`&&` と組み合わせると、条件付きのプロパティ追加が1つの式で書けます。
+
+```js
+const isAdmin = false;
+
+const payload = {
+  name: 'Alice',
+  ...(isAdmin && { permissions: ['all'] }),
+};
+console.log(payload); // { name: 'Alice' }
+```
+
+`isAdmin` が `false` のとき、展開されるのは `false` です。オブジェクト以外を展開しても列挙できるプロパティがないため、結果として何も追加されません。
+
+### 関数の引数に展開する
+
+配列を「ばらばらの引数」として渡せます。配列を直接受け取れない関数で効きます。
+
+```js
+const scores = [72, 95, 58, 88];
+
+Math.max(scores); // NaN（配列のままでは計算できない）
+Math.max(...scores); // 95
+```
+
+配列の最大値・最小値については[配列の変換メソッド](/books/javascript/07-arrays1-transform-methods#max-min)（第7章）と[数値の扱いと計算](/books/javascript/21-numbers-and-math#section-6)（第21章）も参照してください。
+
+---
+
+<a id="rest"></a>
+
+## レスト構文 — ばらばらのものを集める
+
+関数の仮引数に `...` を書くと、渡された引数が**配列として**まとまります。可変長引数の書き方です。
+
+```js
+function sum(...nums) {
+  return nums.reduce((acc, cur) => acc + cur, 0);
+}
+
+sum(1, 2, 3); // 6
+sum(); // 0
+```
+
+**構文：** `function f(...rest) {}`
+
+| 書き方              | `rest` に入るもの                          |
+| ------------------- | ------------------------------------------ |
+| `f(...rest)`        | すべての引数の配列                         |
+| `f(first, ...rest)` | 2番目以降の引数の配列（1番目は `first`）   |
+
+**戻り値：** レスト構文自体に戻り値はありません。受け取った変数は常に配列（引数が0個なら空配列）です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+古いコードで見かける `arguments` と違って、レスト構文で受け取った値は**本物の配列**です。そのまま `map` や `reduce` が呼べます。
+</SpeechBubble>
+
+---
+
+<a id="pitfalls"></a>
+
+## よくあるハマりどころ
+
+### 1. `null` / `undefined` からは分割代入できない
+
+```js
+const { a } = null; // TypeError: Cannot destructure property 'a' of 'null'
+const { b } = undefined; // TypeError
+```
+
+APIのレスポンスなど、値が来ないことがあるデータではデフォルト値で受け止めます。
+
+```js
+function render(props = {}) {
+  const { title = '無題' } = props;
+}
+```
+
+### 2. デフォルト値は `undefined` のときだけ効く
+
+`null` や `0`、空文字はそのまま代入されます。
+
+```js
+const { count = 10 } = { count: null };
+console.log(count); // null（10 にはならない）
+
+const { size = 'M' } = { size: '' };
+console.log(size); // ''（'M' にはならない）
+```
+
+`null` も弾きたいときは、`??` を使って別に書きます。
+
+```js
+const { count } = data;
+const safeCount = count ?? 10;
+```
+
+### 3. 既存の変数へ代入するには括弧が要る
+
+`const` を付けずに、すでにある変数へオブジェクトを分割代入すると構文エラーになります。
+
+```js
+let a, b;
+
+{ a, b } = obj; // SyntaxError
+({ a, b } = obj); // OK
+```
+
+行頭の `{` がブロック文の開始と解釈されるためです。式であることを示すために、全体を `( )` で囲みます。
+
+### 4. スプレッドのコピーは1階層だけ
+
+```js
+const original = { name: 'Alice', tags: ['js'] };
+const copy = { ...original };
+
+copy.tags.push('ts');
+console.log(original.tags); // ['js', 'ts'] — 元も変わってしまう
+```
+
+`{ ...obj }` がコピーするのは**プロパティの値**です。値がオブジェクトや配列の場合、コピーされるのは参照なので中身は共有されたままです。深い階層まで独立させたいときは `structuredClone(original)` を使います。
+
+<Callout type="warning" title="「非破壊だから安全」とは限らない">
+  スプレッドも `map` も `filter` も、返すのは浅いコピーです。新しい配列・新しいオブジェクトができても、**要素の中身を書き換えれば元にも影響します**。詳しくは[配列のコピー・結合メソッド](/books/javascript/07-arrays3-copy-and-merge#slice)（第7章）を参照してください。
+</Callout>
+
+### 5. コピーされるのは「自分自身の列挙可能なプロパティ」だけ
+
+クラスのインスタンスをスプレッドすると、メソッドは落ちます。メソッドはプロトタイプ側にあり、インスタンス自身のプロパティではないためです。
+
+```js
+class User {
+  constructor(name) {
+    this.name = name;
+  }
+  greet() {
+    return `Hi, ${this.name}`;
+  }
+}
+
+const alice = new User('Alice');
+const copied = { ...alice };
+
+console.log(copied.name); // 'Alice'
+copied.greet(); // TypeError: copied.greet is not a function
+```
+
+<Marker>スプレッドでコピーできるのはデータであって、振る舞いではありません。</Marker>
+
+インスタンスをコピーしたい場合は、`new User(alice.name)` のように作り直すか、クラス側にコピー用のメソッドを用意します。
+
+---
+
+<a id="summary"></a>
+
+## ちゃんと使うためのポイント
+
+<Figure
+  src="/images/plan_selection_man_color.png"
+  alt="用途に応じて書き方を選ぶイメージ"
+  maxWidth="140px"
+/>
+
+- <Marker>左辺にあれば「取り出す・集める」、右辺にあれば「ばらまく」</Marker>。記号が同じでも役割は位置で決まる
+- 配列は**位置**、オブジェクトは**キー名**で取り出す。配列の分割代入では変数名を自由に決められる
+- リネームは `キー名: 新しい変数名`、デフォルト値は `= 値`。同時に書くときは `キー名: 変数名 = 値` の順
+- デフォルト値が効くのは値が `undefined` のときだけ。`null` を弾きたいなら `??` を併用する
+- オプションを受け取る関数の引数には `= {}` を付けて、引数なしの呼び出しに備える
+- オブジェクトのマージは**後勝ち**。既存オブジェクトの一部差し替えは `{ ...obj, key: 値 }` で書く
+- `...` のコピーは浅い。ネストした中身まで独立させたいときは `structuredClone` を使う
+- 深いネストの一括展開は途中が `undefined` だと落ちる。階層が深いデータではオプショナルチェーンも検討する
+
+次の章では、プロトタイプと `class` 構文を扱います。この章の最後に見た「メソッドはインスタンス自身のプロパティではない」という話が、そこで詳しく分かります。
 
 ## 参考リンク
 
 - [MDN — 分割代入](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Destructuring)
 - [MDN — スプレッド構文](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Spread_syntax)
 - [MDN — 残余引数](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Functions/rest_parameters)
+- [MDN — デフォルト引数](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Functions/Default_parameters)
+- [MDN — structuredClone()](https://developer.mozilla.org/ja/docs/Web/API/Window/structuredClone)
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>
