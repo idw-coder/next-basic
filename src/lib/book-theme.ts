@@ -125,6 +125,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-cyan-700',
     iconName: 'Atom',
   },
+  mui: {
+    cardBg: 'bg-sky-50',
+    iconBg: 'bg-sky-100',
+    iconText: 'text-sky-600',
+    accent: 'text-sky-600',
+    accentHover: 'group-hover:text-sky-700',
+    accentBg: 'bg-sky-500',
+    badgeBg: 'bg-sky-50',
+    badgeText: 'text-sky-700',
+    iconName: 'Blocks',
+  },
   'css-basics': {
     cardBg: 'bg-blue-50',
     iconBg: 'bg-blue-100',

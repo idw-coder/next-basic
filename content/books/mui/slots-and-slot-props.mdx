@@ -1,0 +1,229 @@
+---
+title: 'slotsとslotPropsの使い方 — MUIコンポーネントの内部を差し替える'
+description: 'MUIのコンポーネントが内部に持つ部品（slot）へpropsを渡す方法と、部品自体を差し替える方法を解説します。v9で廃止されたInputPropsやcomponentsPropsからの移行も扱います。'
+order: 7
+---
+
+`sx` や `styleOverrides` は、コンポーネントの**見た目**を変える道具でした。しかし実務では、こういう要求が出てきます。
+
+- 入力欄の先頭に「¥」マークを出したい
+- ダイアログの紙の部分だけ幅を固定したい
+- 数値入力の刻み幅を `step="300"` にしたい
+
+これらはCSSでは解決できません。<Marker>コンポーネントの内部にある部品へ、propsを届ける必要があります</Marker>。そのための仕組みが `slots` と `slotProps` です。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`<TextField>` って1個のコンポーネントじゃないの？「内部の部品」ってどういうこと？
+</SpeechBubble>
+
+---
+
+## MUIのコンポーネントは複数の部品でできている
+
+`<TextField />` は1つのタグですが、描画されると複数のコンポーネントが組み合わさります。型定義を見ると、`TextField` は次の6つの部品（slot）を持っています。
+
+| slot名 | 既定のコンポーネント | 担当している部分 |
+| --- | --- | --- |
+| `root` | `FormControl` | 全体を包む外枠 |
+| `input` | `Input` | 入力欄のコンテナ。枠線やアイコンを持つ |
+| `htmlInput` | `<input>` | 実際のHTML input要素 |
+| `inputLabel` | `InputLabel` | ラベル |
+| `formHelperText` | `FormHelperText` | 下に出る補助テキスト |
+| `select` | `Select` | `select` 指定時のプルダウン |
+
+<Callout type="info" title="inputとhtmlInputは別もの">
+名前が似ていて紛らわしいのですが、**`input` はMUIのコンポーネント、`htmlInput` は素のHTML要素**です。アイコンを足したいなら `input`、`maxLength` や `step` のようなHTML属性を付けたいなら `htmlInput` と覚えてください。
+</Callout>
+
+<Figure src="/images/search_woman_color.png" alt="内部構造を調べるイメージ" maxWidth="220px" />
+
+---
+
+## slotProps — 中の部品にpropsを渡す
+
+`slotProps` に「slot名: 渡したいprops」の形で書きます。
+
+```tsx
+<TextField
+  label="金額"
+  slotProps={{
+    input: {
+      startAdornment: <InputAdornment position="start">¥</InputAdornment>,
+    },
+  }}
+/>
+```
+
+HTML属性を付けたい場合は `htmlInput` を使います。
+
+```tsx
+<TextField
+  type="time"
+  slotProps={{
+    htmlInput: { step: 300 },
+  }}
+/>
+```
+
+### どのslotにも`sx`と`component`が渡せる
+
+`slotProps` で渡せるのは、そのslotの既定コンポーネントが受け取るpropsです。加えて、<Marker>すべてのslotが共通で `sx` と `component` を受け取ります</Marker>。
+
+```tsx
+<TextField
+  label="メールアドレス"
+  slotProps={{
+    inputLabel: { sx: { fontWeight: 700 } },
+    formHelperText: { sx: { mt: 1 } },
+  }}
+/>
+```
+
+「ラベルだけ太字にしたい」のような、部分的な調整はこれで完結します。
+
+---
+
+## slots — 部品そのものを差し替える
+
+`slotProps` が「中の部品にpropsを渡す」のに対し、`slots` は「**中の部品を別のコンポーネントに置き換える**」ためのものです。
+
+```tsx
+import Paper from '@mui/material/Paper';
+import { styled } from '@mui/material/styles';
+
+const WidePaper = styled(Paper)({
+  width: 640,
+  maxWidth: '90vw',
+});
+
+<Dialog open={open} slots={{ paper: WidePaper }}>
+  <DialogTitle>確認</DialogTitle>
+</Dialog>;
+```
+
+`Dialog` は内部に `paper`（中身を載せる紙の部分）というslotを持っており、既定では `Paper` が使われます。これを自作のコンポーネントに差し替えています。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+実務で `slots` まで必要になる場面は多くありません。まず `slotProps` で足りないか考えて、それでも届かないときに `slots` を検討する、という順番で十分です。
+</SpeechBubble>
+
+---
+
+## slotPropsは関数でも書ける
+
+状態によってpropsを変えたいときは、オブジェクトの代わりに関数を渡せます。関数は `ownerState`（そのコンポーネントの現在の状態）を受け取ります。
+
+```tsx
+<TextField
+  error={hasError}
+  slotProps={{
+    formHelperText: (ownerState) => ({
+      sx: { color: ownerState.error ? 'error.main' : 'text.secondary' },
+    }),
+  }}
+/>
+```
+
+型定義上も、slotPropsの各値は「オブジェクト」または「`ownerState` を受け取って返す関数」のどちらかを取れるようになっています。
+
+---
+
+## v9で廃止された書き方
+
+ここが古い記事との最大の差です。
+
+### `InputProps` / `inputProps` は無くなった
+
+v8以前の `TextField` は、slotごとに専用のpropを持っていました。
+
+```tsx
+// 古い書き方。v9では型エラーになる
+<TextField
+  InputProps={{ startAdornment: <InputAdornment position="start">¥</InputAdornment> }}
+  inputProps={{ maxLength: 10 }}
+  InputLabelProps={{ shrink: true }}
+/>
+```
+
+大文字の `InputProps` と小文字の `inputProps` が別物という、有名な混乱の元でした。v9ではこれらが `slotProps` に統合されています。
+
+| 古いprop | v9での書き方 |
+| --- | --- |
+| `InputProps` | `slotProps={{ input: ... }}` |
+| `inputProps` | `slotProps={{ htmlInput: ... }}` |
+| `InputLabelProps` | `slotProps={{ inputLabel: ... }}` |
+| `FormHelperTextProps` | `slotProps={{ formHelperText: ... }}` |
+
+実際にv9の `TextField` の型定義を確認すると、`InputProps` も `inputProps` も自身のpropとしては定義されていません。
+
+### `components` / `componentsProps` も削除された
+
+`slots` / `slotProps` の前身にあたるpropです。v9では完全に削除されており、パッケージ内を検索しても該当する型定義は残っていません。
+
+| 古いprop | v9での書き方 |
+| --- | --- |
+| `components` | `slots` |
+| `componentsProps` | `slotProps` |
+
+<Callout type="warning" title="移行は名前の付け替えだけでは終わらない">
+`components` を `slots` に書き換えるとき、**キー名の大文字小文字が変わっている**点に注意してください。旧 `components` はキーが大文字始まり（`{ Paper: MyPaper }`）でしたが、`slots` は小文字始まり（`{ paper: MyPaper }`）です。型エラーにはなりますが、原因に気づきにくいポイントです。
+</Callout>
+
+---
+
+## styleOverridesとの使い分け
+
+前章の `theme.components` にも `styleOverrides` という似た仕組みがありました。違いは目的です。
+
+| | `styleOverrides` | `slotProps` |
+| --- | --- | --- |
+| 変えられるもの | CSSのみ | propsすべて（CSSを含む） |
+| 適用範囲 | テーマに書けばアプリ全体 | 書いたその1か所 |
+| 使いどころ | 「全部のボタンを角丸なしに」 | 「この入力欄にだけアイコンを足す」 |
+
+<Marker>見た目だけを全体に効かせたいなら `styleOverrides`、この1か所の中身に手を入れたいなら `slotProps`</Marker>という切り分けになります。
+
+なお `theme.components` の `defaultProps` に `slotProps` を書くこともできます。「このアプリのTextFieldは全部ラベルを太字に」のような方針は、こちらにまとめられます。
+
+```tsx
+MuiTextField: {
+  defaultProps: {
+    slotProps: {
+      inputLabel: { sx: { fontWeight: 700 } },
+    },
+  },
+}
+```
+
+---
+
+## よくあるハマりどころ
+
+### `InputProps` を書いても何も起きない
+
+v9で削除されたpropです。TypeScriptを使っていれば型エラーで気づけますが、JavaScriptのままだと**エラーも出ず、ただ無視されます**。アイコンが出ないときは、まずここを疑ってください。
+
+### `input` に `maxLength` を渡したのに効かない
+
+`maxLength` はHTMLの属性なので `htmlInput` の担当です。`input` はMUIのコンポーネント側です。
+
+### どのslot名があるか分からない
+
+公式の各コンポーネントAPIページにslotの一覧があります。手元で調べたいときは、`node_modules/@mui/material/<コンポーネント名>/` の型定義ファイルで `Slots` という名前のinterfaceを探すのが確実です。既定のコンポーネントも `@default` として書かれています。
+
+### `slots` に渡したコンポーネントが毎回再生成される
+
+コンポーネント内で `styled()` や無名関数を定義して `slots` に渡すと、再レンダーのたびに別物として扱われ、中身が作り直されます。モジュールのトップレベルで定義してください。
+
+---
+
+## ちゃんと使うためのポイント
+
+- MUIのコンポーネントは内部が複数の部品（slot）に分かれている
+- <Marker>`slotProps` は中の部品にpropsを渡す。`slots` は部品自体を差し替える</Marker>
+- `input` はMUIのコンポーネント、`htmlInput` は素のHTML要素
+- どのslotにも `sx` と `component` は渡せる
+- v9では `InputProps` / `inputProps` / `components` / `componentsProps` が廃止され、`slotProps` / `slots` に統合された
+- 全体の方針にしたいときは `theme.components` の `defaultProps` に `slotProps` を書く
+
+次の章では、v9で仕組みが変わったダークモード対応を扱う予定です。
