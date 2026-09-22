@@ -15,15 +15,15 @@
 | 4 | レイアウト — Box・Stack・Container・Grid | `layout-box-stack-grid.mdx` | 執筆済み |
 | 5 | テーマの構造 — createThemeとデザイントークン | `theme-and-tokens.mdx` | 執筆済み |
 | 6 | カスタマイズの4段階 — sxからGlobalStylesまで | `customization-levels.mdx` | 執筆済み |
-| 7 | slotsとslotProps — コンポーネントの内部構造を差し替える | `slots-and-slot-props.mdx` | 未着手 |
-| 8 | ダークモード — cssVariablesとcolorSchemes | `dark-mode-and-css-variables.mdx` | 未着手 |
+| 7 | slotsとslotProps — コンポーネントの内部構造を差し替える | `slots-and-slot-props.mdx` | 執筆済み |
+| 8 | ダークモード — cssVariablesとcolorSchemes | `dark-mode-and-css-variables.mdx` | 執筆済み |
 | 9 | レスポンシブ — ブレークポイントとuseMediaQuery | `responsive-and-breakpoints.mdx` | 未着手 |
 | 10 | フォーム — TextField・Select・Autocomplete | `form-components.mdx` | 未着手 |
 | 11 | Dialog・Snackbar・Menu — Portalとフォーカス管理 | `dialog-snackbar-menu.mdx` | 未着手 |
 | 12 | アクセシビリティ — v9の構造変更と支援設定への対応 | `accessibility.mdx` | 未着手 |
 | 13 | 他のCSSと共存する — カスケードレイヤーとTailwind CSS併用 | `coexisting-with-other-css.mdx` | 未着手 |
 
-1〜6章を執筆済み。7章以降は未着手。
+1〜8章を執筆済み。9章以降は未着手。
 
 章と章のあいだに差し込みたくなった場合は、既存の `order` を動かさず**小数**を使う（`order: 5.5`）。`chapterLabel` を添えれば読者向けの表示も自然にできる。javascript本の `7.1`〜`7.5` が実例。
 
@@ -39,7 +39,7 @@
 | --- | --- | --- |
 | `<Grid item xs={6}>` | `<Grid size={6}>` | `Grid/Grid.d.ts` のpropsは `container` / `size` / `spacing` / `direction` のみ。`GridLegacy` はディレクトリごと存在しない |
 | `<Box mt={2}>` | `<Box sx={{ mt: 2 }}>` | Box・Typography・Grid・Stack・Linkからsystem propsが削除。`Box.d.ts` を `mt\|mb\|padding\|margin` でgrepして0件 |
-| `<CssVarsProvider>` | `createTheme({ cssVariables: true, colorSchemes })` ＋ 通常の `ThemeProvider` | `styles/index.d.ts` に `CssVarsProvider` のexportが無い |
+| `<CssVarsProvider>` + `extendTheme()` | `createTheme({ cssVariables: true, colorSchemes })` ＋ 通常の `ThemeProvider` | `styles/ThemeProviderWithVars.d.ts` で `@deprecated` 指定。JSDocに移行diffあり。**削除ではなく非推奨**で、実行時にはまだ存在する（`node -e` で確認済み） |
 | `components` / `componentsProps` | `slots` / `slotProps` | 公式migrationガイド |
 | `<Grid direction="column">` | `Stack` を使う | 公式migrationガイド |
 

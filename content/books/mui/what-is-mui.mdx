@@ -136,11 +136,13 @@ MUIを検討するとき、最初に確認したいのがライセンスです�
 | --- | --- |
 | `<Grid item xs={6}>` | `<Grid size={6}>` |
 | `<Box mt={2}>` | `<Box sx={{ mt: 2 }}>` |
-| `<CssVarsProvider>` | `createTheme({ cssVariables: true })` と通常の `ThemeProvider` |
+| `<CssVarsProvider>` + `extendTheme()` | `createTheme({ cssVariables: true, colorSchemes })` と通常の `ThemeProvider` |
 | `components` / `componentsProps` | `slots` / `slotProps` |
 | `<Grid direction="column">` | `Stack` を使う |
 
 いずれも公式のアップグレードガイドに記載があり、この本の執筆時には `node_modules` の型定義でも実際に確認しています。たとえば `Grid` の型が受け取るpropsは `container` / `size` / `spacing` / `direction` だけで、`item` も `xs` も存在しません。
+
+`CssVarsProvider` だけは事情が少し違い、削除ではなく **`@deprecated` になった** 状態です。型定義のコメントに `ThemeProvider` への移行手順がそのまま書かれています。動いてしまうぶん気づきにくく、古い書き方が残りやすい箇所です。
 
 <Marker>MUIで詰まったら、まず記事の日付とバージョンを確認する</Marker>。これがv9時代の鉄則です。公式ドキュメントは常に最新版の書き方で書かれているので、記事とドキュメントが食い違ったらドキュメントが正です。
 

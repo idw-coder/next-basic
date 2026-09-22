@@ -1,0 +1,243 @@
+---
+title: 'MUIのダークモード対応 — cssVariablesとcolorSchemesで切り替える'
+description: 'v9のMUIでダークモードを実装する手順を、CSS変数方式の仕組み・useColorSchemeでの切り替えUI・初回表示のちらつき対策まで解説します。'
+order: 8
+---
+
+MUIのダークモード対応は、v5の時代から仕組みが入れ替わっています。<Marker>いま主流なのは、色をCSS変数として出力し、HTMLの属性を書き換えて切り替える方式</Marker>です。
+
+古い記事にある `palette.mode` を状態で持ち回す方法も動きますが、書き方も挙動も違います。この章では現行の方式を扱います。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ダークモードって、`useState` でlightとdarkを切り替えて `createTheme` を作り直すんじゃないの？
+</SpeechBubble>
+
+それが旧来のやり方です。テーマを作り直すので、切り替えるたびにアプリ全体が再レンダーされます。CSS変数方式なら、<Marker>属性を1つ書き換えるだけで色が変わり、Reactの再レンダーが起きません</Marker>。
+
+---
+
+## 最小構成
+
+まずテーマ側で2つの設定を有効にします。
+
+```tsx
+// src/theme.ts
+'use client';
+
+import { createTheme } from '@mui/material/styles';
+
+export const theme = createTheme({
+  cssVariables: true,
+  colorSchemes: { light: true, dark: true },
+});
+```
+
+| 設定 | 意味 |
+| --- | --- |
+| `cssVariables: true` | テーマの値をCSS変数として出力する |
+| `colorSchemes` | 用意する配色。`true` を渡すとMUIの既定色が使われる |
+
+あとは通常どおり `ThemeProvider` と `CssBaseline` で包みます。
+
+```tsx
+<ThemeProvider theme={theme}>
+  <CssBaseline />
+  {children}
+</ThemeProvider>
+```
+
+**これだけで、OSの設定がダークなら自動的にダーク表示になります。** 切り替えUIを作らないなら、ここで完成です。
+
+<Callout type="info" title="colorSchemesにはtrue以外も渡せる">
+`colorSchemes: { light: true, dark: true }` の `true` は「MUIの既定の配色をそのまま使う」という意味です。自分で色を決めたい場合はオブジェクトを渡します。型定義上も `boolean | ColorSystemOptions` を受け取るようになっています。
+
+```tsx
+colorSchemes: {
+  light: { palette: { primary: { main: '#0b5cad' } } },
+  dark: { palette: { primary: { main: '#7cc0ff' } } },
+}
+```
+</Callout>
+
+---
+
+## 切り替えUIを作る — useColorScheme
+
+ユーザーが自分で選べるようにするには `useColorScheme` フックを使います。
+
+```tsx
+'use client';
+
+import { useColorScheme } from '@mui/material/styles';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+
+export function ModeSelect() {
+  const { mode, setMode } = useColorScheme();
+
+  return (
+    <Select value={mode} onChange={(e) => setMode(e.target.value as 'light' | 'dark' | 'system')}>
+      <MenuItem value="system">OSに合わせる</MenuItem>
+      <MenuItem value="light">ライト</MenuItem>
+      <MenuItem value="dark">ダーク</MenuItem>
+    </Select>
+  );
+}
+```
+
+このフックが返す主な値は次のとおりです。
+
+| 値 | 中身 |
+| --- | --- |
+| `mode` | ユーザーが選んだ設定。`'light'` / `'dark'` / `'system'` |
+| `systemMode` | `mode` が `'system'` のときの実際の値 |
+| `colorScheme` | いま適用されている配色 |
+| `setMode()` | 設定を変更する。localStorageにも保存される |
+
+### サーバーでは値がundefinedになる
+
+ここが最大の落とし穴です。型定義にも明記されていますが、<Marker>`mode` と `colorScheme` はサーバー側では必ず `undefined` になります</Marker>。ユーザーの選択はブラウザのlocalStorageにあり、サーバーには知りようがないためです。
+
+そのまま書くと、サーバーが描画したHTMLとブラウザが描画した結果が食い違い、ハイドレーションの警告が出ます。
+
+対策は、マウントが完了するまで中身を描かないことです。
+
+```tsx
+'use client';
+
+export function ModeSelect() {
+  const { mode, setMode } = useColorScheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+  if (!mounted) {
+    // 高さだけ確保しておくとレイアウトがずれない
+    return <Box sx={{ width: 140, height: 40 }} />;
+  }
+
+  return <Select value={mode} /* ... */ />;
+}
+```
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+「ダークモードのトグルだけハイドレーションエラーが出る」という相談はとても多いです。原因はほぼこれで、MUI固有というよりサーバー描画全般の性質です。
+</SpeechBubble>
+
+---
+
+## 初回表示のちらつきを防ぐ
+
+切り替えUIを付けると、新しい問題が出ます。
+
+ユーザーがダークを選んで再訪したとき、**サーバーが返すHTMLはライトのまま**です。ブラウザでJavaScriptが動いてlocalStorageを読んだ瞬間にダークへ切り替わるため、一瞬だけ白い画面が光ります。
+
+<SpeechBubble character="/images/surprise_pc_woman_color.png" name="学習者">
+これ、他のサイトでも見たことある…。目に痛いやつ。
+</SpeechBubble>
+
+これを防ぐのが `InitColorSchemeScript` です。Reactが動くより前に、localStorageを読んでHTML要素へ属性を付けるスクリプトを埋め込みます。
+
+```tsx
+// app/layout.tsx
+import InitColorSchemeScript from '@mui/material/InitColorSchemeScript';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ja" suppressHydrationWarning>
+      <body>
+        <InitColorSchemeScript attribute="data-mui-color-scheme" />
+        <AppRouterCacheProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            {children}
+          </ThemeProvider>
+        </AppRouterCacheProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+<Marker>`<body>` の一番最初に置くのが要点</Marker>です。あとに置くと、その前の要素が描画されてからスクリプトが動くため、ちらつきが残ります。
+
+### 既定値
+
+設定を省略したときの値は、型定義から確認できます。
+
+| 項目 | 既定値 |
+| --- | --- |
+| HTML属性 | `data-mui-color-scheme` |
+| モードの保存キー | `mui-mode` |
+| 配色の保存キー | `mui-color-scheme` |
+| 初回訪問時のモード | `system` |
+
+localStorageに `mui-mode` というキーが増えるのはこのためです。開発者ツールで確認すると、切り替えの動きが追いやすくなります。
+
+<Figure src="/images/plan_selection_man_color.png" alt="モードを選ぶイメージ" maxWidth="230px" />
+
+---
+
+## colorSchemeSelector — 切り替えの合図を変える
+
+MUIは既定で `data-mui-color-scheme` 属性を見て配色を決めます。この「合図」は変更できます。
+
+```tsx
+createTheme({
+  cssVariables: { colorSchemeSelector: 'class' },
+  colorSchemes: { light: true, dark: true },
+});
+```
+
+指定できるのは `'media'` / `'class'` / `'data'` と、任意のセレクタ文字列です。
+
+| 指定 | 動き |
+| --- | --- |
+| `'media'` | OSの設定だけに従う。ユーザーによる切り替えはしない |
+| `'class'` | `<html class="dark">` のようなクラスで切り替える |
+| `'data'` | data属性で切り替える |
+| 任意の文字列 | 独自のセレクタを指定する |
+
+<Callout type="info" title="Tailwind CSSと併用するとき">
+Tailwindのダークモードはクラス（`dark:`）で制御されます。MUIとTailwindを同じプロジェクトで使い、切り替えを1つのスイッチにまとめたい場合は、`colorSchemeSelector` をTailwind側の仕組みと揃えると、両方が同じ合図で切り替わるようになります。
+</Callout>
+
+---
+
+## CSS変数として何が出ているか
+
+`cssVariables: true` にすると、テーマの値がCSSカスタムプロパティとして出力されます。ブラウザの開発者ツールで `<html>` 要素を見ると、`--mui-palette-primary-main` のような変数が並んでいるのが確認できます。
+
+配色の切り替えは、この変数の値を差し替えることで行われます。JavaScriptが色を計算し直してコンポーネントを再描画するわけではないので、切り替えが速く、ちらつきも少なくなります。
+
+---
+
+## よくあるハマりどころ
+
+### ダークにしても背景が白いまま
+
+`CssBaseline` を置いていない可能性があります。`body` の背景色はこのコンポーネントが当てています。
+
+### 自分で書いた色だけダークで見えなくなる
+
+`sx={{ color: '#333' }}` のように生の値を書いた箇所は、配色が変わっても追従しません。`color: 'text.primary'` のようにテーマのパスで参照してください。テーマ経由の色は、配色ごとに値が切り替わります。
+
+### ハイドレーションの警告が消えない
+
+`<html>` に `suppressHydrationWarning` を付けているか確認してください。`InitColorSchemeScript` はサーバーが返したHTMLの属性を書き換えるため、Reactから見ると差分として検出されます。これは意図した動作なので、警告を抑止するのが正しい対処です。
+
+### 切り替えたのにリロードで元に戻る
+
+`InitColorSchemeScript` が無いか、置き場所が `<body>` の先頭でない可能性があります。保存自体はlocalStorageに効いているので、開発者ツールで `mui-mode` の値を確認すると切り分けられます。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>v9のダークモードは `cssVariables: true` と `colorSchemes` の2点セット</Marker>
+- 切り替えUIが不要なら、この2行だけでOSの設定に追従する
+- `useColorScheme` の `mode` はサーバーで `undefined`。マウント後に描くこと
+- ちらつき対策の `InitColorSchemeScript` は `<body>` の先頭に置く
+- `<html>` には `suppressHydrationWarning` が必要
+- 色は生の値ではなくテーマのパスで参照する
+
+次の章では、ブレークポイントと `useMediaQuery` を使ったレスポンシブ対応を扱う予定です。
