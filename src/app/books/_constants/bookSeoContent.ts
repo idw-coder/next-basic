@@ -324,6 +324,61 @@ const bookSeoContentMap: Record<string, BookSeoContent> = {
     relatedQuizSlug: 'css-basic',
   },
 
+  mui: {
+    overview:
+      'MUI（Material UI）はReact向けのUIコンポーネントライブラリで、ボタンやダイアログ、テーブルなどが動く状態で提供されます。本書では、sx propによるスタイリング、テーマ設計、slotsによる内部構造の差し替え、ダークモード、Next.js App Routerとの統合、Tailwind CSSとの共存までを全13章で解説します。破壊的変更の多いv9を前提に、型定義と公式ドキュメントで裏を取った内容だけを扱います。',
+    whyLearn:
+      '管理画面や社内ツールのように、デザインが確定していない画面を早く形にしたい場面でMUIは強力です。フォーカス管理やキーボード操作といった実装が面倒な部分をライブラリが引き受けるため、アクセシビリティの水準を保ったまま開発速度を上げられます。一方でv9では書き方が大きく変わっており、古い記事のコードがそのままでは動きません。現行の書き方を体系的に押さえることが実務では重要になります。',
+    prerequisites:
+      'Reactの基礎（コンポーネント、props、useStateなどのHooks）を理解していることが前提です。React入門を先に読むか、同等の知識があればスムーズに進められます。CSSの基礎知識もあると理解が早くなります。',
+    topics: [
+      {
+        title: 'sx propとテーマ設計',
+        description:
+          'MUIのスタイリングの基本単位であるsx propの書き方、余白の8px基準、テーマによる色・フォント・角丸の一元管理を学びます。',
+      },
+      {
+        title: 'レイアウトとカスタマイズの4段階',
+        description:
+          'Box・Stack・Container・Gridの使い分けと、sxからstyled()、theme.components、GlobalStylesまで影響範囲に応じた使い分けを理解します。',
+      },
+      {
+        title: 'slotsとダークモード',
+        description:
+          'コンポーネント内部の部品にpropsを届けるslotPropsと、cssVariablesとcolorSchemesを使ったダークモード実装を解説します。',
+      },
+      {
+        title: 'Next.js統合と他のCSSとの共存',
+        description:
+          'App RouterでのAppRouterCacheProvider設定とuse clientの境界、カスケードレイヤーによるTailwind CSSとの共存方法を扱います。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'MUIとTailwind CSSはどちらを使うべきですか？',
+        answer:
+          '解決する問題の層が違います。MUIは完成品のコンポーネントを提供し、Tailwindはスタイルを当てるクラスを提供します。デザインが未確定の管理画面を速く作るならMUI、デザインカンプを忠実に再現するならTailwindが向いています。両方を同じプロジェクトで併用することもでき、本書の最終章で設定方法を扱います。',
+      },
+      {
+        question: 'ネットの記事のコードが動かないのはなぜですか？',
+        answer:
+          'v9で書き方が変わったためです。Grid itemやxsは廃止されてsize propに、Boxのmtなどのsystem propsはsxに統合され、TextFieldのInputPropsはslotPropsに置き換わりました。日本語の入門記事はv5からv7の時期に書かれたものが多く、当時は正しかった書き方が現在は動きません。本書はv9の型定義で確認した内容のみを扱っています。',
+      },
+      {
+        question: 'MUIは無料で使えますか？',
+        answer:
+          '本書が扱うMaterial UI（@mui/material）はMITライセンスで無料です。有料が関わるのはData GridやDate Pickersを含むMUI Xで、Community版は無料ですが高度な機能はProまたはPremiumのプランが必要になります。導入前に公式の価格ページで確認してください。',
+      },
+    ],
+    targetAudience: [
+      'Reactの基礎は学んだがUIライブラリは初めての方',
+      '管理画面や社内ツールを早く形にしたい方',
+      '古い記事のコードが動かず原因が分からない方',
+      'MUIとTailwind CSSの使い分けや併用を検討している方',
+    ],
+    relatedQuizSlug: null,
+  },
+
   'tailwind-css': {
     overview:
       'Tailwind CSSはユーティリティファーストのCSSフレームワークで、HTMLに直接クラスを書くことで高速にUIを構築できます。本書では、ユーティリティクラスの基本的な考え方から、レイアウト、レスポンシブデザイン、ダークモード対応、テーマのカスタマイズまでを実践的に解説します。',

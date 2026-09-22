@@ -309,6 +309,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
+    date: '2026/09/22',
+    text: '教科書「MUI実践ガイド — Reactコンポーネントライブラリを使いこなす」を公開しました。sxによるスタイリング、テーマ設計、slotProps、ダークモード、Next.js App Router統合、Tailwind CSSとの共存まで全13章です。破壊的変更の多いv9を前提に、型定義と公式ドキュメントで裏を取った内容だけを載せています',
+    isNew: true,
+    link: '/books/mui',
+  },
+  {
     date: '2026/08/30',
     text: '教科書「MySQL入門 — 接続・InnoDB・コネクションプールを実務目線で」を公開しました。MySQLがサーバーであること、SHOW PROCESSLISTでの接続確認、mysql2のコネクションプールまで、まず3章を公開し順次追加していきます',
     isNew: true,

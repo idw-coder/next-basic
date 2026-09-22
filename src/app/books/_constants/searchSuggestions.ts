@@ -256,6 +256,23 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'abstract',
   ],
 
+  mui: [
+    'sx',
+    'createTheme',
+    'ThemeProvider',
+    'Grid',
+    'size',
+    'Stack',
+    'styled',
+    'slotProps',
+    'ダークモード',
+    'colorSchemes',
+    'useMediaQuery',
+    'Autocomplete',
+    'AppRouterCacheProvider',
+    'enableCssLayer',
+  ],
+
   'react-learning': [
     'useState',
     'useContext',
