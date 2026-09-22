@@ -1,0 +1,173 @@
+---
+title: 'MUIとは何か — Material UIとTailwind CSSの違いから理解する'
+description: 'ReactのUIコンポーネントライブラリMUI（Material UI）の立ち位置を、Material Designとの関係とTailwind CSSとの違いから整理します。無料と有料の境目、v9で書き方が変わった点まで扱います。'
+order: 1
+---
+
+**MUI**（読みは「エムユーアイ」）は、Reactで使えるUIコンポーネントライブラリです。ボタン・入力欄・ダイアログ・テーブルといった部品が、動く状態で最初から用意されています。かつては「Material-UI」という名前でしたが、2021年にMUIへ改称されました。いま `npm` から入れるパッケージ名は `@mui/material` です。
+
+この章では、MUIが何を肩代わりしてくれるライブラリなのかを、すでにCSSやTailwindを触ったことのある人の目線で整理します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Tailwind CSSでボタンくらい作れるようになったところなんだけど、MUIって何が違うの？どっちも「CSSを楽にするやつ」に見えてしまって…。
+</SpeechBubble>
+
+そこが最初の分かれ目です。結論を先に言うと、<Marker>Tailwindは「道具箱」で、MUIは「完成品の部品箱」</Marker>です。解決しようとしている問題の層が違います。
+
+<Figure src="/images/books/materialui.png" alt="MUIのロゴ" maxWidth="180px" />
+
+---
+
+## MUIは「完成品のコンポーネント」が来るライブラリ
+
+同じ「送信ボタン」を作るコードを並べてみます。
+
+Tailwind CSSの場合、見た目を作る小さなクラスを自分で組み合わせます。
+
+```html
+<button class="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
+  送信
+</button>
+```
+
+MUIの場合は、`Button` というコンポーネントを置くだけです。
+
+```tsx
+import Button from '@mui/material/Button';
+
+<Button variant="contained">送信</Button>;
+```
+
+MUIの1行には、CSSに書いていないものが最初から含まれています。
+
+- 角丸・余白・影・フォントサイズといった見た目
+- ホバー・フォーカス・押下中・無効状態のスタイル
+- クリックしたときに波紋が広がるアニメーション（リップル）
+- キーボード操作とスクリーンリーダー向けの属性
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+Tailwindで同じ品質まで持っていこうとすると、`hover:` `focus-visible:` `disabled:` を自分で書き、フォーカスリングの見た目を決め、`aria-*` を付けて…と、けっこうな量になります。MUIはそこを引き受けてくれる代わりに、部品の作りに合わせて書くことになります。
+</SpeechBubble>
+
+### 2つのアプローチの比較
+
+| | MUI | Tailwind CSS |
+| --- | --- | --- |
+| 何が提供されるか | 完成品のReactコンポーネント | スタイルを当てるCSSクラス |
+| ボタンの見た目 | 最初から整っている | 自分で組み立てる |
+| アクセシビリティ | ライブラリ側が面倒を見る | 自分で対応する |
+| デザインの自由度 | テーマの範囲内で調整する | ほぼ無制限 |
+| 学習すること | コンポーネントのAPIとテーマ | クラス名 |
+| 向いている場面 | 管理画面・社内ツール・素早い立ち上げ | 独自デザインのサイト・LP |
+
+どちらが優れているという話ではありません。**デザインが決まっていない管理画面を速く作る**ならMUI、**デザイナーが作ったカンプを忠実に再現する**ならTailwind、というのが実務での典型的な分かれ方です。
+
+なお、この2つは排他ではありません。同じプロジェクトで併用することもでき、MUIの公式ドキュメントにもTailwind CSSとの統合ページがあります。併用時の衝突の扱いは、この本の最終章で扱います。
+
+---
+
+## Material Designとの関係
+
+MUIは、**Googleが策定したデザインシステム「Material Design」をReactコンポーネントとして実装したもの**です。公式も自らを「Google's Material Designを実装したオープンソースのReactコンポーネントライブラリ」と説明しています。
+
+ここから実務上の性質が2つ出てきます。
+
+1. **何もしないとGoogleっぽい見た目になる。** 影の付き方、ボタンの大文字化、リップルなど、Androidアプリで見慣れた雰囲気がデフォルトです
+2. **テーマで大きく変えられる。** 色・フォント・角丸・影は設定で上書きでき、Material Designらしさをかなり薄めることもできます
+
+<Callout type="info" title="「MUIっぽさ」が気になる場合">
+「どのサイトもMUIだとバレる」という懸念はよく聞きます。実際にはテーマ設定でかなり印象を変えられます。色とフォントと角丸を変えるだけでも別物に見えます。テーマの触り方はこの本の5章と6章でまとめて扱います。
+</Callout>
+
+---
+
+## どんなコンポーネントがあるか
+
+公式ドキュメントは、コンポーネントを用途ごとに分類しています。
+
+| カテゴリ | 主なコンポーネント |
+| --- | --- |
+| Inputs（入力） | Button / TextField / Select / Checkbox / Radio / Switch / Slider / Autocomplete |
+| Data Display（表示） | Typography / List / Table / Avatar / Badge / Chip / Tooltip / Divider |
+| Feedback（フィードバック） | Alert / Dialog / Snackbar / Progress / Skeleton / Backdrop |
+| Surfaces（面） | Card / Paper / Accordion / App Bar |
+| Navigation（ナビゲーション） | Drawer / Menu / Tabs / Breadcrumbs / Pagination / Stepper / Link |
+| Layout（レイアウト） | Box / Container / Stack / Grid / Image List |
+| Utils（ユーティリティ） | Modal / Portal / Popper / CssBaseline / useMediaQuery |
+
+<SpeechBubble character="/images/pc-work-woman01.png" name="学習者">
+思ったより多い…。これ全部覚えないといけないの？
+</SpeechBubble>
+
+覚える必要はありません。<Marker>最初に押さえるべきは Box・Stack・Typography・Button・TextField の5つ</Marker>で、これだけで画面の大半は組めます。残りは「テーブルが要る」「モーダルが要る」となった時点で公式ドキュメントを引けば十分です。
+
+この本も、全コンポーネントの網羅は目指しません。**どれを使うにも必要になる共通の仕組み**（スタイリング・テーマ・レイアウト・カスタマイズ）に紙面を割きます。
+
+---
+
+## 無料と有料の境目 — MUI CoreとMUI X
+
+MUIを検討するとき、最初に確認したいのがライセンスです。製品が2つの系統に分かれています。
+
+| 系統 | 中身 | ライセンス |
+| --- | --- | --- |
+| MUI Core | Material UI（`@mui/material`）、MUI System、Base UI、Joy UI | MITライセンスで無料 |
+| MUI X | Data Grid、Date and Time Pickers、Charts、Tree View など | Community版は無料。高度な機能はPro / Premiumの有料プラン |
+
+**この本が扱う `@mui/material` は全機能が無料**です。注意が要るのはMUI Xのほうで、Community版は無料で使えるものの、Data Gridの行グループ化や高度なフィルタリングといった機能は有料プランでないと使えません。
+
+<Callout type="warning" title="Data Gridを使う前に確認する">
+「高機能なテーブルが必要」という理由でMUI Xの Data Grid を入れると、実装が進んでから必要な機能が有料プラン側だったと分かることがあります。ライセンス費用は開発者1人あたりの年額課金です。導入前に、使いたい機能がCommunity版に含まれるかを公式の価格ページで確認してください。
+</Callout>
+
+---
+
+## この本がv9を前提にする理由
+
+ここが、MUIを学ぶうえで一番つまずきやすいところです。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+ネットの記事を見ながら `<Grid item xs={6}>` って書いたら、エディタに赤線が出て何も表示されない…。コピペしただけなのに何で？
+</SpeechBubble>
+
+その記事が悪いわけではありません。**当時は正しかった書き方が、v9で使えなくなった**のです。MUIはメジャーバージョンごとに書き方を整理しており、v9でもまとまった変更が入りました。日本語の入門記事はv5〜v7の時期に書かれたものが多く、次のようなズレが生じています。
+
+| 古い記事にある書き方 | v9での書き方 |
+| --- | --- |
+| `<Grid item xs={6}>` | `<Grid size={6}>` |
+| `<Box mt={2}>` | `<Box sx={{ mt: 2 }}>` |
+| `<CssVarsProvider>` | `createTheme({ cssVariables: true })` と通常の `ThemeProvider` |
+| `components` / `componentsProps` | `slots` / `slotProps` |
+| `<Grid direction="column">` | `Stack` を使う |
+
+いずれも公式のアップグレードガイドに記載があり、この本の執筆時には `node_modules` の型定義でも実際に確認しています。たとえば `Grid` の型が受け取るpropsは `container` / `size` / `spacing` / `direction` だけで、`item` も `xs` も存在しません。
+
+<Marker>MUIで詰まったら、まず記事の日付とバージョンを確認する</Marker>。これがv9時代の鉄則です。公式ドキュメントは常に最新版の書き方で書かれているので、記事とドキュメントが食い違ったらドキュメントが正です。
+
+---
+
+## よくあるハマりどころ
+
+### コピペしたコードが動かない
+
+前節のとおり、バージョン違いがほとんどの原因です。エラーメッセージより先に、参照元の記事がいつ書かれたものかを見てください。
+
+### Server Componentsでエラーになる
+
+Next.jsのApp Routerでは、状態やイベントを持つコンポーネントはクライアント側で動かす必要があります。MUIのインタラクティブな部品も同じで、`'use client'` の扱いを間違えるとビルド時にエラーになります。ここは2章でセットアップと合わせて扱います。
+
+### CSSで上書きしたのに効かない
+
+MUIのスタイルはJavaScriptから生成され、詳細度も高めです。外から `.my-class { color: red }` と書いても勝てないことがあります。MUIには上書き専用の仕組み（`sx` prop）が用意されているので、そちらを使うのが正攻法です。3章のテーマになります。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>MUIは完成品のコンポーネントを提供するライブラリで、Tailwindのようなスタイルの道具箱とは層が違う</Marker>
+- GoogleのMaterial Designの実装だが、テーマで見た目は大きく変えられる
+- まず押さえるのは Box・Stack・Typography・Button・TextField の5つ
+- `@mui/material` はMITライセンスで無料。有料が絡むのはMUI Xのほう
+- 古い記事の書き方はv9で動かないものがある。迷ったら公式ドキュメントを正とする
+
+次の章では、[Next.js App RouterへのMUIの導入](/books/mui/nextjs-app-router-setup)を扱います。スタイルがサーバー側で正しく届く設定と、`'use client'` の線引きが中心です。

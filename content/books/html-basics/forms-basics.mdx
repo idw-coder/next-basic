@@ -62,6 +62,49 @@ order: 7
 
 <Marker>フォーム部品には、基本的に `label` と `name` をセットで付けます。</Marker>
 
+## `button` 要素と `type` の使い分け
+
+`button` 要素は、フォームの送信や画面上の操作を実行するための要素です。開始タグと終了タグの間に、ボタンへ表示する文字を書きます。
+
+```html
+<button type="submit">送信する</button>
+```
+
+**構文：** `<button type="ボタンの種類">表示する内容</button>`
+
+`type` には、主に次の3種類があります。
+
+| `type` | 動作 | 主な用途 |
+| ------ | ---- | -------- |
+| `submit` | フォームを送信する | 「送信」「ログイン」「登録」 |
+| `reset` | フォームの入力内容を初期状態に戻す | 入力内容の一括クリア |
+| `button` | そのままでは何もしない | JavaScriptでメニューやダイアログを開く |
+
+```html
+<form action="/contact" method="post">
+  <label for="message">お問い合わせ内容</label>
+  <textarea id="message" name="message" rows="5"></textarea>
+
+  <button type="reset">入力を戻す</button>
+  <button type="submit">送信する</button>
+</form>
+```
+
+| 属性 | 説明 |
+| ---- | ---- |
+| `type` | ボタンの動作を指定する |
+| `name` | フォーム送信時のキーを指定する |
+| `value` | `name` と組み合わせて送信する値を指定する |
+| `disabled` | ボタンを操作できない状態にする |
+
+**戻り値：** HTML要素なので戻り値はありません。`submit` はフォームを送信し、`reset` は入力内容を初期状態へ戻します。`button` は、JavaScriptで処理を追加して使います。
+
+<Callout type="warning" title="typeは省略しない">
+  `form` 要素の中では、`type` を省略した `button` は基本的に送信ボタンとして動作します。送信しない操作には `type="button"`、送信には `type="submit"` を明示しましょう。
+</Callout>
+
+`<input type="submit" value="送信">` でも送信ボタンを作れますが、`button` 要素なら文字だけでなくアイコンなども中に入れられます。通常は、内容を柔軟に作れる `button` 要素を使うとよいでしょう。
+
 ## checkboxとradio
 
 複数選択ならcheckbox、1つだけ選ぶならradioです。
@@ -112,6 +155,7 @@ order: 7
 - [MDN: form 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/form)
 - [MDN: input 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/input)
 - [MDN: label 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/label)
+- [MDN: button 要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/button)
 
 次章では、ページ全体の意味を整理するセマンティックHTMLを学びます。
 

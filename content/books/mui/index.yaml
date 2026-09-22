@@ -1,0 +1,3 @@
+title: 'MUI実践ガイド — Reactコンポーネントライブラリを使いこなす'
+description: 'ReactのUIコンポーネントライブラリMUI（Material UI）を、sxによるスタイリング・テーマ設計・ダークモード・Next.js App Router統合まで実務目線で解説する入門書です。破壊的変更の多いv9を前提に、型定義と公式ドキュメントで裏を取った内容だけを載せています。'
+coverImage: '/images/books/materialui.png'
