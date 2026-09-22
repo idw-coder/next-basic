@@ -1,0 +1,232 @@
+---
+title: 'MUIをNext.js App Routerで使う — セットアップとuse clientの境界'
+description: 'Next.jsのApp RouterにMUIを導入する手順を、AppRouterCacheProviderが必要な理由と「use clientをどこに書くのか」の判断基準まで含めて解説します。'
+order: 2
+---
+
+MUIをNext.jsのApp Routerで使うとき、`npm install` だけでは終わりません。**スタイルをサーバー側で正しく組み立てる設定**と、**Server Componentsとの境界の引き方**という2つの作業が必要になります。
+
+この章では、動く状態まで持っていく手順と、それぞれの設定が何を防いでいるのかを押さえます。
+
+<SpeechBubble character="/images/surprise_pc_woman_color.png" name="学習者">
+インストールして `<Button>` を置いたら一応表示されたんだけど、リロードした瞬間だけ見た目が崩れる気がする…。気のせい？
+</SpeechBubble>
+
+気のせいではありません。まさにこの章で潰す問題です。
+
+---
+
+## インストールするパッケージ
+
+MUIは内部でEmotionというCSS-in-JSライブラリを使っています。そのためMUI本体だけでなく、Emotionも一緒に入れます。
+
+```bash
+npm install @mui/material @emotion/react @emotion/styled
+```
+
+Next.jsで使う場合は、統合用のパッケージも追加します。
+
+```bash
+npm install @mui/material-nextjs
+```
+
+| パッケージ | 役割 |
+| --- | --- |
+| `@mui/material` | コンポーネント本体 |
+| `@emotion/react` / `@emotion/styled` | スタイルを生成するエンジン。MUIが依存している |
+| `@mui/material-nextjs` | Next.jsとの統合。App Router用のプロバイダが入っている |
+
+---
+
+## AppRouterCacheProviderを置く
+
+`app/layout.tsx` で、アプリ全体を `AppRouterCacheProvider` で包みます。
+
+```tsx
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ja">
+      <body>
+        <AppRouterCacheProvider>{children}</AppRouterCacheProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+### なぜ必要なのか
+
+Next.jsはHTMLを一度に返さず、少しずつ分割して送ります（ストリーミング）。MUIのスタイルはJavaScriptで実行時に作られるため、**何も対策しないと、送られてくる断片ごとにスタイルが生成されて `<body>` の中に散らばります**。
+
+`AppRouterCacheProvider` は、サーバー側で生成されたCSSを集めて `<head>` にまとめる役割を持ちます。パッケージのソース内にも、これが無い場合は「SSRのたびにコンポーネントごとに新しい `<style>` タグが生成されてしまう」という説明が書かれています。冒頭の「リロード直後だけ崩れる」はこれが原因です。
+
+<Callout type="info" title="インポートパスの v15 はNext.jsのバージョン">
+`@mui/material-nextjs/v15-appRouter` の `v15` は、MUIのバージョンではなく**Next.jsのバージョン**です。`v13` から `v16` まで用意されています。執筆時点（v9系）では中身は同じ実装を再エクスポートしているだけですが、将来分岐する可能性があるので、使っているNext.jsに合わせたパスを指定しておくのが無難です。
+</Callout>
+
+---
+
+## `'use client'` はどこに書くのか
+
+App Routerで一番迷うのがここです。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+MUIを使うファイルには全部 `'use client'` を書けばいいんでしょ？ネットの記事にそう書いてあったような…。
+</SpeechBubble>
+
+その理解だと、Server Componentsの利点をほとんど捨てることになります。正確には違います。
+
+<Marker>MUIのコンポーネントは、ライブラリ側のファイル自身が `'use client'` を持っている</Marker>ためです。実際に `node_modules/@mui/material/Button/Button.js` の先頭を見ると、`'use client'` が書かれています。つまり **Server Componentのファイルから `<Button>` をimportして置くだけなら、自分のファイルに `'use client'` は要りません**。
+
+書く必要があるのは、あくまで自分のコードがクライアント側の機能を使うときです。
+
+| 自分のファイルに `'use client'` が | ケース |
+| --- | --- |
+| 要らない | `<Button variant="contained">送信</Button>` のように、静的なpropsだけ渡して置く |
+| 要らない | `<Typography>` や `<Box>` でレイアウトを組む |
+| **要る** | `onClick` などのイベントハンドラを渡す |
+| **要る** | `useState` でダイアログの開閉を管理する |
+| **要る** | `useMediaQuery` などMUIのフックを呼ぶ |
+
+判断の軸はシンプルで、**関数や状態を自分で書くかどうか**です。関数はサーバーからクライアントへ渡せないため、イベントハンドラを書いた時点でそのファイルはクライアント側のものになります。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「MUIを使うから `'use client'`」ではなく「イベントや状態を書くから `'use client'`」です。ボタンを置くだけのページはServer Componentのままにしておけます。
+</SpeechBubble>
+
+<Figure src="/images/planning_suit_man_color.png" alt="境界を設計するイメージ" maxWidth="240px" />
+
+---
+
+## テーマを置く
+
+色やフォントを変えるには `createTheme` でテーマを作り、`ThemeProvider` で配ります。ここにもApp Router特有の注意があります。
+
+`createTheme` 自体はただの関数で、どこで呼んでも動きます。問題は**戻り値**です。テーマオブジェクトは内部に関数（`theme.spacing()` など）を持っており、<Marker>関数を含むオブジェクトはServer ComponentからClient Componentへpropsとして渡せません</Marker>。
+
+そのため、テーマの定義とProviderはクライアント側のファイルにまとめます。
+
+```tsx
+// src/theme.ts
+'use client';
+
+import { createTheme } from '@mui/material/styles';
+
+export const theme = createTheme({
+  palette: {
+    primary: { main: '#1976d2' },
+  },
+});
+```
+
+```tsx
+// app/layout.tsx
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import { theme } from '@/theme';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ja">
+      <body>
+        <AppRouterCacheProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            {children}
+          </ThemeProvider>
+        </AppRouterCacheProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+`CssBaseline` は、ブラウザ標準のスタイルを揃えるためのコンポーネントです。`margin: 0` の適用やフォントの統一など、CSSリセットに相当する役割を持ちます。置かないとテーマのフォント設定が効いていないように見えることがあります。
+
+<Callout type="warning" title="layout.tsxに'use client'を書かない">
+テーマを配りたいあまり `app/layout.tsx` の先頭に `'use client'` を書いてしまうと、**アプリ全体がクライアントコンポーネントになります**。`ThemeProvider` はライブラリ側で `'use client'` を持っているので、レイアウトはServer Componentのままで包めます。テーマ定義のファイルにだけ `'use client'` を付けてください。
+</Callout>
+
+---
+
+## next/fontと組み合わせる
+
+Next.jsのフォント最適化を使う場合は、フォントをCSS変数として読み込み、テーマ側からその変数を参照します。
+
+```tsx
+// app/layout.tsx
+import { Roboto } from 'next/font/google';
+
+const roboto = Roboto({
+  weight: ['400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-roboto',
+});
+
+// <html> か <body> に roboto.variable を付ける
+```
+
+```tsx
+// src/theme.ts
+export const theme = createTheme({
+  typography: {
+    fontFamily: 'var(--font-roboto)',
+  },
+});
+```
+
+テーマに直接フォント名を書くのではなく、`var(--font-roboto)` を経由するのがポイントです。Next.jsが実際に読み込んだフォントのファイル名は自動生成されるため、変数で受け取ります。
+
+---
+
+## Tailwind CSSと併用するなら`enableCssLayer`
+
+MUIとTailwindを同じプロジェクトで使うと、どちらのスタイルが勝つかで揉めます。MUIのスタイルは詳細度が高く、Tailwindのクラスを当てても効かないことがあります。
+
+このときは `enableCssLayer` を有効にします。
+
+```tsx
+<AppRouterCacheProvider options={{ enableCssLayer: true }}>{children}</AppRouterCacheProvider>
+```
+
+これでMUIのスタイルが `@layer mui` というカスケードレイヤーに入ります。レイヤーに入ったスタイルは、レイヤー外のスタイルより優先度が低くなるため、**Tailwindのクラスで上書きできるようになります**。
+
+このサイト自身がこの設定です。デザインはTailwindで作り、管理画面のテーブルやダイアログにだけMUIを使っています。詳しい仕組みは、この本の最終章「他のCSSと共存する」で扱う予定です。
+
+---
+
+## よくあるハマりどころ
+
+### 初回表示の一瞬だけスタイルが崩れる
+
+`AppRouterCacheProvider` を置いていないケースがほとんどです。開発中は気づきにくく、本番で目立ちます。
+
+### 「Functions cannot be passed directly to Client Components」というエラー
+
+Server Componentのファイルで `onClick={...}` を書いています。そのコンポーネントを別ファイルに切り出して `'use client'` を付けるか、ファイルごとクライアント側にします。
+
+### テーマを変えたのに反映されない
+
+`ThemeProvider` で包む範囲の外にコンポーネントがある可能性があります。`layout.tsx` のできるだけ外側で包んでください。
+
+<SpeechBubble character="/images/deskwork_check_woman_color.png" name="学習者">
+エラーメッセージが「Functions cannot be passed〜」だったら、MUIじゃなくてServer Componentsの話だと考えればいいのね。
+</SpeechBubble>
+
+そのとおりです。MUI特有の問題とApp Routerの問題を切り分けられると、原因にたどり着くのが早くなります。
+
+---
+
+## ちゃんと使うためのポイント
+
+- MUIはEmotionに依存しているので、`@emotion/react` と `@emotion/styled` も一緒に入れる
+- `AppRouterCacheProvider` はSSRのCSSを `<head>` にまとめる。無いと初回表示が崩れる
+- <Marker>MUIのコンポーネントは自前で `'use client'` を持っている。使うだけなら自分のファイルに書く必要はない</Marker>
+- 自分のファイルに `'use client'` が要るのは、イベントハンドラ・state・フックを書くとき
+- テーマは関数を含むので、定義ファイル側に `'use client'` を付ける
+- Tailwindと併用するなら `enableCssLayer: true`
+
+次の章では、MUIのスタイリングの基本単位である[sx propの使い方](/books/mui/sx-prop)を扱います。v9で書き方が変わった部分でもあります。

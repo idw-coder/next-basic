@@ -9,12 +9,12 @@
 
 | order | 章 | ファイル | 状態 |
 | --- | --- | --- | --- |
-| 1 | MUIとは何か — Material Designの実装という立ち位置 | `what-is-mui.mdx` | 未着手 |
-| 2 | Next.js App Routerへの導入 — AppRouterCacheProviderと'use client'境界 | `nextjs-app-router-setup.mdx` | 未着手 |
-| 3 | sx prop — MUIのスタイリングの基本単位 | `sx-prop.mdx` | 未着手 |
-| 4 | レイアウト — Box・Stack・Container・Grid | `layout-box-stack-grid.mdx` | 未着手 |
-| 5 | テーマの構造 — createThemeとデザイントークン | `theme-and-tokens.mdx` | 未着手 |
-| 6 | カスタマイズの4段階 — sxからGlobalStylesまで | `customization-levels.mdx` | 未着手 |
+| 1 | MUIとは何か — Material Designの実装という立ち位置 | `what-is-mui.mdx` | 執筆済み |
+| 2 | Next.js App Routerへの導入 — AppRouterCacheProviderと'use client'境界 | `nextjs-app-router-setup.mdx` | 執筆済み |
+| 3 | sx prop — MUIのスタイリングの基本単位 | `sx-prop.mdx` | 執筆済み |
+| 4 | レイアウト — Box・Stack・Container・Grid | `layout-box-stack-grid.mdx` | 執筆済み |
+| 5 | テーマの構造 — createThemeとデザイントークン | `theme-and-tokens.mdx` | 執筆済み |
+| 6 | カスタマイズの4段階 — sxからGlobalStylesまで | `customization-levels.mdx` | 執筆済み |
 | 7 | slotsとslotProps — コンポーネントの内部構造を差し替える | `slots-and-slot-props.mdx` | 未着手 |
 | 8 | ダークモード — cssVariablesとcolorSchemes | `dark-mode-and-css-variables.mdx` | 未着手 |
 | 9 | レスポンシブ — ブレークポイントとuseMediaQuery | `responsive-and-breakpoints.mdx` | 未着手 |
@@ -22,6 +22,8 @@
 | 11 | Dialog・Snackbar・Menu — Portalとフォーカス管理 | `dialog-snackbar-menu.mdx` | 未着手 |
 | 12 | アクセシビリティ — v9の構造変更と支援設定への対応 | `accessibility.mdx` | 未着手 |
 | 13 | 他のCSSと共存する — カスケードレイヤーとTailwind CSS併用 | `coexisting-with-other-css.mdx` | 未着手 |
+
+1〜6章を執筆済み。7章以降は未着手。
 
 章と章のあいだに差し込みたくなった場合は、既存の `order` を動かさず**小数**を使う（`order: 5.5`）。`chapterLabel` を添えれば読者向けの表示も自然にできる。javascript本の `7.1`〜`7.5` が実例。
 

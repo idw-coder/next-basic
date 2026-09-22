@@ -1,0 +1,218 @@
+---
+title: 'MUIのカスタマイズ4段階 — sx・styled・theme.componentsの使い分け'
+description: 'MUIの見た目を変える方法を、影響範囲の狭い順に4段階で整理します。sxとstyled()とテーマ上書きのどれを選ぶかの判断基準を扱います。'
+order: 6
+---
+
+MUIの見た目を変える方法は1つではありません。公式ドキュメントは、**影響範囲の狭いものから広いものへ**という順番で4つの方法を示しています。
+
+| 段階 | 方法 | 影響範囲 |
+| --- | --- | --- |
+| 1 | `sx` prop | その1か所だけ |
+| 2 | `styled()` | その自作コンポーネントを使った場所すべて |
+| 3 | `theme.components` | アプリ全体の、そのコンポーネントすべて |
+| 4 | `GlobalStyles` | アプリ全体のHTML要素 |
+
+<Marker>迷ったら、いちばん狭い範囲から始めて、繰り返しが増えてきたら一段広げる</Marker>のが原則です。最初から全体に効く方法を選ぶと、あとで例外を作りたくなったときに苦しみます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`sx` を覚えたばかりなんだけど、もう別の方法があるの…？全部覚えないとダメ？
+</SpeechBubble>
+
+全部を同時に使う必要はありません。**`sx` で書いていて「また同じことを書いている」と感じたときが、次の段階に上がる合図**です。
+
+---
+
+## 段階1 — `sx` で一点物を作る
+
+その場限りの調整には `sx` を使います。
+
+```tsx
+<Button variant="contained" sx={{ mt: 2 }}>
+  保存
+</Button>
+```
+
+この段階の利点は、影響範囲が明確なことです。ほかの画面を壊す心配がありません。
+
+欠点は、繰り返すと同じ記述が散らばることです。3回以上同じ `sx` を書いていたら、次の段階を検討します。
+
+---
+
+## 段階2 — `styled()` で再利用する
+
+`styled()` は、スタイルを内蔵した新しいコンポーネントを作る関数です。
+
+```tsx
+import { styled } from '@mui/material/styles';
+import Button from '@mui/material/Button';
+
+const DangerButton = styled(Button)(({ theme }) => ({
+  backgroundColor: theme.palette.error.main,
+  color: theme.palette.error.contrastText,
+  '&:hover': {
+    backgroundColor: theme.palette.error.dark,
+  },
+}));
+
+// 使う側
+<DangerButton>削除する</DangerButton>;
+```
+
+引数の関数は `theme` を受け取れるので、色を直書きせずテーマから引けます。
+
+### sxとの書き方の違い
+
+<Callout type="warning" title="styled()の中ではショートハンドが使えない">
+`sx` では `mt: 2` と書けましたが、`styled()` の中はCSS-in-JSのオブジェクトなので、**CSSのプロパティ名をそのまま書きます**。
+
+```tsx
+// sx
+sx={{ mt: 2, bgcolor: 'grey.100' }}
+
+// styled()
+styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  backgroundColor: theme.palette.grey[100],
+}));
+```
+
+`theme.spacing(2)` は `'16px'` を返します。`sx` の `mt: 2` と同じ計算を、明示的に呼んでいる形です。
+</Callout>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`styled()` は毎回スタイルを計算し直さないので、同じ見た目を大量に並べる場面では `sx` より有利です。テーブルの行やリストの項目のように、数十回描画されるものに向いています。
+</SpeechBubble>
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="段階的に広げていくイメージ" maxWidth="230px" />
+
+---
+
+## 段階3 — `theme.components` で全体を変える
+
+「このアプリのボタンは全部、角丸なしで大文字変換もしない」のような方針は、テーマに書きます。
+
+```tsx
+const theme = createTheme({
+  components: {
+    MuiButton: {
+      defaultProps: {
+        disableElevation: true,
+      },
+      styleOverrides: {
+        root: {
+          borderRadius: 0,
+          textTransform: 'none',
+        },
+      },
+    },
+  },
+});
+```
+
+キーは `Mui` + コンポーネント名です。`Button` なら `MuiButton`、`TextField` なら `MuiTextField` になります。
+
+各キーには3つの区画があります。
+
+| 区画 | 役割 |
+| --- | --- |
+| `defaultProps` | propのデフォルト値を変える。毎回 `variant="contained"` と書く手間が省ける |
+| `styleOverrides` | 見た目のCSSを上書きする |
+| `variants` | 条件に応じたバリエーションを追加する |
+
+### defaultPropsが効く場面
+
+```tsx
+MuiTextField: {
+  defaultProps: { size: 'small', variant: 'outlined' },
+}
+```
+
+これを書いておくと、以降 `<TextField />` と書くだけで小さめのアウトライン表示になります。<Marker>「毎回同じpropを渡している」と気づいたら `defaultProps` の出番</Marker>です。
+
+### styleOverridesのslotを指定する
+
+`root` は「コンポーネントの一番外側」を指します。内部の特定部分だけを狙うこともできます。
+
+```tsx
+MuiButton: {
+  styleOverrides: {
+    root: { textTransform: 'none' },
+    startIcon: { marginRight: 4 },
+  },
+}
+```
+
+どんな名前が使えるかは、公式の各コンポーネントAPIページに一覧があります。内部構造そのものを差し替えたい場合は、次章の `slots` を使います。
+
+---
+
+## 段階4 — `GlobalStyles` でHTML要素に当てる
+
+MUIのコンポーネントではなく、素のHTML要素に効かせたいときに使います。
+
+```tsx
+import GlobalStyles from '@mui/material/GlobalStyles';
+
+<GlobalStyles
+  styles={{
+    body: { backgroundColor: '#fafafa' },
+    'a:focus-visible': { outline: '2px solid currentColor' },
+  }}
+/>;
+```
+
+ただし、ページ全体のリセットが目的なら `CssBaseline` のほうが適しています。`GlobalStyles` は、それでも足りない追加分に絞って使います。
+
+---
+
+## 判断フロー
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+実際に書いてるときは、どれを選べばいいか迷いそう…。
+</SpeechBubble>
+
+次の順で自問すると、ほぼ決まります。
+
+1. **この画面だけの調整か？** → `sx`
+2. **同じ見た目を複数箇所で使うか？** → `styled()`
+3. **アプリ全体の方針か？** → `theme.components`
+4. **MUIではないHTML要素が対象か？** → `GlobalStyles`
+
+1つ注意があります。`theme.components` は強力な反面、**変更したときの影響範囲が見えにくい**という弱点があります。
+
+<Callout type="info" title="テーマに書くのは「方針」だけにする">
+`theme.components` に細かい調整を書き込みすぎると、「なぜこのボタンだけ見た目が違うのか」をテーマまで遡らないと追えなくなります。テーマに置くのは「このアプリのボタンは大文字にしない」のような、言葉で説明できる方針に限るのがおすすめです。個別の事情は `sx` に残したほうが読み手に親切です。
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### `styled()` を使ったらServer Componentでエラーになる
+
+`styled()` で作ったコンポーネントはクライアント側の機能を含みます。定義したファイルに `'use client'` を付けてください。
+
+### `styled()` の中で `mt: 2` が効かない
+
+前述のとおり、ショートハンドは `sx` だけの機能です。`marginTop: theme.spacing(2)` と書きます。
+
+### `styleOverrides` を書いたのに一部だけ効かない
+
+狙った `slot` が違う可能性があります。`root` に書いても、内部要素が自前のスタイルを持っていると上書きされません。ブラウザの開発者ツールでクラス名（`MuiButton-startIcon` など）を確認すると、どのslotを指定すべきか分かります。
+
+### `sx` と `theme.components` が競合する
+
+`sx` のほうが後に適用されるため、`sx` が勝ちます。全体の方針を個別に例外化したいときは、意図して `sx` で上書きする形になります。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>影響範囲の狭い順に `sx` → `styled()` → `theme.components` → `GlobalStyles`</Marker>
+- 同じ `sx` を3回書いたら `styled()` を検討する
+- 毎回同じpropを渡しているなら `defaultProps` に移す
+- `styled()` の中ではショートハンドが使えず、`theme.spacing()` を明示的に呼ぶ
+- テーマに書くのは言葉で説明できる方針だけにする
+
+次の章では、`styleOverrides` では届かない領域である `slots` と `slotProps` を扱う予定です。

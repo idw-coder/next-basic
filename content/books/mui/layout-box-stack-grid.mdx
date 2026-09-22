@@ -1,0 +1,223 @@
+---
+title: 'MUIのレイアウト — Box・Stack・Container・Gridの使い分け'
+description: 'MUIで画面を組むときの4つのレイアウトコンポーネントを、それぞれの役割と選び方から整理します。v9で書き方が大きく変わったGridのsize propも扱います。'
+order: 4
+---
+
+MUIには、レイアウトのためのコンポーネントが4つあります。役割が少しずつ重なっているので、最初は「どれを使えばいいのか」で迷います。
+
+先に結論を出しておきます。
+
+| コンポーネント | 役割 | 使う場面 |
+| --- | --- | --- |
+| `Box` | スタイルを当てるための箱 | `div` の代わり。`sx` を使いたいとき |
+| `Stack` | 一方向に並べる | 縦並び・横並び。要素間の間隔を揃えたいとき |
+| `Container` | 中央に寄せて最大幅を決める | ページ全体の外枠 |
+| `Grid` | 12分割のグリッドに配置 | カードを3列に並べるなど、2次元の配置 |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`Box` と `Stack` ってどっちも箱に見えるんだけど、何が違うの？
+</SpeechBubble>
+
+<Marker>`Box` は「1つの箱」、`Stack` は「複数を並べる入れ物」</Marker>です。並べたいものが複数あるなら `Stack`、単体にスタイルを当てたいだけなら `Box` と考えてください。
+
+---
+
+## Box — sxを使うための箱
+
+`Box` は、レンダリングすると `<div>` になるだけのコンポーネントです。特別な見た目は持ちません。存在理由は `sx` を使えるようにすることです。
+
+```tsx
+<Box sx={{ p: 2, border: '1px solid', borderColor: 'grey.300', borderRadius: 1 }}>
+  囲まれた中身
+</Box>
+```
+
+`component` propで、実際に出力されるHTMLタグを変えられます。
+
+```tsx
+<Box component="section" sx={{ py: 4 }}>
+  <Box component="h2" sx={{ m: 0 }}>見出し</Box>
+</Box>
+```
+
+見た目は `sx` で決めつつ、HTMLとしての意味は正しく保てます。
+
+<Callout type="info" title="Boxを使わずに済む場面も多い">
+MUIのコンポーネントはほぼすべてが `sx` を受け取るので、`<Box sx={{ mt: 2 }}><Button /></Box>` と包むより `<Button sx={{ mt: 2 }} />` と直接書けることが多いです。`Box` が要るのは、MUIのコンポーネントではない素の要素にスタイルを当てたいときです。
+</Callout>
+
+---
+
+## Stack — 並べて間隔を揃える
+
+`Stack` は、子要素を縦か横に並べ、あいだに均等な間隔を空けます。中身はFlexboxです。
+
+```tsx
+<Stack spacing={2}>
+  <TextField label="名前" />
+  <TextField label="メールアドレス" />
+  <Button variant="contained">送信</Button>
+</Stack>
+```
+
+`spacing={2}` は `sx` と同じくspacingの倍数なので、16pxの間隔になります。
+
+横並びにするには `direction` を変えます。
+
+```tsx
+<Stack direction="row" spacing={1}>
+  <Button>キャンセル</Button>
+  <Button variant="contained">保存</Button>
+</Stack>
+```
+
+レスポンシブにも書けます。狭い画面では縦、広い画面では横、という指定です。
+
+```tsx
+<Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+```
+
+### dividerで区切り線を入れる
+
+要素のあいだに区切り線を挟みたいときは、自分で `<Divider />` を並べる必要はありません。
+
+```tsx
+<Stack divider={<Divider flexItem />} spacing={2}>
+  <Box>1つ目</Box>
+  <Box>2つ目</Box>
+  <Box>3つ目</Box>
+</Stack>
+```
+
+子要素の**あいだにだけ**挿入されるので、末尾に余計な線が残りません。
+
+<Figure src="/images/deta_man_color.png" alt="要素を並べて整えるイメージ" maxWidth="230px" />
+
+---
+
+## Container — 中央寄せと最大幅
+
+`Container` は、中身を画面中央に寄せ、広がりすぎないように最大幅を設けます。ページ全体の外枠として使います。
+
+```tsx
+<Container maxWidth="md">
+  <h1>ページタイトル</h1>
+</Container>
+```
+
+`maxWidth` にはブレークポイントのキーを渡します。**デフォルトは `lg`** です。
+
+| 指定 | 最大幅の目安 |
+| --- | --- |
+| `maxWidth="sm"` | 600px |
+| `maxWidth="md"` | 900px |
+| `maxWidth="lg"` | 1200px（デフォルト） |
+| `maxWidth="xl"` | 1536px |
+| `maxWidth={false}` | 制限なし |
+
+左右の余白も自動で入るので、スマートフォンで文字が画面端に貼り付くのを防げます。
+
+---
+
+## Grid — v9で書き方が変わった
+
+ここが本章の要注意ポイントです。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`<Grid item xs={6}>` って書いたら型エラーが出た。記事のとおりに書いたのに…。
+</SpeechBubble>
+
+v9で `Grid` の書き方が刷新されました。<Marker>`item` と `xs` は廃止され、`size` propに一本化されています</Marker>。
+
+```tsx
+// v8以前。v9では動かない
+<Grid container spacing={2}>
+  <Grid item xs={12} md={6}>左</Grid>
+  <Grid item xs={12} md={6}>右</Grid>
+</Grid>
+```
+
+v9では次のように書きます。
+
+```tsx
+<Grid container spacing={2}>
+  <Grid size={{ xs: 12, md: 6 }}>左</Grid>
+  <Grid size={{ xs: 12, md: 6 }}>右</Grid>
+</Grid>
+```
+
+変更点は2つです。
+
+- `item` を書かない。`container` が付いていない `Grid` は自動的にアイテム扱いになる
+- ブレークポイントごとの幅は `size` にオブジェクトで渡す。単一の値なら `size={6}` でよい
+
+実際に `Grid` の型が受け取るpropsは `container` / `size` / `spacing` / `columns` / `offset` / `direction` / `wrap` などで、`item` も `xs` も定義されていません。旧v5系の `GridLegacy` もv9で完全に削除されました。
+
+### sizeに渡せる値
+
+| 値 | 意味 |
+| --- | --- |
+| 数値（`size={6}`） | 12分割のうち何個分か。6なら半分 |
+| `'auto'` | 中身の幅に合わせる |
+| `'grow'` | 余った幅を埋める |
+| `false` | その画面幅では指定しない |
+
+分割数はデフォルトで12ですが、`columns` で変更できます。
+
+```tsx
+<Grid container columns={10} spacing={2}>
+  <Grid size={3}>3/10の幅</Grid>
+</Grid>
+```
+
+### 縦積みにGridは使わない
+
+v9では `direction="column"` が使えなくなりました。型も `'row' | 'row-reverse'` だけを受け付けます。
+
+<Callout type="warning" title="縦に積むならStack">
+`Grid` の縦積みは以前から不具合の原因になりやすく、v9で正式に非対応になりました。縦に並べたいときは `Stack` を使ってください。`Grid` は「横方向の分割」に用途が絞られたと考えると分かりやすいです。
+</Callout>
+
+---
+
+## どれを選ぶかの判断
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+実務では `Stack` で大半が片付きます。`Grid` の出番は「カードを画面幅に応じて3列・2列・1列に変えたい」のような、明確に列を数えたいときだけです。
+</SpeechBubble>
+
+判断の順番はこうなります。
+
+1. 並べたいものが1つだけ、スタイルを当てたい → **`Box`**
+2. 一方向に並べたい → **`Stack`**
+3. 画面幅に応じて列数を変えたい → **`Grid`**
+4. ページ全体の外枠 → **`Container`**
+
+---
+
+## よくあるハマりどころ
+
+### `<Grid item>` が型エラーになる
+
+v9の変更です。`item` を消して `size` に書き換えます。
+
+### 古い記事にあるGridの余白回避策を持ち込んでしまう
+
+`<Grid container sx={{ width: 'calc(100% + 16px)' }}>` のような調整を書いている記事がありますが、**v9では不要です**。v9の `Grid` は `spacing` をCSSの `gap` で実装しており（`@mui/system` の `gridGenerator.js` で確認できます）、コンテナからはみ出す挙動は起きません。回避策のほうがレイアウトを壊します。
+
+### Stackのspacingが効かない
+
+子要素が1つしかない場合、間隔は生まれません。`spacing` は「あいだ」の指定です。要素の外側に余白が欲しいときは `sx={{ p: 2 }}` を使います。
+
+---
+
+## ちゃんと使うためのポイント
+
+- `Box` は `sx` を使うための箱。`div` の置き換え
+- <Marker>並べるなら `Stack`。縦横の切り替えも `direction` だけで済む</Marker>
+- `Container` はページの外枠。`maxWidth` のデフォルトは `lg`
+- <Marker>v9の `Grid` は `<Grid size={{ xs: 12, md: 6 }}>`。`item` と `xs` は廃止</Marker>
+- `Grid` で縦積みはできない。縦は `Stack`
+
+次の章では、色やフォントをまとめて管理する[テーマの構造](/books/mui/theme-and-tokens)を扱います。

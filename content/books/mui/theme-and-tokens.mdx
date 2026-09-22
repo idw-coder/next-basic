@@ -1,0 +1,223 @@
+---
+title: 'MUIのテーマ入門 — createThemeで色・フォント・余白を一元管理する'
+description: 'MUIのテーマが持つpalette・typography・spacing・shape・breakpointsの役割と、createThemeでの上書き方法を整理します。コンポーネントからテーマを読む方法も扱います。'
+order: 5
+---
+
+MUIで色やフォントを変えるとき、コンポーネントを1つずつ `sx` で塗り替えていくと、すぐに破綻します。同じ青を何十か所に書くことになり、ブランドカラーを変えたいときに全置換が必要になります。
+
+そのための仕組みが**テーマ**です。<Marker>テーマは、アプリ全体で共有するデザインの設定値をまとめたオブジェクト</Marker>で、`createTheme` で作ります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`sx` で毎回 `color: '#1976d2'` って書いてたんだけど、それってダメなやり方だったの…？
+</SpeechBubble>
+
+動きはしますが、変更に弱くなります。テーマに1か所書いておけば、あとは `color: 'primary.main'` で参照するだけになります。
+
+---
+
+## テーマが持っているもの
+
+`createTheme()` が返すオブジェクトには、次のような区画があります。
+
+| キー | 中身 |
+| --- | --- |
+| `palette` | 色。primary / secondary / error など |
+| `typography` | フォントファミリと、見出し・本文のサイズ |
+| `spacing` | 余白の基準値（デフォルト8px） |
+| `shape` | 角丸の基準値（デフォルト4px） |
+| `breakpoints` | レスポンシブの区切り幅 |
+| `shadows` | 影のプリセット（25段階） |
+| `zIndex` | 重なり順。モーダルやツールチップの前後関係 |
+| `transitions` | アニメーションの時間とイージング |
+| `components` | コンポーネントごとの既定値と見た目の上書き |
+
+上書きしたいものだけを `createTheme` に渡します。書かなかった項目はMUIの既定値がそのまま使われます。
+
+```tsx
+import { createTheme } from '@mui/material/styles';
+
+export const theme = createTheme({
+  palette: {
+    primary: { main: '#0b5cad' },
+  },
+  shape: {
+    borderRadius: 8,
+  },
+});
+```
+
+---
+
+## palette — 色
+
+`palette` には、役割ごとに色の枠が用意されています。
+
+| キー | 意味 |
+| --- | --- |
+| `primary` | 主役の色。ボタンやリンクに使われる |
+| `secondary` | 補助の色 |
+| `error` | エラー表示 |
+| `warning` | 警告 |
+| `info` | 情報 |
+| `success` | 成功 |
+| `grey` | グレースケール。`grey.100` 〜 `grey.900` |
+| `text` / `background` / `divider` / `action` | 文字色・背景・区切り線・操作状態 |
+
+それぞれの色は4つの値を持ちます。
+
+```tsx
+palette: {
+  primary: {
+    main: '#0b5cad',      // 基本の色
+    light: '#4a89df',     // 明るいバリエーション
+    dark: '#00337e',      // 暗いバリエーション
+    contrastText: '#fff', // この色の上に乗せる文字色
+  },
+}
+```
+
+### mainだけ書けばいい
+
+実際には `main` だけ指定すれば足ります。`light` と `dark` は `main` から自動生成され、`contrastText` も自動で決まります。
+
+```tsx
+palette: {
+  primary: { main: '#0b5cad' },
+}
+```
+
+<Callout type="info" title="MUIがコントラスト比をチェックしてくれる">
+`contrastText` は、背景色とのコントラスト比を計算して白か黒かを自動で選びます。さらに、選んだ組み合わせがWCAGの最低基準である3:1を下回る場合、開発中のコンソールに警告が出ます。薄い色を `main` に設定したときに気づけるので、警告が出たら色を濃くするか `contrastText` を明示してください。
+</Callout>
+
+<Figure src="/images/creative_color.png" alt="色を設計するイメージ" maxWidth="230px" />
+
+---
+
+## typography — フォント
+
+フォントファミリと、文字スタイルのプリセットを持ちます。
+
+```tsx
+typography: {
+  fontFamily: '"Noto Sans JP", sans-serif',
+  h1: { fontSize: '2.5rem', fontWeight: 700 },
+}
+```
+
+用意されているプリセットは次の13種類です。
+
+| 分類 | バリアント |
+| --- | --- |
+| 見出し | `h1` `h2` `h3` `h4` `h5` `h6` |
+| 小見出し | `subtitle1` `subtitle2` |
+| 本文 | `body1` `body2` |
+| その他 | `button` `caption` `overline` |
+
+`Typography` コンポーネントの `variant` で呼び出します。
+
+```tsx
+<Typography variant="h4">セクション見出し</Typography>
+<Typography variant="body2" color="text.secondary">補足のテキスト</Typography>
+```
+
+<Callout type="warning" title="variantとHTMLタグは別物">
+`variant="h4"` は見た目のプリセットであり、出力されるタグとは切り離して考えます。見出しレベルを正しく保ちたいときは `component` で明示してください。
+
+```tsx
+<Typography variant="h4" component="h2">見た目はh4、意味はh2</Typography>
+```
+</Callout>
+
+---
+
+## spacing — 余白の基準
+
+前の章で触れた8pxの基準値は、ここで変更できます。
+
+```tsx
+const theme = createTheme({ spacing: 4 });
+// この設定では mt: 2 が 8px になる
+```
+
+変更すると `sx` の数値の意味が全部変わるので、プロジェクトの最初に決めて動かさないのが無難です。
+
+---
+
+## shape — 角丸
+
+`shape.borderRadius` のデフォルトは **4px** です。これを変えると、ボタン・カード・入力欄など角丸を持つコンポーネントが一斉に変わります。
+
+```tsx
+shape: { borderRadius: 12 },
+```
+
+<Marker>「MUIっぽさ」を薄めたいとき、最も効果が大きいのは角丸とフォントの変更</Marker>です。色だけ変えてもMUIらしさは残りますが、この2つを触ると印象が大きく動きます。
+
+---
+
+## コンポーネントからテーマを読む
+
+テーマの値は、3つの方法で取り出せます。
+
+### 1. 文字列で参照する（いちばん手軽）
+
+```tsx
+<Box sx={{ color: 'primary.main', bgcolor: 'grey.100' }} />
+```
+
+### 2. `sx` を関数にする
+
+計算が必要なときや、`shadows` のように配列を引きたいときに使います。
+
+```tsx
+<Box sx={(theme) => ({ boxShadow: theme.shadows[3] })} />
+```
+
+### 3. `useTheme` フック
+
+JavaScriptのロジックでテーマの値を使いたいときに使います。
+
+```tsx
+'use client';
+import { useTheme } from '@mui/material/styles';
+
+function Chart() {
+  const theme = useTheme();
+  return <Line color={theme.palette.primary.main} />;
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+スタイルを当てるだけなら1番で十分です。`useTheme` はフックなので `'use client'` が必要になります。グラフライブラリに色を渡すときなど、JS側で値が要る場面に限って使ってください。
+</SpeechBubble>
+
+---
+
+## よくあるハマりどころ
+
+### テーマを変えたのに反映されない
+
+`ThemeProvider` の外側にコンポーネントがあるか、`createTheme` を呼び直していないケースです。テーマオブジェクトはモジュールのトップレベルで1回作り、使い回してください。コンポーネントの中で毎回 `createTheme()` を呼ぶと、再レンダーのたびに別のテーマが生まれて描画が重くなります。
+
+### TypeScriptで独自の色を足すと型エラーになる
+
+`palette` に `brand` のような独自キーを足すには、型の拡張宣言が必要です。`declare module '@mui/material/styles'` でインターフェースを拡張します。
+
+### ダークモードの切り替えが効かない
+
+v9では、単に `palette.mode` を切り替えるだけでなく、CSS変数と `colorSchemes` を使う方式が用意されています。これは専用の章で扱います。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>テーマは上書きしたい項目だけ渡す。書かなかった値は既定値が残る</Marker>
+- `palette` の色は `main` だけ書けば、明暗と文字色は自動生成される
+- コントラスト比がWCAGの3:1を下回ると、コンソールに警告が出る
+- `spacing` はプロジェクト開始時に決めて動かさない
+- 「MUIっぽさ」を薄めるなら `shape.borderRadius` と `typography.fontFamily`
+- テーマオブジェクトはモジュールのトップレベルで1回だけ作る
+
+次の章では、テーマを踏まえて[カスタマイズの4段階](/books/mui/customization-levels)を扱います。`sx` と `styled()` とテーマの上書きを、どう使い分けるかという話です。
