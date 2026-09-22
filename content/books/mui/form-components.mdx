@@ -1,0 +1,223 @@
+---
+title: 'MUIのフォーム部品 — TextField・Select・Autocompleteの使い方'
+description: 'MUIの入力系コンポーネントを、controlled/uncontrolledの違いとエラー表示の作法から整理します。Autocompleteで頻発する「値が選択されない」問題の原因も扱います。'
+order: 10
+---
+
+フォームはMUIの出番が最も多い領域です。ラベルの浮き上がり、フォーカス時の枠線、エラー時の赤字といった挙動が最初から入っているため、自作するより圧倒的に早く形になります。
+
+一方で、**Reactのフォームとしての作法**を外すと動かなくなります。この章では、MUI固有の書き方とReact共通の落とし穴を分けて押さえます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`<TextField />` を置いたら見た目はできたけど、入力しても文字が出ないことがあって…。
+</SpeechBubble>
+
+典型的な詰まり方です。最初の節で解決します。
+
+---
+
+## controlledとuncontrolled
+
+Reactの入力欄には2つの持ち方があります。MUIも同じです。
+
+```tsx
+// uncontrolled: 値はDOMが持つ。初期値だけ渡す
+<TextField defaultValue="初期値" />
+
+// controlled: 値はReactのstateが持つ
+<TextField value={name} onChange={(e) => setName(e.target.value)} />
+```
+
+<Marker>`value` を渡したら `onChange` も必ず渡す</Marker>。これが冒頭の「入力しても文字が出ない」の答えです。`value` だけ渡すと、Reactが毎回同じ値で上書きし続けます。
+
+<Callout type="warning" title="undefinedから始めない">
+`value={form.name}` と書いていて、`form.name` が最初 `undefined` だと、MUIはuncontrolledとして扱います。あとから文字列が入った時点でcontrolledに切り替わり、Reactがコンソールに警告を出します。
+
+初期値は必ず空文字にしておいてください。
+
+```tsx
+const [form, setForm] = useState({ name: '' }); // undefined ではなく ''
+```
+</Callout>
+
+---
+
+## TextField — 見た目の3種類
+
+`variant` で枠線の形が変わります。**既定は `outlined`** です。
+
+| variant | 見た目 |
+| --- | --- |
+| `outlined`（既定） | 枠線で囲む |
+| `filled` | 背景を塗る |
+| `standard` | 下線だけ |
+
+```tsx
+<TextField label="名前" variant="outlined" />
+```
+
+サイズは `size="small"` で詰められます。管理画面のように入力欄が多い画面では、小さいほうが扱いやすいことが多いです。
+
+### エラーとヘルプテキスト
+
+```tsx
+<TextField
+  label="メールアドレス"
+  error={!!errors.email}
+  helperText={errors.email ?? '会社のアドレスを入力してください'}
+/>
+```
+
+`error` を `true` にすると、枠線・ラベル・ヘルプテキストがまとめて赤くなります。個別に色を指定する必要はありません。
+
+<Callout type="info" title="helperTextは常に置いておく">
+エラーのときだけ `helperText` を出すと、表示された瞬間に高さが増えてレイアウトが下にずれます。通常時は説明文を、エラー時はエラー文を、と**常に何か入れておく**とガタつきません。説明がない場合は半角スペースを1つ入れておく手もあります。
+</Callout>
+
+<Figure src="/images/idea_drawing_woman.png" alt="フォームを設計するイメージ" maxWidth="220px" />
+
+---
+
+## Select — プルダウン
+
+いちばん手軽なのは `TextField` に `select` を付ける方法です。ラベルやエラー表示の作法がそのまま使えます。
+
+```tsx
+<TextField select label="部署" value={dept} onChange={(e) => setDept(e.target.value)}>
+  <MenuItem value="sales">営業</MenuItem>
+  <MenuItem value="dev">開発</MenuItem>
+</TextField>
+```
+
+`Select` を単体で使うこともできますが、その場合はラベルの配置を自分で組む必要があります。
+
+```tsx
+<FormControl fullWidth>
+  <InputLabel id="dept-label">部署</InputLabel>
+  <Select labelId="dept-label" label="部署" value={dept} onChange={handleChange}>
+    <MenuItem value="sales">営業</MenuItem>
+  </Select>
+</FormControl>
+```
+
+<Marker>`Select` 単体では `InputLabel` の `id` と `labelId` を対応させ、さらに `Select` にも同じ `label` を渡す</Marker>のが要点です。`label` を渡さないと、枠線がラベルの文字の下を通ってしまいます。
+
+---
+
+## Checkbox・Radio・Switchとラベル
+
+これらは単体だと四角や丸だけで、文字が付きません。`FormControlLabel` で包みます。
+
+```tsx
+<FormControlLabel
+  control={<Checkbox checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />}
+  label="利用規約に同意する"
+/>
+```
+
+`FormControlLabel` はラベル文字のクリックでも反応するようにしてくれます。アクセシビリティの観点でも、自分で `<label>` を書くより確実です。
+
+<Callout type="warning" title="値の取り出し方が違う">
+テキスト入力は `e.target.value` ですが、チェックボックスとスイッチは **`e.target.checked`** です。`value` を読むと期待した真偽値になりません。
+</Callout>
+
+ラジオボタンは `RadioGroup` でまとめます。
+
+```tsx
+<RadioGroup value={plan} onChange={(e) => setPlan(e.target.value)}>
+  <FormControlLabel value="free" control={<Radio />} label="無料プラン" />
+  <FormControlLabel value="pro" control={<Radio />} label="有料プラン" />
+</RadioGroup>
+```
+
+---
+
+## Autocomplete — 検索できる選択欄
+
+選択肢が多いときは `Autocomplete` を使います。入力で絞り込めます。
+
+```tsx
+<Autocomplete
+  options={users}
+  getOptionLabel={(option) => option.name}
+  value={selected}
+  onChange={(event, newValue) => setSelected(newValue)}
+  renderInput={(params) => <TextField {...params} label="担当者" />}
+/>
+```
+
+他のコンポーネントと違う点が2つあります。
+
+- **`renderInput` が必須。** 入力欄そのものは自分で用意します。`params` をそのまま `TextField` に展開してください
+- **`onChange` の第2引数が値。** テキスト入力の `e.target.value` とは形が違います
+
+`getOptionLabel` を省略した場合は `option.label` が使われます。選択肢に `label` というキーがあれば書かなくても動きます。
+
+### 「値が選択されない」の原因
+
+<SpeechBubble character="/images/surprise_pc_woman_color.png" name="学習者">
+`value` にちゃんとオブジェクトを入れてるのに選択状態にならないし、コンソールに警告が出る…。
+</SpeechBubble>
+
+`Autocomplete` は、<Marker>`value` と選択肢を「参照が同じかどうか」で比較します</Marker>。型定義にも「選択されるには参照等価である必要がある」と明記されています。
+
+APIから取り直したオブジェクトは、中身が同じでも別の参照です。そのため一致せず、選択状態になりません。
+
+解決策は、比較の仕方を教えることです。
+
+```tsx
+<Autocomplete
+  options={users}
+  value={selected}
+  isOptionEqualToValue={(option, value) => option.id === value.id}
+  // ...
+/>
+```
+
+IDで比べるようにすれば、参照が違っても一致します。**`Autocomplete` を使うときはほぼ必須の設定**だと考えてください。
+
+---
+
+## よくあるハマりどころ
+
+### 入力しても文字が変わらない
+
+`value` を渡して `onChange` を渡していません。
+
+### 「uncontrolledからcontrolledに変わった」と警告が出る
+
+初期値が `undefined` です。空文字にします。
+
+### チェックボックスが反応しない
+
+`e.target.value` を読んでいます。`e.target.checked` です。
+
+### Selectの枠線がラベルに重なる
+
+`Select` に `label` を渡していません。`InputLabel` だけでなく `Select` 側にも必要です。
+
+### フォーム全体の状態管理が煩雑になる
+
+入力欄が10個を超えたあたりから、`useState` を並べる方式は破綻します。React Hook Formのようなフォームライブラリと組み合わせるのが一般的です。MUIのコンポーネントは `ref` と `onChange` を受け取れるので連携できます。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>`value` を渡すなら `onChange` も渡す。初期値は `undefined` ではなく空文字</Marker>
+- `TextField` の既定variantは `outlined`
+- `error` と `helperText` はセット。`helperText` は常に何か入れて高さを固定する
+- チェックボックスとスイッチは `e.target.checked`
+- `Autocomplete` は `renderInput` が必須で、`onChange` の第2引数が値
+- <Marker>`Autocomplete` は参照で比較する。`isOptionEqualToValue` をほぼ必ず指定する</Marker>
+
+次の章では、[Dialog・Snackbar・Menu](/books/mui/dialog-snackbar-menu)といった、画面の上に重なるコンポーネントを扱います。
+
+---
+
+## 参考リンク
+
+- [Text Field — MUI公式](https://mui.com/material-ui/react-text-field/)
+- [Select — MUI公式](https://mui.com/material-ui/react-select/)
+- [Autocomplete — MUI公式](https://mui.com/material-ui/react-autocomplete/)
+- [Checkbox — MUI公式](https://mui.com/material-ui/react-checkbox/)

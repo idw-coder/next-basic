@@ -1,0 +1,228 @@
+---
+title: 'MUIのレスポンシブ対応 — ブレークポイントとuseMediaQueryの使い分け'
+description: 'MUIで画面幅に応じた表示を作る3つの方法を、それぞれの向き不向きから整理します。useMediaQueryのSSRでの挙動とコンテナクエリも扱います。'
+order: 9
+---
+
+MUIで画面幅に応じた表示を作る方法は3つあります。どれを選ぶかで、パフォーマンスもアクセシビリティも変わります。
+
+| 方法 | 何をするか | 向いている場面 |
+| --- | --- | --- |
+| `sx` のオブジェクト記法 | CSSのメディアクエリを生成 | 見た目の調整。余白・幅・並び方 |
+| `theme.breakpoints` | メディアクエリの文字列を作る | `styled()` の中で使うとき |
+| `useMediaQuery` | JavaScriptで真偽値を得る | 描画するコンポーネント自体を変えるとき |
+
+<Marker>基本は `sx`。JavaScriptの分岐が必要なときだけ `useMediaQuery`</Marker>という順で考えます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`useMediaQuery` を使えば全部書ける気がするんだけど、それじゃダメなの？
+</SpeechBubble>
+
+書けますが、コストが違います。理由はこの章の後半で扱います。
+
+---
+
+## sxのオブジェクト記法（基本）
+
+3章で触れたとおり、値をオブジェクトにするとブレークポイントごとの指定になります。
+
+```tsx
+<Box sx={{ p: { xs: 2, md: 4 }, flexDirection: { xs: 'column', md: 'row' } }} />
+```
+
+既定のブレークポイントは次のとおりです。
+
+| キー | 開始幅 |
+| --- | --- |
+| `xs` | 0px |
+| `sm` | 600px |
+| `md` | 900px |
+| `lg` | 1200px |
+| `xl` | 1536px |
+
+指定した幅**以上**に適用されるモバイルファースト方式です。`xs` に書いた値が土台になり、大きい画面のキーで上書きされます。
+
+### 変更もできる
+
+```tsx
+createTheme({
+  breakpoints: {
+    values: { xs: 0, sm: 640, md: 768, lg: 1024, xl: 1280 },
+  },
+});
+```
+
+Tailwindと併用する場合、Tailwind側の区切り幅に合わせておくと、2つの仕組みが同じ位置で切り替わるので混乱が減ります。
+
+---
+
+## theme.breakpoints — メディアクエリを作る
+
+`styled()` の中など、オブジェクト記法が使えない場所ではヘルパーを使います。
+
+```tsx
+const Panel = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(2),
+  [theme.breakpoints.up('md')]: {
+    padding: theme.spacing(4),
+  },
+}));
+```
+
+`theme.breakpoints` には5つのヘルパーがあります。いずれもメディアクエリの**文字列**を返します。
+
+| ヘルパー | 意味 |
+| --- | --- |
+| `up('md')` | md以上（900px以上） |
+| `down('md')` | md未満 |
+| `between('sm', 'lg')` | sm以上lg未満 |
+| `only('md')` | mdの範囲だけ |
+| `not('md')` | mdの範囲以外 |
+
+キーの代わりに数値も渡せます（`up(500)` など）。
+
+<Callout type="info" title="downは「未満」で、境界はぴったりではない">
+`down` は指定した幅を**含みません**。実装では境界から少しだけ引いた値が使われ、`down(500)` は `(max-width: 499.95px)` というクエリになります。`up('md')` と `down('md')` が同じ幅で重なってしまわないための作りです。
+
+「`md` 以下」のつもりで `down('md')` と書くと900pxちょうどが外れるので、意図と合っているか確認してください。
+</Callout>
+
+<Figure src="/images/phone_check.png" alt="画面幅ごとの表示を確認するイメージ" maxWidth="220px" />
+
+---
+
+## useMediaQuery — JavaScriptで分岐する
+
+真偽値が欲しいときに使います。
+
+```tsx
+'use client';
+
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+
+function Nav() {
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+
+  return isDesktop ? <DesktopNav /> : <MobileDrawer />;
+}
+```
+
+関数を渡す形でも書けます。
+
+```tsx
+const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'));
+```
+
+### SSRでは最初かならずfalseになる
+
+ここが `useMediaQuery` の弱点です。`window.matchMedia()` はサーバーに存在しないため、<Marker>サーバー描画と最初のマウントでは既定値（`false`）が返り、その後に正しい値で描画し直されます</Marker>。型定義のコメントにも「ハイドレーションのために2回描画する必要があり、そのぶん遅い」と明記されています。
+
+実害はこうなります。
+
+- デスクトップで開いても、一瞬モバイル用のUIが表示される
+- サーバーが返したHTMLとブラウザの描画が食い違い、ハイドレーションの警告が出ることがある
+
+対処は3つです。
+
+| 対処 | 内容 |
+| --- | --- |
+| `sx` で書き換える | そもそもJSで分岐しない。いちばん確実 |
+| `defaultMatches` | サーバー側で返す初期値を指定する |
+| `noSsr: true` | 初回の描画をスキップする。クライアント専用の箇所で使う |
+
+```tsx
+const isDesktop = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true });
+```
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+`noSsr` は「サーバーでは何も描かない」という意味なので、SEOで拾ってほしいコンテンツには使えません。ナビゲーションの開閉ボタンのような、検索エンジンに見えなくても困らない部品に向いています。
+</SpeechBubble>
+
+---
+
+## CSSで隠すか、JSで出し分けるか
+
+同じ「スマホでは非表示」でも、2つのやり方で結果が違います。
+
+```tsx
+// A: CSSで隠す
+<Box sx={{ display: { xs: 'none', md: 'block' } }}>サイドバー</Box>
+
+// B: JSで出し分ける
+{isDesktop && <Sidebar />}
+```
+
+| | A（CSS） | B（JS） |
+| --- | --- | --- |
+| DOM | 常に存在する | 片方しか作られない |
+| 初回のちらつき | 起きない | 起きうる |
+| 重いコンポーネント | 隠れていても描画コストがかかる | 描画されない |
+| スクリーンリーダー | `display: none` なら読まれない | そもそも存在しない |
+
+<Marker>軽い要素の出し分けはCSS、重いコンポーネントの出し分けはJS</Marker>が目安です。画像を大量に含むカルーセルのようなものは、隠すのではなく作らないほうが速くなります。
+
+---
+
+## コンテナクエリ
+
+画面幅ではなく、**親要素の幅**で切り替えたいことがあります。サイドバーの中に置いたカードは、画面が広くてもカード自体は狭い、というような場面です。
+
+MUIのテーマには `containerQueries` が用意されており、ブレークポイントと同じ感覚で書けます。
+
+```tsx
+<Box sx={{ containerType: 'inline-size' }}>
+  <Card
+    sx={(theme) => ({
+      [theme.containerQueries.up(400)]: {
+        display: 'flex',
+      },
+    })}
+  />
+</Box>
+```
+
+親側に `containerType` を指定して「この要素を基準にする」と宣言するのがポイントです。同じコンポーネントを画面の広い場所と狭い場所の両方で使い回すときに効きます。
+
+---
+
+## よくあるハマりどころ
+
+### デスクトップなのに一瞬モバイル表示になる
+
+`useMediaQuery` のSSR挙動です。`sx` で書けないか検討するのが先決です。
+
+### `useMediaQuery` でハイドレーションエラーが出る
+
+同じ原因です。`noSsr: true` を付けるか、マウント後に描くようにします。
+
+### `down('md')` と `up('md')` の両方に当てはまる幅がある、と思い込む
+
+実際には重なりません。`down` 側が境界をわずかに下回るよう作られています。
+
+### ブレークポイントを変えたらレイアウトが全部崩れた
+
+`breakpoints.values` はアプリ全体に効きます。MUIのコンポーネントも内部でこの値を参照しているため、変更はプロジェクト開始時に決めるのが安全です。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>まず `sx` のオブジェクト記法。JSの分岐が要るときだけ `useMediaQuery`</Marker>
+- `styled()` の中では `theme.breakpoints.up()` などでメディアクエリ文字列を作る
+- `down` は「未満」。境界の幅は含まない
+- `useMediaQuery` はサーバーで `false` を返し、2回描画する
+- 軽い要素はCSSで隠す、重いコンポーネントはJSで作らない
+- 親要素の幅で切り替えたいときは `containerQueries`
+
+次の章では、[TextField・Select・Autocompleteなどのフォーム部品](/books/mui/form-components)を扱います。
+
+---
+
+## 参考リンク
+
+- [Breakpoints — MUI公式](https://mui.com/material-ui/customization/breakpoints/)
+- [useMediaQuery — MUI公式](https://mui.com/material-ui/react-use-media-query/)
+- [Container queries — MUI公式](https://mui.com/material-ui/customization/container-queries/)
+- [コンテナクエリ — MDN](https://developer.mozilla.org/ja/docs/Web/CSS/Guides/Containment/Container_queries)

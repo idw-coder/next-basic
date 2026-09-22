@@ -1,0 +1,239 @@
+---
+title: 'MUIのDialog・Snackbar・Menu — 画面に重なるUIの作法'
+description: 'ダイアログ・通知・メニューの基本的な書き方と、閉じる理由の受け取り方を解説します。Portalで描画される位置とフォーカス管理の仕組みも扱います。'
+order: 11
+---
+
+ダイアログ・通知・メニューには、共通する性質があります。<Marker>いずれもDOM上は `<body>` の末尾に描画され、書いた場所には存在しません</Marker>。この仕組みをPortalと呼びます。
+
+親要素の `overflow: hidden` に切られたり、`z-index` の積み重ねに巻き込まれたりしないための作りです。CSSで位置を調整しようとして効かないときは、たいていこれが理由です。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+開発者ツールで探しても、書いたはずの場所にダイアログが無い…。
+</SpeechBubble>
+
+`<body>` の一番下を見てください。そこに出ています。
+
+---
+
+## Dialog — 確認や入力を割り込ませる
+
+```tsx
+const [open, setOpen] = useState(false);
+
+<Dialog open={open} onClose={() => setOpen(false)}>
+  <DialogTitle>削除しますか？</DialogTitle>
+  <DialogContent>
+    <DialogContentText>この操作は取り消せません。</DialogContentText>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setOpen(false)}>キャンセル</Button>
+    <Button onClick={handleDelete} color="error">削除</Button>
+  </DialogActions>
+</Dialog>;
+```
+
+`open` は必須です。閉じている間も要素自体は存在し続けます。
+
+### 大きさの調整
+
+| prop | 効果 |
+| --- | --- |
+| `maxWidth` | 最大幅。ブレークポイントのキー、または `false` で制限なし |
+| `fullWidth` | `maxWidth` まで横幅をいっぱいに広げる |
+| `fullScreen` | 画面全体に広げる |
+| `scroll` | `'paper'`（中身がスクロール）か `'body'`（ページごとスクロール） |
+
+`maxWidth` だけでは中身が少ないと細いままです。`fullWidth` と組み合わせるのが定番です。
+
+```tsx
+<Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+```
+
+スマートフォンでだけ全画面にしたい場合は、`useMediaQuery` と組み合わせます。
+
+---
+
+## 閉じる理由を受け取る
+
+`onClose` は第2引数に**閉じようとした理由**を受け取ります。
+
+```tsx
+<Dialog
+  open={open}
+  onClose={(event, reason) => {
+    if (reason === 'backdropClick') return; // 背景クリックでは閉じない
+    setOpen(false);
+  }}
+>
+```
+
+Dialogで渡ってくる理由は2つです。
+
+| reason | いつ渡るか |
+| --- | --- |
+| `'backdropClick'` | 背景の暗い部分をクリックした |
+| `'escapeKeyDown'` | Escキーを押した |
+
+<Callout type="warning" title="v9でdisableEscapeKeyDownが削除された">
+v8以前は `disableEscapeKeyDown` というpropでEscキーを無効化できました。v9では `Dialog` と `Modal` の両方から削除されています（型定義を検索しても存在しません）。
+
+代わりに `onClose` の `reason` を見て判断します。
+
+```tsx
+onClose={(event, reason) => {
+  if (reason === 'escapeKeyDown') return;
+  setOpen(false);
+}}
+```
+
+入力途中の内容を誤って捨てさせたくないフォームなどで使う書き方です。ただし<Marker>Escキーで閉じられないダイアログは、キーボード利用者にとって離脱手段が減ります</Marker>。閉じるボタンを必ず用意してください。
+</Callout>
+
+<Figure src="/images/meeting_color.png" alt="確認を挟むイメージ" maxWidth="230px" />
+
+---
+
+## フォーカスはMUIが管理する
+
+ダイアログを開くと、フォーカスがダイアログの中へ移り、Tabキーでの移動がダイアログ内に閉じ込められます。閉じると、開く前にフォーカスがあった要素へ戻ります。
+
+自分で実装すると面倒な部分ですが、MUIが自動で処理します。**余計なことをしないのが正解**で、`autoFocus` を手当たり次第に付けるとかえって挙動が乱れます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+スクリーンリーダー利用者にとって、フォーカスが移らないダイアログは「開いたことに気づけない」状態になります。MUIを使う利点のひとつがここです。
+</SpeechBubble>
+
+---
+
+## Snackbar — 邪魔しない通知
+
+保存完了のような短い通知に使います。ダイアログと違い、操作をブロックしません。
+
+```tsx
+<Snackbar
+  open={open}
+  autoHideDuration={4000}
+  onClose={handleClose}
+  message="保存しました"
+/>
+```
+
+| prop | 既定値 | 内容 |
+| --- | --- | --- |
+| `autoHideDuration` | `null` | 自動で閉じるまでのミリ秒。`null` は閉じない |
+| `anchorOrigin` | `{ vertical: 'bottom', horizontal: 'left' }` | 表示位置 |
+| `resumeHideDuration` | — | マウスが離れてから閉じるまでの時間 |
+
+<Marker>`autoHideDuration` の既定は `null` なので、指定しないと出しっぱなしになります</Marker>。
+
+### clickawayで消える問題
+
+`onClose` の `reason` には3種類あります。
+
+| reason | いつ渡るか |
+| --- | --- |
+| `'timeout'` | `autoHideDuration` が経過した |
+| `'clickaway'` | 画面のどこかをクリックした |
+| `'escapeKeyDown'` | Escキーを押した |
+
+既定では画面のどこをクリックしても消えます。「読む前に消えてしまう」という苦情が出たら、`clickaway` を無視します。
+
+```tsx
+onClose={(event, reason) => {
+  if (reason === 'clickaway') return;
+  setOpen(false);
+}}
+```
+
+### 中身を作り込むならAlertと組み合わせる
+
+`message` は文字列だけです。成功・失敗を色で分けたいときは `Alert` を入れます。
+
+```tsx
+<Snackbar open={open} autoHideDuration={4000} onClose={handleClose}>
+  <Alert severity="success" onClose={handleClose}>
+    保存しました
+  </Alert>
+</Snackbar>
+```
+
+---
+
+## Menu — ボタンから開くメニュー
+
+`Menu` は「どの要素の隣に出すか」を `anchorEl` で指定します。位置の計算はMUIが行います。
+
+```tsx
+const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+<>
+  <Button onClick={(e) => setAnchorEl(e.currentTarget)}>操作</Button>
+  <Menu
+    anchorEl={anchorEl}
+    open={Boolean(anchorEl)}
+    onClose={() => setAnchorEl(null)}
+  >
+    <MenuItem onClick={handleEdit}>編集</MenuItem>
+    <MenuItem onClick={handleDelete}>削除</MenuItem>
+  </Menu>
+</>;
+```
+
+書き方の型が決まっています。
+
+- 開閉の状態は `anchorEl` そのもので表す。`open` は `Boolean(anchorEl)`
+- 閉じるときは `anchorEl` を `null` に戻す
+- `MenuItem` の `onClick` では、処理と一緒に閉じる操作も書く
+
+<Callout type="info" title="v9でキーボード操作の実装が変わった">
+v9では `Menu` と `MenuList`、および `Tabs` のキーボード移動が「roving tabindex」という方式に変わりました。項目のあいだを矢印キーで移動し、Tabキーではメニュー全体を1つの塊として飛ばす、という一般的な作法に揃えるための変更です。
+
+利用側のコードを書き換える必要はありませんが、キーボード操作のテストを書いている場合は挙動が変わっている可能性があります。
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### ダイアログが親のCSSの影響を受けない
+
+Portalで `<body>` 直下に出るためです。中身のスタイルは `sx` かslotで当てます。
+
+### Snackbarがすぐ消える、または消えない
+
+`autoHideDuration` の指定漏れ（既定は `null`）か、`clickaway` を潰していないかを確認します。
+
+### Menuが画面の変な位置に出る
+
+`anchorEl` に渡す要素が正しくありません。`e.currentTarget` を使ってください。`e.target` だと、ボタン内のアイコンなど子要素が入ることがあります。
+
+### ダイアログを閉じてもフォームの値が残る
+
+`Dialog` は閉じても中身がDOMから消えません。開くたびに初期化したい場合は、`open` が変わったタイミングでstateをリセットするか、`key` を付け替えます。
+
+### Escキーを無効にしたい
+
+v9では `disableEscapeKeyDown` が使えません。`onClose` の `reason` で分岐します。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>Dialog・Snackbar・MenuはPortalで `<body>` 直下に描画される</Marker>
+- `onClose` の第2引数の `reason` で、閉じ方によって処理を分けられる
+- v9では `disableEscapeKeyDown` が削除。`reason === 'escapeKeyDown'` で判定する
+- フォーカスの移動と復帰はMUIが自動で行う。手を出しすぎない
+- `Snackbar` の `autoHideDuration` の既定は `null`（自動で閉じない）
+- `Menu` は `anchorEl` で開閉状態を表し、`open={Boolean(anchorEl)}` と書く
+
+次の章では、v9で変わった[アクセシビリティ周り](/books/mui/accessibility)をまとめて扱います。
+
+---
+
+## 参考リンク
+
+- [Dialog — MUI公式](https://mui.com/material-ui/react-dialog/)
+- [Snackbar — MUI公式](https://mui.com/material-ui/react-snackbar/)
+- [Menu — MUI公式](https://mui.com/material-ui/react-menu/)
+- [Upgrade to v9 — 公式マイグレーションガイド](https://mui.com/material-ui/migration/upgrade-to-v9/)

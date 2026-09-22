@@ -194,7 +194,7 @@ MUIとTailwindを同じプロジェクトで使うと、どちらのスタイル
 
 これでMUIのスタイルが `@layer mui` というカスケードレイヤーに入ります。レイヤーに入ったスタイルは、レイヤー外のスタイルより優先度が低くなるため、**Tailwindのクラスで上書きできるようになります**。
 
-このサイト自身がこの設定です。デザインはTailwindで作り、管理画面のテーブルやダイアログにだけMUIを使っています。詳しい仕組みは、この本の最終章「他のCSSと共存する」で扱う予定です。
+このサイト自身がこの設定です。デザインはTailwindで作り、管理画面のテーブルやダイアログにだけMUIを使っています。詳しい仕組みは、[他のCSSと共存する](/books/mui/coexisting-with-other-css)で扱います。
 
 ---
 
@@ -230,3 +230,11 @@ Server Componentのファイルで `onClick={...}` を書いています。そ�
 - Tailwindと併用するなら `enableCssLayer: true`
 
 次の章では、MUIのスタイリングの基本単位である[sx propの使い方](/books/mui/sx-prop)を扱います。v9で書き方が変わった部分でもあります。
+
+---
+
+## 参考リンク
+
+- [Next.js integration — MUI公式](https://mui.com/material-ui/integrations/nextjs/)
+- [Installation — MUI公式](https://mui.com/material-ui/getting-started/installation/)
+- [App Router — Next.js公式ドキュメント](https://nextjs.org/docs/app)

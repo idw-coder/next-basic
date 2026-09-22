@@ -1,0 +1,190 @@
+---
+title: 'MUIと他のCSSを共存させる — カスケードレイヤーとTailwind CSS併用'
+description: 'MUIのスタイルが外からの上書きに強い理由と、カスケードレイヤーを使って共存させる方法を解説します。Tailwind CSSと同じプロジェクトで使うときの設定も扱います。'
+order: 13
+---
+
+「MUIのボタンにTailwindのクラスを当てたのに効かない」——これは設定ミスではなく、MUIのスタイルの作られ方から生じる当然の結果です。
+
+この章では原因と、v9で用意されている解決策を扱います。
+
+<SpeechBubble character="/images/surprise_pc_woman_color.png" name="学習者">
+`className="bg-red-500"` を付けたのに色が変わらない。`!important` を付けたら効いたけど、これでいいの？
+</SpeechBubble>
+
+動きはしますが、`!important` を積み重ねると、あとから誰も上書きできない状態になります。もっと素直な方法があります。
+
+---
+
+## なぜ外からの上書きが効かないのか
+
+MUIのスタイルはEmotionが実行時に生成します。生成されるセレクタは、コンポーネントのクラスと組み合わさって**詳細度が高くなりがち**です。
+
+一方、Tailwindのユーティリティクラスは単一クラスなので詳細度が低く、素直に書くと負けます。
+
+<Marker>詳細度の勝負で殴り合うのではなく、勝ち負けのルール自体を変えるのが正解</Marker>です。そのための仕組みがCSSのカスケードレイヤーです。
+
+---
+
+## カスケードレイヤーという考え方
+
+カスケードレイヤー（`@layer`）は、CSSの優先順位を「詳細度」より先に決める仕組みです。
+
+重要な性質が2つあります。
+
+1. **レイヤーの順番が詳細度より優先される。** 後ろのレイヤーが前のレイヤーに勝つ
+2. **レイヤーに入っていないスタイルは、どのレイヤーよりも強い**
+
+2つ目が直感に反するので注意してください。<Marker>レイヤーの外にあるスタイルは、レイヤー内のスタイルに必ず勝ちます</Marker>。
+
+つまり、MUIのスタイルをレイヤーに入れてしまえば、レイヤー外の自前CSSはそれだけで勝てるようになります。詳細度を気にする必要がなくなります。
+
+---
+
+## MUIのスタイルをレイヤーに入れる
+
+Next.jsのApp Routerでは、2章で置いた `AppRouterCacheProvider` にオプションを渡します。
+
+```tsx
+<AppRouterCacheProvider options={{ enableCssLayer: true }}>
+  {children}
+</AppRouterCacheProvider>
+```
+
+これでMUIが生成するスタイルが `@layer mui` に入ります。
+
+Next.js以外の構成では、`StyledEngineProvider` に同じ意味のpropがあります。
+
+```tsx
+<StyledEngineProvider enableCssLayer>
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+</StyledEngineProvider>
+```
+
+<Callout type="info" title="このサイトもこの設定です">
+いま読んでいるこのサイトは、デザイン全体をTailwind CSSで作り、管理画面のテーブルやダイアログにだけMUIを使っています。ルートレイアウトで `enableCssLayer: true` を指定して共存させている実例です。
+</Callout>
+
+<Figure src="/images/fork_suit_man_color.png" alt="2つの仕組みを共存させるイメージ" maxWidth="230px" />
+
+---
+
+## Tailwind CSSと組み合わせる
+
+レイヤーに入れただけでは足りません。**レイヤーの順番を宣言する**必要があります。
+
+Tailwind CSS v4を使う場合、公式ドキュメントが示している順番はこれです。
+
+```css
+@layer theme, base, mui, components, utilities;
+```
+
+`mui` が `utilities` より**前**にあるのがポイントです。後ろのレイヤーが勝つので、Tailwindのユーティリティクラス（`utilities`）がMUIのスタイルに勝てるようになります。
+
+この宣言により、`!important` なしでTailwindのクラスでMUIコンポーネントを上書きできます。
+
+```tsx
+<Button variant="contained" className="rounded-none">
+  角丸なしのボタン
+</Button>
+```
+
+---
+
+## レイヤーを細かく分ける
+
+MUIのスタイルを1つの `mui` レイヤーにまとめるのではなく、役割ごとに分けることもできます。
+
+```tsx
+createTheme({ modularCssLayers: true });
+```
+
+これを有効にすると、MUIのスタイルが5つのレイヤーに分かれます。
+
+| レイヤー | 中身 |
+| --- | --- |
+| `mui.global` | `CssBaseline` と `GlobalStyles` |
+| `mui.components` | コンポーネントの基本スタイル |
+| `mui.theme` | テーマによる上書き |
+| `mui.custom` | MUI以外の `styled()` で作ったもの |
+| `mui.sx` | `sx` propのスタイル |
+
+順番の宣言も細かくなります。
+
+```css
+@layer theme, base, mui.global, mui.components, mui.theme, mui.custom, mui.sx, components, utilities;
+```
+
+「MUIの基本スタイルだけ上書きしたいが、`sx` で書いた指定は残したい」といった細かい制御が必要になったときの選択肢です。最初から使う必要はありません。
+
+---
+
+## 既存プロジェクトに後から入れるとき
+
+<Callout type="warning" title="有効にした瞬間に見た目が変わることがある">
+公式ドキュメントも注意しているとおり、<Marker>レイヤー外のスタイルはレイヤー内のスタイルに必ず勝ちます</Marker>。
+
+これまで「MUIに負けていた」自前のCSSが、`enableCssLayer` を有効にした途端に勝つようになります。詳細度で負けることを前提に `!important` を付けていた箇所があると、効きすぎて崩れます。
+
+既存プロジェクトで有効化する場合は、まず開発環境で全画面を目視確認してください。あわせて、不要になった `!important` を外していくのが望ましい流れです。
+</Callout>
+
+---
+
+## そもそも併用すべきか
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+技術的には共存できますが、「ボタンはMUI、カードはTailwind」のように混ぜると、どちらの流儀で書くべきか毎回迷うことになります。
+</SpeechBubble>
+
+併用がうまくいくのは、役割で線が引けるときです。
+
+| 線の引き方 | 例 |
+| --- | --- |
+| 画面で分ける | 公開ページはTailwind、管理画面はMUI |
+| 部品で分ける | 複雑な挙動を持つ部品（テーブル・ダイアログ）だけMUI |
+| レイアウトと部品で分ける | 配置はTailwind、フォーム部品はMUI |
+
+避けたいのは、同じ1つのボタンをMUIで作ってTailwindで上書きする、という重ね方です。技術的には可能でも、読む人にとっては「どちらを直せばいいのか」が分からなくなります。
+
+---
+
+## よくあるハマりどころ
+
+### Tailwindのクラスが効かない
+
+`enableCssLayer` を有効にしていないか、`@layer` の順番を宣言していません。両方が必要です。
+
+### レイヤーを有効にしたら既存のCSSが効きすぎる
+
+レイヤー外のスタイルが強くなったためです。`!important` の付いた箇所を優先的に見直します。
+
+### `sx` とTailwindのクラスを同じ要素に書いてしまう
+
+どちらも効きますが、スタイルの出どころが2か所に分かれて追いにくくなります。要素ごとにどちらかへ寄せてください。
+
+### CSS Modulesでも同じ問題が起きる
+
+Tailwindに限った話ではありません。CSS Modulesや素のCSSでも、MUIより詳細度が低ければ同じことが起きます。対処も同じです。
+
+---
+
+## ちゃんと使うためのポイント
+
+- MUIのスタイルは詳細度が高く、外から素直に上書きすると負ける
+- <Marker>`enableCssLayer` でMUIを `@layer mui` に入れ、レイヤーの順番を宣言する</Marker>
+- Tailwind CSS v4との併用は `@layer theme, base, mui, components, utilities;`
+- レイヤー外のスタイルはレイヤー内に必ず勝つ。既存プロジェクトでは見た目の変化に注意
+- 細かく制御したいときは `modularCssLayers`
+- 併用するなら、画面や部品で役割の線を引く
+
+これでこの本は終わりです。基本の `sx` からテーマ、slot、ダークモード、他のCSSとの共存まで一通り扱いました。個々のコンポーネントの細かいAPIは公式ドキュメントが最も正確なので、そちらを引きながら使ってください。
+
+---
+
+## 参考リンク
+
+- [CSS Layers — MUI公式](https://mui.com/material-ui/customization/css-layers/)
+- [Tailwind CSS v4 integration — MUI公式](https://mui.com/material-ui/integrations/tailwindcss/tailwindcss-v4/)
+- [Style library interoperability — MUI公式](https://mui.com/material-ui/integrations/interoperability/)
+- [カスケードレイヤー — MDN](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/At-rules/@layer)

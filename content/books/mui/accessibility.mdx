@@ -1,0 +1,204 @@
+---
+title: 'MUIとアクセシビリティ — v9の構造変更とハイコントラスト対応'
+description: 'MUIが最初から面倒を見てくれる範囲と、自分で書く必要がある部分を切り分けます。v9で入ったStepperの構造変更・ハイコントラストモード・prefers-reduced-motion対応も扱います。'
+order: 12
+---
+
+MUIを選ぶ理由として「アクセシビリティが担保されるから」と語られることがあります。半分は正しく、半分は誤解です。
+
+<Marker>MUIが引き受けるのは「部品の内部の作法」であって、「アプリ全体の設計」ではありません</Marker>。この章では、その境界をはっきりさせます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+MUIを使ってれば、アクセシビリティは考えなくていいと思ってた…。
+</SpeechBubble>
+
+考えるべきことは減りますが、ゼロにはなりません。まず「減る部分」から見ていきます。
+
+---
+
+## MUIが最初から面倒を見ている範囲
+
+| 領域 | MUIがやっていること |
+| --- | --- |
+| フォーカス管理 | ダイアログを開くとフォーカスを内部へ移し、閉じると元の要素へ戻す |
+| キーボード操作 | メニュー・タブ・セレクトの矢印キー移動、Escでの閉じる |
+| ロールと状態 | `role` や `aria-expanded` などの属性を自動で付与 |
+| ラベルの関連付け | `FormControlLabel` や `InputLabel` が `for` と `id` を結ぶ |
+| コントラスト比 | `palette` の色からコントラストを計算し、WCAGの3:1を下回ると警告を出す |
+
+自分で実装すると手間のかかる部分ばかりです。<Marker>ここに手を出しすぎない（`autoFocus` や独自のキーハンドラを足しすぎない）ことが、むしろ正しい使い方</Marker>になります。
+
+---
+
+## v9で変わった構造 — Stepper
+
+v9では、いくつかのコンポーネントのHTML構造が見直されました。代表がステッパーです。
+
+| | v8以前 | v9 |
+| --- | --- | --- |
+| `Stepper` | `<div>` | `<ol>` |
+| `Step` | `<div>` | `<li>` |
+
+実装でも、既定のタグが `'ol'` と `'li'` になっていることが確認できます。
+
+これは見た目のための変更ではありません。順序付きリストにすることで、**スクリーンリーダーが「5項目中の3番目」と読み上げられる**ようになります。意味のあるマークアップに寄せた変更です。
+
+<Callout type="warning" title="独自CSSを当てていた場合は確認する">
+`<div>` から `<ol>` / `<li>` に変わったため、リストの既定スタイル（マーカーや内側の余白）の影響を受けます。MUI側でリセットされていますが、プロジェクト共通のCSSで `li` にスタイルを当てている場合は、意図しない見た目になっていないか確認してください。
+</Callout>
+
+---
+
+## キーボード移動がroving tabindexに
+
+`Menu` と `MenuList`、`Tabs` のキーボード操作方式が変わりました。**roving tabindex** と呼ばれる方式です。
+
+考え方はこうです。
+
+- グループの中で「いまフォーカスできる項目」は常に1つだけ
+- 項目のあいだの移動は**矢印キー**
+- **Tabキー**を押すと、グループ全体を飛び越えて次の要素へ移る
+
+タブが10個あるとき、Tabキーを10回押さないと次へ進めない、という状況を避けるための作法です。WAI-ARIAが推奨する一般的な方式に揃えた変更になります。
+
+利用する側のコードを書き換える必要はありません。ただし、**キーボード操作をテストで書いている場合は、期待する挙動が変わっている**可能性があります。
+
+<Figure src="/images/highfive_hi_color.png" alt="誰でも使えるようにするイメージ" maxWidth="230px" />
+
+---
+
+## Windowsハイコントラストモード
+
+WindowsにはOS側で色を強制的に置き換える「ハイコントラストモード」があります。ブラウザではCSSの `forced-colors` として扱われ、サイトが指定した色の多くが無視されます。
+
+このとき問題になるのが、**背景色で区別していた要素**です。枠線のないボタンは背景が塗り潰され、どこがボタンなのか分からなくなります。
+
+v9.1.0で、この対応を一括で入れる `enhanceHighContrast` が追加されました。
+
+```tsx
+import { createTheme, enhanceHighContrast } from '@mui/material/styles';
+
+export const theme = enhanceHighContrast(
+  createTheme({
+    palette: { primary: { main: '#0b5cad' } },
+  }),
+);
+```
+
+作成済みのテーマを包むだけです。内部では、CSSのシステムカラーキーワードを使ったスタイルがコンポーネントに追加されます。
+
+| トークン | 既定のキーワード | 用途 |
+| --- | --- | --- |
+| `buttonBorder` | `ButtonBorder` | 操作できる要素の枠線 |
+| `buttonText` | `ButtonText` | ボタンの文字とアイコン |
+| `disabled` | `GrayText` | 無効状態 |
+| `selectedBackground` | `SelectedItem` | 選択中の項目の背景 |
+| `canvas` | `Canvas` | ページの背景 |
+
+これらはブラウザがOSの設定に応じて実際の色に置き換える特別な値です。個別に変えたい場合は第2引数で指定できます。
+
+```tsx
+enhanceHighContrast(createTheme(), { disabled: 'ButtonText' });
+```
+
+---
+
+## アニメーションを控える設定
+
+「動きを減らす」設定をOSで有効にしている利用者がいます。前庭障害などで、画面の動きが体調に影響する場合があるためです。
+
+v9.1.0から、テーマでこの設定に追従できます。
+
+```tsx
+createTheme({
+  motion: { reducedMotion: 'system' },
+});
+```
+
+| 値 | 動き |
+| --- | --- |
+| `'never'`（既定） | OSの設定を見ない。常にアニメーションする |
+| `'system'` | OSの設定に従う |
+| `'always'` | 常にアニメーションを抑える |
+
+<Callout type="warning" title="既定はオプトアウト側">
+`reducedMotion` の既定値は `'never'` です。つまり**何も書かないとOSの設定は無視されます**。対応したい場合は明示的に `'system'` を指定してください。既存プロジェクトの挙動を壊さないための既定値だと考えられます。
+</Callout>
+
+---
+
+## 自分で書く必要があること
+
+MUIが面倒を見てくれない領域が残ります。ここが冒頭の「半分は誤解」の部分です。
+
+### アイコンだけのボタンには名前を付ける
+
+```tsx
+// これだけだと、読み上げは「ボタン」としか言わない
+<IconButton><DeleteIcon /></IconButton>
+
+// 何のボタンか伝える
+<IconButton aria-label="削除"><DeleteIcon /></IconButton>
+```
+
+<Marker>`IconButton` のラベル漏れは、実務でもっとも多いアクセシビリティ上の不備</Marker>です。MUIは中身のアイコンが何を意味するか知らないため、ここは自動化できません。
+
+### 見出しの意味と見た目を分ける
+
+5章で触れたとおり、`variant` は見た目のプリセットにすぎません。
+
+```tsx
+<Typography variant="h4" component="h2">セクション見出し</Typography>
+```
+
+見出しレベルが飛んでいると、スクリーンリーダーでの拾い読みがしづらくなります。
+
+### 色だけで情報を伝えない
+
+エラーを赤字だけで示すと、色の区別が難しい利用者に伝わりません。`TextField` の `helperText` にエラー内容を文字で書く、アイコンを添える、といった補助が必要です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「部品の中はMUI、部品の使い方は自分」と覚えてください。ボタンのフォーカスリングはMUIの仕事、そのボタンに何という名前を付けるかは書く人の仕事です。
+</SpeechBubble>
+
+---
+
+## よくあるハマりどころ
+
+### コンソールにコントラスト比の警告が出る
+
+`palette` に設定した色が薄く、その上に乗る文字とのコントラストがWCAGの3:1を下回っています。色を濃くするか、`contrastText` を明示します。無視すると読みにくい画面になります。
+
+### Stepperのデザインが崩れた
+
+v9で `<ol>` / `<li>` になったためです。プロジェクト共通のリストスタイルが当たっていないか確認します。
+
+### ハイコントラストモードでボタンが消える
+
+`enhanceHighContrast` を適用していない状態で、背景色だけでボタンを表現しているケースです。
+
+### アニメーションを止める設定が効かない
+
+`motion.reducedMotion` の既定は `'never'` です。`'system'` を明示しているか確認してください。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>MUIが担保するのは部品の内部。使い方の設計は書く人の責任</Marker>
+- フォーカス管理とキーボード操作には手を出しすぎない
+- v9で `Stepper` は `<ol>` / `<li>` になり、`Menu` と `Tabs` はroving tabindexになった
+- Windowsハイコントラスト対応は `enhanceHighContrast` でテーマを包む
+- `reducedMotion` の既定は `'never'`。対応するなら `'system'` を明示する
+- `IconButton` には `aria-label` を必ず付ける
+
+次の章では、[MUIと他のCSSを共存させる方法](/books/mui/coexisting-with-other-css)を扱います。
+
+---
+
+## 参考リンク
+
+- [Stepper — MUI公式](https://mui.com/material-ui/react-stepper/)
+- [Palette — ハイコントラストモードの設定はこのページ](https://mui.com/material-ui/customization/palette/)
+- [Transitions — 動きの抑制設定](https://mui.com/material-ui/transitions/)
+- [prefers-reduced-motion — MDN](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion)
