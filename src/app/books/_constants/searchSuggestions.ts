@@ -261,7 +261,8 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'createTheme',
     'ThemeProvider',
     'Grid',
-    'size',
+    'Typography',
+    'noWrap',
     'Stack',
     'styled',
     'slotProps',
@@ -281,6 +282,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'useMemo',
     'useCallback',
     '依存配列',
+    'Strict Mode',
     'export default',
   ],
 

@@ -13,6 +13,7 @@
 | 2 | Next.js App Routerへの導入 — AppRouterCacheProviderと'use client'境界 | `nextjs-app-router-setup.mdx` | 執筆済み |
 | 3 | sx prop — MUIのスタイリングの基本単位 | `sx-prop.mdx` | 執筆済み |
 | 4 | レイアウト — Box・Stack・Container・Grid | `layout-box-stack-grid.mdx` | 執筆済み |
+| 4.5 | Typography — 文字の見た目と意味を分けて指定する | `typography.mdx` | 執筆済み |
 | 5 | テーマの構造 — createThemeとデザイントークン | `theme-and-tokens.mdx` | 執筆済み |
 | 6 | カスタマイズの4段階 — sxからGlobalStylesまで | `customization-levels.mdx` | 執筆済み |
 | 7 | slotsとslotProps — コンポーネントの内部構造を差し替える | `slots-and-slot-props.mdx` | 執筆済み |
@@ -23,7 +24,7 @@
 | 12 | アクセシビリティ — v9の構造変更と支援設定への対応 | `accessibility.mdx` | 執筆済み |
 | 13 | 他のCSSと共存する — カスケードレイヤーとTailwind CSS併用 | `coexisting-with-other-css.mdx` | 執筆済み |
 
-全13章を執筆済み。
+全13章＋差し込み1章（4.5 Typography）を執筆済み。
 
 章と章のあいだに差し込みたくなった場合は、既存の `order` を動かさず**小数**を使う（`order: 5.5`）。`chapterLabel` を添えれば読者向けの表示も自然にできる。javascript本の `7.1`〜`7.5` が実例。
 

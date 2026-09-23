@@ -1,6 +1,6 @@
 ---
 title: "開発環境のセットアップ"
-description: "Next.jsプロジェクトの作成から開発サーバーの起動まで、ステップバイステップで解説します。"
+description: "Next.jsプロジェクトの作成から開発サーバーの起動まで、ステップバイステップで解説します。開発中にログが2回出る理由（Strict Mode・reactStrictMode）も扱います。"
 order: 2
 ---
 
@@ -96,6 +96,40 @@ npm run dev
 
 ブラウザで `http://localhost:3000` にアクセスすると、Next.jsのウェルカムページが表示されます。
 
+## ログが2回出るのはStrict Modeの仕様
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+コンポーネントに `console.log` を書いたら、ブラウザのコンソールに同じログが2回出たんだけど、バグ？
+</SpeechBubble>
+
+バグではありません。Next.jsのApp Routerでは、Reactの**Strict Mode**が既定で有効になっているためです（Next.js 13.5.1以降。[reactStrictMode — Next.js公式ドキュメント](https://nextjs.org/docs/app/api-reference/config/next-config-js/reactStrictMode)）。
+
+Strict Modeが有効だと、Reactは開発環境でだけ次の処理を余分に1回実行します。
+
+- コンポーネント関数（レンダー）
+- `useEffect` のセットアップとクリーンアップ
+
+そのため、Client Componentに書いた `console.log` や `useEffect` のログが2回出ます。`npm run build` で作る本番ビルドでは、余分な実行は起きません。
+
+なぜわざと2回実行するのか、2回実行されて困るときに何を見直せばよいかは、Reactの本の「[Strict Modeで2回実行されるのはなぜ](/books/react-learning/03-react-lifecycle#strict-modeで2回実行されるのはなぜ)」で説明しています。
+
+### reactStrictModeで切り替える
+
+Strict Modeは `next.config.ts` の `reactStrictMode` で切り替えます。App Routerでは何も書かなければ有効なので、設定が必要になるのは無効にしたいときです。
+
+```ts
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  reactStrictMode: false, // Strict Modeを無効にする
+};
+
+export default nextConfig;
+```
+
+Next.js公式ドキュメントは、Strict Modeを有効にしておくことを強く推奨しています。2回実行で表示や動作がおかしくなる場合、無効にする前に `useEffect` のクリーンアップが書けているかを確認しましょう。
+
 ## package.json のスクリプト
 
 `package.json` には、よく使うコマンドが定義されています：
@@ -126,6 +160,7 @@ npm run dev
 - `create-next-app` でプロジェクトを作成
 - ディレクトリ構成の理解
 - 開発サーバーの起動
+- 開発中にログが2回出るのはStrict Modeの仕様（`reactStrictMode` で切り替え）
 
 次の章では、Next.jsのコンポーネントシステム（Server Components と Client Components）について学びます。
 

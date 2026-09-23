@@ -1,0 +1,236 @@
+---
+title: 'MUIのTypography — 文字の見た目と意味を分けて指定する'
+description: 'Typographyコンポーネントのvariantとcomponentの役割の違い、variantごとに描画されるHTMLタグ、noWrapやgutterBottomの挙動を整理します。v9で削除されたparagraph propも扱います。'
+order: 4.5
+chapterLabel: 'Typography'
+---
+
+MUIで文字を書くとき、素の `<p>` や `<h2>` を置いてもかまいません。ただし `Typography` を使うと、テーマで決めたフォントサイズや行間が自動で当たります。
+
+このコンポーネントには、他のUIライブラリにあまりない考え方が入っています。<Marker>「どう見えるか」と「HTMLとして何であるか」を別々のpropで指定する</Marker>という設計です。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`variant="h4"` って書いたら `<h4>` タグになるんじゃないの？わざわざ2つに分ける意味がわからない…。
+</SpeechBubble>
+
+既定ではそのとおり `<h4>` になります。分けられるのは、**見た目の大きさと見出しレベルが一致しない場面があるから**です。
+
+---
+
+## variantとcomponentの役割
+
+```tsx
+<Typography variant="h4" component="h2">
+  セクション見出し
+</Typography>
+```
+
+| prop | 役割 |
+| --- | --- |
+| `variant` | 見た目のプリセット（フォントサイズ・太さ・行間） |
+| `component` | 実際に描画されるHTMLタグ |
+
+上の例は「文字の大きさは `h4` 相当、HTMLとしては `<h2>`」という指定です。
+
+なぜこれが要るのか。ページ内の2つ目の大見出しは、HTMLの構造上は `<h2>` であるべきですが、デザイン上は小さめにしたいことがあります。`<h4>` タグで書いてしまうと、見出しレベルが `h1` → `h4` と飛び、スクリーンリーダーでの拾い読みがしづらくなります。
+
+<Marker>見た目のためにタグを選ばない</Marker>。これがこのpropが存在する理由です。
+
+<Figure src="/images/readingbook_woman_color.png" alt="文章構造を読むイメージ" maxWidth="220px" />
+
+---
+
+## variantごとに描画されるタグ
+
+`component` を省略したときに何になるかは、決まった対応表があります。
+
+| variant | 描画されるタグ |
+| --- | --- |
+| `h1` 〜 `h6` | 同じ名前のタグ（`<h1>` 〜 `<h6>`） |
+| `subtitle1` / `subtitle2` | **`<h6>`** |
+| `body1` / `body2` | `<p>` |
+| `button` / `caption` / `overline` | `<span>` |
+
+<Callout type="warning" title="subtitleは見出しになる">
+`subtitle1` と `subtitle2` は、名前から受ける印象と違って **`<h6>` で描画されます**。「本文の補足」のつもりでページ内に何個も置くと、HTMLの見出しが大量に生まれます。
+
+補足テキストとして使いたいなら、`component` で打ち消してください。
+
+```tsx
+<Typography variant="subtitle2" component="p">
+  補足のテキスト
+</Typography>
+```
+</Callout>
+
+### どのタグになるかの決定順
+
+実装では、次の順で最初に見つかったものが使われます。
+
+1. `component` prop（指定があれば最優先）
+2. `variantMapping` prop（そのコンポーネントだけの対応表）
+3. 既定の対応表（上の表）
+4. どれにも当てはまらなければ `<span>`
+
+`button` / `caption` / `overline` が `<span>` になるのは、既定の対応表に載っておらず4番目に落ちるためです。
+
+---
+
+## 余白は自分で付ける
+
+`Typography` の既定スタイルには **`margin: 0`** が入っています。ブラウザが `<h1>` や `<p>` に付ける余白は消えます。
+
+```tsx
+<Typography variant="h4">見出し</Typography>
+<Typography variant="body1">本文がすぐ下に詰まる</Typography>
+```
+
+意図的な設計です。余白はレイアウト側で決めるという考え方で、`Stack` の `spacing` や `sx` の `mb` で付けます。
+
+手軽に下余白だけ足したい場合は `gutterBottom` が使えます。
+
+```tsx
+<Typography variant="h4" gutterBottom>見出し</Typography>
+```
+
+これで `margin-bottom: 0.35em` が付きます。**文字サイズに比例する相対値**なので、見出しが大きいほど余白も広がります。厳密に揃えたいときは `sx={{ mb: 2 }}` のほうが確実です。
+
+---
+
+## noWrap — はみ出しを省略記号にする
+
+テーブルのセルやカードのタイトルで、長い文字列が折り返して高さを壊すことがあります。
+
+```tsx
+<Typography noWrap>とても長いタイトルがここに入ります</Typography>
+```
+
+これ1つで、次の3つのCSSがまとめて当たります。
+
+| プロパティ | 値 |
+| --- | --- |
+| `overflow` | `hidden` |
+| `text-overflow` | `ellipsis` |
+| `white-space` | `nowrap` |
+
+結果として、はみ出した部分が `…` で省略されます。
+
+<Callout type="info" title="効かないときは幅を見る">
+`noWrap` は「決まった幅からはみ出した分」を省略する仕組みです。親要素に幅の制限がないと、そもそもはみ出さないので何も起きません。Flexboxの中では `min-width: 0` が必要になることもあります。
+</Callout>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`noWrap` が効かない相談のほとんどは、MUIではなくCSSの話です。省略記号は「幅が決まっていること」が前提だと覚えておいてください。
+</SpeechBubble>
+
+---
+
+## colorとalign
+
+色はテーマのパスを文字列で渡せます。
+
+```tsx
+<Typography color="text.secondary">補足のテキスト</Typography>
+<Typography color="error">エラーメッセージ</Typography>
+```
+
+`text.primary` / `text.secondary` のようなパスのほか、`primary` や `error` といった役割の名前も受け取ります。<Marker>生の色コードを書かずテーマ経由にしておくと、ダークモードで自動的に切り替わります</Marker>。
+
+揃え方は `align` です。
+
+```tsx
+<Typography align="center">中央寄せ</Typography>
+```
+
+`'inherit'`（既定）/ `'left'` / `'center'` / `'right'` / `'justify'` から選びます。
+
+---
+
+## プロジェクト全体で対応表を変える
+
+「このアプリでは `subtitle1` を常に `<p>` にしたい」という方針があるなら、テーマにまとめられます。
+
+```tsx
+createTheme({
+  components: {
+    MuiTypography: {
+      defaultProps: {
+        variantMapping: {
+          subtitle1: 'p',
+          subtitle2: 'p',
+        },
+      },
+    },
+  },
+});
+```
+
+毎回 `component="p"` と書く必要がなくなります。カスタマイズの段階としては、[カスタマイズの4段階](/books/mui/customization-levels)で扱った「全体の方針はテーマに書く」に当たります。
+
+---
+
+## v9で削除されたprop
+
+古い記事には次の書き方が出てきます。
+
+```tsx
+// v8以前。v9では動かない
+<Typography paragraph>段落テキスト</Typography>
+```
+
+`paragraph` は `<p>` で描画しつつ下余白を付けるpropでしたが、**v9の型定義には存在しません**。`body1` が既定で `<p>` になるため、役割が重複していたものと考えられます。
+
+現在はこう書きます。
+
+```tsx
+<Typography variant="body1" gutterBottom>段落テキスト</Typography>
+```
+
+また3章で触れたとおり、`Typography` からは **system propsも削除**されています。`<Typography mt={2}>` は動かないので、`sx` に移してください。
+
+---
+
+## よくあるハマりどころ
+
+### 見出しの下に余白がない
+
+`margin: 0` が既定です。`gutterBottom` か `sx` で付けます。
+
+### `subtitle` を並べたら見出し構造が壊れた
+
+`subtitle1` / `subtitle2` は `<h6>` で描画されます。補足なら `component="p"` を指定します。
+
+### `noWrap` が効かない
+
+親要素の幅が決まっていません。Flexboxの子なら `sx={{ minWidth: 0 }}` も併せて確認します。
+
+### `<Typography mt={2}>` が無視される
+
+v9でsystem propsが削除されました。`sx={{ mt: 2 }}` に書き換えます。
+
+### 文字サイズをテーマで変えたのに一部だけ変わらない
+
+`variant` を指定していない `Typography` は `body1` 相当になります。変更したのが `h1` の設定だけなら、本文には反映されません。
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>`variant` は見た目、`component` はHTMLタグ。見た目のためにタグを選ばない</Marker>
+- `subtitle1` / `subtitle2` は既定で `<h6>`。補足に使うなら `component="p"`
+- `button` / `caption` / `overline` は `<span>`
+- 既定は `margin: 0`。余白は `gutterBottom` か `sx` で付ける
+- `noWrap` は幅が決まっていて初めて効く
+- 色はテーマのパスで指定するとダークモードに追従する
+- v9では `paragraph` prop とsystem propsが削除された
+
+次の章では、色やフォントをまとめて管理する[テーマの構造](/books/mui/theme-and-tokens)を扱います。
+
+---
+
+## 参考リンク
+
+- [Typography — MUI公式](https://mui.com/material-ui/react-typography/)
+- [Typography API — propsの一覧](https://mui.com/material-ui/api/typography/)
+- [Typography（テーマ設定）— MUI公式](https://mui.com/material-ui/customization/typography/)
+- [見出し要素 — MDN](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/Heading_Elements)

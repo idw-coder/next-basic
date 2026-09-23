@@ -1,6 +1,6 @@
 ---
 title: 'Reactのレンダー・マウント・再レンダー・アンマウントの違い'
-description: 'Reactコンポーネントのレンダー、マウント、再レンダー、アンマウントの意味と違い、useEffectが実行されるタイミング、state更新時の流れを整理します。'
+description: 'Reactコンポーネントのレンダー、マウント、再レンダー、アンマウントの意味と違い、useEffectが実行されるタイミング、state更新時の流れ、開発環境のStrict Mode（StrictMode）で2回実行される理由を整理します。'
 order: 3
 ---
 
@@ -229,6 +229,61 @@ rendered   ← 再レンダー（3回目）
 
 `rendered` は計4回（初回 + 3回）、`mounted` は1回だけです。コンポーネントが画面から消えるとき（アンマウント）に `unmounted` が出力されます。
 
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+自分のPCで動かしたら、最初に `rendered` が2回、`mounted` → `unmounted` → `mounted` って出たんだけど…？
+</SpeechBubble>
+
+これは開発環境で**Strict Mode**が有効になっているためです。上の出力はStrict Modeが無効な場合（本番ビルドと同じ動き）のものです。理由は次の節で説明します。
+
+---
+
+## Strict Modeで2回実行されるのはなぜ
+
+Strict Modeは、バグの原因になりやすい書き方を開発中に見つけるためのReactの機能です。有効にすると、Reactは**開発環境でだけ**、次の処理をわざと余分に1回ずつ実行します（[StrictMode — React公式リファレンス](https://react.dev/reference/react/StrictMode)）。
+
+| 余分に実行されるもの | 見つけたいバグ |
+|---|---|
+| コンポーネント関数（レンダー） | レンダー中に外部の値を書き換えている（純粋でない） |
+| `useEffect` のセットアップとクリーンアップ | クリーンアップを書き忘れている |
+| コールバック `ref` のセットアップとクリーンアップ | `ref` のクリーンアップを書き忘れている |
+
+公式リファレンスは、これらのチェックは**開発時のみで、本番ビルドには影響しない**と明記しています。
+
+### 先ほどのCounterで起きていること
+
+Strict Modeが有効だと、マウント時の処理は次の順に進みます。
+
+1. コンポーネント関数を2回呼ぶ → `rendered` が2回出る
+2. DOMに挿入する
+3. `useEffect` のセットアップを実行する → `mounted`
+4. すぐにクリーンアップを実行する → `unmounted`
+5. もう一度セットアップを実行する → `mounted`
+
+```
+rendered
+rendered
+mounted
+unmounted
+mounted
+```
+
+4と5は、「一度アンマウントして、もう一度マウントした」状況を開発中に再現しています。前の節で見たとおり、コンポーネントは条件分岐やルート遷移で何度でもマウントし直されます。`setup → cleanup → setup` の順で実行しても正しく動くなら、実際に何度マウントされても壊れない、という確認になります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+じゃあ、2回実行されて困るならStrict Modeを切ればいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+切る前に、クリーンアップを書けているか見直そう。2回目で壊れるなら、本番で再マウントされたときにも同じ壊れ方をするんだ。
+</SpeechBubble>
+
+たとえば `useEffect` の中でイベントリスナーを登録してクリーンアップで外していないと、Strict Modeでは登録が2重になり、すぐに気づけます。クリーンアップを正しく書けば、`setup → cleanup → setup` のあとも登録は1つだけになります。
+
+### Strict Modeを有効にする場所
+
+- **Reactだけで作ったアプリ** — ルートを `<StrictMode>` で囲むと有効になります（[StrictMode — React公式リファレンス](https://react.dev/reference/react/StrictMode)）
+- **Next.js（App Router）** — 何も書かなくても既定で有効です。`next.config.ts` の `reactStrictMode` で切り替えられます。詳しくは「[Next.jsの開発環境のセットアップ](/books/next-js/02-setup#ログが2回出るのはstrict-modeの仕様)」で扱います
+
 ---
 
 ## useEffectとの関係
@@ -259,6 +314,7 @@ useEffect(() => {
 - **マウント** — 初回レンダー + DOMへの挿入。ライフサイクル中に1回だけ。
 - **再レンダー** — 2回目以降のレンダー。DOMは差分だけ更新される。
 - **アンマウント** — コンポーネントがDOMから取り除かれるとき。
+- **Strict Mode** — 開発環境でだけ、レンダーと `useEffect` をわざと余分に実行してバグを見つける。本番ビルドには影響しない。
 
 `useEffect(..., [])` が「マウント時のみ」と言われるのは、空配列だと何にも反応しないため最初の1回しか実行されないからです。レンダーとマウントの違いを押さえると、フックの動作が一気にわかりやすくなります。
 
@@ -269,6 +325,7 @@ useEffect(() => {
 - [Render and Commit — React公式](https://react.dev/learn/render-and-commit) — レンダーからDOMへの反映までの3ステップ
 - [Lifecycle of Reactive Effects — React公式](https://react.dev/learn/lifecycle-of-reactive-effects) — Effectの開始・停止サイクルと依存配列の仕組み
 - [useEffect — React公式リファレンス](https://react.dev/reference/react/useEffect) — useEffectのAPI仕様・依存配列の挙動
+- [StrictMode — React公式リファレンス](https://react.dev/reference/react/StrictMode) — 開発時だけ余分に実行される処理とその目的
 
 <QuizLink
   href="/quiz/react-basic"
