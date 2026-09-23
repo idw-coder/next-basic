@@ -1,6 +1,6 @@
 ---
 title: 'MUIのテーマ入門 — createThemeで色・フォント・余白を一元管理する'
-description: 'MUIのテーマが持つpalette・typography・spacing・shape・breakpointsの役割と、createThemeでの上書き方法を整理します。コンポーネントからテーマを読む方法も扱います。'
+description: 'ThemeProviderが無くても既定テーマで動く前提から、palette・typography・spacing・shapeの役割、createThemeでの上書き、ThemeProviderの入れ子で一部だけ別テーマにする方法までを整理します。'
 order: 5
 ---
 
@@ -13,6 +13,52 @@ MUIで色やフォントを変えるとき、コンポーネントを1つずつ 
 </SpeechBubble>
 
 動きはしますが、変更に弱くなります。テーマに1か所書いておけば、あとは `color: 'primary.main'` で参照するだけになります。
+
+---
+
+## 設定しなくてもMUIは動く
+
+本題に入る前に、前提を1つ押さえておきます。
+
+<Marker>テーマを設定しなくても、MUIのコンポーネントはそのまま動きます</Marker>。`<Button>` を置けばMUI標準の青いボタンが出ますし、`sx={{ color: 'primary.main' }}` もちゃんと色が付きます。
+
+仕組みはこうです。MUIは `useTheme()` でテーマを取り出しますが、その実装は「テーマが配られていなければ既定のテーマを使う」という形になっています。
+
+```js
+// @mui/material/styles/useTheme.js
+const theme = useTheme(defaultTheme);
+```
+
+この `defaultTheme` は、`createTheme()` を引数なしで呼んだ結果です。つまり**設定を書かなかった場合でも、完全なテーマが1つ必ず存在している**ということになります。
+
+### ThemeProviderが必要になる場面
+
+| やりたいこと | `ThemeProvider` |
+| --- | --- |
+| MUIの見た目のまま使う | 要らない |
+| 色・フォント・角丸を変える | **要る** |
+| ダークモードに対応する | **要る** |
+| `theme.components` で既定のpropsを変える | **要る** |
+
+判断の軸は1つだけで、**既定から変えたいことがあるかどうか**です。変えないなら置く意味はありません。
+
+<Callout type="warning" title="createThemeしただけでは何も起きない">
+このフォールバックには副作用があります。テーマを作ったのに `ThemeProvider` で配り忘れると、**エラーも警告も出ないまま既定のテーマが使われます**。
+
+```tsx
+// theme.ts で色を変えたつもり
+export const theme = createTheme({ palette: { primary: { main: '#c2185b' } } });
+
+// でも layout.tsx で配っていない
+<body>{children}</body>
+```
+
+ボタンは標準の青のままです。「テーマを設定したのに反映されない」と感じたときは、まず `ThemeProvider` が実際に置かれているかを確認してください。配り方は[テーマを配る — ThemeProviderと入れ子](#theme-provider)で扱います。
+</Callout>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「設定が効かない」系のトラブルは、設定の中身より先に**配線を疑う**と早く解決します。テーマは作るだけでは何もしません。
+</SpeechBubble>
 
 ---
 
@@ -159,6 +205,68 @@ shape: { borderRadius: 12 },
 
 ---
 
+<a id="theme-provider"></a>
+
+## テーマを配る — ThemeProviderと入れ子
+
+作ったテーマは `ThemeProvider` で配ります。基本はアプリ全体を1つで包む形で、置き方は[Next.js App Routerへの導入](/books/mui/nextjs-app-router-setup)で扱いました。
+
+```tsx
+<ThemeProvider theme={theme}>
+  <CssBaseline />
+  {children}
+</ThemeProvider>
+```
+
+`ThemeProvider` はここで終わりではありません。<Marker>入れ子にすると、その内側だけ別のテーマにできます</Marker>。
+
+```tsx
+<ThemeProvider theme={theme}>
+  <Header />
+  <ThemeProvider theme={adminTheme}>
+    <AdminPanel /> {/* ここだけ別テーマ */}
+  </ThemeProvider>
+</ThemeProvider>
+```
+
+管理画面だけ配色を変える、特定のセクションだけ角丸を強くする、といった場面で使います。
+
+### 外側のテーマを引き継ぐ
+
+上の書き方には落とし穴があります。`adminTheme` を `createTheme({ palette: { primary: ... } })` で作った場合、**外側のテーマの設定は引き継がれません**。内側は独立した別のテーマになります。
+
+外側を土台にして一部だけ変えたいときは、`theme` に**関数**を渡します。
+
+```tsx
+<ThemeProvider theme={(outerTheme) => ({
+  ...outerTheme,
+  palette: {
+    ...outerTheme.palette,
+    primary: { main: '#c2185b' },
+  },
+})}>
+  <AdminPanel />
+</ThemeProvider>
+```
+
+型定義上も `theme` は `Partial<Theme> | ((outerTheme: Theme) => Theme)` となっており、コメントに「外側のテーマを拡張するために関数を渡せる」と書かれています。
+
+<SpeechBubble character="/images/toppa_suit_woman_color.png" name="学習者">
+`createTheme` で作り直すのと、関数で受け取るのって何が違うの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+作り直すと、外側で設定したフォントや余白の基準まで既定値に戻ります。「色だけ変えたい」つもりが全部変わってしまう、という事故が起きます。一部だけ変えるなら関数形式です。
+</SpeechBubble>
+
+<Callout type="warning" title="入れ子は必要な場面だけに絞る">
+`ThemeProvider` を入れ子にすると、その範囲でスタイルが作り直されます。CSS変数を有効にしている場合は変数の定義も内側で再生成されるため、深く重ねるほどコストが増えます。
+
+MUIには `disableNestedContext` や `disableStyleSheetGeneration` といった、入れ子時の挙動を制御するpropも用意されていますが、これらが必要になる時点で設計を見直したほうが早いことが多いです。<Marker>まずは1つのテーマで済ませ、どうしても分けたい範囲だけ入れ子にする</Marker>のが基本方針になります。
+</Callout>
+
+---
+
 ## コンポーネントからテーマを読む
 
 テーマの値は、3つの方法で取り出せます。
@@ -201,7 +309,11 @@ function Chart() {
 
 ### テーマを変えたのに反映されない
 
-`ThemeProvider` の外側にコンポーネントがあるか、`createTheme` を呼び直していないケースです。テーマオブジェクトはモジュールのトップレベルで1回作り、使い回してください。コンポーネントの中で毎回 `createTheme()` を呼ぶと、再レンダーのたびに別のテーマが生まれて描画が重くなります。
+まず `ThemeProvider` を置いているか確認します。配り忘れていても既定のテーマで動いてしまうため、エラーが出ません。置いてある場合は、`ThemeProvider` の外側にコンポーネントがあるか、`createTheme` を呼び直していないケースです。テーマオブジェクトはモジュールのトップレベルで1回作り、使い回してください。コンポーネントの中で毎回 `createTheme()` を呼ぶと、再レンダーのたびに別のテーマが生まれて描画が重くなります。
+
+### 入れ子にしたら外側の設定まで消えた
+
+内側の `ThemeProvider` に `createTheme()` で作った別テーマを渡しています。外側を土台にしたいときは `theme={(outerTheme) => ...}` の関数形式を使います。
 
 ### TypeScriptで独自の色を足すと型エラーになる
 
@@ -215,12 +327,15 @@ v9では、単に `palette.mode` を切り替えるだけでなく、CSS変数�
 
 ## ちゃんと使うためのポイント
 
-- <Marker>テーマは上書きしたい項目だけ渡す。書かなかった値は既定値が残る</Marker>
+- <Marker>テーマを設定しなくてもMUIは既定テーマで動く。`ThemeProvider` が要るのは既定から変えたいときだけ</Marker>
+- `createTheme` しても `ThemeProvider` で配らなければ、エラーも出ず既定のまま
+- テーマは上書きしたい項目だけ渡す。書かなかった値は既定値が残る
 - `palette` の色は `main` だけ書けば、明暗と文字色は自動生成される
 - コントラスト比がWCAGの3:1を下回ると、コンソールに警告が出る
 - `spacing` はプロジェクト開始時に決めて動かさない
 - 「MUIっぽさ」を薄めるなら `shape.borderRadius` と `typography.fontFamily`
 - テーマオブジェクトはモジュールのトップレベルで1回だけ作る
+- <Marker>`ThemeProvider` は入れ子にできる。一部だけ変えるなら `theme` に関数を渡して外側を引き継ぐ</Marker>
 
 次の章では、テーマを踏まえて[カスタマイズの4段階](/books/mui/customization-levels)を扱います。`sx` と `styled()` とテーマの上書きを、どう使い分けるかという話です。
 
