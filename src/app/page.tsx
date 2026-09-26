@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
 import { getQuizCategories } from '@/lib/server/quizCategories';
 import { getQuizCategoryQuizzes } from '@/lib/server/quizCategoryQuizzes';
+import { SITE_URL } from '@/lib/site';
 import {
   ArrowRight,
   Atom,
@@ -38,7 +39,6 @@ import type { Metadata } from 'next';
 import { unstable_cache } from 'next/cache';
 import Image from 'next/image';
 import Link from 'next/link';
-import { SITE_URL } from '@/lib/site';
 
 // DBへ直接アクセスするため、ビルド時プリレンダの対象から外す。
 // 静的化されるとビルド環境（DB到達不可）の結果がHTMLに焼き込まれてしまう。
@@ -323,31 +323,31 @@ const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
   {
     date: '2026/08/25',
     text: '教科書「Zod入門 — TypeScriptで実行時の入力検証を型と一緒に書く」を公開しました。基本スキーマ、parseとsafeParseの違い、空文字やnullを通すかどうかの早見表、オブジェクトの検証まで、順次章を追加中です',
-    isNew: true,
+    isNew: false,
     link: '/books/zod',
   },
   {
     date: '2026/08/24',
     text: '教科書「AIエージェント開発の実務 — 原則と手札を分けて覚える」を公開しました。実行環境・権限設計・コンテキスト設計・検証ループ・チーム導入まで全20章です',
-    isNew: true,
+    isNew: false,
     link: '/books/ai-agent-development',
   },
   {
     date: '2026/08/20',
     text: '教科書「C#入門 — .NETで動く言語の基礎」を公開しました。型・クラス・インターフェースからLINQ・null安全・非同期処理まで全14章です',
-    isNew: true,
+    isNew: false,
     link: '/books/csharp',
   },
   {
     date: '2026/07/18',
     text: '教科書「AZ-900 合格とクラウドの基礎がわかるAzure入門」を公開しました。クラウドの概念からEntra ID・RBACまで順次章を追加中です',
-    isNew: true,
+    isNew: false,
     link: '/books/azure-az-900',
   },
   {
     date: '2026/07/16',
     text: '復習機能を強化しました。苦手な問題をまとめて解き直せる復習ページとヘッダーからの復習リンクを追加しています',
-    isNew: true,
+    isNew: false,
     link: '/quiz/review',
   },
   {
@@ -430,8 +430,7 @@ const SITE_JSON_LD = [
     alternateName: 'Web Engineer Quiz',
     url: SITE_URL,
     inLanguage: 'ja',
-    description:
-      'HTML・CSS・JavaScript・React・Node.jsを4択クイズと教科書で学べる無料学習サイト。',
+    description: 'HTML・CSS・JavaScript・React・Node.jsを4択クイズと教科書で学べる無料学習サイト。',
     potentialAction: {
       '@type': 'SearchAction',
       target: {

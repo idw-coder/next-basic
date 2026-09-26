@@ -1,7 +1,6 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@mui/material';
+import { Button, Chip, Divider, Stack, Typography } from '@mui/material';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -22,24 +21,52 @@ export function NewsList({ items }: { items: NewsItem[] }) {
 
   return (
     <>
-      <div id="news-list-items" className="divide-y divide-border">
+      <Stack id="news-list-items" divider={<Divider />}>
         {visible.map((item, i) => {
           const content = (
-            <div className={`py-3 space-y-1 ${item.link ? 'group cursor-pointer' : ''}`}>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground tabular-nums">{item.date}</span>
+            <Stack
+              spacing={0.5}
+              className={item.link ? 'group' : undefined}
+              sx={{
+                py: 1.5,
+                ...(item.link && {
+                  cursor: 'pointer',
+                }),
+              }}
+            >
+              <Stack direction={'row'} spacing={1} sx={{ alignItems: 'center' }}>
+                <Typography component={'span'} variant="caption" color="text.secondary">
+                  {item.date}
+                </Typography>
                 {item.isNew && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 leading-4">
-                    NEW
-                  </Badge>
+                  <Chip
+                    label="NEW"
+                    size="small"
+                    sx={{
+                      fontWeight: '600',
+                      fontSize: '0.625rem',
+                      bgcolor: 'secondary.dark',
+                      color: 'common.white',
+                    }}
+                  />
                 )}
-              </div>
-              <p
-                className={`text-sm text-foreground ${item.link ? 'group-hover:text-primary transition-colors' : ''}`}
+              </Stack>
+              <Typography
+                component={'p'}
+                variant="body2"
+                sx={{
+                  fontSize: '0.8125rem',
+                  transition: 'color 150ms',
+                  ...(item.link && {
+                    '.group:hover &': {
+                      color: 'primary.main',
+                    },
+                  }),
+                }}
               >
                 {item.text}
-              </p>
-            </div>
+              </Typography>
+            </Stack>
           );
           return item.link ? (
             <Link key={i} href={item.link}>
@@ -49,7 +76,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
             <div key={i}>{content}</div>
           );
         })}
-      </div>
+      </Stack>
 
       {hasMore && (
         <Button
