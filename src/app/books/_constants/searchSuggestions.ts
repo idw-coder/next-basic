@@ -284,6 +284,8 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     '依存配列',
     'Strict Mode',
     'export default',
+    'リストのレンダー',
+    'key',
   ],
 
   'css-basics': ['Flexbox', 'Grid', 'レスポンシブ', '詳細度', 'CSS変数'],
