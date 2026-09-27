@@ -1,0 +1,196 @@
+---
+title: 'Reactで配列をリスト表示する — map・filter・keyの使い方'
+description: 'Reactで配列からリストをレンダーする方法を、map・filterの使い方、keyが必要な理由、安定したIDの選び方とともに解説します。'
+order: 2.5
+chapterLabel: 'リスト'
+---
+
+商品一覧やコメント一覧のように、同じ見た目をデータの数だけ繰り返したい場面では、JSXを1つずつ手書きしません。データを配列にまとめ、JavaScriptの `map()` で各要素をJSXへ変換します。
+
+このページでは、配列から必要なデータを選び、それぞれをReact要素へ変換し、Reactが正しく追跡できるように `key` を付けるまでの流れを整理します。
+
+## 配列からリストをレンダーする
+
+まずは、タスクの配列から `<li>` を作る基本形を見てみましょう。
+
+```tsx
+const tasks = [
+  { id: 'task-1', title: 'メールを確認する' },
+  { id: 'task-2', title: '資料を作成する' },
+  { id: 'task-3', title: 'レビューを依頼する' },
+];
+
+function TaskList() {
+  return (
+    <ul>
+      {tasks.map((task) => (
+        <li key={task.id}>{task.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`tasks.map(...)` は、配列の各データを `<li>` というReact要素へ変換します。変換後はReact要素の配列になり、`{}` でJSXに埋め込むとReactが順番にレンダーします。
+
+## `map()` でデータをJSXへ変換する
+
+**構文：** `array.map(callbackFn)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `callbackFn` | 関数 | 配列の各要素に対して実行し、変換後の値を返す関数 |
+
+`callbackFn` は次の3つの引数を受け取れます。通常は第1引数だけで十分です。
+
+| コールバックの引数 | 説明 |
+| ------------------ | ---- |
+| `element` | 現在処理している配列要素 |
+| `index` | 現在の要素の位置（0から始まる） |
+| `array` | `map()` を呼び出した元の配列 |
+
+**戻り値：** コールバックの戻り値を並べた新しい配列。元の配列は変更しません。
+
+JSXの中へ直接書く方法と、一度変数へ入れる方法は同じ結果になります。
+
+```tsx
+// JSXの中で変換する
+return <ul>{tasks.map((task) => <li key={task.id}>{task.title}</li>)}</ul>;
+
+// 先にReact要素の配列を作る
+const taskItems = tasks.map((task) => (
+  <li key={task.id}>{task.title}</li>
+));
+
+return <ul>{taskItems}</ul>;
+```
+
+<Callout type="warning" title="波括弧を使ったらreturnが必要">
+アロー関数の本体を `( ... )` で書くと式の値がそのまま返ります。一方、`{ ... }` でブロックにした場合は `return` が必要です。書き忘れると各回の戻り値が `undefined` になり、何も表示されません。
+
+```tsx
+// NG: returnがない
+tasks.map((task) => {
+  <li key={task.id}>{task.title}</li>;
+});
+
+// OK
+tasks.map((task) => {
+  return <li key={task.id}>{task.title}</li>;
+});
+```
+</Callout>
+
+## `filter()` で表示するデータを絞り込む
+
+完了していないタスクだけを表示するなど、条件に合う項目だけが必要なら、先に `filter()` で絞り込んでから `map()` でJSXへ変換します。
+
+**構文：** `array.filter(callbackFn)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `callbackFn` | 関数 | 各要素を残すなら `true`、除外するなら `false` を返す関数。受け取れる引数は `map()` と同じ |
+
+**戻り値：** 条件を通過した要素だけを含む新しい配列。元の配列は変更しません。
+
+```tsx
+const tasks = [
+  { id: 'task-1', title: 'メールを確認する', done: true },
+  { id: 'task-2', title: '資料を作成する', done: false },
+  { id: 'task-3', title: 'レビューを依頼する', done: false },
+];
+
+function RemainingTasks() {
+  const remainingTasks = tasks.filter((task) => !task.done);
+
+  return (
+    <ul>
+      {remainingTasks.map((task) => (
+        <li key={task.id}>{task.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+`filter()` はデータを選び、`map()` は選んだデータをJSXへ変換します。配列メソッド自体の詳しい使い方は「[配列と主要メソッド — map・filter・reduce・find・some・every](/books/javascript/07-arrays)」でも解説しています。
+
+## `key` は要素の位置ではなく「正体」を伝える
+
+`map()` でJSXを並べるときは、同じ配列内の各要素に `key` を指定します。
+
+```tsx
+tasks.map((task) => (
+  <li key={task.id}>{task.title}</li>
+));
+```
+
+Reactは前回と今回のリストを比較し、どの要素が追加・削除・並べ替えされたのかを判断します。そのとき、要素を追跡するための目印になるのが `key` です。
+
+<Marker>適切な `key` は、兄弟要素の中で一意であり、同じデータにはレンダーをまたいで同じ値が割り当てられる、安定したIDです。</Marker>
+
+| 指定方法 | 評価 | 理由 |
+| -------- | ---- | ---- |
+| `key={task.id}` | 推奨 | データと結び付いたIDなので、並べ替えても同じ要素を追跡できる |
+| `key={index}` | 原則避ける | 追加・削除・並べ替えで同じデータの位置が変わる |
+| `key={Math.random()}` | 使用しない | レンダーのたびに値が変わり、毎回別の要素として作り直される |
+
+インデックスを `key` にすると、先頭へ項目を追加しただけで、それまで0番だった要素が1番へずれます。Reactが別のデータを同じ要素だと判断し、入力欄の値やコンポーネントのstateが意図しない項目へ移ることがあります。項目が固定され、追加・削除・並べ替えが絶対に起きない一覧を除き、データが持つIDを使いましょう。
+
+データにIDがない場合は、レンダー中に作るのではなく、データを作成する時点でIDも保存します。データベースの主キーや、項目の作成時に発行したUUIDなどが使えます。
+
+<Callout type="note" title="keyはコンポーネントへ渡るpropsではない">
+`key` はReactがリストを比較するために使う特別な情報です。子コンポーネントから `props.key` として読むことはできません。子でもIDが必要なら、`<Task key={task.id} taskId={task.id} />` のように別のpropでも渡します。
+</Callout>
+
+## `key` を付ける場所
+
+`key` は、`map()` が直接返す最も外側の要素に付けます。子コンポーネントの中にある `<li>` へ移しても、配列側の要素を識別できません。
+
+```tsx
+function Task({ title }: { title: string }) {
+  return <li>{title}</li>;
+}
+
+// keyはTaskに付ける
+tasks.map((task) => (
+  <Task key={task.id} title={task.title} />
+));
+```
+
+1件につき複数の要素を返し、余分なDOM要素を増やしたくない場合は、短縮記法の `<>...</>` ではなく `Fragment` を使います。短縮記法には `key` を指定できないためです。
+
+```tsx
+import { Fragment } from 'react';
+
+tasks.map((task) => (
+  <Fragment key={task.id}>
+    <dt>{task.title}</dt>
+    <dd>{task.done ? '完了' : '未完了'}</dd>
+  </Fragment>
+));
+```
+
+## ちゃんと使うためのポイント
+
+- 表示するデータは配列にまとめ、`map()` でJSXへ変換する
+- 条件に合う項目だけ表示するときは、`filter()` のあとに `map()` を使う
+- `key` には兄弟間で一意かつ、レンダーをまたいで変わらないIDを使う
+- 配列のインデックスや、レンダー中に作った乱数を `key` にしない
+- `key` は `map()` が直接返す最も外側の要素に付ける
+
+## 参考リンク
+
+- [リストのレンダー — React公式](https://ja.react.dev/learn/rendering-lists)
+- [Array.prototype.map() — MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/map)
+- [Array.prototype.filter() — MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Array/filter)
+
+---
+
+<QuizLink
+  href="/quiz/react-basic"
+  title="Reactクイズに挑戦する"
+  description="map・filterによるリスト表示とkeyの役割を4択クイズで確認しよう"
+/>
+
+次の章では、「[Reactのレンダー・マウント・再レンダー・アンマウントの違い](/books/react-learning/03-react-lifecycle)」を整理します。
