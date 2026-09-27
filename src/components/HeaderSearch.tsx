@@ -1,23 +1,25 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
   CornerDownLeft,
   FileText,
   Hash,
-  Loader2,
+  Library,
   ListChecks,
+  Loader2,
   Search,
   Tags,
-} from "lucide-react";
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
-import { cn } from "@/lib/utils";
-import { clearQuizQueueSession } from "@/lib/quizQueueSession";
+import { clearQuizQueueSession } from '@/lib/quizQueueSession';
+import { cn } from '@/lib/utils';
+import { Box, Button, Chip, IconButton, Stack, Typography } from '@mui/material';
 
 interface HeaderSearchBook {
   bookSlug: string;
@@ -33,14 +35,14 @@ interface Category {
 }
 
 interface SearchBookHit {
-  kind: "book";
+  kind: 'book';
   bookSlug: string;
   bookTitle: string;
   description: string;
 }
 
 interface SearchChapterHit {
-  kind: "chapter";
+  kind: 'chapter';
   bookSlug: string;
   chapterSlug: string;
   bookTitle: string;
@@ -75,54 +77,71 @@ interface HeaderSearchProps {
 }
 
 const FALLBACK_KEYWORDS = [
-  "JavaScript",
-  "React",
-  "CSS",
-  "TypeScript",
-  "Next.js",
-  "SQL",
-  "Git",
-  "AWS",
+  'JavaScript',
+  'React',
+  'CSS',
+  'TypeScript',
+  'Next.js',
+  'SQL',
+  'Git',
+  'AWS',
+  'Docker',
+  'Kubernetes',
+  'CI/CD',
+  'DevOps',
+  'Cloud',
+  'Serverless',
+  'Database',
+  'API',
+  'Microservices',
+  'Monitoring',
+  'Logging',
+  'Security',
+  'Performance',
+  'Testing',
+  'Refactoring',
+  'Design Patterns',
+  'Code Review',
 ];
 
 const FALLBACK_CATEGORIES: Category[] = [
-  { id: -1, slug: "javascript-basic", category_name: "JavaScript" },
-  { id: -2, slug: "react-basic", category_name: "React" },
-  { id: -3, slug: "css-basic", category_name: "CSS" },
-  { id: -4, slug: "ts-general", category_name: "TypeScript" },
-  { id: -5, slug: "nextjs", category_name: "Next.js" },
-  { id: -6, slug: "sql-basic", category_name: "SQL" },
+  { id: -1, slug: 'javascript-basic', category_name: 'JavaScript' },
+  { id: -2, slug: 'react-basic', category_name: 'React' },
+  { id: -3, slug: 'css-basic', category_name: 'CSS' },
+  { id: -4, slug: 'ts-general', category_name: 'TypeScript' },
+  { id: -5, slug: 'nextjs', category_name: 'Next.js' },
+  { id: -6, slug: 'sql-basic', category_name: 'SQL' },
 ];
 
 type SearchCandidate = {
   key: string;
   href: string;
-  group: "book" | "quiz" | "all";
+  group: 'book' | 'quiz' | 'all';
   typeLabel: string;
   title: string;
   subtext?: string;
-  icon: "book" | "chapter" | "quiz" | "all";
+  icon: 'book' | 'chapter' | 'quiz' | 'all';
 };
 
 function getBookHref(item: SearchBookResult): string {
-  if (item.kind === "book") return `/books/${item.bookSlug}`;
+  if (item.kind === 'book') return `/books/${item.bookSlug}`;
   return `/books/${item.bookSlug}/${item.chapterSlug}`;
 }
 
 function getBookTitle(item: SearchBookResult): string {
-  if (item.kind === "book") return item.bookTitle;
+  if (item.kind === 'book') return item.bookTitle;
   return item.title;
 }
 
 function getBookSubtext(item: SearchBookResult): string {
-  if (item.kind === "book") return item.description;
+  if (item.kind === 'book') return item.description;
   return item.description ?? item.bookTitle;
 }
 
-function CandidateIcon({ type }: { type: SearchCandidate["icon"] }) {
-  if (type === "quiz") return <Hash className="size-4" />;
-  if (type === "chapter") return <FileText className="size-4" />;
-  if (type === "all") return <ArrowRight className="size-4" />;
+function CandidateIcon({ type }: { type: SearchCandidate['icon'] }) {
+  if (type === 'quiz') return <Hash className="size-4" />;
+  if (type === 'chapter') return <FileText className="size-4" />;
+  if (type === 'all') return <ArrowRight className="size-4" />;
   return <BookOpen className="size-4" />;
 }
 
@@ -132,8 +151,8 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [shortcutLabel, setShortcutLabel] = useState("⌘K");
+  const [query, setQuery] = useState('');
+  const [shortcutLabel, setShortcutLabel] = useState('⌘K');
   const [bootstrap, setBootstrap] = useState<BootstrapResponse | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(false);
@@ -159,40 +178,43 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
 
     const bookCandidates = searchResults.bookResults.slice(0, 6).map((item) => ({
       key:
-        item.kind === "book"
+        item.kind === 'book'
           ? `book-${item.bookSlug}`
           : `chapter-${item.bookSlug}-${item.chapterSlug}`,
       href: getBookHref(item),
-      group: "book" as const,
-      typeLabel: item.kind === "book" ? "教科書" : "章",
+      group: 'book' as const,
+      typeLabel: item.kind === 'book' ? '教科書' : '章',
       title: getBookTitle(item),
       subtext: getBookSubtext(item),
-      icon: item.kind === "book" ? ("book" as const) : ("chapter" as const),
+      icon: item.kind === 'book' ? ('book' as const) : ('chapter' as const),
     }));
 
     const quizCandidates = searchResults.quizResults.slice(0, 6).map((quiz) => ({
       key: `quiz-${quiz.categorySlug}-${quiz.id}`,
       href: `/quiz/${quiz.categorySlug}/${quiz.id}`,
-      group: "quiz" as const,
-      typeLabel: quiz.categoryName || "クイズ",
+      group: 'quiz' as const,
+      typeLabel: quiz.categoryName || 'クイズ',
       title: quiz.question,
       subtext:
         quiz.tags.length > 0
-          ? quiz.tags.slice(0, 3).map((tag) => `#${tag.name}`).join(" ")
+          ? quiz.tags
+              .slice(0, 3)
+              .map((tag) => `#${tag.name}`)
+              .join(' ')
           : undefined,
-      icon: "quiz" as const,
+      icon: 'quiz' as const,
     }));
 
     return [
       ...bookCandidates,
       ...quizCandidates,
       {
-        key: "search-all",
+        key: 'search-all',
         href: `/search?q=${encodeURIComponent(trimmedQuery)}`,
-        group: "all" as const,
-        typeLabel: "検索ページ",
+        group: 'all' as const,
+        typeLabel: '検索ページ',
         title: `「${trimmedQuery}」の検索結果をすべて見る`,
-        icon: "all" as const,
+        icon: 'all' as const,
       },
     ];
   }, [hasQuery, searchResults, trimmedQuery]);
@@ -201,7 +223,7 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
 
   const closeSearch = useCallback(() => {
     setOpen(false);
-    setQuery("");
+    setQuery('');
     setSearchResults({ bookResults: [], quizResults: [] });
     setActiveIndex(0);
   }, []);
@@ -220,35 +242,35 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
   useEffect(() => {
     setMounted(true);
     if (!/Mac|iPhone|iPad/i.test(window.navigator.userAgent)) {
-      setShortcutLabel("Ctrl K");
+      setShortcutLabel('Ctrl K');
     }
   }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setOpen((v) => !v);
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   useEffect(() => {
     if (!open) return;
     const timer = window.setTimeout(() => inputRef.current?.focus(), 0);
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
     return () => {
       window.clearTimeout(timer);
-      document.body.style.overflow = "";
+      document.body.style.overflow = '';
     };
   }, [open]);
 
   useEffect(() => {
     if (!open || bootstrap) return;
     let cancelled = false;
-    fetch("/next-api/site-search")
+    fetch('/next-api/site-search')
       .then((res) => (res.ok ? res.json() : null))
       .then((data: BootstrapResponse | null) => {
         if (data && !cancelled) setBootstrap(data);
@@ -289,7 +311,7 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
           setSearching(false);
         })
         .catch((error) => {
-          if (error instanceof DOMException && error.name === "AbortError") return;
+          if (error instanceof DOMException && error.name === 'AbortError') return;
           setSearchResults({ bookResults: [], quizResults: [] });
           setSearchError(true);
           setSearching(false);
@@ -304,26 +326,26 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
 
   useEffect(() => {
     const active = listRef.current?.querySelector('[data-active="true"]');
-    active?.scrollIntoView({ block: "nearest" });
+    active?.scrollIntoView({ block: 'nearest' });
   }, [activeIndex, candidates]);
 
   const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") {
+    if (event.key === 'Escape') {
       event.preventDefault();
       closeSearch();
       return;
     }
-    if (event.key === "ArrowDown" && candidates.length > 0) {
+    if (event.key === 'ArrowDown' && candidates.length > 0) {
       event.preventDefault();
       setActiveIndex((index) => (index + 1) % candidates.length);
       return;
     }
-    if (event.key === "ArrowUp" && candidates.length > 0) {
+    if (event.key === 'ArrowUp' && candidates.length > 0) {
       event.preventDefault();
       setActiveIndex((index) => (index - 1 + candidates.length) % candidates.length);
       return;
     }
-    if (event.key === "Enter") {
+    if (event.key === 'Enter') {
       event.preventDefault();
       if (!hasQuery) return;
       const target = candidates[activeIndex] ?? candidates[candidates.length - 1];
@@ -339,39 +361,35 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
         href={candidate.href}
         data-active={active}
         onClick={() => {
-          if (candidate.group === "quiz") {
+          if (candidate.group === 'quiz') {
             clearQuizQueueSession();
           }
           closeSearch();
         }}
         onMouseMove={() => setActiveIndex(index)}
         className={cn(
-          "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
-          candidate.group === "all"
-            ? "font-bold text-brand-blue"
-            : "text-ink-body",
-          active ? "bg-brand-blue text-white" : "hover:bg-cream-deep",
+          'flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors',
+          candidate.group === 'all' ? 'font-bold text-brand-blue' : 'text-ink-body',
+          active ? 'bg-brand-blue text-white' : 'hover:bg-cream-deep',
         )}
       >
         <span
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-lg border",
+            'flex size-8 shrink-0 items-center justify-center rounded-lg border',
             active
-              ? "border-white/25 bg-white/15 text-white"
-              : "border-ink/10 bg-white text-ink-muted",
+              ? 'border-white/25 bg-white/15 text-white'
+              : 'border-ink/10 bg-white text-ink-muted',
           )}
         >
           <CandidateIcon type={candidate.icon} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold">
-            {candidate.title}
-          </span>
+          <span className="block truncate text-sm font-semibold">{candidate.title}</span>
           {candidate.subtext && (
             <span
               className={cn(
-                "mt-0.5 block truncate text-xs font-medium",
-                active ? "text-white/75" : "text-ink-muted",
+                'mt-0.5 block truncate text-xs font-medium',
+                active ? 'text-white/75' : 'text-ink-muted',
               )}
             >
               {candidate.subtext}
@@ -380,8 +398,8 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
         </span>
         <span
           className={cn(
-            "hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:block",
-            active ? "bg-white/15 text-white/90" : "bg-cream-deep text-ink-muted",
+            'hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:block',
+            active ? 'bg-white/15 text-white/90' : 'bg-cream-deep text-ink-muted',
           )}
         >
           {candidate.typeLabel}
@@ -391,13 +409,13 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
     );
   };
 
-  const bookCandidates = candidates.filter((c) => c.group === "book");
-  const quizCandidates = candidates.filter((c) => c.group === "quiz");
-  const allCandidate = candidates.find((c) => c.group === "all");
+  const bookCandidates = candidates.filter((c) => c.group === 'book');
+  const quizCandidates = candidates.filter((c) => c.group === 'quiz');
+  const allCandidate = candidates.find((c) => c.group === 'all');
   const hasResults = bookCandidates.length > 0 || quizCandidates.length > 0;
 
   return (
-    <div className={cn("flex items-center", className)}>
+    <div className={cn('flex items-center', className)}>
       {/* デスクトップ: 検索ボックス風トリガー */}
       <button
         type="button"
@@ -413,14 +431,9 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
       </button>
 
       {/* モバイル: アイコンのみのトリガー */}
-      <button
-        type="button"
-        onClick={openSearch}
-        className="flex size-10 items-center justify-center text-ink transition-colors hover:text-brand-blue md:hidden"
-        aria-label="問題・教科書を検索"
-      >
+      <IconButton onClick={openSearch} className="md:hidden" aria-label="問題・教科書を検索">
         <Search className="size-5" />
-      </button>
+      </IconButton>
 
       {mounted &&
         open &&
@@ -457,13 +470,9 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
                   spellCheck={false}
                   className="h-9 min-w-0 flex-1 bg-transparent text-base font-medium text-ink outline-none placeholder:text-ink-muted"
                 />
-                <button
-                  type="button"
-                  onClick={closeSearch}
-                  className="shrink-0 text-sm font-bold text-ink-muted transition-colors hover:text-brand-blue sm:hidden"
-                >
+                <Button type="button" onClick={closeSearch} className="sm:hidden">
                   キャンセル
-                </button>
+                </Button>
                 <kbd className="hidden shrink-0 rounded border border-ink/10 bg-cream-deep px-1.5 py-0.5 text-[10px] font-bold text-ink-muted sm:block">
                   esc
                 </kbd>
@@ -505,13 +514,13 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
                       <div className="px-4 py-10 text-center">
                         <p className="text-sm font-bold text-ink">
                           {searchError
-                            ? "検索に失敗しました"
+                            ? '検索に失敗しました'
                             : `「${trimmedQuery}」に一致するコンテンツが見つかりません`}
                         </p>
                         <p className="mt-1 text-xs font-medium text-ink-muted">
                           {searchError
-                            ? "通信に問題があるようです。検索ページから試してみてください"
-                            : "キーワードを変えるか、検索ページで絞り込んでみてください"}
+                            ? '通信に問題があるようです。検索ページから試してみてください'
+                            : 'キーワードを変えるか、検索ページで絞り込んでみてください'}
                         </p>
                         {allCandidate && (
                           <div className="mt-4">
@@ -529,64 +538,114 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
                   </>
                 ) : (
                   <div className="space-y-5 p-1">
-                    <div>
-                      <p className="mb-2 flex items-center gap-1.5 px-2 text-xs font-black text-ink-muted">
+                    <Stack spacing={1}>
+                      <Stack
+                        direction={'row'}
+                        spacing={1}
+                        sx={{ alignItems: 'center', color: 'text.secondary' }}
+                      >
                         <Tags className="size-3.5" />
-                        人気のキーワード
-                      </p>
-                      <div className="flex flex-wrap gap-1.5 px-2">
+                        <Typography variant="caption" sx={{ color: 'inherit', fontWeight: 900 }}>
+                          人気のキーワード
+                        </Typography>
+                      </Stack>
+                      <Stack direction={'row'} spacing={1} sx={{ flexWrap: 'wrap' }} useFlexGap>
                         {displayKeywords.slice(0, 10).map((keyword) => (
-                          <button
+                          <Chip
                             key={keyword}
-                            type="button"
+                            label={keyword}
+                            variant="outlined"
+                            size="small"
                             onClick={() => setQuery(keyword)}
-                            className="rounded-full border border-ink/10 bg-white px-3 py-1.5 text-xs font-bold text-ink-body transition-colors hover:border-brand-blue/35 hover:text-brand-blue"
-                          >
-                            {keyword}
-                          </button>
+                          />
                         ))}
-                      </div>
-                    </div>
+                      </Stack>
+                    </Stack>
 
-                    <div>
-                      <p className="mb-1 flex items-center gap-1.5 px-2 text-xs font-black text-ink-muted">
+                    <Stack spacing={1}>
+                      <Stack
+                        direction={'row'}
+                        spacing={1}
+                        sx={{ alignItems: 'center', color: 'text.secondary' }}
+                      >
                         <ListChecks className="size-3.5" />
-                        クイズをカテゴリから探す
-                      </p>
-                      <div className="grid grid-cols-2 gap-1">
-                        {displayCategories.slice(0, 8).map((category) => (
-                          <Link
+                        <Typography variant="caption" color="inherit" sx={{ fontWeight: 900 }}>
+                          クイズをカテゴリから探す
+                        </Typography>
+                      </Stack>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        }}
+                      >
+                        {displayCategories.slice(0, 16).map((category) => (
+                          <Button
                             key={category.slug}
+                            component={Link}
                             href={`/quiz/${category.slug}`}
                             onClick={closeSearch}
-                            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-ink-body transition-colors hover:bg-cream-deep hover:text-brand-blue"
+                            startIcon={<Hash className="size-3.5" />}
+                            sx={{
+                              justifyContent: 'flex-start',
+                              color: 'text.primary',
+                              fontWeight: 700,
+                              textTransform: 'none',
+                              '&:hover': {
+                                bgcolor: 'background.default',
+                                color: 'primary.main',
+                              },
+                            }}
                           >
-                            <Hash className="size-3.5 shrink-0 text-ink-muted" />
                             <span className="truncate">{category.category_name}</span>
-                          </Link>
+                          </Button>
                         ))}
-                      </div>
-                    </div>
+                      </Box>
+                    </Stack>
 
-                    <div>
-                      <p className="mb-1 flex items-center gap-1.5 px-2 text-xs font-black text-ink-muted">
-                        <BookOpen className="size-3.5" />
-                        教科書から探す
-                      </p>
-                      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                        {displayBooks.slice(0, 8).map((book) => (
-                          <Link
+                    <Stack spacing={1}>
+                      <Stack
+                        direction={'row'}
+                        spacing={1}
+                        sx={{ alignItems: 'center', color: 'text.secondary' }}
+                      >
+                        <Library className="size-3.5" />
+                        <Typography variant="caption" color="inherit" sx={{ fontWeight: 900 }}>
+                          教科書から探す
+                        </Typography>
+                      </Stack>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr',
+                          '@media (min-width: 640px)': {
+                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                          },
+                        }}
+                      >
+                        {displayBooks.slice(0, 16).map((book) => (
+                          <Button
                             key={book.bookSlug}
+                            component={Link}
                             href={`/books/${book.bookSlug}`}
                             onClick={closeSearch}
-                            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-ink-body transition-colors hover:bg-cream-deep hover:text-brand-blue"
+                            startIcon={<BookOpen className="size-3.5" />}
+                            sx={{
+                              justifyContent: 'flex-start',
+                              color: 'text.primary',
+                              fontWeight: 700,
+                              textTransform: 'none',
+                              '&:hover': {
+                                bgcolor: 'background.default',
+                                color: 'primary.main',
+                              },
+                            }}
                           >
-                            <BookOpen className="size-3.5 shrink-0 text-ink-muted" />
                             <span className="truncate">{book.title}</span>
-                          </Link>
+                          </Button>
                         ))}
-                      </div>
-                    </div>
+                      </Box>
+                    </Stack>
                   </div>
                 )}
               </div>

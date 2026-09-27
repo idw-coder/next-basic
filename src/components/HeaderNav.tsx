@@ -1,48 +1,48 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname, useSearchParams } from "next/navigation";
+import { getBookTheme } from '@/lib/book-theme';
+import { cn } from '@/lib/utils';
+import { identicon } from '@dicebear/collection';
+import { createAvatar } from '@dicebear/core';
+import { Button, IconButton } from '@mui/material';
 import {
-  Menu,
-  X,
+  ArrowRight,
+  Atom,
+  Bell,
+  Blocks,
   BookOpen,
   Bookmark,
-  RotateCcw,
-  Bell,
-  User as UserIcon,
-  LogIn,
-  Wrench,
-  Search,
-  CreditCard,
-  Library,
-  Shield,
-  ChevronDown,
-  ArrowRight,
-  Blocks,
-  Braces,
-  FileCode2,
-  Atom,
-  Paintbrush,
-  Wind,
-  Cpu,
-  Globe,
-  GitBranch,
-  FlaskConical,
-  Globe2,
-  TestTube2,
-  Database,
-  Hash,
   Bot,
+  Braces,
+  ChevronDown,
+  Cpu,
+  CreditCard,
+  Database,
+  FileCode2,
+  FlaskConical,
+  GitBranch,
+  Globe,
+  Globe2,
+  Hash,
+  Library,
+  LogIn,
+  Menu,
   NotebookTabs,
+  Paintbrush,
+  RotateCcw,
+  Search,
+  Shield,
+  TestTube2,
+  User as UserIcon,
+  Wind,
+  Wrench,
+  X,
   type LucideIcon,
-} from "lucide-react";
-import { createAvatar } from "@dicebear/core";
-import { identicon } from "@dicebear/collection";
-import { Button } from "@/components/ui/button";
-import { getBookTheme } from "@/lib/book-theme";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 
 interface HeaderBook {
   bookSlug: string;
@@ -86,20 +86,20 @@ export default function HeaderNav({ books }: HeaderNavProps) {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.get("mode") === "entry") {
-      sessionStorage.setItem("entry", "1");
+    if (searchParams.get('mode') === 'entry') {
+      sessionStorage.setItem('entry', '1');
     }
-    setShowTech(sessionStorage.getItem("entry") === "1");
+    setShowTech(sessionStorage.getItem('entry') === '1');
   }, [searchParams]);
 
   useEffect(() => {
     setOpen(false);
-    setIsLoggedIn(!!localStorage.getItem("token"));
+    setIsLoggedIn(!!localStorage.getItem('token'));
     try {
-      const stored = localStorage.getItem("user");
+      const stored = localStorage.getItem('user');
       const parsed = stored ? JSON.parse(stored) : null;
       setUserEmail(parsed?.email ?? null);
-      setIsAdmin(parsed?.role === "admin");
+      setIsAdmin(parsed?.role === 'admin');
     } catch {
       setUserEmail(null);
       setIsAdmin(false);
@@ -122,15 +122,14 @@ export default function HeaderNav({ books }: HeaderNavProps) {
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }, [userEmail]);
 
+  // 現在のページの場合だけ疑似要素のアンダーラインを表示
   const linkClass = (active = false) =>
     cn(
-      "relative flex items-center gap-2.5 px-4 py-3 text-sm font-bold transition-colors hover:text-brand-blue lg:px-3 lg:py-2",
-      "after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:bg-brand-blue after:transition-transform",
-      active
-        ? "text-brand-blue after:scale-x-100"
-        : "text-ink lg:text-ink-body",
+      'relative flex items-center gap-2.5 px-4 py-3 text-sm font-bold transition-colors hover:text-brand-blue lg:px-3 lg:py-2',
+      'after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:bg-brand-blue after:transition-transform',
+      active ? 'text-brand-blue after:scale-x-100' : 'text-ink lg:text-ink-body',
     );
-  const iconClass = "size-4 text-ink-muted shrink-0";
+  const iconClass = 'size-4 text-ink-muted shrink-0';
   const closeMenu = () => {
     setOpen(false);
     setBooksMenuOpen(false);
@@ -138,24 +137,22 @@ export default function HeaderNav({ books }: HeaderNavProps) {
 
   return (
     <div className="lg:static">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="rounded-none text-ink hover:bg-transparent hover:text-brand-blue lg:hidden"
+      <IconButton
+        className="lg:hidden"
         aria-label={open ? 'メニューを閉じる' : 'メニューを開く'}
         aria-expanded={open}
         aria-controls="header-nav"
         onClick={() => setOpen((v) => !v)}
       >
         {open ? <X className="size-5" /> : <Menu className="size-5" />}
-      </Button>
+      </IconButton>
 
       <nav
         id="header-nav"
         className={`
           fixed inset-x-0 top-14 z-50 border-b border-cream-line bg-cream-deep/96 shadow-[0_18px_40px_rgba(35,35,35,0.08)] backdrop-blur-xl
           lg:static lg:flex lg:items-center lg:gap-1 lg:border-0 lg:bg-transparent lg:shadow-none lg:backdrop-blur-none
-          ${open ? "block" : "hidden lg:flex"}
+          ${open ? 'block' : 'hidden lg:flex'}
         `}
       >
         <div
@@ -181,20 +178,20 @@ export default function HeaderNav({ books }: HeaderNavProps) {
             クイズ
             <ChevronDown
               className={cn(
-                "hidden size-3.5 text-muted-foreground transition-transform lg:block",
-                quizMenuOpen && "rotate-180",
+                'hidden size-3.5 text-muted-foreground transition-transform lg:block',
+                quizMenuOpen && 'rotate-180',
               )}
             />
           </Link>
 
           <div
             className={cn(
-              "hidden lg:block",
-              "absolute left-1/2 top-full z-50 w-56 -translate-x-1/2 pt-2",
-              "transition duration-150 ease-out",
+              'hidden lg:block',
+              'absolute left-1/2 top-full z-50 w-56 -translate-x-1/2 pt-2',
+              'transition duration-150 ease-out',
               quizMenuOpen
-                ? "visible pointer-events-auto opacity-100"
-                : "invisible pointer-events-none opacity-0",
+                ? 'visible pointer-events-auto opacity-100'
+                : 'invisible pointer-events-none opacity-0',
             )}
             role="menu"
           >
@@ -263,8 +260,8 @@ export default function HeaderNav({ books }: HeaderNavProps) {
             教科書
             <ChevronDown
               className={cn(
-                "hidden size-3.5 text-muted-foreground transition-transform lg:block",
-                booksMenuOpen && "rotate-180",
+                'hidden size-3.5 text-muted-foreground transition-transform lg:block',
+                booksMenuOpen && 'rotate-180',
               )}
             />
           </Link>
@@ -272,12 +269,12 @@ export default function HeaderNav({ books }: HeaderNavProps) {
           {books.length > 0 && (
             <div
               className={cn(
-                "hidden lg:block",
-                "absolute left-1/2 top-full z-50 w-[34rem] -translate-x-1/2 pt-2",
-                "transition duration-150 ease-out",
+                'hidden lg:block',
+                'absolute left-1/2 top-full z-50 w-[34rem] -translate-x-1/2 pt-2',
+                'transition duration-150 ease-out',
                 booksMenuOpen
-                  ? "visible pointer-events-auto opacity-100"
-                  : "invisible pointer-events-none opacity-0",
+                  ? 'visible pointer-events-auto opacity-100'
+                  : 'invisible pointer-events-none opacity-0',
               )}
               role="menu"
             >
@@ -285,7 +282,9 @@ export default function HeaderNav({ books }: HeaderNavProps) {
                 <div className="flex items-center justify-between border-b border-cream-line bg-cream-deep/55 px-4 py-3">
                   <div>
                     <p className="text-sm font-black text-ink">教科書へ直接移動</p>
-                    <p className="mt-0.5 text-xs font-bold text-ink-muted">読みたい分野を選べます</p>
+                    <p className="mt-0.5 text-xs font-bold text-ink-muted">
+                      読みたい分野を選べます
+                    </p>
                   </div>
                   <Link
                     href="/books"
@@ -312,7 +311,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
                       >
                         <span
                           className={cn(
-                            "relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-ink/10 bg-white",
+                            'relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-ink/10 bg-white',
                             theme.iconBg,
                           )}
                         >
@@ -325,7 +324,10 @@ export default function HeaderNav({ books }: HeaderNavProps) {
                               className="object-contain p-1.5"
                             />
                           ) : (
-                            <FallbackIcon className={cn("size-6", theme.iconText)} strokeWidth={1.8} />
+                            <FallbackIcon
+                              className={cn('size-6', theme.iconText)}
+                              strokeWidth={1.8}
+                            />
                           )}
                         </span>
                         <span className="min-w-0">
@@ -356,11 +358,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
           <Bell className={iconClass} />
           お知らせ
         </Link>
-        <Link
-          href="/payment"
-          className={linkClass(pathname === '/payment')}
-          onClick={closeMenu}
-        >
+        <Link href="/payment" className={linkClass(pathname === '/payment')} onClick={closeMenu}>
           <CreditCard className={iconClass} />
           プラン
         </Link>
@@ -417,14 +415,12 @@ export default function HeaderNav({ books }: HeaderNavProps) {
               ログイン
             </Link>
             <Button
-              variant="outline"
-              size="sm"
-              className="ml-2 hidden rounded-none border-0 border-b-2 border-ink bg-transparent px-1 font-black text-ink shadow-none transition-colors hover:bg-transparent hover:text-brand-blue lg:inline-flex"
-              asChild
+              component={Link}
+              href="/login"
+              className={cn(linkClass(pathname === '/login'), 'hidden lg:inline-flex')}
+              onClick={closeMenu}
             >
-              <Link href="/login" onClick={closeMenu}>
-                ログイン
-              </Link>
+              ログイン
             </Button>
           </>
         )}
