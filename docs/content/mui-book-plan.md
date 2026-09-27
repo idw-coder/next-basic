@@ -79,7 +79,7 @@ MySQL本が `sql-basics` に文法を任せているのと同じ切り分けを�
 
 1. テーマカラー（`src/lib/book-theme.ts`）— 未使用色は `red` / `lime` / `sky` / `fuchsia` / `pink`。MUIのブランド色は青だが、青系は cyan（react-learning）・blue（css-basics）・indigo（typescript）で埋まっているため、`sky` にするか別系統にするかは要判断
 2. 表示順（`src/lib/books.ts` の `BOOK_ORDER`）— react-learning と tailwind-css の近くが自然
-3. NEWバッジ（`src/lib/books.ts` の `NEW_BOOK_SLUGS`）
+3. 公開日・NEWバッジ（`index.yaml` の `publishedAt`）— 公開日から1か月以内は自動表示
 4. クイズカテゴリ連携（`src/lib/books.ts` の `categoryToBookMap`）— 対応カテゴリを作るかどうかも含めて判断
 5. 本内検索サジェスト（`src/app/books/_constants/searchSuggestions.ts`）
 6. **トップページのお知らせ（`src/app/page.tsx` の `NEWS` 配列）** — 忘れられやすい

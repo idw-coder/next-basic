@@ -3,7 +3,8 @@ import ReviewPromptCard from '@/components/ReviewPromptCard';
 import { SectionHeading } from '@/components/SectionHeading';
 import { NewsList } from '@/components/news-list';
 import { Button } from '@/components/ui/button';
-import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
+import { getAllBooks, getChaptersByBook, isNewBook } from '@/lib/books';
+import { getTodayInTokyo } from '@/lib/content-date';
 import { getQuizCategories } from '@/lib/server/quizCategories';
 import { getQuizCategoryQuizzes } from '@/lib/server/quizCategoryQuizzes';
 import { SITE_URL } from '@/lib/site';
@@ -307,111 +308,95 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
+const NEWS: { date: string; text: string; link?: string }[] = [
   {
     date: '2026/09/22',
     text: '教科書「MUI実践ガイド — Reactコンポーネントライブラリを使いこなす」を公開しました。sxによるスタイリング、テーマ設計、slotProps、ダークモード、Next.js App Router統合、Tailwind CSSとの共存まで全13章です。破壊的変更の多いv9を前提に、型定義と公式ドキュメントで裏を取った内容だけを載せています',
-    isNew: true,
     link: '/books/mui',
   },
   {
     date: '2026/08/30',
     text: '教科書「MySQL入門 — 接続・InnoDB・コネクションプールを実務目線で」を公開しました。MySQLがサーバーであること、SHOW PROCESSLISTでの接続確認、mysql2のコネクションプールまで、まず3章を公開し順次追加していきます',
-    isNew: true,
     link: '/books/mysql',
   },
   {
     date: '2026/08/25',
     text: '教科書「Zod入門 — TypeScriptで実行時の入力検証を型と一緒に書く」を公開しました。基本スキーマ、parseとsafeParseの違い、空文字やnullを通すかどうかの早見表、オブジェクトの検証まで、順次章を追加中です',
-    isNew: false,
     link: '/books/zod',
   },
   {
     date: '2026/08/24',
     text: '教科書「AIエージェント開発の実務 — 原則と手札を分けて覚える」を公開しました。実行環境・権限設計・コンテキスト設計・検証ループ・チーム導入まで全20章です',
-    isNew: false,
     link: '/books/ai-agent-development',
   },
   {
     date: '2026/08/20',
     text: '教科書「C#入門 — .NETで動く言語の基礎」を公開しました。型・クラス・インターフェースからLINQ・null安全・非同期処理まで全14章です',
-    isNew: false,
     link: '/books/csharp',
   },
   {
     date: '2026/07/18',
     text: '教科書「AZ-900 合格とクラウドの基礎がわかるAzure入門」を公開しました。クラウドの概念からEntra ID・RBACまで順次章を追加中です',
-    isNew: false,
     link: '/books/azure-az-900',
   },
   {
     date: '2026/07/16',
     text: '復習機能を強化しました。苦手な問題をまとめて解き直せる復習ページとヘッダーからの復習リンクを追加しています',
-    isNew: false,
     link: '/quiz/review',
   },
   {
     date: '2026/06/29',
     text: 'クイズのブックマーク機能を追加しました。気になる問題を保存して復習できます',
-    isNew: false,
     link: '/quiz/bookmarks',
   },
   {
     date: '2026/06/26',
     text: '教科書コンテンツを全面リニューアルしました。図解や解説をより分かりやすく改善しています',
-    isNew: false,
     link: '/books',
   },
   {
     date: '2026/05/26',
     text: '教科書「システム設計をちゃんと理解する」を公開しました',
-    isNew: false,
     link: '/books/system-design',
   },
   {
     date: '2026/05/25',
     text: '教科書「JavaScriptをちゃんと理解する」を公開しました',
-    isNew: false,
     link: '/books/javascript',
   },
-  { date: '2026/04/29', text: 'SQLクイズを公開しました', isNew: false, link: '/quiz/sql-basic' },
+  { date: '2026/04/29', text: 'SQLクイズを公開しました', link: '/quiz/sql-basic' },
   {
     date: '2026/04/21',
     text: '教科書「コンピュータサイエンスの基礎」を公開しました',
-    isNew: false,
     link: '/books/cs-basics',
   },
   {
     date: '2026/04/18',
     text: '教科書「Gitをちゃんと使う」「Next.jsを動かして学ぶ」を公開しました',
-    isNew: false,
     link: '/books',
   },
-  { date: '2026/04/05', text: 'Linuxクイズを公開しました', isNew: false },
+  { date: '2026/04/05', text: 'Linuxクイズを公開しました' },
   {
     date: '2026/04/04',
     text: 'サブスクリプション機能を準備中です。正式リリースまでもうしばらくお待ちください。',
-    isNew: false,
     link: '/payment',
   },
-  { date: '2026/04/01', text: 'Next.js・Dockerクイズを公開しました', isNew: false },
+  { date: '2026/04/01', text: 'Next.js・Dockerクイズを公開しました' },
   {
     date: '2026/03/01',
     text: 'TypeScript・セキュリティ・CS基礎クイズを公開しました',
-    isNew: false,
   },
   {
     date: '2026/02/28',
     text: 'Google認証を導入しました、サイトの利用をより便利に安心して行えます',
-    isNew: false,
   },
-  { date: '2026/02/25', text: '腕試しテスト機能を公開しました', isNew: false },
-  { date: '2026/02/21', text: '学習記録・プロフィール機能を公開しました', isNew: false },
-  { date: '2026/02/18', text: '解答履歴機能を公開しました', isNew: false },
-  { date: '2026/02/15', text: 'AWS、Git、Nginxクイズを公開しました', isNew: false },
-  { date: '2026/02/14', text: 'Vue、Node.jsクイズを公開しました', isNew: false },
-  { date: '2026/02/08', text: 'HTML、CSS、JavaScript、Reactクイズを公開しました', isNew: false },
-  { date: '2026/02/08', text: 'ウェブエンジニア問題集を開設しました', isNew: false },
+  { date: '2026/02/25', text: '腕試しテスト機能を公開しました' },
+  { date: '2026/02/21', text: '学習記録・プロフィール機能を公開しました' },
+  { date: '2026/02/18', text: '解答履歴機能を公開しました' },
+  { date: '2026/02/15', text: 'AWS、Git、Nginxクイズを公開しました' },
+  { date: '2026/02/14', text: 'Vue、Node.jsクイズを公開しました' },
+  { date: '2026/02/08', text: 'HTML、CSS、JavaScript、Reactクイズを公開しました' },
+  { date: '2026/02/08', text: 'ウェブエンジニア問題集を開設しました' },
 ];
 
 // タイトル・descriptionはルートlayoutを継承する。ここではトップ固有の
@@ -454,6 +439,7 @@ export default async function Home() {
   const counts = await getQuizCountsBySlugs([...CATEGORY_SLUGS]);
   const totalCount = Object.values(counts).reduce((sum, c) => sum + c, 0);
   const bookList = getAllBooks();
+  const today = getTodayInTokyo();
   return (
     <div className="bg-cream text-ink">
       {SITE_JSON_LD.map((ld) => (
@@ -711,7 +697,7 @@ export default async function Home() {
                       chapterLabel: c.chapterLabel,
                       chapterSlug: c.chapterSlug,
                     }))}
-                    isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
+                    isNew={isNewBook(book, today)}
                     compact
                   />
                 );
@@ -943,7 +929,7 @@ export default async function Home() {
               お知らせ
             </SectionHeading>
             <div className="mx-auto max-w-2xl rounded-[2rem] border border-ink/10 bg-white/92 px-5 py-4 shadow-[0_24px_70px_rgba(47,48,47,0.08)]">
-              <NewsList items={NEWS} />
+              <NewsList items={NEWS} today={today} />
               <div className="space-y-1 border-t border-ink/10 py-3">
                 <span className="text-xs text-ink-muted">今後の予定</span>
                 <p className="text-sm text-ink">間違っているコード2択クイズなどを順次追加予定</p>

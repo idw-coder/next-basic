@@ -1,2 +1,3 @@
 title: 'SQLとデータベースの基礎'
+publishedAt: '2026-06-28'
 description: 'SELECT、WHERE、JOIN、GROUP BY、サブクエリ、テーブル設計、正規化、インデックス、トランザクション、SQLインジェクション対策まで、Web開発で必要なSQLとリレーショナルデータベースの基礎を体系的に学ぶ教科書です。'

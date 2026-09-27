@@ -224,7 +224,7 @@
 | --- | --- | --- |
 | 1 | テーマカラー（`src/lib/book-theme.ts`） | ✅ `stone` ＋ アイコン `Bot`。**`Bot` は `BookCard.tsx` と `HeaderNav.tsx` の両方の `iconMap` にも追加が必要だった**（片方だけだとフォールバックして別アイコンになる） |
 | 2 | 表示順（`BOOK_ORDER`） | ✅ 先頭に追加 |
-| 3 | NEWバッジ（`NEW_BOOK_SLUGS`） | ✅ 追加。一定期間後に外す |
+| 3 | 公開日・NEWバッジ（`index.yaml` の `publishedAt`） | ✅ `2026-08-24`。公開から1か月後に自動で非表示 |
 | 4 | クイズカテゴリ連携（`categoryToBookMap`） | ⏭️ **未実施**。対応するクイズカテゴリが存在しないため。カテゴリを作ったら追加する |
 | 5 | 検索サジェスト（`searchSuggestions.ts`） | ✅ 15語 |
 | 6 | トップページのお知らせ（`src/app/page.tsx` の `NEWS`） | ✅ 2026/08/24 で先頭に追加 |

@@ -1,4 +1,5 @@
 import type { Book, Chapter } from '#site/content';
+import { isWithinOneMonth } from '@/lib/content-date';
 import booksData from '../../.velite/books.json';
 import chaptersData from '../../.velite/chapters.json';
 
@@ -56,26 +57,10 @@ export const BOOK_ORDER = [
   'next-js',
 ] as const;
 
-/** NEW バッジを付ける書籍 */
-export const NEW_BOOK_SLUGS = new Set<string>([
-  'mui',
-  'mysql',
-  'zod',
-  'ai-agent-development',
-  'csharp',
-  'sqlite',
-  'coding-test',
-  'github-actions',
-  'azure-az-900',
-  'node-js',
-  'docker',
-  'sql-basics',
-  'aws-saa-c03',
-  'system-design',
-  'http-and-web-api',
-  'integration-and-e2e-testing',
-  'html-basics',
-]);
+/** 公開から1か月以内の書籍かを返す。 */
+export function isNewBook(book: Pick<Book, 'publishedAt'>, today: string) {
+  return isWithinOneMonth(book.publishedAt, today);
+}
 
 function sortBooks<T extends { bookSlug: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => {

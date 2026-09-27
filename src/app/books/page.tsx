@@ -1,6 +1,7 @@
 import BookCard from '@/app/books/_components/BookCard';
 import { SectionHeading } from '@/components/SectionHeading';
-import { getAllBooks, getChaptersByBook, NEW_BOOK_SLUGS } from '@/lib/books';
+import { getTodayInTokyo } from '@/lib/content-date';
+import { getAllBooks, getChaptersByBook, isNewBook } from '@/lib/books';
 import {
   BookOpenCheck,
   CheckCircle2,
@@ -53,6 +54,9 @@ export const metadata: Metadata = {
     images: [BOOKS_OG_IMAGE],
   },
 };
+
+// NEW表示が日付の経過に合わせて切り替わるよう、静的ページを1時間ごとに再検証する。
+export const revalidate = 3600;
 
 interface BookListFaq {
   question: string;
@@ -120,6 +124,7 @@ const LEARNING_PATHS = [
 
 export default function BooksPage() {
   const books = getAllBooks();
+  const today = getTodayInTokyo();
   const heroFeatures = [
     { icon: BookOpenCheck, text: '基礎から順番に', color: 'text-brand-blue' },
     { icon: Layers3, text: '章ごとに整理', color: 'text-brand-red' },
@@ -275,7 +280,7 @@ export default function BooksPage() {
                   chapterLabel: c.chapterLabel,
                   chapterSlug: c.chapterSlug,
                 }))}
-                isNew={NEW_BOOK_SLUGS.has(book.bookSlug)}
+                isNew={isNewBook(book, today)}
                 compact
               />
             );

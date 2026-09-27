@@ -1,3 +1,4 @@
 title: 'MySQL入門 — 接続・InnoDB・コネクションプールを実務目線で'
+publishedAt: '2026-08-30'
 description: 'MySQLの接続、データ型、utf8mb4、InnoDB、インデックス、トランザクション、MySQL固有構文、Node.jsのmysql2、オンラインDDL、最小権限、mysqldumpとスロークエリログまで、Web開発と運用に必要な知識を実務目線で整理する教科書です。'
 coverImage: '/images/books/mysql.png'

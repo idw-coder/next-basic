@@ -105,6 +105,7 @@ const books = defineCollection({
     .object({
       title: s.string(),
       description: s.string(),
+      publishedAt: s.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       coverImage: s.string().optional(),
       slug: s.path(), // ファイルパスから "books/nextjs/index" のような文字列を生成
     })

@@ -26,7 +26,7 @@
 content/
 └── books/
     └── {bookSlug}/          ← 本ごとのディレクトリ
-        ├── index.yaml       ← 本のメタデータ（title, description）
+        ├── index.yaml       ← 本のメタデータ（title, description, publishedAt）
         ├── 01-xxx.mdx       ← 第1章
         ├── 02-xxx.mdx       ← 第2章
         └── ...
@@ -37,10 +37,12 @@ content/
 ```yaml
 title: 'Next.jsからはじめよう'
 description: 'Reactベースのフレームワーク...'
+publishedAt: '2026-04-18' # 公開日。NEWバッジの自動判定に使用
 coverImage: '/images/books/nextjs-cover.png' # 任意。設定すると一覧カード背景に表紙画像を表示
 ```
 
 `bookSlug` はディレクトリ名から自動導出される（例: `content/books/nextjs/` → `bookSlug: "nextjs"`）。
+`publishedAt` は `YYYY-MM-DD` 形式で指定する。公開日から1か月以内は、トップページと `/books` のカードにNEWバッジが自動表示される。
 `coverImage` を省略した場合は、テーマごとのデフォルトアイコン背景を表示する。
 
 ### 章の MDX（`*.mdx`）
@@ -862,12 +864,14 @@ export const BOOK_ORDER = [
 ] as const;
 ```
 
-### 3. NEW バッジ（`src/lib/books.ts`）
+### 3. 公開日とNEWバッジ（`content/books/{bookSlug}/index.yaml`）
 
-`NEW_BOOK_SLUGS` に追加すると、`/books` ページのカードに NEW バッジ（赤いパルスアニメーション付き）が表示される。一定期間経ったら外す。
+`index.yaml` の `publishedAt` に公開日を `YYYY-MM-DD` 形式で設定する。公開日から1か月以内は、トップページと `/books` のカードにNEWバッジ（赤いパルスアニメーション付き）が自動表示される。期限後に手動で外す作業は不要。
 
-```ts
-export const NEW_BOOK_SLUGS = new Set<string>(['new-book-slug']);
+```yaml
+title: '新しい本のタイトル'
+description: '本の説明'
+publishedAt: '2026-09-22'
 ```
 
 ### 4. クイズカテゴリとの連携（`src/lib/books.ts`）
@@ -903,11 +907,10 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
 **忘れられやすいので必ず実行する。** `src/app/page.tsx` の `NEWS` 配列の**先頭**に、新しい本の告知を追加する。配列は新しい順に並んでおり、トップページの「お知らせ」セクションに表示される（初期表示は5件）。
 
 ```ts
-const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
+const NEWS: { date: string; text: string; link?: string }[] = [
   {
     date: '2026/08/20',
     text: '教科書「C#入門 — .NETで動く言語の基礎」を公開しました。型・クラス・LINQ・非同期処理まで全14章です',
-    isNew: true,
     link: '/books/csharp',
   },
   // ... 既存のお知らせ
@@ -918,8 +921,9 @@ const NEWS: { date: string; text: string; isNew: boolean; link?: string }[] = [
 | ---------- | ---- |
 | `date` | 公開日（`YYYY/MM/DD`） |
 | `text` | 何を公開したかを1文で。本のタイトルと扱う範囲を入れる |
-| `isNew` | NEWバッジの有無。古くなったら `false` にする |
 | `link` | `/books/{bookSlug}` |
+
+お知らせ側のNEWバッジも `date` から自動判定され、1か月を過ぎると非表示になる。
 
 章を追加しただけのときは不要。**新しい本の公開・大きな機能追加のときだけ**書く。
 

@@ -1,3 +1,4 @@
 title: 'Zod入門 — TypeScriptで実行時の入力検証を型と一緒に書く'
+publishedAt: '2026-08-25'
 description: 'TypeScriptの型はコンパイル後に消えるため、フォーム・API・環境変数から届くデータは型注釈では守れません。Zodはスキーマを1つ書くだけで、実行時の検証と静的な型の両方を用意してくれます。基本スキーマ、parseとsafeParseの違い、空文字やnullを通すかどうかの早見表、オブジェクトの検証までを実際に動かして確認した内容でまとめています。随時コンテンツを拡充していきます。'
 coverImage: '/images/books/zod.png'

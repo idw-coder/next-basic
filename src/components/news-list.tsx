@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Chip, Divider, Stack, Typography } from '@mui/material';
+import { isWithinOneMonth } from '@/lib/content-date';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -8,13 +9,12 @@ import { useState } from 'react';
 type NewsItem = {
   date: string;
   text: string;
-  isNew: boolean;
   link?: string;
 };
 
 const INITIAL_COUNT = 5;
 
-export function NewsList({ items }: { items: NewsItem[] }) {
+export function NewsList({ items, today }: { items: NewsItem[]; today: string }) {
   const [expanded, setExpanded] = useState(false);
   const hasMore = items.length > INITIAL_COUNT;
   const visible = expanded ? items : items.slice(0, INITIAL_COUNT);
@@ -23,6 +23,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
     <>
       <Stack id="news-list-items" divider={<Divider />}>
         {visible.map((item, i) => {
+          const showNewBadge = isWithinOneMonth(item.date, today);
           const content = (
             <Stack
               spacing={0.5}
@@ -38,7 +39,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
                 <Typography component={'span'} variant="caption" color="text.secondary">
                   {item.date}
                 </Typography>
-                {item.isNew && (
+                {showNewBadge && (
                   <Chip
                     label="NEW"
                     size="small"
