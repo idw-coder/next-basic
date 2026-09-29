@@ -70,7 +70,7 @@ flowchart LR
 | --- | --- | --- |
 | 作成 | `createContext` | 共有する情報の種類を表すContextオブジェクトを作る |
 | 提供 | `<SomeContext value={...}>` | 配下のコンポーネントへ値を公開する |
-| 読み取り | `useContext(SomeContext)` | 最も近いProviderが公開した値を受け取る |
+| 読み取り | `useContext(SomeContext)` | 自分を囲んでいるProviderの `value` を受け取る |
 
 Contextは値をどこにでも置けるグローバル変数ではありません。Providerで囲んだ範囲にだけ値を提供し、同じContextを読むコンポーネントだけがその値を受け取ります。
 
@@ -153,7 +153,7 @@ React 19では `<ThemeContext value="dark">` と短く書けます。既存プ�
 
 ---
 
-## `useContext` — 最も近い値を読み取る
+## `useContext` — Providerが渡した値を受け取る
 
 Providerが提供した値は、配下のコンポーネントから `useContext` で読み取ります。
 
@@ -163,7 +163,7 @@ Providerが提供した値は、配下のコンポーネントから `useContext
 | --- | --- | --- |
 | `SomeContext` | `createContext` の戻り値 | 読み取りたいContextオブジェクト |
 
-**戻り値：** 上位にある最も近いProviderの `value`。Providerがなければ `createContext` の `defaultValue`
+**戻り値：** 自分を囲んでいるProviderの `value`（入れ子なら一番内側のもの）。Providerがなければ `createContext` の `defaultValue`
 
 ```tsx
 import { useContext } from 'react';
@@ -182,9 +182,9 @@ export function SaveButton() {
 
 `useContext` はフックなので、コンポーネントのトップレベルで呼び出します。条件分岐やループの中では呼び出せません。
 
-### 最も近いProviderが選ばれる
+### Providerが入れ子なら、内側の値が使われる
 
-同じContextのProviderはネストできます。その場合、読み取り側から見て最も近いProviderの値が使われます。
+同じContextのProviderはネストできます。その場合、読み取るコンポーネントを囲んでいるProviderのうち、一番内側のものの値が使われます。
 
 ```tsx
 <ThemeContext value="light">
@@ -396,7 +396,7 @@ function App() {
 
 ## まとめ
 
-`createContext` は共有する情報の種類を表すContextオブジェクトを作り、Providerはその配下へ値を提供します。`useContext` は、上位にある最も近いProviderの値を読み取り、値の変更を受け取ります。
+`createContext` は共有する情報の種類を表すContextオブジェクトを作り、Providerはその配下へ値を提供します。`useContext` は、自分を囲んでいるProvider（入れ子なら一番内側）の `value` を受け取り、その値が変わると再レンダーされます。
 
 Contextはprop drillingを減らせますが、propsの完全な代替ではありません。まずpropsや `children` を検討し、サブツリー内の離れた複数コンポーネントが同じ値を必要とするときに使います。
 
