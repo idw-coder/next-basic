@@ -7,6 +7,7 @@ import { getBookTheme } from '@/lib/book-theme';
 import { getBook, getChapter } from '@/lib/books';
 import { SITE_URL } from '@/lib/site';
 import { cn } from '@/lib/utils';
+import { Box } from '@mui/material';
 
 export const metadata: Metadata = {
   title: 'プログラミングチートシート一覧｜目的からすぐ引ける早見表',
@@ -130,7 +131,12 @@ export default function CheatsheetsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,var(--color-cream-deep)_0%,#ffffff_38%,var(--color-cream)_100%)] text-ink">
+    <Box
+      sx={{
+        background:
+          'linear-gradient(180deg, var(--color-cream-deep) 0%, #ffffff 38%, var(--color-cream) 100%)',
+      }}
+    >
       {jsonLd.map((item, index) => (
         <script
           key={index}
@@ -139,7 +145,7 @@ export default function CheatsheetsPage() {
         />
       ))}
 
-      <section className="border-b border-cream-line bg-cream-deep/70 px-4 py-7 sm:py-16">
+      <section className=" px-4 py-7 sm:py-16">
         <div className="mx-auto max-w-6xl">
           <Link
             href="/books"
@@ -217,7 +223,12 @@ export default function CheatsheetsPage() {
                   <h2 className="text-sm font-black leading-tight text-ink transition-colors group-hover:text-brand-blue sm:text-xl">
                     {item.label}
                   </h2>
-                  <p className={cn('mt-1 text-[11px] font-bold leading-tight sm:text-sm', theme.accent)}>
+                  <p
+                    className={cn(
+                      'mt-1 text-[11px] font-bold leading-tight sm:text-sm',
+                      theme.accent,
+                    )}
+                  >
                     {item.summary}
                   </p>
                 </div>
@@ -226,6 +237,6 @@ export default function CheatsheetsPage() {
           })}
         </div>
       </section>
-    </div>
+    </Box>
   );
 }

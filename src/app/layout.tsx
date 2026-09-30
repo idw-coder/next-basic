@@ -137,7 +137,7 @@ export default function RootLayout({
             <main id="main" tabIndex={-1} className="min-h-screen focus:outline-none">
               {children}
             </main>
-            <footer className="bg-cream-deep border-t border-cream-line px-4 py-6 mt-10 md:px-6 md:py-8 md:mt-16">
+            <footer className="bg-cream-deep border-t border-cream-line px-4 py-6 md:px-6 md:py-8">
               <div className="max-w-6xl mx-auto">
                 <div className="max-w-[280px] mx-auto mb-4 md:max-w-[468px] md:mb-6 min-h-[80px] md:min-h-[100px] overflow-hidden">
                   <GoogleAdSense adSlot={adSlot} />
