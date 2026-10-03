@@ -1,4 +1,4 @@
-import { ArrowRight, NotebookTabs, Sparkles } from 'lucide-react';
+import { MoveRight, NotebookTabs, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -6,8 +6,7 @@ import Link from 'next/link';
 import { getBookTheme } from '@/lib/book-theme';
 import { getBook, getChapter } from '@/lib/books';
 import { SITE_URL } from '@/lib/site';
-import { cn } from '@/lib/utils';
-import { Box } from '@mui/material';
+import { Box, Card, Chip, Typography } from '@mui/material';
 
 export const metadata: Metadata = {
   title: 'プログラミングチートシート一覧｜目的からすぐ引ける早見表',
@@ -78,7 +77,7 @@ const CHEATSHEET_SHORTCUTS = [
   },
   {
     label: 'AIエージェント',
-    summary: '指示・設定・権限',
+    summary: 'プロンプト指示・ルール設定・権限',
     bookSlug: 'ai-agent-development',
     chapterSlug: 'cheatsheet',
   },
@@ -145,26 +144,78 @@ export default function CheatsheetsPage() {
         />
       ))}
 
-      <Box component="section" sx={{ px: 2, py: { xs: 3.5, sm: 8 } }}>
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-3xl">
-            <p className="inline-flex items-center gap-2 rounded-full border border-brand-blue/20 bg-white/75 px-3 py-1 text-xs font-black text-brand-blue shadow-sm">
-              <Sparkles className="size-3.5" />
-              必要なところだけ、すぐ引ける
-            </p>
-            <h1 className="mt-3 font-display text-3xl font-black leading-tight tracking-tight sm:mt-4 sm:text-5xl">
-              チートシート
-            </h1>
-            <p className="mt-2.5 text-sm font-bold leading-6 text-ink-body sm:mt-4 sm:text-lg sm:leading-8">
-              構文やコマンドを忘れたときに、目的から素早く確認できる早見表をまとめました。
-              詳しい理由を知りたくなったら、そのまま各教科書の解説へ進めます。
-            </p>
-          </div>
-        </div>
+      <Box component="section" sx={{ px: 2, py: { xs: 3.5, sm: 6 } }}>
+        <Box sx={{ maxWidth: '72rem', mx: 'auto' }}>
+          <Chip
+            icon={<Sparkles size={14} />}
+            label="必要なところだけ、すぐ引ける"
+            variant="outlined"
+            sx={{
+              borderColor: 'rgba(9, 103, 201, 0.2)',
+              bgcolor: 'rgba(255, 255, 255, 0.75)',
+              color: 'primary.main',
+              fontWeight: 900,
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+              '& .MuiChip-icon': {
+                color: 'inherit',
+              },
+              px: 2,
+            }}
+          />
+          <Typography
+            component="h1"
+            sx={{
+              mt: 1.5,
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.875rem',
+              fontWeight: 900,
+              fontSynthesis: 'none',
+              lineHeight: 1.25,
+              letterSpacing: '-0.025em',
+              '@media (min-width: 640px)': {
+                mt: 2,
+                fontSize: '3rem',
+              },
+            }}
+          >
+            チートシート
+          </Typography>
+          <Typography
+            component="p"
+            sx={{
+              mt: 1.25,
+              color: 'var(--color-ink-body)',
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              lineHeight: '1.5rem',
+              '@media (min-width: 640px)': {
+                mt: 2,
+                fontSize: '1.125rem',
+                lineHeight: '2rem',
+              },
+            }}
+          >
+            構文やコマンドを忘れたときに、目的から素早く確認できる早見表をまとめました。
+            <br />
+            詳しい理由を知りたくなったら、そのまま各教科書の解説へ進めます。
+          </Typography>
+        </Box>
       </Box>
 
-      <section className="mx-auto max-w-6xl px-4 py-6 sm:py-14">
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
+      <Box sx={{ maxWidth: '72rem', mx: 'auto', px: 2, py: { xs: 3, sm: 4 } }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.25,
+            gridTemplateColumns: 'repeat(2, minmax(0,1fr))',
+            '@media(min-width: 640px)': {
+              gap: 2,
+            },
+            '@media(min-width: 1024px)': {
+              gridTemplateColumns: 'repeat(3, minmax(0,1fr))',
+            },
+          }}
+        >
           {items.map((item) => {
             const { book } = item;
             const theme = getBookTheme(book.bookSlug);
@@ -173,55 +224,157 @@ export default function CheatsheetsPage() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={cn(
-                  'group relative overflow-hidden',
-                  'flex min-h-24 flex-col items-stretch p-2.5',
-                  'rounded-xl border border-ink/10',
-                  'shadow-[0_8px_20px_rgba(35,35,35,0.06)]',
-                  'transition duration-200 hover:-translate-y-1 hover:shadow-[0_16px_35px_rgba(35,35,35,0.11)]',
-                  'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue',
-                  'sm:min-h-30 sm:rounded-[18px] sm:p-4 sm:shadow-[0_10px_25px_rgba(35,35,35,0.06)]',
-                  theme.cardBg,
-                )}
+                className="group"
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  outline: 'none',
+                }}
               >
-                <span
-                  className={cn(
-                    'relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/80 shadow-sm sm:size-11 sm:rounded-xl',
-                    theme.iconBg,
-                  )}
+                <Card
+                  className={theme.cardBg}
+                  sx={{
+                    position: 'relative',
+                    display: 'flex',
+                    minHeight: 96,
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    overflow: 'hidden',
+                    p: 1.25,
+                    border: '1px solid rgba(35, 35, 35, 0.1)',
+                    borderRadius: '0.625rem',
+                    boxShadow: '0 8px 20px rgba(35, 35, 35, 0.06)',
+                    transition: 'transform 200ms, box-shadow 200ms',
+                    '.group:hover &': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 16px 35px rgba(35, 35, 35, 0.11)',
+                    },
+                    '.group:focus-visible &': {
+                      outline: '2px solid',
+                      outlineColor: 'primary.main',
+                      outlineOffset: '4px',
+                    },
+                    '@media (min-width: 640px)': {
+                      minHeight: 120,
+                      p: 2,
+                      borderRadius: '0.5rem',
+                      boxShadow: '0 10px 25px rgba(35, 35, 35, 0.06)',
+                    },
+                  }}
                 >
-                  {book.coverImage ? (
-                    <Image
-                      src={book.coverImage}
-                      alt=""
-                      fill
-                      sizes="44px"
-                      className="object-contain p-1.5"
-                    />
-                  ) : (
-                    <NotebookTabs className={cn('size-5', theme.iconText)} strokeWidth={1.8} />
-                  )}
-                </span>
-                <ArrowRight className="absolute right-2.5 top-2.5 size-3.5 text-ink-muted transition-transform group-hover:translate-x-1 group-hover:text-brand-blue sm:right-4 sm:top-4 sm:size-4" />
-
-                <div className="mt-auto min-w-0 pt-2.5 sm:pt-4">
-                  <h2 className="text-sm font-black leading-tight text-ink transition-colors group-hover:text-brand-blue sm:text-xl">
-                    {item.label}
-                  </h2>
-                  <p
-                    className={cn(
-                      'mt-1 text-[11px] font-bold leading-tight sm:text-sm',
-                      theme.accent,
-                    )}
+                  <Box
+                    component="span"
+                    className={theme.iconBg}
+                    sx={{
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
+                      border: '3px solid rgba(255, 255, 255, 0.7)',
+                      borderRadius: '0.5rem',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                      width: 32,
+                      height: 32,
+                      flexShrink: 0,
+                      '@media (min-width: 640px)': {
+                        width: 52,
+                        height: 52,
+                        borderRadius: '0.75rem',
+                        borderWidth: '4px',
+                      },
+                    }}
                   >
-                    {item.summary}
-                  </p>
-                </div>
+                    {book.coverImage ? (
+                      <Image
+                        src={book.coverImage}
+                        alt=""
+                        fill
+                        sizes="(min-width: 640px) 52px, 32px"
+                        style={{
+                          objectFit: 'contain',
+                          padding: 6,
+                        }}
+                      />
+                    ) : (
+                      <NotebookTabs className={theme.iconText} size={20} strokeWidth={1.8} />
+                    )}
+                  </Box>
+                  <Box
+                    component="span"
+                    sx={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      display: 'inline-flex',
+                      color: 'text.secondary',
+                      fontSize: '18px',
+                      lineHeight: 0,
+                      transition: 'transform 150ms',
+                      '.group:hover &': {
+                        color: 'primary.main',
+                        transform: 'translateX(4px)',
+                      },
+                      '@media (min-width: 640px)': {
+                        top: 16,
+                        right: 16,
+                        fontSize: '20px',
+                      },
+                    }}
+                  >
+                    <MoveRight size="1em" />
+                  </Box>
+
+                  <Box
+                    sx={{
+                      mt: 'auto',
+                      minWidth: 0,
+                      pt: 1.25,
+                      '@media (min-width: 640px)': {
+                        pt: 2,
+                      },
+                    }}
+                  >
+                    <Typography
+                      component="h2"
+                      sx={{
+                        color: 'text.primary',
+                        fontSize: '0.875rem',
+                        fontWeight: 900,
+                        lineHeight: 1.25,
+                        transition: 'color 150ms',
+                        '.group:hover &': {
+                          color: 'primary.main',
+                        },
+                        '@media (min-width: 640px)': {
+                          fontSize: '1.25rem',
+                        },
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                    <Typography
+                      component="p"
+                      className={theme.accent}
+                      sx={{
+                        mt: 0.5,
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        lineHeight: 1.25,
+                        '@media (min-width: 640px)': {
+                          fontSize: '0.875rem',
+                        },
+                      }}
+                    >
+                      {item.summary}
+                    </Typography>
+                  </Box>
+                </Card>
               </Link>
             );
           })}
-        </div>
-      </section>
+        </Box>
+      </Box>
     </Box>
   );
 }
