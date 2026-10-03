@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, NotebookTabs, Sparkles } from 'lucide-react';
+import { ArrowRight, NotebookTabs, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -145,16 +145,9 @@ export default function CheatsheetsPage() {
         />
       ))}
 
-      <section className=" px-4 py-7 sm:py-16">
+      <Box component="section" sx={{ px: 2, py: { xs: 3.5, sm: 8 } }}>
         <div className="mx-auto max-w-6xl">
-          <Link
-            href="/books"
-            className="inline-flex items-center gap-1.5 text-sm font-bold text-ink-muted transition-colors hover:text-brand-blue"
-          >
-            <BookOpen className="size-4" />
-            教科書一覧
-          </Link>
-          <div className="mt-4 max-w-3xl sm:mt-6">
+          <div className="max-w-3xl">
             <p className="inline-flex items-center gap-2 rounded-full border border-brand-blue/20 bg-white/75 px-3 py-1 text-xs font-black text-brand-blue shadow-sm">
               <Sparkles className="size-3.5" />
               必要なところだけ、すぐ引ける
@@ -168,17 +161,9 @@ export default function CheatsheetsPage() {
             </p>
           </div>
         </div>
-      </section>
+      </Box>
 
       <section className="mx-auto max-w-6xl px-4 py-6 sm:py-14">
-        <div className="mb-4 flex items-end justify-between gap-4 sm:mb-6">
-          <div>
-            <p className="text-xs font-black tracking-[0.12em] text-brand-red">QUICK REFERENCE</p>
-            <h2 className="mt-1 text-xl font-black sm:text-3xl">チートシート一覧</h2>
-          </div>
-          <p className="shrink-0 text-sm font-bold text-ink-muted">全{items.length}件</p>
-        </div>
-
         <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
           {items.map((item) => {
             const { book } = item;
