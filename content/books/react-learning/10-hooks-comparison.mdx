@@ -1,19 +1,19 @@
 ---
 title: 'Hooksの使い分け — 判断フローと横断比較'
-description: 'useState・useContext・useRef・useEffect・useMemo・useCallbackの6つを横断的に比較し、「どの場面でどのフックを使うか」の判断フローを整理します。'
+description: 'useState・useContext・useRef・useEffect・useMemo・useCallback・useTransitionの7つを横断的に比較し、「どの場面でどのフックを使うか」の判断フローを整理します。'
 order: 10
 ---
 
-ここまで6つのフックを個別に学んできました。
+ここまで7つのフックを個別に学んできました。
 この章では全体を俯瞰して、「この場面ではどのフックを使うべきか」を迷わず判断できるようにします。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-フックが6つも出てきて頭がごちゃごちゃ…。結局どの場面でどれを使えばいいの？
+フックが7つも出てきて頭がごちゃごちゃ…。結局どの場面でどれを使えばいいの？
 </SpeechBubble>
 
 ---
 
-## 6つのフックの横断比較
+## 7つのフックの横断比較
 
 各フックの性質を整理します。
 
@@ -25,6 +25,7 @@ flowchart TD
     classDef effect fill:#22c55e,color:#fff,stroke:#16a34a
     classDef memo fill:#f59e0b,color:#fff,stroke:#d97706
     classDef context fill:#06b6d4,color:#fff,stroke:#0891b2
+    classDef transition fill:#ec4899,color:#fff,stroke:#db2777
 
     subgraph "再レンダーを起こす"
         S["useState\n状態の管理\n値の変更 → 再レンダー → UI更新"]
@@ -40,12 +41,16 @@ flowchart TD
     subgraph "レンダー後に実行"
         E["useEffect\n外部との同期\nDOM反映後に副作用を実行"]
     end
+    subgraph "更新の優先度を分ける"
+        T["useTransition\n後回しにできる更新\n緊急な操作を優先"]
+    end
 
     class S state
     class C context
     class R ref
     class M,CB memo
     class E effect
+    class T transition
 
 `}
 />
@@ -61,6 +66,8 @@ flowchart TD
 **useMemo** — 重い計算結果をキャッシュする。依存が変わらない限り前回の結果を返す。レンダー中に同期実行。
 
 **useCallback** — 関数オブジェクトをキャッシュする。useMemoの関数特化版。React.memoされた子コンポーネントへのpropsや、useEffectの依存配列で参照を安定させたいときに使う。
+
+**useTransition** — state更新の一部を緊急ではない更新としてマークする。入力操作などを優先し、重い一覧やタブ内容のレンダーを中断可能にする。
 
 ---
 
@@ -156,6 +163,28 @@ flowchart TD
 `}
 />
 
+### 重い画面更新でも操作を止めたくない場合
+
+<MermaidDiagram
+  chart={`
+flowchart TD
+    classDef question fill:#3b82f6,color:#fff,stroke:#2563eb
+    classDef answer fill:#22c55e,color:#fff,stroke:#16a34a
+    classDef warn fill:#f59e0b,color:#fff,stroke:#d97706
+
+    A["画面更新中も\n操作を続けたい"] --> B{"後回しにするstate更新を\n自分で呼べるか？"}
+    B -->|はい| C["useTransitionで\n更新を囲む"]
+    B -->|いいえ| D{"遅らせたい値を\n受け取っているか？"}
+    D -->|はい| E["useDeferredValueを\n検討する"]
+    D -->|いいえ| F["まず遅い処理を\n計測して見直す"]
+
+    class A,B,D question
+    class C,E answer
+    class F warn
+
+`}
+/>
+
 ---
 
 ## よくある疑問
@@ -198,11 +227,20 @@ flowchart TD
 
 受け取る側の子コンポーネントが `React.memo` でラップされていない可能性が高いです。`useCallback` 単体では効果がなく、参照の安定性を活用する側（`React.memo`、`useEffect` の依存配列）があって初めて意味を持ちます。
 
+### useMemoとuseTransitionはどう使い分ける？
+
+`useMemo` は、同じ依存値に対する計算結果を再利用して、計算のやり直しを減らします。`useTransition` は1回分の処理自体を軽くせず、後回しにできる画面更新の優先度を下げます。
+
+「同じ条件の重い計算を繰り返している」→ `useMemo`。
+「重い一覧の更新中も入力やクリックへ反応したい」→ `useTransition`。
+
+どちらも必要な場合はありますが、目的は別です。まず遅い場所を計測し、計算の重複を減らしたいのか、操作の応答性を保ちたいのかで判断します。
+
 ---
 
 ## カスタムフックへの導線
 
-6つのフックを使う処理が複数のコンポーネントで重複するようになったら、**カスタムフック**として切り出せます。
+7つのフックを使う処理が複数のコンポーネントで重複するようになったら、**カスタムフック**として切り出せます。
 
 ```tsx
 // useWindowSize — ウィンドウサイズを監視するカスタムフック
@@ -230,22 +268,22 @@ function Header() {
 
 カスタムフックは `use` で始まる関数で、中で他のフックを自由に使えます。「イベントリスナーの登録（`useEffect`）+ 値の管理（`useState`）」のような定型パターンを1つの関数にまとめられます。
 
-カスタムフック自体は本書のスコープ外ですが、6つのフックを理解していれば、既存のカスタムフックのコードを読んだときに「ああ、useEffectで購読してuseStateで値を管理しているのか」と構造がわかるようになります。
+カスタムフック自体は本書のスコープ外ですが、7つのフックを理解していれば、既存のカスタムフックのコードを読んだときに「ああ、useEffectで購読してuseStateで値を管理しているのか」と構造がわかるようになります。
 
 ---
 
 ## まとめ
 
-6つのフックはそれぞれ異なる役割を持っています。
+7つのフックはそれぞれ異なる役割を持っています。
 
-`useState` はUIに影響する状態を管理し、`useContext` はProviderが提供した共有値を読み取ります。`useRef` はUIに影響しない値を再レンダーなしに保持します。`useEffect` はレンダー後に外部との同期処理を実行します。`useMemo` は重い計算結果をキャッシュし、`useCallback` は関数オブジェクトをキャッシュします。
+`useState` はUIに影響する状態を管理し、`useContext` はProviderが提供した共有値を読み取ります。`useRef` はUIに影響しない値を再レンダーなしに保持します。`useEffect` はレンダー後に外部との同期処理を実行します。`useMemo` は重い計算結果をキャッシュし、`useCallback` は関数オブジェクトをキャッシュします。`useTransition` は後回しにできる更新の優先度を下げ、緊急な操作への応答を保ちます。
 
-<Marker>判断の起点は「その値は画面に映るか」「どの範囲で共有するか」「その処理はレンダーの結果として必要か」「参照の安定性を受け取る側が活用するか」の4つです。</Marker>
+<Marker>判断の起点は「その値は画面に映るか」「どの範囲で共有するか」「その処理はレンダーの結果として必要か」「参照の安定性を受け取る側が活用するか」「その更新は後回しにできるか」の5つです。</Marker>
 
 これでReactのHooksの土台は固まりました。この先Next.jsなどのフレームワークに進むと、Server ComponentやApp Routerなど新しい概念が出てきますが、それらの理解もここで学んだHooksの知識が基盤になります。
 
 <QuizLink
   href="/quiz/react-basic"
   title="Reactクイズに挑戦する"
-  description="useState、useContext、useRef、useEffect、useMemo、useCallbackの使い分けを総復習クイズで確認しよう"
+  description="主要なReact Hooksの役割と使い分けを総復習クイズで確認しよう"
 />

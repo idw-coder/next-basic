@@ -1,0 +1,397 @@
+---
+title: 'useTransition — 重い画面更新でも操作を止めない'
+description: 'useTransitionで緊急な更新と後回しにできる更新を分け、入力欄などの応答性を保つ方法を、isPending・startTransition・useDeferredValueとの違いとともに解説します。'
+order: 9.5
+chapterLabel: 'useTransition'
+---
+
+検索欄へ文字を入力したとき、その下にある大きな一覧も同時に更新すると、入力が引っかかることがあります。
+これは、入力欄の更新と重い一覧の再レンダーが、同じタイミングで処理されるためです。
+
+`useTransition` を使うと、入力欄のようにすぐ反映したい更新と、検索結果のように少し遅れてもよい更新を分けられます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `transition` って、画面をふわっと切り替えるアニメーションのこと？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  ここでのTransitionはアニメーションではなく、更新の優先度をReactへ伝える仕組みだよ。急ぐ更新を先に表示し、重い更新はバックグラウンドで進められるんだ。
+</SpeechBubble>
+
+---
+
+## 30秒解説 — useTransitionとは
+
+`useTransition` は、state更新の一部を**緊急ではない更新**（Transition）として扱うためのフックです。
+
+```tsx
+const [isPending, startTransition] = useTransition();
+
+startTransition(() => {
+  setSelectedTab(nextTab);
+});
+```
+
+- `isPending`：Transitionが処理中なら `true`
+- `startTransition`：内側で行うstate更新をTransitionとしてマークする関数
+
+通常のstate更新は、クリックや入力にすぐ反映されます。一方、Transitionとしてマークした更新は、より緊急な更新が来れば中断して後からやり直せます。
+
+<Marker>
+  `useTransition` は処理そのものを速くするのではなく、急ぐ更新を先に表示して、画面を操作できる状態に保つためのフックです。
+</Marker>
+
+---
+
+## 構文・引数・戻り値
+
+### useTransition
+
+**構文**：`const [isPending, startTransition] = useTransition()`
+
+`useTransition` に引数はありません。
+
+| 戻り値 | 型 | 説明 |
+| ------ | -- | ---- |
+| `isPending` | `boolean` | Transitionが処理中なら `true`、完了していれば `false` |
+| `startTransition` | `(action) => void` | `action` 内のstate更新をTransitionとしてマークする関数 |
+
+**戻り値**：`isPending` と `startTransition` の2要素を持つ配列
+
+`useState` と同様に、分割代入して使うのが基本です。
+
+### startTransition
+
+**構文**：`startTransition(action)`
+
+| 引数 | 渡せるもの | 説明 |
+| ---- | ---------- | ---- |
+| `action` | 引数を取らない関数 | 関数の実行中に行われたstate更新をTransitionとしてマークする |
+
+**戻り値**：なし
+
+React 19の公式ドキュメントでは、`startTransition` に渡す関数を**アクション**（Action）と呼びます。
+
+<Callout type="warning" title="コールバックの実行が遅れるわけではない">
+  `startTransition` は `setTimeout` ではありません。渡した関数はその場ですぐ実行されます。後回しになるのは、関数内で予約されたstate更新によるレンダーです。
+</Callout>
+
+---
+
+## 緊急な更新とTransition更新
+
+たとえば、検索画面には次の2種類の更新があります。
+
+| 更新 | 優先度 | 理由 |
+| ---- | ------ | ---- |
+| 入力欄へ文字を表示する | 緊急 | キー入力にすぐ反応しないと、操作が壊れたように感じる |
+| 大きな検索結果一覧を更新する | Transitionにできる | 数十ミリ秒遅れても入力操作は続けられる |
+
+`useTransition` を使うと、Reactは次のように処理できます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["文字を入力"] --> B["入力欄をすぐ更新"]
+    A --> C["一覧更新をTransitionとして開始"]
+    C --> D{"新しい入力が来た？"}
+    D -->|はい| E["古いレンダーを中断"]
+    E --> B
+    D -->|いいえ| F["新しい一覧を表示"]
+
+`}
+/>
+
+Transition中に次のキー入力が来ると、Reactは一覧のレンダーを中断して、入力欄の更新を優先できます。その後、最新の検索条件で一覧をレンダーし直します。
+
+<Callout type="note" title="別スレッドで動くわけではない">
+  バックグラウンドという言葉は、Web Workerのように別スレッドでJavaScriptを実行する意味ではありません。Reactがレンダー作業を中断・再開できるようにスケジュールする、という意味です。
+</Callout>
+
+---
+
+## 基本例 — タブ切り替えをTransitionにする
+
+タブを切り替えると重い内容が表示される画面を考えます。
+
+```tsx
+import { useState, useTransition } from 'react';
+
+type Tab = 'overview' | 'reviews' | 'related';
+
+function ProductTabs() {
+  const [tab, setTab] = useState<Tab>('overview');
+  const [isPending, startTransition] = useTransition();
+
+  function selectTab(nextTab: Tab) {
+    startTransition(() => {
+      setTab(nextTab);
+    });
+  }
+
+  return (
+    <section>
+      <nav>
+        <button onClick={() => selectTab('overview')}>概要</button>
+        <button onClick={() => selectTab('reviews')}>レビュー</button>
+        <button onClick={() => selectTab('related')}>関連商品</button>
+      </nav>
+
+      {isPending && <p>切り替え中...</p>}
+      <TabContent tab={tab} />
+    </section>
+  );
+}
+```
+
+`setTab(nextTab)` を `startTransition` の中で呼ぶと、タブ内容の更新がTransitionになります。新しい内容のレンダー中も、ユーザーは別のタブをクリックできます。
+
+`isPending` は、Transitionを開始してから新しい画面が表示されるまで `true` になります。これを使って「切り替え中」と表示したり、対象部分を少し薄くしたりできます。
+
+処理が十分に速い場合は、`isPending` が `true` の画面を人が認識できないこともあります。これは異常ではありません。
+
+---
+
+## 実践例 — 入力欄を止めずに重い一覧を更新する
+
+検索入力では、入力欄用のstateと検索結果用のstateを分けます。
+
+```tsx
+import { memo, useState, useTransition } from 'react';
+
+type Product = {
+  id: number;
+  name: string;
+};
+
+const products: Product[] = [
+  { id: 1, name: 'キーボード' },
+  { id: 2, name: 'マウス' },
+  { id: 3, name: 'ディスプレイ' },
+  // 実際には大量の商品がある想定
+];
+
+const ProductList = memo(function ProductList({ query }: { query: string }) {
+  const normalizedQuery = query.toLowerCase();
+  const visibleProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(normalizedQuery),
+  );
+
+  return (
+    <ul>
+      {visibleProducts.map((product) => (
+        <li key={product.id}>{product.name}</li>
+      ))}
+    </ul>
+  );
+});
+
+export default function ProductSearch() {
+  const [query, setQuery] = useState('');
+  const [resultQuery, setResultQuery] = useState('');
+  const [isPending, startTransition] = useTransition();
+
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const nextQuery = event.target.value;
+
+    // 緊急な更新：入力欄へすぐ表示する
+    setQuery(nextQuery);
+
+    // 後回しにできる更新：重い一覧を更新する
+    startTransition(() => {
+      setResultQuery(nextQuery);
+    });
+  }
+
+  return (
+    <section>
+      <label>
+        商品を検索
+        <input value={query} onChange={handleChange} />
+      </label>
+
+      <div aria-busy={isPending}>
+        {isPending && <p>検索結果を更新中...</p>}
+        <ProductList query={resultQuery} />
+      </div>
+    </section>
+  );
+}
+```
+
+更新の流れは次のとおりです。
+
+1. `setQuery(nextQuery)` が入力欄をすぐ更新する
+2. `setResultQuery(nextQuery)` はTransition更新として始まる
+3. `ProductList` が新しい検索語でバックグラウンドレンダーされる
+4. 途中で次の文字が入力されたら、Reactは古い一覧のレンダーを中断する
+5. 入力が落ち着いたら、最新の検索結果を表示する
+
+`ProductList` を `memo` で包んでいるのは、入力欄だけを更新する緊急レンダーで、古い検索語の一覧をもう一度重くレンダーしないためです。`memo` と関数・値の参照については、前章の[useCallback](/books/react-learning/09-use-callback)でも扱いました。
+
+<Marker>
+  制御された入力欄のstateは通常どおり更新し、重い結果表示に使うstateだけをTransitionにします。
+</Marker>
+
+---
+
+## テキスト入力のstateをTransitionにしてはいけない
+
+次の書き方は避けてください。
+
+```tsx
+function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+  startTransition(() => {
+    setQuery(event.target.value); // NG：入力欄を制御するstate
+  });
+}
+```
+
+制御された入力欄では、`value` に渡すstateをキー入力と同期して更新する必要があります。Transition更新は中断される可能性があるため、テキスト入力の制御には使えません。
+
+入力値がそのまま重いコンポーネントへ渡されていて、更新用のstateを分けたくない場合は、後述する `useDeferredValue` が候補になります。
+
+---
+
+## useMemoとの違い
+
+`useMemo` と `useTransition` はどちらも、重い画面で登場することがあります。しかし、役割は異なります。
+
+| フック | 目的 | 減らせるもの |
+| ------ | ---- | ------------ |
+| `useMemo` | 計算結果を再利用する | 同じ依存値に対する計算のやり直し |
+| `useTransition` | 更新の優先度を下げる | 緊急な更新が重いレンダーを待つ時間 |
+
+`useTransition` は、1回分のレンダーや計算自体を軽くしません。重いレンダーを後回しにして中断可能にする仕組みです。逆に、`useMemo` は計算結果を再利用しますが、実行が必要になった計算を中断可能にはしません。
+
+両方が必要な場合もありますが、まずReact DevToolsのProfilerなどで遅い場所を確認してから選びます。
+
+---
+
+## useDeferredValueとの使い分け
+
+`useDeferredValue` も、重い表示を遅らせて操作の応答性を保つフックです。
+
+```tsx
+const [query, setQuery] = useState('');
+const deferredQuery = useDeferredValue(query);
+```
+
+判断基準は、**どのstate更新を後回しにするか自分で指定できるか**です。
+
+| 状況 | 選ぶもの |
+| ---- | -------- |
+| stateの更新関数を自分で呼べる | `useTransition` で更新を囲む |
+| propsなど、受け取った値しか触れない | `useDeferredValue` で値の反映を遅らせる |
+| 処理中かどうかを表示したい | `isPending` がある `useTransition` |
+
+`useDeferredValue` は値の遅延版を返しますが、`isPending` は返しません。元の値と遅延値を比較すれば、古い内容を表示中かどうかは判断できます。
+
+どちらも「500ミリ秒待つ」といった固定時間の遅延や、入力回数をまとめるデバウンスではありません。Reactが端末の処理状況と更新の優先度に応じてレンダーを進めます。
+
+---
+
+## 非同期処理で使うときの注意
+
+React 19では、`startTransition` に `async` 関数を渡し、非同期処理の完了まで `isPending` で追跡できます。
+
+```tsx
+const [isPending, startTransition] = useTransition();
+
+function handleSave(formData: FormData) {
+  startTransition(async () => {
+    const savedItem = await saveItem(formData);
+
+    // await後のstate更新は、現在はもう一度囲む
+    startTransition(() => {
+      setItem(savedItem);
+    });
+  });
+}
+```
+
+現在のReactには、`await` の後に行うstate更新をもう一度 `startTransition` で囲む必要があるという制限があります。
+
+また、Transitionは通信を高速化したり、同じリクエストをまとめたり、古いリクエストを自動で中止したりする機能ではありません。通信のキャンセルや競合対策は別に設計する必要があります。
+
+---
+
+## よくあるハマりどころ
+
+### startTransitionの中へ重い処理を書けば速くなると思う
+
+`startTransition` に渡した関数はすぐ実行されます。そのため、イベントハンドラ内の重いJavaScript処理は、そのまま操作をブロックします。
+
+```tsx
+startTransition(() => {
+  const sortedItems = veryExpensiveSort(items); // この計算はすぐ実行される
+  setItems(sortedItems);
+});
+```
+
+`useTransition` が中断可能にするのはReactのレンダーです。イベントハンドラ内の重い計算には、処理方法の見直しやWeb Workerなど別の対策が必要です。
+
+### setTimeout内の更新もTransitionになると思う
+
+次の `setTab` は、`startTransition` の実行が終わった後に呼ばれるため、Transition更新になりません。
+
+```tsx
+startTransition(() => {
+  setTimeout(() => {
+    setTab('reviews'); // Transitionにならない
+  }, 1000);
+});
+```
+
+必要なら、実際にstateを更新する場所で囲みます。
+
+```tsx
+setTimeout(() => {
+  startTransition(() => {
+    setTab('reviews');
+  });
+}, 1000);
+```
+
+### CSSアニメーションの機能だと思う
+
+`useTransition` は更新の優先度を扱うフックであり、CSSの `transition` プロパティとは別物です。名前が似ていても、フェードやスライドを自動で追加する機能ではありません。
+
+---
+
+## ちゃんと使うためのポイント
+
+- まず通常のstate更新で実装し、本当に操作が重い場所で使う
+- 入力欄や押下状態など、即時反映が必要な更新はTransitionにしない
+- 一覧・グラフ・タブ内容など、少し遅れてもよい重い更新だけを囲む
+- `isPending` で、古い画面が表示されている理由をユーザーへ伝える
+- 処理そのものを速くする機能ではないため、不要な計算やレンダーも減らす
+- 固定時間のデバウンスや、非同期通信のキャンセルとは分けて考える
+
+---
+
+## まとめ
+
+`useTransition` は、state更新の一部を緊急ではないTransitionとしてマークするフックです。
+
+`startTransition` の中でstateを更新すると、その更新によるレンダーは中断可能になります。`isPending` を使えば、処理中であることも画面に表示できます。
+
+<Marker>
+  入力欄のような緊急な更新は通常どおり行い、重い一覧やタブ内容など、後回しにできる更新だけをTransitionにするのが基本です。
+</Marker>
+
+`useMemo` は計算を再利用する仕組み、`useDeferredValue` は値の反映を遅らせる仕組みです。目的を区別し、実際に操作が重い場所へ必要なものだけを使ってください。
+
+## 参考リンク
+
+- [useTransition — React公式ドキュメント](https://ja.react.dev/reference/react/useTransition)
+- [useDeferredValue — React公式ドキュメント](https://ja.react.dev/reference/react/useDeferredValue)
+- [組み込みのReactフック — React公式ドキュメント](https://ja.react.dev/reference/react/hooks)
+
+<QuizLink
+  href="/quiz/react-basic"
+  title="Reactクイズに挑戦する"
+  description="React Hooksの基礎と使い分けを4択クイズで復習しよう"
+/>
+
+次の章では、ここまで学んだ7つのフックを「どの場面で選ぶか」という視点で横断的に整理します。詳しくは[Hooksの使い分け](/books/react-learning/10-hooks-comparison)へ進んでください。

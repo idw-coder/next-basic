@@ -281,6 +281,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'useEffect',
     'useMemo',
     'useCallback',
+    'useTransition',
     '依存配列',
     'Strict Mode',
     'export default',
