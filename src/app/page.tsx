@@ -310,6 +310,11 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; link?: string }[] = [
   {
+    date: '2026/10/07',
+    text: '教科書に音声解説を追加しました。まずは「React入門」のuseEffectの章で、章の要点をずんだもん（VOICEVOX）の音声で聞けます。タブを切り替えても、スマートフォンの画面をロックしても再生が続きます',
+    link: '/books/react-learning/06-use-effect',
+  },
+  {
     date: '2026/09/22',
     text: '教科書「MUI実践ガイド — Reactコンポーネントライブラリを使いこなす」を公開しました。sxによるスタイリング、テーマ設計、slotProps、ダークモード、Next.js App Router統合、Tailwind CSSとの共存まで全13章です。破壊的変更の多いv9を前提に、型定義と公式ドキュメントで裏を取った内容だけを載せています',
     link: '/books/mui',

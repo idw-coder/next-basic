@@ -9,6 +9,7 @@ import Pick from '@/app/books/_components/Pick';
 import TailwindPreview from '@/app/books/_components/TailwindPreview';
 import QuizLink from '@/app/books/_components/QuizLink';
 import CodeBlock from '@/app/books/_components/CodeBlock';
+import AudioNarration from '@/app/books/_components/AudioNarration';
 import { ScrollHintInitializer } from '@/components/ScrollHintInitializer';
 
 // MDX 内で <MermaidDiagram /> と記述するだけで自動的にこのコンポーネントが使われる。
@@ -50,6 +51,7 @@ const sharedComponents = {
   Pick,
   TailwindPreview,
   QuizLink,
+  AudioNarration,
   a: Anchor,
   table: ResponsiveTable,
   pre: CodeBlock,
