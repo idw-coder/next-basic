@@ -45,6 +45,13 @@ const CHEATSHEET_SHORTCUTS = [
     anchor: 'control-characters',
   },
   {
+    label: '日時・タイムゾーン',
+    summary: 'UTC・JST・ISO 8601',
+    bookSlug: 'javascript',
+    chapterSlug: '22-date',
+    anchor: 'date-time-cheatsheet',
+  },
+  {
     label: '正規表現',
     summary: '記号・フラグ・実例',
     bookSlug: 'javascript',
