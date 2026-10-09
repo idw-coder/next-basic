@@ -103,7 +103,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'ゼロトラスト',
   ],
 
-  'http-and-web-api': ['CORS', 'SSH'],
+  'http-and-web-api': ['CORS', 'SSH', 'ETag'],
 
   'sql-basics': [
     'SELECT',

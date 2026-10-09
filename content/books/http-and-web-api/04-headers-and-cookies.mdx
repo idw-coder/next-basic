@@ -91,6 +91,7 @@ Content-Type: multipart/form-data
 | `Content-Type` | レスポンスのデータ形式 | `application/json; charset=utf-8` |
 | `Set-Cookie` | Cookieの設定 | `session=abc123; HttpOnly; Secure` |
 | `Cache-Control` | キャッシュの制御 | `max-age=3600` |
+| `ETag` | 中身の識別子（再検証に使う） | `"33a64df5"` |
 | `Location` | リダイレクト先 | `/api/users/42` |
 | `Access-Control-Allow-Origin` | CORS許可 | `https://example.com` |
 
@@ -127,6 +128,120 @@ Cache-Control: no-cache
 名前が紛らわしいですが、`no-cache` は「キャッシュするな」ではなく「キャッシュしてもいいけど使う前にサーバーに確認して」という意味です。キャッシュを完全に禁止したい場合は `no-store` を使います。
 
 </Callout>
+
+---
+
+<a id="section-4b"></a>
+
+## ETagと条件付きリクエスト
+
+`no-cache` の「使う前にサーバーに確認」は、具体的にどうやって確認しているのでしょうか。その仕組みが **ETag** と **条件付きリクエスト** です。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+確認するたびにデータを丸ごと取り直すなら、キャッシュしている意味がないんじゃない？
+</SpeechBubble>
+
+そうならないように、確認の段階では「中身が変わったかどうか」だけをやりとりします。変わっていなければ、ボディ（本文）は送られません。
+
+### ETagは「中身の指紋」
+
+**ETag**（Entity Tag）は、サーバーがレスポンスに付ける識別子です。中身が変われば別の値になるので、指紋のような役割を果たします。
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+ETag: "33a64df5"
+
+{"id": 42, "name": "Alice"}
+```
+
+値の作り方はサーバー次第です。よくあるのはボディのハッシュ値や、更新日時とバージョン番号の組み合わせです。クライアント側は値の中身を解釈せず、「前回と同じか」を比べるためだけに使います。
+
+### If-None-Matchで「変わった？」と聞く
+
+ブラウザはETagをキャッシュと一緒に保存しておきます。再検証が必要になると、その値を **`If-None-Match`** ヘッダーに入れてリクエストします。
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant B as ブラウザ
+    participant S as サーバー
+    B->>S: GET /api/users/42
+    S-->>B: 200 OK + ETag: "33a64df5" + ボディ
+    Note over B: ボディとETagを保存
+    B->>S: GET /api/users/42 + If-None-Match: "33a64df5"
+    alt 変わっていない
+        S-->>B: 304 Not Modified（ボディなし）
+        Note over B: 保存済みのボディを使う
+    else 変わった
+        S-->>B: 200 OK + ETag: "8f1c02aa" + 新しいボディ
+    end
+`} />
+
+- **ETagが一致した**：サーバーは **`304 Not Modified`** を返し、ボディは送りません。ブラウザは手元のキャッシュを使います
+- **ETagが一致しなかった**：通常どおり `200 OK` で新しいボディと新しいETagを返します
+
+このように「条件を付けて、満たしたときだけ処理してもらう」リクエストを **条件付きリクエスト** と呼びます。[3章](/books/http-and-web-api/03-status-codes)で出てきた `304` は、この仕組みで返されるステータスコードです。
+
+### Last-Modifiedとの違い
+
+ETagより古くからある方法として、更新日時を使う **`Last-Modified`** / **`If-Modified-Since`** の組み合わせもあります。
+
+| 方式 | サーバーが付ける | ブラウザが送り返す | 比べるもの |
+|---|---|---|---|
+| ETag | `ETag: "33a64df5"` | `If-None-Match: "33a64df5"` | 識別子が一致するか |
+| 更新日時 | `Last-Modified: Wed, 21 Oct 2026 07:28:00 GMT` | `If-Modified-Since: Wed, 21 Oct 2026 07:28:00 GMT` | その日時より後に更新されたか |
+
+更新日時は秒単位なので、1秒の間に2回更新されると変更を見逃します。ETagにはこの問題がありません。両方が送られてきた場合、サーバーは `If-None-Match` を優先し、`If-Modified-Since` は無視すると仕様（[RFC 9110](https://www.rfc-editor.org/rfc/rfc9110#name-if-modified-since)）で決められています。
+
+### 強いETagと弱いETag
+
+ETagの先頭に `W/` が付いているものは **弱いETag**（weak ETag）です。
+
+```
+ETag: "33a64df5"      ← 強いETag：1バイトでも違えば別の値
+ETag: W/"33a64df5"    ← 弱いETag：意味が同じなら同じ値でよい
+```
+
+弱いETagは「バイト単位では違っても、内容としては同じ」とみなしてよい場合に使います。たとえば圧縮のかけ方が違うだけのレスポンスです。キャッシュの再検証（`If-None-Match`）ではどちらも使えます。
+
+<Callout type="info">
+### ExpressはETagを自動で付ける
+
+Expressの `res.send()` や `res.json()` は、デフォルトでボディから弱いETagを計算してレスポンスに付けます。さらに、リクエストの `If-None-Match` と一致すれば自動で `304` を返します。DevToolsで自作APIのレスポンスを見て `ETag: W/"..."` が付いていたら、この機能によるものです。不要なら `app.set('etag', false)` で止められます（[Express API: app.set](https://expressjs.com/en/api.html#app.settings.table)）。
+
+</Callout>
+
+### If-Matchで更新の衝突を防ぐ
+
+条件付きリクエストはキャッシュ専用ではありません。**`If-Match`** を使うと、「自分が読んだときから誰も書き換えていなければ更新して」と頼めます。
+
+```
+PUT /api/users/42
+If-Match: "33a64df5"
+Content-Type: application/json
+
+{"id": 42, "name": "Alice Smith"}
+```
+
+その間に別の人が更新していてETagが変わっていれば、サーバーは **`412 Precondition Failed`** を返して更新を拒否します。これにより、後から保存した人が先に保存した人の変更を気づかずに上書きする「ロストアップデート」を防げます。
+
+この「ロックはかけずに、保存の瞬間に誰かが先に変えていないかを確かめる」方式を **楽観的ロック** と呼びます。`If-Match` は、楽観的ロックをHTTPのヘッダーだけで表す方法です。
+
+<Callout type="column">
+### バージョン番号をボディで送る方式もある
+
+楽観的ロックは、ETagを使わずに実装することもよくあります。テーブルに `version` 列を持たせてリクエストのボディで送り返してもらい、一致しなければ `409 Conflict` を返す方式です（[システム設計本の6章](/books/system-design/06-api-design)のステータスコード表もこちらの形です）。仕組みは同じで、「何と比べるか」と「どのステータスコードで断るか」が違うだけです。どちらを選ぶかに決まりはありません。筆者の整理では、HTTPの標準どおりに書くなら `If-Match` と `412`、DBの `version` 列をそのままAPIに出すならボディと `409`、と考えると選びやすくなります。
+
+</Callout>
+
+| ヘッダー | 条件 | 主な用途 |
+|---|---|---|
+| `If-None-Match` | ETagが **一致しなければ** 処理する | キャッシュの再検証（一致したら `304`） |
+| `If-Match` | ETagが **一致すれば** 処理する | 更新の衝突防止（不一致なら `412`） |
+
+参考：
+- [ETag - MDN](https://developer.mozilla.org/ja/docs/Web/HTTP/Reference/Headers/ETag) — ETagの書式と使い方
+- [RFC 9110 - ETag](https://www.rfc-editor.org/rfc/rfc9110#name-etag) — 強いETag・弱いETagと条件付きリクエストの一次情報
 
 ---
 
@@ -276,6 +391,7 @@ curl -I https://api.example.com/users
 - <Marker>HTTPメッセージは **スタートライン + ヘッダー + ボディ** で構成される</Marker>
 - `Content-Type` はボディの解釈方法を伝える重要なヘッダー
 - `Cache-Control` でキャッシュの有無と期間を制御する。`no-cache` と `no-store` の意味は違う
+- **ETag** と `If-None-Match` で「変わったか」だけを確認し、変わっていなければ `304` でボディの再送を省く。`If-Match` を使えば楽観的ロックで更新の衝突も防げる
 - **Cookie** はサーバーがブラウザに状態を保持させる仕組み。セッション管理の基盤
 - セッションCookieには **HttpOnly + Secure + SameSite** を必ず設定する
 
