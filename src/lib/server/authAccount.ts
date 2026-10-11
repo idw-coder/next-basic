@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
+import { getJwtSecret } from '@/lib/server/auth';
 import { getMysqlPool } from '@/lib/server/mysql';
 
 interface AuthUserRow extends RowDataPacket {
@@ -108,7 +109,8 @@ function mapAccountUser(row: AuthUserRow): AccountUser {
 function signToken(user: AuthUserRow, role: string): string {
   return jwt.sign(
     { userId: String(user.id), email: user.email, role },
-    process.env.JWT_SECRET || 'your-super-secret-key',
+    // 秘密鍵は getJwtSecret() 経由で取る（未設定ならエラー。理由は auth.ts のコメント参照）
+    getJwtSecret(),
     { expiresIn: '7d' },
   );
 }

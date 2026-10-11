@@ -52,7 +52,7 @@ flowchart TB
 
 ## パターン1: 単独の関数呼び出し — グローバル or undefined
 
-`fn()` のように、何にも付けずに関数を呼び出すと、`this` は**グローバルオブジェクト**（ブラウザでは `window`）になります。ただし**strictモードでは `undefined`** です。
+`fn()` のように、何にも付けずに関数を呼び出すと、`this` は**グローバルオブジェクト**（ブラウザでは `window`）になります。ただし**strictモードでは `undefined`** です。環境を問わずグローバルオブジェクトを参照する `globalThis` と `window` の違いは、[変数宣言とスコープの章](/books/javascript/01-variables-and-scope#globalthis)で解説しています。
 
 ```js
 function showThis() {
