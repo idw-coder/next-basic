@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
+import type { AuthUser } from '@/lib/server/auth';
 import { getMysqlPool } from '@/lib/server/mysql';
 
 interface PaymentUserRow extends RowDataPacket {
@@ -38,9 +39,9 @@ export interface PaymentResult {
 }
 
 export class PaymentError extends Error {
-  status: 400 | 404;
+  status: 400 | 404 | 503;
 
-  constructor(message: string, status: 400 | 404) {
+  constructor(message: string, status: 400 | 404 | 503) {
     super(message);
     this.name = 'PaymentError';
     this.status = status;
@@ -53,6 +54,39 @@ function getStripe(): Stripe {
   }
 
   return new Stripe(process.env.STRIPE_SECRET_KEY);
+}
+
+// クライアントからは Price ID を受け取らず、プラン名だけを受け取る。
+// Price ID をそのまま受け付けると、同じ Stripe アカウント内の別の価格（テスト用の安い価格など）で加入できてしまうため。
+const PLAN_PRICE_ENV = {
+  pro_monthly: 'STRIPE_PRO_MONTHLY_PRICE_ID',
+  pro_yearly: 'STRIPE_PRO_YEARLY_PRICE_ID',
+} as const;
+
+export type PlanKey = keyof typeof PLAN_PRICE_ENV;
+
+function isPlanKey(value: unknown): value is PlanKey {
+  return typeof value === 'string' && Object.hasOwn(PLAN_PRICE_ENV, value);
+}
+
+function getPlanPriceId(plan: PlanKey): string | null {
+  return process.env[PLAN_PRICE_ENV[plan]] || null;
+}
+
+// 決済の開始は STRIPE_CHECKOUT_ENABLED=true のときだけ許可する。
+// 準備中でも本番で動作確認できるよう、admin は常に許可する。
+function isCheckoutEnabled(user: AuthUser | null): boolean {
+  return process.env.STRIPE_CHECKOUT_ENABLED === 'true' || user?.role === 'admin';
+}
+
+export function getPaymentConfig(user: AuthUser | null) {
+  return {
+    checkoutEnabled: isCheckoutEnabled(user),
+    plans: {
+      pro_monthly: getPlanPriceId('pro_monthly') !== null,
+      pro_yearly: getPlanPriceId('pro_yearly') !== null,
+    },
+  };
 }
 
 function getFrontendUrl(): string {
@@ -145,43 +179,44 @@ async function createPendingPayment(params: {
   );
 }
 
-async function createCheckoutSessionInDb(
-  userId: number,
+async function createSubscriptionSessionInDb(
+  user: AuthUser,
   payload: unknown,
-  mode: 'payment' | 'subscription',
 ): Promise<PaymentResult> {
-  const body = payload as { priceId?: unknown; quantity?: unknown };
-  const priceId = typeof body.priceId === 'string' ? body.priceId : '';
-  const quantity =
-    typeof body.quantity === 'number' && Number.isFinite(body.quantity) ? body.quantity : 1;
-
-  if (!priceId) {
-    throw new PaymentError('priceId は必須です', 400);
+  if (!isCheckoutEnabled(user)) {
+    throw new PaymentError('現在サブスクリプションの受付を停止しています', 503);
   }
 
-  const user = await getUser(userId);
-  const customerId = await getOrCreateStripeCustomer(user);
+  const body = payload as { plan?: unknown } | null;
+  const plan = body?.plan;
+  if (!isPlanKey(plan)) {
+    throw new PaymentError('plan が不正です', 400);
+  }
+
+  const priceId = getPlanPriceId(plan);
+  if (!priceId) {
+    throw new PaymentError('現在このプランはご利用いただけません', 503);
+  }
+
+  const dbUser = await getUser(user.userId);
+  const customerId = await getOrCreateStripeCustomer(dbUser);
   const session = await getStripe().checkout.sessions.create({
     customer: customerId,
     payment_method_types: ['card'],
-    line_items: [
-      {
-        price: priceId,
-        quantity: mode === 'subscription' ? 1 : quantity,
-      },
-    ],
-    mode,
+    line_items: [{ price: priceId, quantity: 1 }],
+    mode: 'subscription',
     success_url: `${getFrontendUrl()}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${getFrontendUrl()}/payment/cancel`,
     metadata: {
-      userId: String(user.id),
+      userId: String(dbUser.id),
+      plan,
     },
   });
 
   await createPendingPayment({
-    userId: user.id,
+    userId: dbUser.id,
     stripeSessionId: session.id,
-    description: mode === 'subscription' ? 'subscription' : undefined,
+    description: 'subscription',
   });
 
   return {
@@ -285,25 +320,12 @@ async function getPaymentStatusFromDb(
   };
 }
 
-export async function createCheckoutSession(
-  userId: number,
-  payload: unknown,
-): Promise<PaymentResult> {
-  try {
-    return await createCheckoutSessionInDb(userId, payload, 'payment');
-  } catch (error) {
-    if (error instanceof PaymentError) throw error;
-    console.error('Failed to create checkout session in DB.', error);
-    throw error;
-  }
-}
-
 export async function createSubscriptionSession(
-  userId: number,
+  user: AuthUser,
   payload: unknown,
 ): Promise<PaymentResult> {
   try {
-    return await createCheckoutSessionInDb(userId, payload, 'subscription');
+    return await createSubscriptionSessionInDb(user, payload);
   } catch (error) {
     if (error instanceof PaymentError) throw error;
     console.error('Failed to create subscription session in DB.', error);

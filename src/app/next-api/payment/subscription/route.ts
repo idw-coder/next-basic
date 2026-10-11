@@ -9,10 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
     const user = verifyAuth(request);
-    const result = await createSubscriptionSession(
-      user.userId,
-      await request.json(),
-    );
+    const result = await createSubscriptionSession(user, await request.json().catch(() => null));
 
     return NextResponse.json(result.body);
   } catch (error) {

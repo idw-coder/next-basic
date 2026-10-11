@@ -64,7 +64,7 @@
 | クイズCSV | `/next-api/quiz/csv/sample`, `/next-api/quiz/csv/export`, `/next-api/quiz/csv/import` | `src/app/next-api/quiz/csv/*`, `src/lib/server/quizCsv.ts` | 本番稼働済み | sampleは認証なし。export/importは Bearer JWT 必須でExpress現状に合わせてeditor制限なし |
 | ユーザー登録/管理 | `/next-api/users`, `/next-api/users/:userId` | `src/app/next-api/users/*`, `src/lib/server/users.ts` | 本番稼働済み | 登録は認証なし。管理GET/PATCH/DELETEは `admin` 必須 |
 | 認証 | `/next-api/auth/login`, `/next-api/auth/me`, `/next-api/auth/google`, `/next-api/auth/google/callback` | `src/app/next-api/auth/*`, `src/lib/server/authAccount.ts` | 本番稼働済み | login/me と Google OAuth をNext.js側で処理 |
-| 決済 / Stripe Webhook | `/next-api/payment/checkout`, `/next-api/payment/subscription`, `/next-api/payment/portal`, `/next-api/payment/history`, `/next-api/payment/status/:sessionId`, `/next-api/webhook/stripe` | `src/app/next-api/payment/*`, `src/app/next-api/webhook/stripe/route.ts`, `src/lib/server/payments.ts` | 本番稼働済み | Checkout、Portal、決済履歴、決済状態、WebhookをNext.js側で処理 |
+| 決済 / Stripe Webhook | `/next-api/payment/config`, `/next-api/payment/subscription`, `/next-api/payment/portal`, `/next-api/payment/history`, `/next-api/payment/status/:sessionId`, `/next-api/webhook/stripe` | `src/app/next-api/payment/*`, `src/app/next-api/webhook/stripe/route.ts`, `src/lib/server/payments.ts` | 本番稼働済み | サブスク Checkout、受付状況、Portal、決済履歴、決済状態、WebhookをNext.js側で処理 |
 
 ## 本番確認済み
 

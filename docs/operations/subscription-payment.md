@@ -1,14 +1,14 @@
 # サブスクリプション決済機能 仕様書
 
-最終確認日: 2026-08-11
+最終確認日: 2026-10-10
 
 ## 概要
 
 Stripe Checkout を利用したサブスクリプション決済機能のフロントエンド実装。
 Next.js Route Handler の `/next-api/payment/*` エンドポイントと連携し、プラン選択 → Stripe Checkout → 結果表示の一連のフローを提供する。
 
-> **現在のステータス: 準備中（Feature Flag で制御）**
-> デフォルトでは Pro プランのボタンは disabled。`?mode=stripeActive` で有効化可能。
+> **現在のステータス: 準備中（サーバー側の環境変数で制御）**
+> `STRIPE_CHECKOUT_ENABLED=true` でない限り、`/next-api/payment/subscription` は 503 を返し、Pro プランのボタンも disabled になる。admin ロールのユーザーだけは常に申し込める（本番での動作確認用）。
 
 ---
 
@@ -45,11 +45,14 @@ Next.js Route Handler の `/next-api/payment/*` エンドポイントと連携�
 
 `SubscriptionClient.tsx` 内の `PLANS` 定数で管理。
 
-| プランID | プラン名 | 価格 | 課金間隔 | Stripe Price ID（環境変数） |
-|---|---|---|---|---|
-| `free` | フリー | ¥0 | 永久無料 | なし |
-| `pro-monthly` | Pro（月額） | ¥980 | 月 | `NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID` |
-| `pro-yearly` | Pro（年額） | ¥7,980 | 年 | `NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID` |
+| プランID | プラン名 | 価格 | 課金間隔 | サーバーに送る `plan` | Stripe Price ID（サーバーの環境変数） |
+|---|---|---|---|---|---|
+| `free` | フリー | ¥0 | 永久無料 | なし | なし |
+| `pro-monthly` | Pro（月額） | ¥980 | 月 | `pro_monthly` | `STRIPE_PRO_MONTHLY_PRICE_ID` |
+| `pro-yearly` | Pro（年額） | ¥7,980 | 年 | `pro_yearly` | `STRIPE_PRO_YEARLY_PRICE_ID` |
+
+クライアントは Price ID を持たず、プラン名（`plan`）だけを送る。Price ID への変換は `src/lib/server/payments.ts` の `PLAN_PRICE_ENV` で行う。
+クライアントから Price ID を受け取ると、同じ Stripe アカウント内の別の価格（テスト用の安い価格など）で加入できてしまうため。
 
 ### プラン別機能
 
@@ -101,32 +104,27 @@ Next.js Route Handler の `/next-api/payment/*` エンドポイントと連携�
 | アクション | 条件 | 動作 |
 |---|---|---|
 | フリー「問題を解く」クリック | なし | `/#categories` へ遷移 |
-| Pro プランのボタン | 準備中フラグ ON | disabled（クリック不可） |
-| Pro プランのボタン | 準備中フラグ OFF & 未ログイン | `/login` へリダイレクト |
-| Pro プランのボタン | 準備中フラグ OFF & ログイン済 | `POST /next-api/payment/subscription` → Stripe Checkout URL へリダイレクト |
+| Pro プランのボタン | 受付停止中、またはそのプランの Price ID が未設定 | disabled（「準備中」） |
+| Pro プランのボタン | 受付中 & 未ログイン | `/login` へリダイレクト |
+| Pro プランのボタン | 受付中 & ログイン済 | `POST /next-api/payment/subscription` → Stripe Checkout URL へリダイレクト |
 | 「管理ポータルを開く」 | ログイン済 | `POST /next-api/payment/portal` → Stripe Billing Portal URL へリダイレクト |
 
-#### 準備中フラグの制御（Feature Flag）
+#### 受付中かどうかの制御
 
-`?mode=stripeActive` クエリパラメータによる Feature Flag で制御。
-現在は `src/app/payment/SubscriptionClient.tsx` 内で `sessionStorage` を直接扱い、タブ単位のフラグとして管理する。
+判定はサーバー側で行う。画面はマウント時に `GET /next-api/payment/config` を呼び、その結果で表示を切り替える。
+画面の表示はあくまで見た目で、実際の制御は `/next-api/payment/subscription` 側の判定（受付停止中は 503）。
 
-```typescript
-// src/app/payment/SubscriptionClient.tsx
-const [stripeActive, setStripeActive] = useState(false);
-// ?mode=stripeActive のとき sessionStorage に保存
-const isPreparingBanner = !stripeActive; // 準備中バナーの表示
-const isPreparingPlan = !isFree && !stripeActive; // 有料プランボタンの disabled 制御
-```
-
-| 状態 | 条件 | バナー | 有料プランボタン |
+| 条件 | `checkoutEnabled` | バナー | 有料プランボタン |
 |---|---|---|---|
-| デフォルト | `stripeActive` OFF | 表示 | disabled（「準備中」） |
-| 有効化 | `stripeActive` ON | 非表示 | 有効（「このプランを選ぶ」） |
+| `STRIPE_CHECKOUT_ENABLED` が `true` 以外 & 一般ユーザー・未ログイン | `false` | 表示 | disabled（「準備中」） |
+| `STRIPE_CHECKOUT_ENABLED` が `true` 以外 & admin | `true` | 非表示 | 有効 |
+| `STRIPE_CHECKOUT_ENABLED=true` | `true` | 非表示 | 有効 |
 
-**フラグの有効化方法:** `?mode=stripeActive` 付きでページにアクセスする。以降そのタブ内ではフラグが維持され、タブを閉じると解除される。
+- `plans.pro_monthly` / `plans.pro_yearly` が `false`（Price ID 未設定）のプランは、受付中でも「準備中」になる
+- config の取得中や取得失敗時は「準備中」として扱う
+- Webhook（`/next-api/webhook/stripe`）とカスタマーポータル（`/next-api/payment/portal`）はこのフラグの影響を受けない。既存の加入者が解約や支払い方法の変更をできるようにするため
 
-> この方式は `?mode=entry`（広告非表示）と同じ sessionStorage パターン。現時点では汎用フック化していない。
+> 以前は `?mode=stripeActive` で画面側だけを有効化していたが、API は誰でも直接呼べる状態だったため、2026-10-10 にサーバー側の判定へ置き換えた。
 
 ---
 
@@ -167,11 +165,25 @@ const isPreparingPlan = !isFree && !stripeActive; // 有料プランボタンの
 
 | API | メソッド | 認証 | フロントからの呼び出し箇所 | 説明 |
 |---|---|---|---|---|
+| `/next-api/payment/config` | GET | 任意 | SubscriptionClient（マウント時） | 受付中かどうかと、利用できるプランを返す |
 | `/next-api/payment/subscription` | POST | Bearer | SubscriptionClient `handleSubscribe` | サブスクリプション Checkout Session を作成 |
 | `/next-api/payment/portal` | POST | Bearer | SubscriptionClient `handlePortal` | Stripe Billing Portal セッションを作成 |
 | `/next-api/payment/status/:sessionId` | GET | Bearer | success/page.tsx | 決済ステータスを確認 |
 
 ### リクエスト・レスポンス
+
+#### 受付状況の取得
+
+```
+GET /next-api/payment/config
+Authorization: Bearer <token>   ※ 任意。admin 判定に使う
+
+Response (200):
+{
+  "checkoutEnabled": false,
+  "plans": { "pro_monthly": true, "pro_yearly": true }
+}
+```
 
 #### サブスクリプション開始
 
@@ -182,7 +194,7 @@ Content-Type: application/json
 
 Request:
 {
-  "priceId": "price_xxxxxxxxxxxxx"
+  "plan": "pro_monthly"   // "pro_monthly" | "pro_yearly"
 }
 
 Response (200):
@@ -190,6 +202,10 @@ Response (200):
   "url": "https://checkout.stripe.com/c/pay/cs_test_...",
   "sessionId": "cs_test_..."
 }
+
+Error:
+  400 … plan が不正
+  503 … 受付停止中（STRIPE_CHECKOUT_ENABLED が true 以外で、admin でもない）、または Price ID 未設定
 ```
 
 #### ポータル表示
@@ -232,7 +248,7 @@ Response (200):
     |  プランを選択         |                          |                        |
     |--------------------->|                          |                        |
     |                      |  POST /subscription      |                        |
-    |                      |  { priceId }             |                        |
+    |                      |  { plan }                |                        |
     |                      |------------------------->|                        |
     |                      |                          |  Customer 取得/作成     |
     |                      |                          |----------------------->|
@@ -268,18 +284,21 @@ Response (200):
 
 ## 環境変数
 
-### フロントエンド（Next.js）
+### ビルド時（`NEXT_PUBLIC_*`、GitHub Secrets → Dockerfile の ARG）
 
 | 変数名 | 必須 | 説明 |
 |---|---|---|
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | - | Stripe 公開鍵（将来 Elements 利用時に必要） |
-| `NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID` | o | Pro月額プランの Stripe Price ID |
-| `NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID` | o | Pro年額プランの Stripe Price ID |
 
-### バックエンド（Express）
+### 実行時（Next.js サーバー。本番は `/var/www/app/nextjs/.env`）
+
+ビルドし直さなくても、`.env` を書き換えてコンテナを再作成するだけで反映される。
 
 | 変数名 | 必須 | 説明 |
 |---|---|---|
+| `STRIPE_CHECKOUT_ENABLED` | - | `true` のときだけ一般ユーザーが申し込める。未設定なら受付停止（admin のみ可） |
+| `STRIPE_PRO_MONTHLY_PRICE_ID` | o | Pro月額プランの Stripe Price ID |
+| `STRIPE_PRO_YEARLY_PRICE_ID` | o | Pro年額プランの Stripe Price ID |
 | `STRIPE_SECRET_KEY` | o | Stripe シークレットキー |
 | `STRIPE_WEBHOOK_SECRET` | o | Stripe Webhook 署名検証用シークレット |
 | `FRONTEND_URL` | o | フロントエンドのURL（リダイレクト先） |
@@ -376,13 +395,14 @@ STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxx      # 手順 4 で Stripe CLI から取得
 FRONTEND_URL=http://localhost:3000
 ```
 
-### 3. フロントエンドの環境変数を設定
+### 3. Price ID と受付フラグを設定
 
 `next-basic/.env.local` に以下を追記:
 
 ```env
-NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID=price_xxxxxxxx   # 手順 1 の月額 Price ID
-NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID=price_xxxxxxxx    # 手順 1 の年額 Price ID
+STRIPE_PRO_MONTHLY_PRICE_ID=price_xxxxxxxx   # 手順 1 の月額 Price ID
+STRIPE_PRO_YEARLY_PRICE_ID=price_xxxxxxxx    # 手順 1 の年額 Price ID
+# STRIPE_CHECKOUT_ENABLED=true               # 一般ユーザーでも試すときだけ有効にする
 ```
 
 ### 4. Stripe CLI でローカル Webhook を転送
@@ -415,10 +435,10 @@ cd next-basic && npm run dev
 
 ### 6. 動作確認
 
-1. `http://localhost:3000` でログイン
+1. `STRIPE_CHECKOUT_ENABLED` を設定しない状態で、一般ユーザーでログイン
 2. `http://localhost:3000/payment` にアクセス → 「準備中」バナーが表示され、有料プランボタンが disabled であることを確認
-3. `http://localhost:3000/payment?mode=stripeActive` にアクセス → バナーが消え、有料プランボタンが有効になることを確認
-4. URL から `?mode=stripeActive` を外して `/payment` にアクセス → 同じタブ内ではフラグが維持され、ボタンが有効のままであることを確認
+3. 同じ一般ユーザーのトークンで `POST /next-api/payment/subscription` を直接呼ぶ → 503 が返ることを確認
+4. admin ユーザーでログインし直して `/payment` にアクセス → バナーが消え、有料プランボタンが有効になることを確認
 5. Pro プランの「このプランを選ぶ」をクリック
 6. Stripe Checkout 画面で**テストカード**を入力:
    - カード番号: `4242 4242 4242 4242`
@@ -426,9 +446,8 @@ cd next-basic && npm run dev
    - CVC: 任意の3桁（例: `123`）
 7. 決済完了 → `/payment/success` にリダイレクトされることを確認
 8. Stripe CLI のターミナルに `checkout.session.completed` イベントが表示されることを確認
-9. タブを閉じて新しいタブで `/payment` にアクセス → 「準備中」に戻ることを確認
+9. `{"plan":"pro_monthly"}` 以外（例: `{"plan":"x"}` や `{"priceId":"price_..."}`）を送る → 400 が返ることを確認
 
-> **コードの変更は不要。** `?mode=stripeActive` を付けるだけでフラグが有効化される。
 > `.env.local` は `.gitignore` に含まれるため、そのまま残して問題ない。
 
 ---
@@ -439,47 +458,25 @@ cd next-basic && npm run dev
 
 本番モード（Live）で月額・年額の Price を作成し、Price ID（`price_xxx`）を取得する。
 
-### 2. GitHub Secrets に Price ID を追加
+### 2. 本番の `.env` に Price ID を設定し、受付を開始する
 
-GitHub → Settings → Secrets and variables → Actions で以下を登録:
+本番サーバーの `/var/www/app/nextjs/.env` に追記する。ビルドし直す必要はない。
 
-| Secret 名 | 値 |
-|---|---|
-| `NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID` | 月額プランの Price ID（`price_xxx`） |
-| `NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID` | 年額プランの Price ID（`price_xxx`） |
-
-### 3. Dockerfile に ARG を追加
-
-`next-basic/Dockerfile` の既存 ARG の後に追加:
-
-```dockerfile
-ARG NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID
-ARG NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID
+```env
+STRIPE_PRO_MONTHLY_PRICE_ID=price_xxx   # 手順 1 の Live の Price ID
+STRIPE_PRO_YEARLY_PRICE_ID=price_xxx
+STRIPE_SECRET_KEY=sk_live_xxx           # テスト用キーから Live のキーに差し替える
+STRIPE_CHECKOUT_ENABLED=true            # 先に admin で動作確認してから入れる
 ```
 
-### 4. deploy.yml に build-args を追加
+コンテナを再作成して反映する（`docker compose -f docker-compose.prod.yml up -d nextjs`）。
+受付を止めたいときは `STRIPE_CHECKOUT_ENABLED` を消して再作成するだけでよい。
 
-`.github/workflows/deploy.yml` の `build-args` に追加:
+### 3〜5. （不要になった手順）
 
-```yaml
-NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID }}
-NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID=${{ secrets.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID }}
-```
-
-### 5. Feature Flag から固定有効化へ切り替え
-
-`SubscriptionClient.tsx` の Feature Flag を解除し、常に有効化する:
-
-```typescript
-// 変更前（Feature Flag で制御）
-const [stripeActive, setStripeActive] = useState(false);
-const isPreparingBanner = !stripeActive;
-
-// 変更後（常に有効）
-const isPreparingBanner = false;
-```
-
-`stripeActive` / `setStripeActive` / `isPreparingPlan` の参照も合わせて削除する。
+以前は Price ID を `NEXT_PUBLIC_*` としてビルド時に埋め込み、画面側のフラグ（`?mode=stripeActive`）を外す手順があった。
+Price ID のサーバー管理と受付フラグのサーバー判定に置き換えたため、Dockerfile・deploy.yml・`SubscriptionClient.tsx` の変更は不要。
+GitHub Secrets に残っている `NEXT_PUBLIC_STRIPE_PRO_*_PRICE_ID` は使われていないので削除してよい。
 
 ### 6. トップページのお知らせを更新
 

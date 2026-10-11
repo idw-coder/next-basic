@@ -65,50 +65,56 @@ flowchart LR
 
 1つのカラムに複数の値を入れない。
 
-```text
-❌ 非正規形
-| order_id | items            |
-|----------|-----------------|
-| 1        | りんご, みかん    |
+**❌ 非正規形**
 
-✅ 第1正規形
-| order_id | item    |
-|----------|---------|
-| 1        | りんご   |
-| 1        | みかん   |
-```
+| `order_id` | `items` |
+|---|---|
+| 1 | りんご、みかん |
+
+**✅ 第1正規形**
+
+| `order_id` | `item` |
+|---|---|
+| 1 | りんご |
+| 1 | みかん |
 
 ### 第2正規形（2NF）— 部分関数従属を排除する
 
 複合主キーの一部にだけ依存するカラムを別テーブルに分ける。
 
-```text
-❌ 部分関数従属あり
-| order_id | product_id | product_name | quantity |
-|----------|-----------|--------------|----------|
-| 1        | 101       | りんご        | 3        |
+**❌ 部分関数従属あり**
 
-product_name は product_id だけで決まる（order_id は不要）
+| `order_id` | `product_id` | `product_name` | `quantity` |
+|---|---|---|---|
+| 1 | 101 | りんご | 3 |
 
-✅ 第2正規形
-orders_items: order_id, product_id, quantity
-products:     product_id, product_name
-```
+`product_name` は `product_id` だけで決まり、`order_id` には依存しません。
+
+**✅ 第2正規形**
+
+| テーブル | カラム |
+|---|---|
+| `order_items` | `order_id`, `product_id`, `quantity` |
+| `products` | `product_id`, `product_name` |
 
 ### 第3正規形（3NF）— 推移的関数従属を排除する
 
 主キー以外のカラムに依存するカラムを別テーブルに分ける。
 
-```text
-❌ 推移的関数従属あり
-| user_id | department_id | department_name |
+**❌ 推移的関数従属あり**
 
-department_name は department_id で決まる（user_id からは間接的）
+| `user_id` | `department_id` | `department_name` |
+|---|---|---|
+| 1 | 10 | 営業部 |
 
-✅ 第3正規形
-users:       user_id, department_id
-departments: department_id, department_name
-```
+`department_name` は `department_id` で決まり、`user_id` からは間接的に決まります。
+
+**✅ 第3正規形**
+
+| テーブル | カラム |
+|---|---|
+| `users` | `user_id`, `department_id` |
+| `departments` | `department_id`, `department_name` |
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
 実務では第3正規形まで整理すれば十分なケースがほとんど。「同じデータが2箇所以上に書いてあるなら、正規化を疑う」と覚えておくと判断しやすいよ。
@@ -176,27 +182,28 @@ CREATE INDEX idx_orders_user_status ON orders(user_id, status);
 
 実務では、ER図とあわせてテーブル定義書を残します。
 
-```text
-テーブル名: orders
-説明: 注文情報を管理する
+**テーブル名:** `orders`
 
-| カラム名     | 型            | NULL | デフォルト | 説明               |
-|-------------|---------------|------|-----------|--------------------|
-| id          | BIGINT        | NO   | AUTO_INC  | 主キー              |
-| user_id     | BIGINT        | NO   |           | FK: users.id       |
-| total_price | DECIMAL(10,2) | NO   |           | 注文合計金額（税込） |
-| status      | VARCHAR(20)   | NO   | 'pending' | pending/paid/shipped/cancelled |
-| created_at  | TIMESTAMP     | NO   | NOW()     | 作成日時            |
-| updated_at  | TIMESTAMP     | NO   | NOW()     | 更新日時            |
-| deleted_at  | TIMESTAMP     | YES  | NULL      | 論理削除日時         |
+**説明:** 注文情報を管理する
 
-インデックス:
-- idx_orders_user_id (user_id)
-- idx_orders_status (status)
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---|---|---|---|---|
+| `id` | `BIGINT` | NO | `AUTO_INCREMENT` | 主キー |
+| `user_id` | `BIGINT` | NO | — | 外部キー: `users.id` |
+| `total_price` | `DECIMAL(10,2)` | NO | — | 注文合計金額（税込） |
+| `status` | `VARCHAR(20)` | NO | `'pending'` | `pending` / `paid` / `shipped` / `cancelled` |
+| `created_at` | `TIMESTAMP` | NO | `NOW()` | 作成日時 |
+| `updated_at` | `TIMESTAMP` | NO | `NOW()` | 更新日時 |
+| `deleted_at` | `TIMESTAMP` | YES | `NULL` | 論理削除日時 |
 
-非正規化の意図:
-- total_price: 注文時点の合計金額を保持。商品価格変更の影響を受けない
-```
+**インデックス**
+
+- `idx_orders_user_id (user_id)`
+- `idx_orders_status (status)`
+
+**非正規化の意図**
+
+- `total_price`: 注文時点の合計金額を保持し、商品価格変更の影響を受けないようにする
 
 ## ちゃんと使うためのポイント
 

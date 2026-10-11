@@ -18,11 +18,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { fetchNextApiJson } from '@/lib/nextApiClient';
 
+type PlanKey = 'pro_monthly' | 'pro_yearly';
+
 interface Plan {
   id: string;
   name: string;
   price: string;
-  priceId: string;
+  // サーバーに送るプラン名。Price ID はサーバー側の環境変数で管理する
+  planKey: PlanKey | null;
   interval: string;
   features: string[];
   popular?: boolean;
@@ -39,12 +42,17 @@ interface PortalSessionResponse {
   url?: string;
 }
 
+interface PaymentConfigResponse {
+  checkoutEnabled: boolean;
+  plans: Record<PlanKey, boolean>;
+}
+
 const PLANS: Plan[] = [
   {
     id: 'free',
     name: 'フリー',
     price: '¥0',
-    priceId: '',
+    planKey: null,
     interval: '永久無料',
     features: ['全カテゴリのクイズに挑戦', '解答履歴の閲覧', '腕試しテスト', 'キーワード検索'],
     color: 'border-gray-200 dark:border-gray-700',
@@ -54,7 +62,7 @@ const PLANS: Plan[] = [
     id: 'pro-monthly',
     name: 'Pro（月額）',
     price: '¥980',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID ?? '',
+    planKey: 'pro_monthly',
     interval: '月',
     features: [
       'フリープランの全機能',
@@ -71,7 +79,7 @@ const PLANS: Plan[] = [
     id: 'pro-yearly',
     name: 'Pro（年額）',
     price: '¥7,980',
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PRICE_ID ?? '',
+    planKey: 'pro_yearly',
     interval: '年',
     features: [
       'フリープランの全機能',
@@ -105,8 +113,7 @@ export default function SubscriptionClient() {
       return;
     }
 
-    if (!plan.priceId) {
-      setError('現在このプランはご利用いただけません。しばらくしてから再度お試しください。');
+    if (!plan.planKey) {
       return;
     }
 
@@ -116,7 +123,7 @@ export default function SubscriptionClient() {
         auth: true,
         method: 'POST',
         body: {
-          priceId: plan.priceId,
+          plan: plan.planKey,
         },
       });
       if (res.url) {
@@ -153,17 +160,16 @@ export default function SubscriptionClient() {
     }
   };
 
-  const [stripeActive, setStripeActive] = useState(false);
+  // 受付中かどうかはサーバーが判定する（STRIPE_CHECKOUT_ENABLED、または admin）。
+  // 取得できるまでは「準備中」として扱う
+  const [config, setConfig] = useState<PaymentConfigResponse | null>(null);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('mode') === 'stripeActive') {
-      // sessionStorageなのでタブ閉じたら無効化される
-      sessionStorage.setItem('stripeActive', '1');
-    }
-    setStripeActive(sessionStorage.getItem('stripeActive') === '1');
+    fetchNextApiJson<PaymentConfigResponse>('/next-api/payment/config', { auth: true })
+      .then(setConfig)
+      .catch(() => setConfig(null));
   }, []);
 
-  const isPreparingBanner = !stripeActive;
+  const isPreparingBanner = !config?.checkoutEnabled;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 md:py-16">
@@ -211,7 +217,9 @@ export default function SubscriptionClient() {
           const Icon = plan.icon;
           const isFree = plan.id === 'free';
           const isLoading = loadingPlan === plan.id;
-          const isPreparingPlan = !isFree && !stripeActive;
+          const isPreparingPlan =
+            !isFree &&
+            !(config?.checkoutEnabled && plan.planKey && config.plans[plan.planKey]);
 
           return (
             <Card
