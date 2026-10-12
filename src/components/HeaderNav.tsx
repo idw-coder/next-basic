@@ -1,6 +1,7 @@
 'use client';
 
 import { getBookTheme } from '@/lib/book-theme';
+import { fetchNextApiJson } from '@/lib/nextApiClient';
 import { cn } from '@/lib/utils';
 import { identicon } from '@dicebear/collection';
 import { createAvatar } from '@dicebear/core';
@@ -55,6 +56,15 @@ interface HeaderNavProps {
   books: HeaderBook[];
 }
 
+interface MeResponse {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  role?: string;
+}
+
 const bookIconMap: Record<string, LucideIcon> = {
   BookOpen,
   Blocks,
@@ -94,16 +104,47 @@ export default function HeaderNav({ books }: HeaderNavProps) {
 
   useEffect(() => {
     setOpen(false);
-    setIsLoggedIn(!!localStorage.getItem('token'));
-    try {
-      const stored = localStorage.getItem('user');
-      const parsed = stored ? JSON.parse(stored) : null;
-      setUserEmail(parsed?.email ?? null);
-      setIsAdmin(parsed?.role === 'admin');
-    } catch {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      localStorage.removeItem('user');
+      setIsLoggedIn(false);
       setUserEmail(null);
       setIsAdmin(false);
+      return;
     }
+
+    let active = true;
+
+    void (async () => {
+      try {
+        const response = await fetchNextApiJson<MeResponse>('/next-api/auth/me', {
+          auth: true,
+        });
+        if (!active) return;
+
+        const role = response.role ?? 'user';
+        localStorage.setItem('user', JSON.stringify({ ...response.user, role }));
+        setIsLoggedIn(true);
+        setUserEmail(response.user.email);
+        setIsAdmin(role === 'admin');
+      } catch (error) {
+        if (!active) return;
+
+        const status = (error as { response?: { status?: number } }).response?.status;
+        if (status === 401 || status === 404) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+        setIsLoggedIn(false);
+        setUserEmail(null);
+        setIsAdmin(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
   }, [pathname]);
 
   // モバイルメニューはオーバーレイなので、Escで閉じられないと閉じ方が分からなくなる

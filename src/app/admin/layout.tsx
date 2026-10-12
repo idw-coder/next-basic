@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchNextApiJson } from "@/lib/nextApiClient";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -22,6 +23,17 @@ const navItems = [
   { href: "/admin/users", label: "ユーザー管理", icon: Users },
 ];
 
+interface MeResponse {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  role?: string;
+}
+
+type AuthStatus = "checking" | "authenticated" | "error";
+
 export default function AdminLayout({
   children,
 }: {
@@ -29,28 +41,52 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [authed, setAuthed] = useState(false);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
+      localStorage.removeItem("user");
       router.replace("/login");
       return;
     }
-    const user = localStorage.getItem("user");
-    if (user) {
+
+    let active = true;
+
+    void (async () => {
       try {
-        const parsed = JSON.parse(user);
-        if (parsed.role !== "admin") {
+        const response = await fetchNextApiJson<MeResponse>("/next-api/auth/me", {
+          auth: true,
+        });
+        if (!active) return;
+
+        const role = response.role ?? "user";
+        localStorage.setItem("user", JSON.stringify({ ...response.user, role }));
+
+        if (role !== "admin") {
           router.replace("/");
           return;
         }
-      } catch {
-        router.replace("/login");
-        return;
+
+        setAuthStatus("authenticated");
+      } catch (error) {
+        if (!active) return;
+
+        const status = (error as { response?: { status?: number } }).response?.status;
+        if (status === 401 || status === 404) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          router.replace("/login");
+          return;
+        }
+
+        setAuthStatus("error");
       }
-    }
-    setAuthed(true);
+    })();
+
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   const handleSignout = () => {
@@ -59,7 +95,22 @@ export default function AdminLayout({
     router.push("/login");
   };
 
-  if (!authed) return null;
+  if (authStatus === "checking") return null;
+
+  if (authStatus === "error") {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-sm text-gray-600">認証情報を確認できませんでした。</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
+        >
+          再読み込み
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
