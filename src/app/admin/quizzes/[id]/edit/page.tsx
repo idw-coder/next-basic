@@ -187,9 +187,12 @@ export default function QuizEditPage() {
   const [importJson, setImportJson] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
 
-  const showToast = useCallback((msg: string) => {
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((msg: string, durationMs = 2000) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 2000);
+    // 直前のトーストのタイマーが新しいトーストを早く消さないようにする
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), durationMs);
   }, []);
 
   useEffect(() => {
@@ -348,13 +351,19 @@ export default function QuizEditPage() {
         );
         setCorrectIndex(data.choices.findIndex((c) => Boolean(c.is_correct)));
       }
+      let ignoredTags: string[] = [];
       if (data.tags?.length) {
         const existing = new Set(allTags.map((t) => t.slug));
         setSelectedTags(data.tags.filter((t) => existing.has(t)));
+        ignoredTags = data.tags.filter((t) => !existing.has(t));
       }
       setImportDialog(false);
       setImportJson('');
-      showToast('インポートしました');
+      if (ignoredTags.length > 0) {
+        showToast(`インポートしました（未登録のため無視したタグ: ${ignoredTags.join(', ')}）`, 6000);
+      } else {
+        showToast('インポートしました');
+      }
     } catch (e) {
       setImportError(`JSONの解析に失敗しました。${e instanceof Error ? e.message : ''}`);
     }
