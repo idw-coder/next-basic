@@ -32,7 +32,7 @@ if (score >= 90) {
 
 ### 早期 return パターン
 
-ネストが深くなりがちな条件分岐は、**早期 return（Guard Clause）**で扁平にできます。
+ネストが深くなりがちな条件分岐は、**早期 return**（Guard Clause）で扁平にできます。
 
 ```js
 // ネストが深くなるパターン
@@ -457,7 +457,7 @@ for (let i = 0; i < 5; i++) {
 
 ## return と throw — 制御フロー文
 
-`return` と `throw` は、`if` や `for` と同様に**制御フロー文（Control Flow Statement）**です。どちらも、その後のコードを実行せずに処理の流れを変えます。
+`return` と `throw` は、`if` や `for` と同様に**制御フロー文**（Control Flow Statement）です。どちらも、その後のコードを実行せずに処理の流れを変えます。
 
 <MermaidDiagram
   chart={`
@@ -498,7 +498,7 @@ console.log(divide(10, 2)); // 5
 console.log(divide(10, 0)); // null
 ```
 
-`return` の後ろに書くもの（`null` や `a / b`）は**式（Expression）**です。`return` 自体は文なので、変数に代入したりできません。
+`return` の後ろに書くもの（`null` や `a / b`）は**式**（Expression）です。`return` 自体は文なので、変数に代入したりできません。
 
 ```js
 // return は文なので、式としては使えない

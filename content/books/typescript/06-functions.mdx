@@ -131,7 +131,7 @@ sum(1, 2, 3); // 6
 sum(); // 0 — 0個でもOK
 ```
 
-ルールは2つだけです。**引数リストの最後に1つだけ**書けること、型は**配列型（またはタプル型）**にすることです。通常の引数との組み合わせもできます。
+ルールは2つだけです。**引数リストの最後に1つだけ**書けること、型は**配列型**（またはタプル型）にすることです。通常の引数との組み合わせもできます。
 
 ```tsx
 function joinWith(separator: string, ...parts: string[]): string {
@@ -347,7 +347,7 @@ function findUser(id: number): User | undefined {
 | `never` | 絶対に戻ってこない | 到達不能なので意味がない |
 
 <Callout type="column" title="return の後ろに書くものは式">
-  `return` と `throw` はどちらも**制御フロー文（Statement）**です。後ろに書く値（`new Error(...)` や `val`）は**式（Expression）**です。文なので、変数に代入したり式の一部にしたりできません。
+  `return` と `throw` はどちらも**制御フロー文**（Statement）です。後ろに書く値（`new Error(...)` や `val`）は**式**（Expression）です。文なので、変数に代入したり式の一部にしたりできません。
 
 ```tsx
 const x = return 5;         // SyntaxError

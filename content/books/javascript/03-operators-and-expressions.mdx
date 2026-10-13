@@ -30,7 +30,7 @@ console.log(1 === '1'); // false
 
 ### `==`（抽象的等価比較）
 
-`==` は比較の前に**型強制（Type Coercion）**を行います。
+`==` は比較の前に**型強制**（Type Coercion）を行います。
 型が違う場合、JavaScriptが自動的に片方の型を変換してから比較します。
 
 ```js
@@ -122,7 +122,7 @@ console.log('' && 'hello'); // ''     — 左辺が falsy
 console.log('foo' && 'bar'); // 'bar'  — 左辺が truthy なので右辺を返す
 ```
 
-右辺まで評価しないことを**短絡評価（short-circuit evaluation）**と呼びます。
+右辺まで評価しないことを**短絡評価**（short-circuit evaluation）と呼びます。
 左辺が `false` と確定した時点で、右辺は実行されません。
 
 ```js

