@@ -85,9 +85,7 @@ function knapsack(items: { w: number; v: number }[], W: number): number {
 
 計算量はO(NW) = 100 × 10^5 = 10^7で余裕です。**「選ぶ/選ばない × 容量制限 × 最大化」の三点セットが来たらナップサックDP**。bit全探索(2^N)ではNが大きすぎるときの受け皿でもあります。
 
-<Figure src="/images/deskwork_check_woman_color.png" alt="表を埋めて確認する人" width={180}>
-  DPのデバッグは「表を小さい入力で手書きする」が最強。dpの中身を出力して目視するのも有効
-</Figure>
+<Figure src="/images/deskwork_check_woman_color.png" alt="表を埋めて確認する人" caption="DPのデバッグは「表を小さい入力で手書きする」が最強。dpの中身を出力して目視するのも有効" maxWidth="180px" />
 
 ## 定番2: 最長増加部分列（LIS）
 

@@ -77,9 +77,7 @@ nextjs-Linux-<lockのハッシュ>-<ソースのハッシュ>
 
 ソースコードは毎回変わるので `key` の完全一致はほぼ起きません。そこで `restore-keys` の前方一致により、「同じ依存関係で作った**一番新しいキャッシュ**」を復元して差分だけビルドする——という動きになります。
 
-<Figure src="/images/running_man_color-1.png" alt="速く走る人" width={180}>
-キャッシュが効いたNext.jsのビルドは、フルビルドの数分の一で終わることもある
-</Figure>
+<Figure src="/images/running_man_color-1.png" alt="速く走る人" caption="キャッシュが効いたNext.jsのビルドは、フルビルドの数分の一で終わることもある" maxWidth="180px" />
 
 ### キャッシュの落とし穴
 

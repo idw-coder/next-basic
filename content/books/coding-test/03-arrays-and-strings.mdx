@@ -86,9 +86,7 @@ function maxLength(nums: number[], k: number): number {
 
 「区間の全列挙はO(N²)ある。でも各要素は**窓に入るのが1回、出るのが1回**だけだからO(N)」——これが尺取り法の計算量の理屈です。
 
-<Figure src="/images/creative_color.png" alt="窓を伸び縮みさせるイメージ" width={180}>
-右端で伸ばして左端で縮める。窓の伸縮だけで全区間を代表できるのが尺取り法
-</Figure>
+<Figure src="/images/creative_color.png" alt="窓を伸び縮みさせるイメージ" caption="右端で伸ばして左端で縮める。窓の伸縮だけで全区間を代表できるのが尺取り法" maxWidth="180px" />
 
 適用条件は「**窓を広げると条件が悪化し、縮めると改善する**」という単調性があること。要素に負の数が混ざると単調性が崩れて使えないので、その場合は次の累積和の出番です。
 

@@ -99,9 +99,7 @@ test ──→ build ──→ deploy
 
 `needs` で指定したジョブが失敗すると、後続のジョブは**スキップ**されます。「テストが落ちたのにデプロイされる」事故は構造的に起きません。
 
-<Figure src="/images/planning_suit_man_color.png" alt="工程を計画する人" width={180}>
-並列にできるものは並列に、順序が必要なところだけneedsで直列に——がジョブ設計の基本
-</Figure>
+<Figure src="/images/planning_suit_man_color.png" alt="工程を計画する人" caption="並列にできるものは並列に、順序が必要なところだけneedsで直列に——がジョブ設計の基本" maxWidth="180px" />
 
 ## マトリックスビルド — 組み合わせを一括テスト
 

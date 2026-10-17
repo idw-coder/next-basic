@@ -93,9 +93,7 @@ function removePairs(s: string): string {
 
 素朴に「見つけては消す」を繰り返すとO(N²)ですが、スタックなら1周O(N)。**「直近の要素との関係で処理が決まる」問題はスタック**——このシグナルは強力です。
 
-<Figure src="/images/marubatsu.png" alt="消し合いのイメージ" width={180}>
-繰り返し走査で消すのではなく、積みながらその場で消し合うのがスタック流
-</Figure>
+<Figure src="/images/marubatsu.png" alt="消し合いのイメージ" caption="繰り返し走査で消すのではなく、積みながらその場で消し合うのがスタック流" maxWidth="180px" />
 
 ## キュー実戦: 「処理待ちリスト」として使う
 

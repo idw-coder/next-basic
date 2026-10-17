@@ -103,9 +103,7 @@ function canMakeSum(nums: number[], x: number): boolean {
 | `1 << i` | 2^i。i桁目だけが1の数を作る |
 | `bit & (1 << i)` | bitのi桁目が立っているか（0以外なら立っている） |
 
-<Figure src="/images/deta_man_color.png" alt="データを列挙して調べる人" width={180}>
-2重ループの外側が「選び方」、内側が「その選び方の中身の確認」。合計 O(2^N × N)
-</Figure>
+<Figure src="/images/deta_man_color.png" alt="データを列挙して調べる人" caption="2重ループの外側が「選び方」、内側が「その選び方の中身の確認」。合計 O(2^N × N)" maxWidth="180px" />
 
 計算量はO(2^N × N)。N = 20で約2,000万、ぎりぎり余裕です。**「部分集合」「選ぶ/選ばない」「N ≤ 20前後」の三点セットが揃ったらbit全探索**——これは最も再現性の高いパターン認識の1つです。
 

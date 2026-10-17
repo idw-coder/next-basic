@@ -110,9 +110,7 @@ function maxLength(logs: number[], k: number): number {
 
 計算量はO(N log(答えの範囲)) ≈ 10^5 × 30。答えの候補が10^9個あっても平気です。
 
-<Figure src="/images/toppa_suit_woman_color.png" alt="壁を突破する人" width={180}>
-「最大化したい」を「Lは達成可能か？」の判定問題に変換する——この一手で難問が定型に落ちる
-</Figure>
+<Figure src="/images/toppa_suit_woman_color.png" alt="壁を突破する人" caption="「最大化したい」を「Lは達成可能か？」の判定問題に変換する——この一手で難問が定型に落ちる" maxWidth="180px" />
 
 **「〇〇の最大値/最小値を求めよ」で直接計算が難しく、「答えを1つ決めれば達成可能か判定できる」なら、答えで二分探索**。AtCoderの水色前の壁と言われる技ですが、型はこれだけです。
 
