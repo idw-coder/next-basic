@@ -29,9 +29,6 @@ interface MeResponse {
 interface EditForm {
   name: string;
   email: string;
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
 }
 
 interface QuizAnswerRecord {
@@ -150,9 +147,6 @@ export default function ProfilePage() {
   const [form, setForm] = useState<EditForm>({
     name: '',
     email: '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -235,9 +229,6 @@ export default function ProfilePage() {
     setForm({
       name: user.name,
       email: user.email,
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
     });
     setError(null);
     setSuccess(null);
@@ -259,26 +250,12 @@ export default function ProfilePage() {
       return;
     }
 
-    if (form.newPassword && form.newPassword !== form.confirmPassword) {
-      setError('新しいパスワードが一致しません');
-      return;
-    }
-
-    if (form.newPassword && !form.currentPassword) {
-      setError('パスワードを変更する場合は現在のパスワードが必要です');
-      return;
-    }
-
     try {
       setSaving(true);
-      const payload: Record<string, string> = {
+      const payload = {
         name: form.name.trim(),
         email: form.email.trim(),
       };
-      if (form.newPassword) {
-        payload.currentPassword = form.currentPassword;
-        payload.newPassword = form.newPassword;
-      }
 
       const res = await fetchNextApiJson<MeResponse>('/api/auth/me', {
         auth: true,
@@ -336,39 +313,6 @@ export default function ProfilePage() {
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 />
-              </div>
-
-              <div className="border-t pt-3 space-y-1">
-                <p className="text-xs text-muted-foreground mb-2">パスワード変更（任意）</p>
-                <div className="space-y-1">
-                  <Label htmlFor="currentPassword">現在のパスワード</Label>
-                  <Input
-                    id="currentPassword"
-                    type="password"
-                    value={form.currentPassword}
-                    onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
-                    placeholder="変更する場合のみ入力"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="newPassword">新しいパスワード</Label>
-                  <Input
-                    id="newPassword"
-                    type="password"
-                    value={form.newPassword}
-                    onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
-                    placeholder="6文字以上"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="confirmPassword">新しいパスワード（確認）</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={form.confirmPassword}
-                    onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))}
-                  />
-                </div>
               </div>
 
               <div className="flex gap-2 pt-1">

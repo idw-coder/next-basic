@@ -139,12 +139,10 @@
 
 ## 5. 認証フォームのUX不足
 
-**場所**: `src/app/(auth)/login/page.tsx` / `src/app/(auth)/register/page.tsx`
+**場所**: `src/app/(auth)/login/page.tsx`
 
-- `autoComplete` が未設定。パスワードマネージャや iOS/Android の自動入力が効かない。
-  `email` / `current-password` / `new-password` を入れるだけ。**無料サイトの登録の摩擦になるので優先度は高い**
-- メール形式のバリデーションが無い（`required` のみ）
-- パスワードは `minLength: 6` だけ。確認用フィールドも表示トグルも無い
+※ 2026-10-18 にメール＋パスワードのログインと新規登録を廃止し、Googleログインのみにした。入力欄まわりの指摘（autoComplete・メール形式・パスワード）はそこで消えた
+
 - ページに `<h1>` が無い（`profile/page.tsx` も同様）
 - Googleログインボタンが送信中も押せる（`disabled` が付いていない）
 - `text-gray-400` などブランドトークン外の色を使っている

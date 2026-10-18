@@ -784,7 +784,7 @@ export default async function Home() {
                 asChild
               >
                 <Link
-                  href="/register"
+                  href="/login"
                   className="inline-flex items-center gap-1.5 text-sm font-bold sm:gap-2"
                 >
                   無料で会員登録する

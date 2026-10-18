@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
@@ -10,7 +9,6 @@ interface AuthUserRow extends RowDataPacket {
   id: number | string;
   name: string;
   email: string;
-  password: string | null;
   googleId: string | null;
   emailVerified: number | boolean;
   stripeCustomerId: string | null;
@@ -41,20 +39,6 @@ export interface AccountUser {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
-}
-
-export interface LoginResult {
-  body: {
-    token: string;
-    user: {
-      id: string;
-      name: string;
-      email: string;
-      role: string;
-    };
-  };
-  status: 200;
-  source: 'db';
 }
 
 export interface MeResult {
@@ -226,7 +210,6 @@ async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<AuthUserR
           u.id,
           u.name,
           u.email,
-          u.password,
           u.googleId,
           u.emailVerified,
           u.stripeCustomerId,
@@ -254,7 +237,6 @@ async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<AuthUserR
             u.id,
             u.name,
             u.email,
-            u.password,
             u.googleId,
             u.emailVerified,
             u.stripeCustomerId,
@@ -328,7 +310,6 @@ async function getAuthUserByGoogleId(googleId: string): Promise<AuthUserRow> {
         u.id,
         u.name,
         u.email,
-        u.password,
         u.googleId,
         u.emailVerified,
         u.stripeCustomerId,
@@ -381,7 +362,6 @@ async function getAuthUserFromDb(userId: number | string): Promise<AuthUserRow> 
         u.id,
         u.name,
         u.email,
-        u.password,
         u.googleId,
         u.emailVerified,
         u.stripeCustomerId,
@@ -408,72 +388,6 @@ async function getAuthUserFromDb(userId: number | string): Promise<AuthUserRow> 
   return user;
 }
 
-async function loginWithDb(payload: unknown): Promise<LoginResult> {
-  const body = payload as { email?: unknown; password?: unknown };
-  const email = typeof body.email === 'string' ? body.email : '';
-  const password = typeof body.password === 'string' ? body.password : '';
-
-  if (!email || !password) {
-    throw new AuthAccountError('メールアドレスとパスワードは必須です', 400);
-  }
-
-  const [rows] = await getMysqlPool().query<AuthUserRow[]>(
-    `
-      SELECT
-        u.id,
-        u.name,
-        u.email,
-        u.password,
-        u.googleId,
-        u.emailVerified,
-        u.stripeCustomerId,
-        u.createdAt,
-        u.updatedAt,
-        u.deletedAt,
-        role_meta.metaValue AS role
-      FROM \`user\` u
-      LEFT JOIN user_meta role_meta
-        ON role_meta.userId = u.id
-       AND role_meta.metaKey = 'role'
-      WHERE u.email = ?
-        AND u.deletedAt IS NULL
-      LIMIT 1
-    `,
-    [email],
-  );
-
-  const user = rows[0];
-  const invalidError = new AuthAccountError(
-    'メールアドレスまたはパスワードが正しくありません',
-    401,
-  );
-
-  if (!user?.password) {
-    throw invalidError;
-  }
-
-  const isValid = await bcrypt.compare(password, user.password);
-  if (!isValid) {
-    throw invalidError;
-  }
-
-  const role = user.role || 'user';
-
-  return {
-    body: {
-      token: signToken(user, role),
-      user: {
-        id: String(user.id),
-        name: user.name,
-        email: user.email,
-        role,
-      },
-    },
-    status: 200,
-    source: 'db',
-  };
-}
-
 async function getMeFromDb(userId: number): Promise<MeResult> {
   const user = await getAuthUserFromDb(userId);
 
@@ -491,10 +405,9 @@ async function updateMeInDb(userId: number, payload: unknown): Promise<MeResult>
   const body = payload as {
     name?: unknown;
     email?: unknown;
-    currentPassword?: unknown;
-    newPassword?: unknown;
   };
-  const user = await getAuthUserFromDb(userId);
+  // 存在しない・削除済みのユーザーなら 404 にする
+  await getAuthUserFromDb(userId);
   const updates: string[] = [];
   const values: unknown[] = [];
 
@@ -533,31 +446,6 @@ async function updateMeInDb(userId: number, payload: unknown): Promise<MeResult>
     values.push(email);
   }
 
-  if (body.newPassword !== undefined) {
-    const currentPassword =
-      typeof body.currentPassword === 'string' ? body.currentPassword : '';
-    const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
-
-    if (!currentPassword) {
-      throw new AuthAccountError('現在のパスワードを入力してください', 400);
-    }
-
-    const isValid = user.password
-      ? await bcrypt.compare(currentPassword, user.password)
-      : false;
-
-    if (!isValid) {
-      throw new AuthAccountError('現在のパスワードが正しくありません', 401);
-    }
-
-    if (newPassword.length < 6) {
-      throw new AuthAccountError('新しいパスワードは6文字以上で入力してください', 400);
-    }
-
-    updates.push('password = ?');
-    values.push(await bcrypt.hash(newPassword, 10));
-  }
-
   if (updates.length > 0) {
     await getMysqlPool().query(
       `
@@ -580,19 +468,6 @@ async function updateMeInDb(userId: number, payload: unknown): Promise<MeResult>
     status: 200,
     source: 'db',
   };
-}
-
-export async function login(payload: unknown): Promise<LoginResult> {
-  try {
-    return await loginWithDb(payload);
-  } catch (error) {
-    if (error instanceof AuthAccountError) {
-      throw error;
-    }
-
-    console.error('Failed to login with DB.', error);
-    throw error;
-  }
 }
 
 export async function getMe(userId: number): Promise<MeResult> {
