@@ -57,7 +57,7 @@ export default function QuizListPage() {
   const rawFileRef = useRef<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const sampleCsvUrl = "/next-api/quiz/csv/sample";
+  const sampleCsvUrl = "/api/quiz/csv/sample";
 
   const fetchAllQuizzes = useCallback(async (cats?: QuizCategory[]) => {
     setLoading(true);
@@ -69,7 +69,7 @@ export default function QuizListPage() {
       const results = await Promise.all(
         useCats.map(async (cat) => {
           const quizzes = await fetchNextApiJson<Quiz[]>(
-            `/next-api/quiz/category/${cat.id}/quizzes`,
+            `/api/quiz/category/${cat.id}/quizzes`,
           );
           return quizzes.map((q) => ({
             ...q,
@@ -85,7 +85,7 @@ export default function QuizListPage() {
   }, [categories]);
 
   const fetchAllTags = useCallback(async () => {
-    const tags = await fetchNextApiJson<QuizTag[]>("/next-api/quiz/tags");
+    const tags = await fetchNextApiJson<QuizTag[]>("/api/quiz/tags");
     setAllTags(
       tags.sort((a, b) => a.slug.localeCompare(b.slug, "ja"))
     );
@@ -94,8 +94,8 @@ export default function QuizListPage() {
   useEffect(() => {
     (async () => {
       const [cats, tags] = await Promise.all([
-        fetchNextApiJson<QuizCategory[]>("/next-api/quiz/categories"),
-        fetchNextApiJson<QuizTag[]>("/next-api/quiz/tags"),
+        fetchNextApiJson<QuizCategory[]>("/api/quiz/categories"),
+        fetchNextApiJson<QuizTag[]>("/api/quiz/tags"),
       ]);
       setCategories(cats);
       setAllTags(
@@ -165,7 +165,7 @@ export default function QuizListPage() {
       }
 
       const res = await fetch(
-        `/next-api/quiz/csv/export${params.size ? `?${params.toString()}` : ""}`,
+        `/api/quiz/csv/export${params.size ? `?${params.toString()}` : ""}`,
         {
           cache: "no-store",
           headers,
@@ -206,7 +206,7 @@ export default function QuizListPage() {
         error_count: number;
         created_tags: string[];
         errors: string[];
-      }>("/next-api/quiz/csv/import", {
+      }>("/api/quiz/csv/import", {
         auth: true,
         method: "POST",
         body: { csv: csvText },
@@ -233,7 +233,7 @@ export default function QuizListPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("削除しますか？")) return;
-    await fetchNextApiJson<{ message: string }>(`/next-api/quiz/${id}`, {
+    await fetchNextApiJson<{ message: string }>(`/api/quiz/${id}`, {
       auth: true,
       method: "DELETE",
     });

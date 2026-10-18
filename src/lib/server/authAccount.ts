@@ -122,7 +122,7 @@ function getFrontendUrl(request: Request): string {
 function getGoogleCallbackUrl(request: Request): string {
   return (
     process.env.NEXT_GOOGLE_CALLBACK_URL ||
-    new URL('/next-api/auth/google/callback', request.url).toString()
+    new URL('/api/auth/google/callback', request.url).toString()
   );
 }
 

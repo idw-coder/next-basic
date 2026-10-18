@@ -7,15 +7,14 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // APIの実体は /next-api/ 配下。以前ここにあった "/api/" は存在しないパスで、
-      // 実APIがクロール対象のままになっていた。
+      // APIの実体は /api/ 配下（Next.js の src/app/api）。
       //
       // ここに載せるのはクロール自体が不要なパスだけにする。
       // meta robots で noindex にしているページ（/quiz/review・/quiz/bookmarks）は
       // ここに書いてはいけない。クロールを止めるとその noindex を読んでもらえず、
       // URLだけがインデックスに残る状態になる。
       disallow: [
-        "/next-api/",
+        "/api/",
         "/profile/",
         "/login/",
         "/register/",

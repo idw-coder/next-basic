@@ -199,14 +199,14 @@ export default function QuizEditPage() {
   useEffect(() => {
     (async () => {
       const [categories, tags] = await Promise.all([
-        fetchNextApiJson<QuizCategory[]>('/next-api/quiz/categories'),
-        fetchNextApiJson<QuizTag[]>('/next-api/quiz/tags'),
+        fetchNextApiJson<QuizCategory[]>('/api/quiz/categories'),
+        fetchNextApiJson<QuizTag[]>('/api/quiz/tags'),
       ]);
       setCategories(categories);
       setAllTags(tags.sort((a, b) => a.slug.localeCompare(b.slug, 'ja')));
 
       if (!isNew && quizId.current) {
-        const quiz = await fetchNextApiJson<QuizForm>(`/next-api/quiz/${quizId.current}`);
+        const quiz = await fetchNextApiJson<QuizForm>(`/api/quiz/${quizId.current}`);
         setSlug(quiz.slug);
         setQuestion(quiz.question);
         setExplanation(quiz.explanation ?? '');
@@ -239,7 +239,7 @@ export default function QuizEditPage() {
     setError(null);
     setCreatingTag(true);
     try {
-      const created = await fetchNextApiJson<QuizTag>('/next-api/quiz/tags', {
+      const created = await fetchNextApiJson<QuizTag>('/api/quiz/tags', {
         auth: true,
         method: 'POST',
         body: {
@@ -295,7 +295,7 @@ export default function QuizEditPage() {
         tags: selectedTags,
       };
       if (isNew) {
-        const quiz = await fetchNextApiJson<QuizForm & { id: number }>('/next-api/quiz', {
+        const quiz = await fetchNextApiJson<QuizForm & { id: number }>('/api/quiz', {
           auth: true,
           method: 'POST',
           body: payload,
@@ -303,7 +303,7 @@ export default function QuizEditPage() {
         quizId.current = quiz.id;
         router.replace(`/admin/quizzes/${quiz.id}/edit`);
       } else {
-        await fetchNextApiJson<QuizForm>(`/next-api/quiz/${quizId.current}`, {
+        await fetchNextApiJson<QuizForm>(`/api/quiz/${quizId.current}`, {
           auth: true,
           method: 'PUT',
           body: payload,

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     response.cookies.set('google_oauth_state', authorization.state, {
       httpOnly: true,
       maxAge: 10 * 60,
-      path: '/next-api/auth/google',
+      path: '/api/auth/google',
       sameSite: 'lax',
       secure: new URL(request.url).protocol === 'https:',
     });

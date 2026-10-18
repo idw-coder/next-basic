@@ -76,7 +76,7 @@ export default function QuizTagManagePage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const tags = await fetchNextApiJson<QuizTag[]>("/next-api/quiz/tags");
+      const tags = await fetchNextApiJson<QuizTag[]>("/api/quiz/tags");
       setTags(tags);
       setLoading(false);
     })();
@@ -86,7 +86,7 @@ export default function QuizTagManagePage() {
     setError(null);
     setCreating(true);
     try {
-      const tag = await fetchNextApiJson<QuizTag>("/next-api/quiz/tags", {
+      const tag = await fetchNextApiJson<QuizTag>("/api/quiz/tags", {
         auth: true,
         method: "POST",
         body: {
@@ -134,7 +134,7 @@ export default function QuizTagManagePage() {
         inputSlugs.add(tag.slug);
 
         try {
-          const createdTag = await fetchNextApiJson<QuizTag>("/next-api/quiz/tags", {
+          const createdTag = await fetchNextApiJson<QuizTag>("/api/quiz/tags", {
             auth: true,
             method: "POST",
             body: tag,
@@ -172,7 +172,7 @@ export default function QuizTagManagePage() {
     setError(null);
     setSaving(true);
     try {
-      const tag = await fetchNextApiJson<QuizTag>(`/next-api/quiz/tags/${id}`, {
+      const tag = await fetchNextApiJson<QuizTag>(`/api/quiz/tags/${id}`, {
         auth: true,
         method: "PUT",
         body: {
@@ -197,7 +197,7 @@ export default function QuizTagManagePage() {
 
     try {
       const tagDetail = await fetchNextApiJson<QuizTagDetail>(
-        `/next-api/quiz/tags/${tag.id}`,
+        `/api/quiz/tags/${tag.id}`,
         { auth: true },
       );
       const quizCount = tagDetail.quizCount ?? 0;
@@ -212,7 +212,7 @@ export default function QuizTagManagePage() {
       if (!confirmed) return;
 
       await fetchNextApiJson<{ message: string; deletedId: number; detachedCount: number }>(
-        `/next-api/quiz/tags/${tag.id}`,
+        `/api/quiz/tags/${tag.id}`,
         {
           auth: true,
           method: "DELETE",

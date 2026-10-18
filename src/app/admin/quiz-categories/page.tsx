@@ -37,7 +37,7 @@ export default function QuizCategoryManagePage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const categories = await fetchNextApiJson<QuizCategory[]>("/next-api/quiz/categories");
+      const categories = await fetchNextApiJson<QuizCategory[]>("/api/quiz/categories");
       setCategories(categories);
       setLoading(false);
     })();
@@ -47,7 +47,7 @@ export default function QuizCategoryManagePage() {
     setError(null);
     setCreating(true);
     try {
-      const category = await fetchNextApiJson<QuizCategory>("/next-api/quiz/categories", {
+      const category = await fetchNextApiJson<QuizCategory>("/api/quiz/categories", {
         auth: true,
         method: "POST",
         body: {
@@ -85,7 +85,7 @@ export default function QuizCategoryManagePage() {
     setSaving(true);
     try {
       const category = await fetchNextApiJson<QuizCategory>(
-        `/next-api/quiz/categories/${id}`,
+        `/api/quiz/categories/${id}`,
         {
           auth: true,
           method: "PUT",
@@ -111,7 +111,7 @@ export default function QuizCategoryManagePage() {
     if (!confirm("このカテゴリーを削除しますか？")) return;
     setError(null);
     try {
-      await fetchNextApiJson<{ message: string }>(`/next-api/quiz/categories/${id}`, {
+      await fetchNextApiJson<{ message: string }>(`/api/quiz/categories/${id}`, {
         auth: true,
         method: "DELETE",
       });

@@ -58,7 +58,7 @@ export async function syncLocalHistoryToServer(): Promise<void> {
   if (local.length === 0) return;
 
   try {
-    await fetchNextApiJson<{ synced: number }>("/next-api/quiz/history/sync", {
+    await fetchNextApiJson<{ synced: number }>("/api/quiz/history/sync", {
       auth: true,
       method: "POST",
       body: { answers: local },
@@ -106,7 +106,7 @@ export function useQuizHistory() {
 
       if (isLoggedIn()) {
         fetchNextApiJson<{ id: number } | { message: "already exists" }>(
-          "/next-api/quiz/history",
+          "/api/quiz/history",
           {
             auth: true,
             method: "POST",

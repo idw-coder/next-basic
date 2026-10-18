@@ -39,7 +39,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     try {
       setErrorMsg("");
-      await fetchNextApiJson("/next-api/users", {
+      await fetchNextApiJson("/api/users", {
         method: "POST",
         body: {
           name: data.name,
@@ -48,7 +48,7 @@ export default function RegisterPage() {
         },
       });
 
-      const loginRes = await fetchNextApiJson<LoginResponse>("/next-api/auth/login", {
+      const loginRes = await fetchNextApiJson<LoginResponse>("/api/auth/login", {
         method: "POST",
         body: {
           email: data.email,
@@ -130,7 +130,7 @@ export default function RegisterPage() {
               variant="outline"
               className="w-full"
               onClick={() => {
-                window.location.href = "/next-api/auth/google";
+                window.location.href = "/api/auth/google";
               }}
             >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">

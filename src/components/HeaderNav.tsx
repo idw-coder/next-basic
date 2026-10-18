@@ -118,7 +118,7 @@ export default function HeaderNav({ books }: HeaderNavProps) {
 
     void (async () => {
       try {
-        const response = await fetchNextApiJson<MeResponse>('/next-api/auth/me', {
+        const response = await fetchNextApiJson<MeResponse>('/api/auth/me', {
           auth: true,
         });
         if (!active) return;

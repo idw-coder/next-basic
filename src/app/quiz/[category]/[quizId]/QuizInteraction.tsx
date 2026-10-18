@@ -234,7 +234,7 @@ export default function QuizInteraction({
       setTagLoading(true);
       setTagError(null);
       try {
-        const tags = await fetchNextApiJson<QuizTag[]>('/next-api/quiz/tags');
+        const tags = await fetchNextApiJson<QuizTag[]>('/api/quiz/tags');
         tags.sort((a, b) => a.slug.localeCompare(b.slug, 'ja'));
         setAllTags(tags);
       } catch {
@@ -395,7 +395,7 @@ export default function QuizInteraction({
       if (tagSlug) params.set('tagSlug', tagSlug);
 
       const res = await fetch(
-        `/next-api/quiz/category/${quiz.category_id}/quizzes${params.size ? `?${params.toString()}` : ''}`,
+        `/api/quiz/category/${quiz.category_id}/quizzes${params.size ? `?${params.toString()}` : ''}`,
         { cache: 'no-store' },
       );
       if (!res.ok) throw new Error(`status ${res.status}`);
@@ -452,7 +452,7 @@ export default function QuizInteraction({
     setCreatingTag(true);
     setTagError(null);
     try {
-      const created = await fetchNextApiJson<QuizTag>('/next-api/quiz/tags', {
+      const created = await fetchNextApiJson<QuizTag>('/api/quiz/tags', {
         auth: true,
         method: 'POST',
         body: { slug, name },
@@ -473,7 +473,7 @@ export default function QuizInteraction({
     setTagSaving(true);
     setTagError(null);
     try {
-      const res = await fetchNextApiJson<QuizDetail>(`/next-api/quiz/${quiz.id}`, {
+      const res = await fetchNextApiJson<QuizDetail>(`/api/quiz/${quiz.id}`, {
         auth: true,
         method: 'PUT',
         body: { tags: selectedTagSlugs },

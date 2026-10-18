@@ -270,7 +270,7 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
   useEffect(() => {
     if (!open || bootstrap) return;
     let cancelled = false;
-    fetch('/next-api/site-search')
+    fetch('/api/site-search')
       .then((res) => (res.ok ? res.json() : null))
       .then((data: BootstrapResponse | null) => {
         if (data && !cancelled) setBootstrap(data);
@@ -295,7 +295,7 @@ export default function HeaderSearch({ books, className }: HeaderSearchProps) {
     setSearchError(false);
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      fetch(`/next-api/site-search?q=${encodeURIComponent(trimmedQuery)}`, {
+      fetch(`/api/site-search?q=${encodeURIComponent(trimmedQuery)}`, {
         signal: controller.signal,
       })
         .then((res) => {

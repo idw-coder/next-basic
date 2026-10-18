@@ -176,7 +176,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetchNextApiJson<MeResponse>('/next-api/auth/me', {
+        const res = await fetchNextApiJson<MeResponse>('/api/auth/me', {
           auth: true,
         });
         setUser(res.user);
@@ -190,7 +190,7 @@ export default function ProfilePage() {
 
     const fetchAnswers = async () => {
       try {
-        const answers = await fetchNextApiJson<QuizAnswerRecord[]>('/next-api/quiz/history', {
+        const answers = await fetchNextApiJson<QuizAnswerRecord[]>('/api/quiz/history', {
           auth: true,
         });
         setAnswers(answers);
@@ -201,7 +201,7 @@ export default function ProfilePage() {
 
     const fetchCategories = async () => {
       try {
-        const cats = await fetchNextApiJson<ApiCategory[]>('/next-api/quiz/categories');
+        const cats = await fetchNextApiJson<ApiCategory[]>('/api/quiz/categories');
         const map: Record<number, { slug: string; name: string }> = {};
         for (const c of cats) {
           map[c.id] = {
@@ -280,7 +280,7 @@ export default function ProfilePage() {
         payload.newPassword = form.newPassword;
       }
 
-      const res = await fetchNextApiJson<MeResponse>('/next-api/auth/me', {
+      const res = await fetchNextApiJson<MeResponse>('/api/auth/me', {
         auth: true,
         method: 'PATCH',
         body: payload,

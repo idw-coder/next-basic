@@ -79,7 +79,7 @@ export default function CategoryRandomStartCard({
       if (selectedTagSlug !== 'all') params.set('tagSlug', selectedTagSlug);
 
       const res = await fetch(
-        `/next-api/quiz/category/${categoryId}/quizzes${params.size ? `?${params.toString()}` : ''}`,
+        `/api/quiz/category/${categoryId}/quizzes${params.size ? `?${params.toString()}` : ''}`,
         { cache: 'no-store' },
       );
       if (!res.ok) throw new Error(`status ${res.status}`);

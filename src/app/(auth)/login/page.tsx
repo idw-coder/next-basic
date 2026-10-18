@@ -44,7 +44,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     try {
       setErrorMsg("");
-      const res = await fetchNextApiJson<LoginResponse>("/next-api/auth/login", {
+      const res = await fetchNextApiJson<LoginResponse>("/api/auth/login", {
         method: "POST",
         body: data,
       });
@@ -108,7 +108,7 @@ export default function LoginPage() {
             variant="outline"
             className="w-full"
             onClick={() => {
-              window.location.href = "/next-api/auth/google";
+              window.location.href = "/api/auth/google";
             }}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">

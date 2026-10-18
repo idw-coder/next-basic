@@ -215,7 +215,7 @@ export default function RandomQuizClient({
       if (selectedCategoryId === 'all') {
         const results = await Promise.all(
           categories.map(async (cat) => {
-            const res = await fetch(`/next-api/quiz/category/${cat.id}/quizzes`, {
+            const res = await fetch(`/api/quiz/category/${cat.id}/quizzes`, {
               cache: 'no-store',
             });
             if (!res.ok) throw new Error(`status ${res.status}`);
@@ -235,7 +235,7 @@ export default function RandomQuizClient({
           setIsLoading(false);
           return;
         }
-        const res = await fetch(`/next-api/quiz/category/${selectedCategoryId}/quizzes`, {
+        const res = await fetch(`/api/quiz/category/${selectedCategoryId}/quizzes`, {
           cache: 'no-store',
         });
         if (!res.ok) throw new Error(`status ${res.status}`);

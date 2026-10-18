@@ -67,7 +67,7 @@ export default function UserManagePage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetchNextApiJson<{ users: User[] }>('/next-api/users', {
+        const res = await fetchNextApiJson<{ users: User[] }>('/api/users', {
           auth: true,
         });
         setUsers(res.users);
@@ -116,7 +116,7 @@ export default function UserManagePage() {
       if (name !== editTarget.name) params.name = name;
       if (email !== editTarget.email) params.email = email;
       if (editRole !== editTarget.role) params.role = editRole;
-      const updated = await fetchNextApiJson<User>(`/next-api/users/${editTarget.id}`, {
+      const updated = await fetchNextApiJson<User>(`/api/users/${editTarget.id}`, {
         auth: true,
         method: 'PATCH',
         body: params,
@@ -137,7 +137,7 @@ export default function UserManagePage() {
       return;
     }
     if (!confirm(`「${user.name}」を削除しますか？`)) return;
-    await fetchNextApiJson<{ message: string }>(`/next-api/users/${user.id}`, {
+    await fetchNextApiJson<{ message: string }>(`/api/users/${user.id}`, {
       auth: true,
       method: 'DELETE',
     });

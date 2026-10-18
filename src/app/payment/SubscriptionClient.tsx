@@ -119,7 +119,7 @@ export default function SubscriptionClient() {
 
     try {
       setLoadingPlan(plan.id);
-      const res = await fetchNextApiJson<CheckoutSessionResponse>('/next-api/payment/subscription', {
+      const res = await fetchNextApiJson<CheckoutSessionResponse>('/api/payment/subscription', {
         auth: true,
         method: 'POST',
         body: {
@@ -143,7 +143,7 @@ export default function SubscriptionClient() {
     setError(null);
     try {
       setPortalLoading(true);
-      const res = await fetchNextApiJson<PortalSessionResponse>('/next-api/payment/portal', {
+      const res = await fetchNextApiJson<PortalSessionResponse>('/api/payment/portal', {
         auth: true,
         method: 'POST',
       });
@@ -164,7 +164,7 @@ export default function SubscriptionClient() {
   // 取得できるまでは「準備中」として扱う
   const [config, setConfig] = useState<PaymentConfigResponse | null>(null);
   useEffect(() => {
-    fetchNextApiJson<PaymentConfigResponse>('/next-api/payment/config', { auth: true })
+    fetchNextApiJson<PaymentConfigResponse>('/api/payment/config', { auth: true })
       .then(setConfig)
       .catch(() => setConfig(null));
   }, []);

@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 
     response.cookies.set('google_oauth_state', '', {
       maxAge: 0,
-      path: '/next-api/auth/google',
+      path: '/api/auth/google',
     });
 
     return response;
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
     const response = NextResponse.redirect(getGoogleFailureRedirect(request));
     response.cookies.set('google_oauth_state', '', {
       maxAge: 0,
-      path: '/next-api/auth/google',
+      path: '/api/auth/google',
     });
 
     return response;
