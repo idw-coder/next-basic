@@ -120,21 +120,10 @@ function getFrontendUrl(request: Request): string {
 }
 
 function getGoogleCallbackUrl(request: Request): string {
-  const configuredCallbackUrl =
-    process.env.NEXT_GOOGLE_CALLBACK_URL || process.env.GOOGLE_CALLBACK_URL;
-
-  if (configuredCallbackUrl?.includes('/next-api/auth/google/callback')) {
-    return configuredCallbackUrl;
-  }
-
-  if (configuredCallbackUrl?.includes('/api/auth/google/callback')) {
-    return configuredCallbackUrl.replace(
-      '/api/auth/google/callback',
-      '/next-api/auth/google/callback',
-    );
-  }
-
-  return new URL('/next-api/auth/google/callback', request.url).toString();
+  return (
+    process.env.NEXT_GOOGLE_CALLBACK_URL ||
+    new URL('/next-api/auth/google/callback', request.url).toString()
+  );
 }
 
 function getGoogleOAuthConfig(request: Request): {
