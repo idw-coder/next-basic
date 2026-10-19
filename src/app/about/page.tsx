@@ -238,6 +238,14 @@ export default function AboutPage() {
                 X（@web_eng_quiz）↗
               </a>
               <a
+                href="https://www.youtube.com/@weeklyprogrammingjp"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:underline"
+              >
+                YouTube（毎週プログラミング）↗
+              </a>
+              <a
                 href="https://github.com/idw-coder/express-mysql-docker"
                 target="_blank"
                 rel="noopener noreferrer"

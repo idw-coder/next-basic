@@ -436,7 +436,10 @@ const SITE_JSON_LD = [
     name: 'ウェブエンジニア問題集',
     url: SITE_URL,
     logo: `${SITE_URL}/images/site-mark.svg`,
-    sameAs: ['https://x.com/web_eng_quiz'],
+    sameAs: [
+      'https://x.com/web_eng_quiz',
+      'https://www.youtube.com/@weeklyprogrammingjp',
+    ],
   },
 ];
 

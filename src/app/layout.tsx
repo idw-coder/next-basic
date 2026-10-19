@@ -142,7 +142,7 @@ export default function RootLayout({
                 <div className="max-w-[280px] mx-auto mb-4 md:max-w-[468px] md:mb-6 min-h-[80px] md:min-h-[100px] overflow-hidden">
                   <GoogleAdSense adSlot={adSlot} />
                 </div>
-                <div className="flex justify-center mb-4">
+                <div className="mb-4 flex flex-wrap justify-center gap-2">
                   <a
                     href="https://x.com/web_eng_quiz"
                     target="_blank"
@@ -158,6 +158,22 @@ export default function RootLayout({
                       <path d="M18.244 2H21.5l-7.5 8.57L22.5 22h-6.844l-5.356-7.01L4.2 22H.944l8.02-9.164L.5 2h7.02l4.84 6.398L18.244 2zm-1.2 18h1.88L7.02 4H5.02l12.024 16z" />
                     </svg>
                     Xでフォロー
+                  </a>
+                  <a
+                    href="https://www.youtube.com/@weeklyprogrammingjp"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="毎週プログラミングのYouTubeチャンネルを見る"
+                    className="inline-flex items-center gap-2 rounded-full bg-[#ff0000] px-4 py-2 text-xs font-semibold text-white transition hover:opacity-85 md:text-sm"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      className="size-4 fill-current"
+                    >
+                      <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4L15.8 12l-6.2 3.6Z" />
+                    </svg>
+                    YouTubeを見る
                   </a>
                 </div>
                 {/* サイト説明ページへの導線がヘッダーになく、内部リンクが1本も張られていなかったため
