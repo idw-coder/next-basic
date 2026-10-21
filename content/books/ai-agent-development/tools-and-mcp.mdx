@@ -1,6 +1,6 @@
 ---
 title: 'AIエージェントに手足を与える — ツールとMCPの設計'
-description: 'エージェントに渡す道具の設計を扱います。MCPが標準化したこと、ツールがAPIのラッパーではない理由、数を絞る根拠、トークン効率を設計に組み込む方法、そしてMCPサーバーを増やすことが信頼できない入力の経路を増やすという側面まで整理します。'
+description: 'エージェントに渡す道具の設計を扱います。MCPが標準化したこと、ツールがAPIのラッパーではない理由、数を絞る根拠、トークン効率を設計に組み込む方法、MCPサーバーを増やすことが信頼できない入力の経路を増やすという側面、そしてGitHub CLI（gh）のような既存のCLIを渡すときの権限とトークンの絞り方まで整理します。'
 order: 13
 ---
 
@@ -99,6 +99,98 @@ flowchart TB
 
 そうではありません。npmのパッケージを使わない開発者がいないのと同じです。**使わないという判断ではなく、依存として扱うという判断**をしてください。入れる前に出所を見る、入れたら棚卸しする、使っていないものは外す。通常の依存管理と同じ規律が要る、というだけの話です。
 
+## 既存のCLIも道具になる — ghの例
+
+MCPサーバーを足す前に、手元にすでにあるCLIで足りないかを確かめる価値があります。Claude Codeの公式ベストプラクティスは、**外部サービスとのやり取りには、CLIツールがもっともコンテキスト効率のよい方法だ**と書いています。
+
+GitHubについては、`gh`（GitHub CLI）を入れるよう名指しで勧めています。Claudeは `gh` を使って**Issueの作成、プルリクエストの作成、コメントの読み取り**ができる、と明記されています。`gh` がなくてもGitHubのAPIは呼べますが、同じ箇所で**認証のないリクエストはレート制限にかかりやすい**と注意されています。また、認証がなければプライベートリポジトリの中身は見えません。
+
+### ログインしておくとできること
+
+`gh` にログインした状態にしておくと、GitHub上の作業の多くをエージェントに渡せます。
+
+| やりたいこと | 使うコマンド |
+| --- | --- |
+| PRを作る | `gh pr create` |
+| PRの会話欄のコメントを読む | `gh pr view 番号 --comments` |
+| 差分の行に付いたレビューコメントを読む | `gh api repos/{owner}/{repo}/pulls/番号/comments` |
+| CIの失敗を調べる | `gh run list` で実行を探し、`gh run view <ID> --log-failed` |
+| Issueを読む・起票する | `gh issue view 番号` / `gh issue create` |
+| サブコマンドにないAPI操作 | `gh api` |
+| `git push` の認証 | `gh auth setup-git` |
+
+2行目と3行目が分かれているのは、GitHubのAPI上で別物だからです。GitHubのドキュメントは、レビューコメントを**差分の一部に付けるコメント**と定義し、PRの会話欄のコメントとは区別しています。PRの指摘に対応させるときは、両方を読ませる必要があります。なお `{owner}` と `{repo}` はそのまま書いてかまいません。`gh` が今いるリポジトリの値に置き換えます。
+
+最後の行の `gh auth setup-git` は、`gh` を `git` の認証ヘルパーとして登録するコマンドです。これを済ませておくと、エージェントが `git push` したときに認証で止まりません。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+CIのログを読ませるのって、そんなに違うの？自分でコピペして渡しても同じじゃない？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+違いは2つあるよ。1つは、人間の往復が消えること。修正してpushして、また落ちたら、エージェントが自分でログを取りに行ける。もう1つは量。`--log-failed` は失敗したステップのログだけを返すから、全部を貼るより少ないトークンで済むんだ。
+</SpeechBubble>
+
+<Marker>CIの失敗ログを自分で取りに行けると、「修正 → push → 失敗を確認 → 再修正」の[検証ループ](/books/ai-agent-development/verification-loop)を、人間を挟まずに回せます。</Marker>
+
+### ghは致命的な三要素を1つで揃える
+
+便利さの裏側も確認しておきます。`gh` は、[権限設計の章](/books/ai-agent-development/permissions-and-sandbox)で扱った致命的な三要素を、1つの道具で全部満たします。
+
+| 要素 | ghでは何が該当するか |
+| --- | --- |
+| プライベートデータへのアクセス | ログインしたアカウントが見えるプライベートリポジトリ |
+| 信頼できないコンテンツへの露出 | Issue・PR・コメントの本文。公開リポジトリなら誰でも書ける |
+| 外部への通信手段 | push、コメントの投稿、Issueの起票 |
+
+しかも、操作はすべて**あなたのGitHubアカウントとして**行われます。[通知と非同期の章](/books/ai-agent-development/async-and-notification)で見たとおり、エージェントが投稿したコメントが、別の自動化を起動することもあります。
+
+<Marker>`gh issue view` は読むだけの操作ですが、三要素で言えば「信頼できないコンテンツ」を取り込む入口です。</Marker>
+
+### 禁止ルールで止められるもの、止められないもの
+
+取り返しのつかない操作は、禁止ルールに入れておきます。あわせて読み取り系だけを許可しておけば、確認の回数も減らせます。
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr view *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh issue view *)"
+    ],
+    "deny": [
+      "Bash(gh pr merge *)",
+      "Bash(gh repo delete *)",
+      "Bash(gh release delete *)"
+    ]
+  }
+}
+```
+
+ただし、この禁止ルールを境界だと考えてはいけません。Claude Codeの公式ドキュメントは、**引数で絞り込もうとするBashの権限パターンは壊れやすい**と警告しています。
+
+`gh` には、もっと直接的な抜け道があります。`gh api` はGitHubのREST APIをそのまま呼べるので、`gh pr merge` を禁止しても、マージ用のエンドポイント（`PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge`）を `gh api` で呼べば同じことができます。
+
+同じ理由で、`gh api` は許可リストに入れないでください。`gh api` は既定ではGETで呼びますが、マニュアルにあるとおり**パラメータを付けるとPOSTに変わります**。読み取り用として許可したつもりが、書き込みまで許可したことになります。
+
+<Figure src="/images/fork_suit_man_color.png" alt="分かれ道で考える人" maxWidth="130px" />
+
+### 最後の境界はトークンの権限
+
+禁止ルールはコマンドの書き方に依存します。それに対して、**トークンに与えていない権限は、どのコマンドを経由しても使えません**。境界として頼れるのはこちらです。
+
+`gh auth login` で作るトークンは、マニュアル上 `repo` スコープを最低限として求めます。`repo` は従来型（classic）のスコープで、リポジトリ単位では絞れません。業務の組織リポジトリが絡むなら、GitHubが推奨している**fine-grained personal access token**を使うほうが安全です。
+
+| 項目 | classic | fine-grained |
+| --- | --- | --- |
+| 対象リポジトリ | アクセスできる組織の全リポジトリに及ぶ | 特定のリポジトリだけに絞れる |
+| 権限 | 広いスコープ単位 | リソースごとに読み取り・書き込みを選べる |
+| 有効期限 | 任意（設定が強く推奨されている） | 作成時に設定する |
+
+渡すときは、環境変数 `GH_TOKEN` を使います。`gh` のマニュアルによると、`GH_TOKEN` は**保存済みの認証情報より優先されます**。自分の作業では普段のログインを使い、エージェントを起動するシェルにだけ絞ったトークンを渡す、という使い分けができます。トークンの値をファイルや履歴に残さない置き方は、[シークレットの章](/books/ai-agent-development/secrets)で扱っています。
+
 ## 評価で回す
 
 ツール設計は一発で決まりません。同記事が勧めているのは、**まず動くものを作ってローカルで試し、評価を用意してから変更の効果を測る**という進め方です。実際のユースケースから評価タスクを作り、プログラムとして実行し、エージェントの思考過程を分析して改善する、という反復です。
@@ -117,6 +209,10 @@ flowchart TB
 
 **説明文を後回しにする。** 動くようになった時点で満足しがちですが、説明文の改善は最も費用対効果の高い作業のひとつです。
 
+**`gh api` を許可リストに入れる。** 読み取りのつもりで許可しても、パラメータを1つ付けるだけで書き込みに変わります。
+
+**禁止ルールだけで守った気になる。** `gh pr merge` を禁止しても、`gh api` から同じ操作ができます。範囲を絞るのはトークンの権限です。
+
 ## ちゃんと使うためのポイント
 
 - MCPはAIアプリと外部システムをつなぐ標準。**サーバー側は1回作れば多くのクライアントで使える**
@@ -126,6 +222,8 @@ flowchart TB
 - 名前と説明文はプロンプト。**エラー応答には回復の手がかりを入れる**
 - **MCPサーバーは依存パッケージと同じ**。出所を確認し、権限を絞り、棚卸しする
 - ツールポイズニングは実在する攻撃で、**クライアント側の防御は当てにしない**
+- 外部サービスには、まず**既存のCLI**を検討する。GitHubなら `gh` で、PR・Issue・CIログまで扱える
+- `gh` は三要素を1つで揃える。禁止ルールには `gh api` という抜け道があるので、**最後の境界はトークンの権限**で引く
 - 評価を用意してから改善する
 
 次の章では、ここまでで整えた道具を使って、エージェント自身に成果を検証させる仕組みを作ります。良い道具は、エージェントが自分の間違いに気づくためにこそ効きます。
@@ -136,3 +234,8 @@ flowchart TB
 - [What is the Model Context Protocol?（公式）](https://modelcontextprotocol.io/docs/getting-started/intro) — MCPの定義とエコシステム
 - [MCP Tool Poisoning（OWASP）](https://owasp.org/www-community/attacks/MCP_Tool_Poisoning) — ツールポイズニングの定義と攻撃の流れ
 - [MCP Threat Modeling and Analyzing Vulnerabilities to Prompt Injection with Tool Poisoning（2026-03）](https://arxiv.org/abs/2603.22489) — クライアント別の耐性の差と、多層防御の提案
+- [Best practices for Claude Code（公式）](https://code.claude.com/docs/en/best-practices) — CLIツールがコンテキスト効率のよい手段であること、`gh` を入れる勧め
+- [Configure permissions（Claude Code 公式）](https://code.claude.com/docs/en/permissions) — 引数で絞るBashルールが壊れやすいことへの警告
+- [GitHub CLI マニュアル](https://cli.github.com/manual/) — `gh api` の既定メソッド、`GH_TOKEN` の優先順位、`gh auth setup-git`、`gh run view --log-failed`
+- [REST API endpoints for pull request review comments（GitHub）](https://docs.github.com/en/rest/pulls/comments) — レビューコメントと会話欄のコメントの違い
+- [Managing your personal access tokens（GitHub）](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) — fine-grainedとclassicの違い、fine-grainedの推奨
