@@ -10,7 +10,7 @@
 -- 論理削除（user.deletedAt）はアプリ側で弾く。
 --
 -- 適用方法（本番。手動で1回だけ）:
---   docker exec -i mysql mysql -u <user> -p myapp < 20261018_create_session.sql
+--   docker exec -i mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" myapp' < 20261018_create_session.sql
 
 CREATE TABLE IF NOT EXISTS `session` (
   `id` char(64) NOT NULL,
