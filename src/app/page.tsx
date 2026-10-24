@@ -308,100 +308,164 @@ const CATEGORIES: CategoryDef[] = [
   },
 ];
 
-const NEWS: { date: string; text: string; link?: string }[] = [
+const NEWS: { date: string; text: string; link?: string; images?: string[] }[] = [
+  {
+    date: '2026/10/24',
+    text: '教科書の解説にショート動画が入りました。バブルソートの動き（94秒）は「コーディングテスト突破ドリル」のソートと二分探索の章と「コンピュータサイエンスの基礎」のアルゴリズムの章に、Cookieが生まれた理由（85秒）は「HTTP & Web API入門」のヘッダーとCookieの章に載せています',
+    link: '/books/coding-test/08-sort-and-binary-search',
+    images: ['/images/news/short-bubble-sort.jpg', '/images/news/short-cookie.jpg'],
+  },
   {
     date: '2026/10/07',
     text: '教科書に音声解説を追加しました。まずは「React入門」のuseEffectの章で、章の要点をずんだもん（VOICEVOX）の音声で聞けます。タブを切り替えても、スマートフォンの画面をロックしても再生が続きます',
     link: '/books/react-learning/06-use-effect',
+    images: ['/images/books/voicevox-link-bg.png'],
   },
   {
     date: '2026/09/22',
     text: '教科書「MUI実践ガイド — Reactコンポーネントライブラリを使いこなす」を公開しました。sxによるスタイリング、テーマ設計、slotProps、ダークモード、Next.js App Router統合、Tailwind CSSとの共存まで全13章です。破壊的変更の多いv9を前提に、型定義と公式ドキュメントで裏を取った内容だけを載せています',
     link: '/books/mui',
+    images: ['/images/books/materialui.png'],
   },
   {
     date: '2026/08/30',
     text: '教科書「MySQL入門 — 接続・InnoDB・コネクションプールを実務目線で」を公開しました。MySQLがサーバーであること、SHOW PROCESSLISTでの接続確認、mysql2のコネクションプールまで、まず3章を公開し順次追加していきます',
     link: '/books/mysql',
+    images: ['/images/books/mysql.png'],
   },
   {
     date: '2026/08/25',
     text: '教科書「Zod入門 — TypeScriptで実行時の入力検証を型と一緒に書く」を公開しました。基本スキーマ、parseとsafeParseの違い、空文字やnullを通すかどうかの早見表、オブジェクトの検証まで、順次章を追加中です',
     link: '/books/zod',
+    images: ['/images/books/zod.png'],
   },
   {
     date: '2026/08/24',
     text: '教科書「AIエージェント開発の実務 — 原則と手札を分けて覚える」を公開しました。実行環境・権限設計・コンテキスト設計・検証ループ・チーム導入まで全20章です',
     link: '/books/ai-agent-development',
+    images: ['/images/books/ai-agent.png'],
   },
   {
     date: '2026/08/20',
     text: '教科書「C#入門 — .NETで動く言語の基礎」を公開しました。型・クラス・インターフェースからLINQ・null安全・非同期処理まで全14章です',
     link: '/books/csharp',
+    images: ['/images/books/csharp.png'],
   },
   {
     date: '2026/07/18',
     text: '教科書「AZ-900 合格とクラウドの基礎がわかるAzure入門」を公開しました。クラウドの概念からEntra ID・RBACまで順次章を追加中です',
     link: '/books/azure-az-900',
+    images: ['/images/books/azure-az-900.png'],
   },
   {
     date: '2026/07/16',
     text: '復習機能を強化しました。苦手な問題をまとめて解き直せる復習ページとヘッダーからの復習リンクを追加しています',
     link: '/quiz/review',
+    images: ['/images/deskwork_check_woman_color.png'],
   },
   {
     date: '2026/06/29',
     text: 'クイズのブックマーク機能を追加しました。気になる問題を保存して復習できます',
     link: '/quiz/bookmarks',
+    images: ['/images/phone_check.png'],
   },
   {
     date: '2026/06/26',
     text: '教科書コンテンツを全面リニューアルしました。図解や解説をより分かりやすく改善しています',
     link: '/books',
+    images: ['/images/readingbook_woman_color.png'],
   },
   {
     date: '2026/05/26',
     text: '教科書「システム設計をちゃんと理解する」を公開しました',
     link: '/books/system-design',
+    images: ['/images/planning_suit_man_color.png'],
   },
   {
     date: '2026/05/25',
     text: '教科書「JavaScriptをちゃんと理解する」を公開しました',
     link: '/books/javascript',
+    images: ['/images/books/javascript.png'],
   },
-  { date: '2026/04/29', text: 'SQLクイズを公開しました', link: '/quiz/sql-basic' },
+  {
+    date: '2026/04/29',
+    text: 'SQLクイズを公開しました',
+    link: '/quiz/sql-basic',
+    images: ['/images/marubatsu.png'],
+  },
   {
     date: '2026/04/21',
     text: '教科書「コンピュータサイエンスの基礎」を公開しました',
     link: '/books/cs-basics',
+    images: ['/images/idea_drawing_woman.png'],
   },
   {
     date: '2026/04/18',
     text: '教科書「Gitをちゃんと使う」「Next.jsを動かして学ぶ」を公開しました',
     link: '/books',
+    images: ['/images/books/git-basic.png', '/images/books/next-js.png'],
   },
-  { date: '2026/04/05', text: 'Linuxクイズを公開しました' },
+  {
+    date: '2026/04/05',
+    text: 'Linuxクイズを公開しました',
+    images: ['/images/marubatsu.png'],
+  },
   {
     date: '2026/04/04',
     text: 'サブスクリプション機能を準備中です。正式リリースまでもうしばらくお待ちください。',
     link: '/payment',
+    images: ['/images/plan_selection_man_color.png'],
   },
-  { date: '2026/04/01', text: 'Next.js・Dockerクイズを公開しました' },
+  {
+    date: '2026/04/01',
+    text: 'Next.js・Dockerクイズを公開しました',
+    images: ['/images/books/next-js.png', '/images/books/docker.png'],
+  },
   {
     date: '2026/03/01',
     text: 'TypeScript・セキュリティ・CS基礎クイズを公開しました',
+    images: ['/images/books/typescript.png'],
   },
   {
     date: '2026/02/28',
     text: 'Google認証を導入しました、サイトの利用をより便利に安心して行えます',
+    images: ['/images/oksign_man_color.png'],
   },
-  { date: '2026/02/25', text: '腕試しテスト機能を公開しました' },
-  { date: '2026/02/21', text: '学習記録・プロフィール機能を公開しました' },
-  { date: '2026/02/18', text: '解答履歴機能を公開しました' },
-  { date: '2026/02/15', text: 'AWS、Git、Nginxクイズを公開しました' },
-  { date: '2026/02/14', text: 'Vue、Node.jsクイズを公開しました' },
-  { date: '2026/02/08', text: 'HTML、CSS、JavaScript、Reactクイズを公開しました' },
-  { date: '2026/02/08', text: 'ウェブエンジニア問題集を開設しました' },
+  {
+    date: '2026/02/25',
+    text: '腕試しテスト機能を公開しました',
+    images: ['/images/toppa_suit_woman_color.png'],
+  },
+  {
+    date: '2026/02/21',
+    text: '学習記録・プロフィール機能を公開しました',
+    images: ['/images/stepup_suit_man_color-1.png'],
+  },
+  {
+    date: '2026/02/18',
+    text: '解答履歴機能を公開しました',
+    images: ['/images/search_woman_color.png'],
+  },
+  {
+    date: '2026/02/15',
+    text: 'AWS、Git、Nginxクイズを公開しました',
+    images: ['/images/books/logos_aws.png', '/images/books/git-basic.png'],
+  },
+  {
+    date: '2026/02/14',
+    text: 'Vue、Node.jsクイズを公開しました',
+    images: ['/images/books/nodejs.png'],
+  },
+  {
+    date: '2026/02/08',
+    text: 'HTML、CSS、JavaScript、Reactクイズを公開しました',
+    images: ['/images/books/html.png', '/images/books/css-basics.png'],
+  },
+  {
+    date: '2026/02/08',
+    text: 'ウェブエンジニア問題集を開設しました',
+    images: ['/images/site-mark.svg'],
+  },
 ];
 
 // タイトル・descriptionはルートlayoutを継承する。ここではトップ固有の

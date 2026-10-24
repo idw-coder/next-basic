@@ -298,16 +298,24 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
   'coding-test': [
     '計算量',
     'Big-O',
-    '二分探索',
+    '全探索',
+    'bit全探索',
+    '二つのポインタ',
     '尺取り法',
     '累積和',
+    'ソート',
+    'バブルソート',
+    '二分探索',
     'DFS',
     'BFS',
     '貪欲法',
+    '区間スケジューリング',
     'DP',
     'ナップサック',
-    'Union-Find',
+    'LIS',
     'ダイクストラ',
+    '優先度付きキュー',
+    'Union-Find',
   ],
 
   'github-actions': [
@@ -341,7 +349,20 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'スカッシュマージ',
   ],
 
-  'cs-basics': ['CPU', 'メモリ', 'データ構造', 'ネットワーク', 'SSH', 'デバッグ'],
+  'cs-basics': [
+    'CPU',
+    'メモリ',
+    'データ構造',
+    '計算量',
+    '線形探索',
+    '二分探索',
+    'バブルソート',
+    'マージソート',
+    'クイックソート',
+    'ネットワーク',
+    'SSH',
+    'デバッグ',
+  ],
 
   'next-js': [
     'use client',

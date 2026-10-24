@@ -10,6 +10,7 @@ import TailwindPreview from '@/app/books/_components/TailwindPreview';
 import QuizLink from '@/app/books/_components/QuizLink';
 import CodeBlock from '@/app/books/_components/CodeBlock';
 import AudioNarration from '@/app/books/_components/AudioNarration';
+import YouTubeShort from '@/app/books/_components/YouTubeShort';
 import { ScrollHintInitializer } from '@/components/ScrollHintInitializer';
 
 // MDX 内で <MermaidDiagram /> と記述するだけで自動的にこのコンポーネントが使われる。
@@ -52,6 +53,7 @@ const sharedComponents = {
   TailwindPreview,
   QuizLink,
   AudioNarration,
+  YouTubeShort,
   a: Anchor,
   table: ResponsiveTable,
   pre: CodeBlock,

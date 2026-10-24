@@ -251,6 +251,10 @@ Content-Type: application/json
 
 **Cookie** は、サーバーがブラウザに「この値を覚えておいて、次のリクエストで送り返して」と依頼する仕組みです。HTTPは本来ステートレス（状態を持たない）ですが、Cookieによって「ログイン状態」のような状態管理が可能になります。
 
+状態を持たないHTTPで、なぜCookieが必要になったのか。生まれた経緯は、こちらの短い動画で見られます。
+
+<YouTubeShort id="2AHB-v3qG-E" title="Cookieはなぜ生まれた？85秒でわかるWebの仕組み" caption="Cookieが生まれた理由とWebの仕組み（85秒）" />
+
 <MermaidDiagram chart={`
 sequenceDiagram
     participant B as ブラウザ
