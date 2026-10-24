@@ -3,7 +3,7 @@
 教科書（Books）機能の改善タスクを、別のAIセッションへコピペで委任するための指示書。
 優先度順（P1が最優先）。各コードブロックを丸ごと貼り、「添付」欄のファイルを一緒に渡す。
 
-> 整理メモ（2026-08-08）: Books 仕様の一次情報は `docs/books.md`。このファイルは委任用プロンプトと進捗履歴として使う。
+> 整理メモ（2026-08-08）: Books 仕様の一次情報は `docs/books.md`。このファイルは未完了タスクの委任用プロンプトとして使う。完了したタスクは削除する（経緯はgit履歴で追える）。
 
 ## 全タスク共通の注意（委任前に必ず伝える）
 
@@ -15,49 +15,12 @@
 
 ---
 
-## ✅ P1-a: 執筆中プレースホルダー章の noindex / sitemap除外 / バッジ表示（2026-07-03 完了）
-
-**モデル**: 安価〜中位 / **効果**: SEO大（thin content解消）+ UX大 / **工数**: 半日以下
-
-```
-docs/books.md 仕様の教科書サイト（Next.js App Router + Velite）で、
-本文が「この章は現在執筆中です」だけのプレースホルダー章が約20章公開されており、
-thin content としてSEOに悪影響なので draft 運用に切り替えたい。
-
-# やること
-1. velite.config.ts の chapters スキーマに draft: s.boolean().default(false) を追加し、
-   transform の出力にも含める
-2. grep -rl "この章は現在執筆中です" content/books/ で該当章を特定し、
-   各ファイルの frontmatter に draft: true を追加（本文は変更しない）
-3. 章ページ src/app/books/[bookSlug]/[chapterSlug]/page.tsx の generateMetadata で、
-   draft の章には robots: { index: false, follow: true } を返す
-4. src/app/sitemap.ts で draft の章を sitemap から除外する
-5. 章一覧に「執筆中」バッジ（グレーの小さいピル）を追加する。リンク自体は残す:
-   - src/app/books/_components/BookSidebar.tsx の章リスト
-   - 本トップ src/app/books/[bookSlug]/page.tsx の章一覧
-
-# 確認
-- npx tsc --noEmit が通る
-- draft 章のHTMLに <meta name="robots" content="noindex"> が出力される
-- /sitemap.xml に draft 章のURLが含まれない
-- サイドバーと本トップの両方でバッジが表示される
-
-# 制約
-- devサーバーが他で動いていないことを確認してから起動する（多重起動でveliteが壊れる）
-- 公開章（draft でない章）の挙動を一切変えないこと
-
-# 添付
-docs/books.md / velite.config.ts / 上記4〜5のファイル
-```
-
----
-
 ## P1-b: 未執筆章の執筆（1章ずつ委任）
 
 **モデル**: 高性能必須 / **効果**: SEO大（主要検索クエリの受け皿） / **工数**: 1章あたり数時間
 
 対象は `grep -rl "この章は現在執筆中です" content/books/` で最新を確認。
-2026-08-08 時点では draft プレースホルダーが 17 章残っている。
+2026-10-24 時点では draft プレースホルダーが 15 章残っている（docker 6・node-js 6・javascript 3）。
 
 **進捗**: `javascript/12-closures.mdx` ✅（2026-07-03執筆・公開済み。トーンの見本としてこの章も参照可）。
 執筆完了時のチェック: frontmatterの `draft: true` を削除 → noindexが外れsitemapに載る。章末に参考リンク＋QuizLinkを置く。draft章へのMarkdownリンクは張らない（執筆中ページに誘導しない）。
@@ -86,57 +49,6 @@ docs/books.md 仕様の教科書、JavaScript本の未執筆章を1章書いて�
 
 # 添付
 docs/books.md / 対象ファイル / content/books/javascript/07-arrays.mdx（トーン参考）
-```
-
----
-
-## ✅ P2: 章ページの JSON-LD（TechArticle + BreadcrumbList）（2026-07-03 完了）
-
-**モデル**: 安価〜中位 / **効果**: SEO中〜大（パンくずリッチリザルト） / **工数**: 小
-
-```
-docs/books.md 仕様の教科書で、章ページ
-src/app/books/[bookSlug]/[chapterSlug]/page.tsx に JSON-LD を追加してほしい。
-canonical / openGraph は実装済み。サイトURLは src/lib/site.ts の SITE_URL を import して使う。
-
-# やること
-1. BreadcrumbList: 教科書(/books) > 本タイトル(/books/{bookSlug}) > 章タイトル
-2. TechArticle: headline=章タイトル / description / inLanguage: 'ja' /
-   url は canonical と一致 / isPartOf で本を参照
-出力方式は src/app/books/page.tsx の既存 JSON-LD 実装（scriptタグ）に合わせる。
-frontmatter に draft: true がある章には出力しない（draft対応が未導入ならスキップでよい）。
-
-# 確認
-- 章ページのHTMLに application/ld+json が出力される
-- 構造が https://search.google.com/test/rich-results で解釈できる形になっている
-- npx tsc --noEmit が通る
-
-# 添付
-docs/books.md / 章ページ page.tsx / src/app/books/page.tsx / src/lib/site.ts
-```
-
----
-
-## ✅ P3: 章末クイズ導線（QuizLink）の一括挿入（2026-07-03 完了・126章）
-
-**モデル**: 安価でOK / **効果**: UX大（コア回遊の完成）+ 滞在時間 / **工数**: 小
-
-```
-docs/books.md 仕様の教科書で、章末にクイズへの導線を一括で入れてほしい。
-
-# やること
-1. src/lib/books.ts の categoryToBookMap で「対応クイズカテゴリがある本」を確認
-2. その本の公開章すべてについて、本文末尾（次章への橋渡し文の直前）に
-   <QuizLink category="対応カテゴリ" /> を挿入
-3. props は src/app/books/_components/QuizLink.tsx の実装を確認して合わせる
-
-# 制約
-- 既に QuizLink がある章、「この章は現在執筆中です」のプレースホルダー章はスキップ
-- 1章につき1つだけ。本文中には入れない
-- 挿入した章の一覧と、対応が無くスキップした本の一覧を報告する
-
-# 添付
-docs/books.md / src/lib/books.ts / QuizLink.tsx / mdx-content.tsx
 ```
 
 ---
@@ -173,35 +85,6 @@ content/books/javascript/08-string-methods.mdx が導入済みの見本。
 
 # 添付
 docs/books.md / 対象の本の全章
-```
-
----
-
-## ✅ P5: sitemap の lastModified 正確化（2026-08-08 確認済み）
-
-**モデル**: 中位（デプロイ環境の制約理解が必要） / **効果**: SEO中 / **工数**: 中
-
-`velite.config.ts` の `getUpdatedAt()` で git log / mtime から `updated` を作成し、`src/app/sitemap.ts` で章ページと本ページの `lastModified` に使用済み。
-
-```
-docs/books.md 仕様の教科書で、src/app/sitemap.ts が全URLに new Date() を返しており、
-Google が lastmod を信用しなくなるので、実際の更新日時を返すよう修正してほしい。
-
-# 方針
-- velite.config.ts の transform で各章に updated（ISO日時文字列）を追加
-- 取得は git log -1 --format=%cI -- <ファイルパス>。
-  ただし CI / Vercel は shallow clone で git 履歴が取れないことがあるため、
-  取得できない場合はファイルの mtime にフォールバックする
-- sitemap.ts では、章ページは updated を、本ページは所属章の updated の最大値を使う
-- クイズ・静的ページのエントリは変更しない
-
-# 確認
-- ローカルの /sitemap.xml で章ごとに異なる lastmod が出る
-- git 履歴が無い状態（別ディレクトリへの export 等）でもビルドが落ちない
-- npx tsc --noEmit が通る
-
-# 添付
-docs/books.md / velite.config.ts / src/app/sitemap.ts
 ```
 
 ---
