@@ -5,6 +5,7 @@ import {
   UserConflictError,
   UserNotFoundError,
   UserParamsError,
+  UserReferencedError,
   deleteAdminUser,
   updateAdminUser,
 } from '@/lib/server/users';
@@ -71,6 +72,10 @@ export async function DELETE(
 
     if (error instanceof UserNotFoundError) {
       return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+
+    if (error instanceof UserReferencedError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
     }
 
     console.error('Failed to delete user.', error);

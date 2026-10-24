@@ -60,6 +60,24 @@ export class UserNotFoundError extends Error {
   }
 }
 
+// 他のテーブルから参照されていて物理削除できないとき。
+// payment.userId の外部キーが ON DELETE NO ACTION のため、決済履歴があるユーザーは消せない。
+export class UserReferencedError extends Error {
+  constructor() {
+    super('決済履歴があるため削除できません');
+    this.name = 'UserReferencedError';
+  }
+}
+
+function isForeignKeyReferencedError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'ER_ROW_IS_REFERENCED_2'
+  );
+}
+
 function parseUserId(userIdInput: string | number): number {
   const userId = Number(userIdInput);
   if (!Number.isInteger(userId) || userId <= 0) {
@@ -225,13 +243,21 @@ async function deleteUserFromDb(userId: number, currentUserId: number): Promise<
 
   await getUserFromDb(userId);
 
-  const [result] = await getMysqlPool().query<ResultSetHeader>(
-    `
-      DELETE FROM \`user\`
-      WHERE id = ?
-    `,
-    [userId],
-  );
+  let result: ResultSetHeader;
+  try {
+    [result] = await getMysqlPool().query<ResultSetHeader>(
+      `
+        DELETE FROM \`user\`
+        WHERE id = ?
+      `,
+      [userId],
+    );
+  } catch (error) {
+    if (isForeignKeyReferencedError(error)) {
+      throw new UserReferencedError();
+    }
+    throw error;
+  }
 
   if (result.affectedRows === 0) {
     throw new UserNotFoundError();
@@ -282,7 +308,11 @@ export async function deleteAdminUser(
   try {
     return await deleteUserFromDb(userId, currentUserId);
   } catch (error) {
-    if (error instanceof UserParamsError || error instanceof UserNotFoundError) {
+    if (
+      error instanceof UserParamsError ||
+      error instanceof UserNotFoundError ||
+      error instanceof UserReferencedError
+    ) {
       throw error;
     }
 

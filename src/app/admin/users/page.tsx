@@ -137,11 +137,16 @@ export default function UserManagePage() {
       return;
     }
     if (!confirm(`「${user.name}」を削除しますか？`)) return;
-    await fetchNextApiJson<{ message: string }>(`/api/users/${user.id}`, {
-      auth: true,
-      method: 'DELETE',
-    });
-    setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    try {
+      await fetchNextApiJson<{ message: string }>(`/api/users/${user.id}`, {
+        auth: true,
+        method: 'DELETE',
+      });
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      alert(msg ?? '削除に失敗しました');
+    }
   };
 
   const renderActions = (user: User) => (
