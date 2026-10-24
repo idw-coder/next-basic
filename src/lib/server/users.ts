@@ -7,7 +7,6 @@ interface UserRow extends RowDataPacket {
   name: string;
   email: string;
   googleId: string | null;
-  emailVerified: number | boolean;
   stripeCustomerId: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
@@ -23,7 +22,6 @@ export interface AdminUser {
   name: string;
   email: string;
   googleId?: string;
-  emailVerified: boolean;
   stripeCustomerId?: string;
   createdAt: string;
   updatedAt: string;
@@ -86,7 +84,6 @@ function mapUserRow(row: UserRow): AdminUser {
     name: row.name,
     email: row.email,
     ...(row.googleId ? { googleId: row.googleId } : {}),
-    emailVerified: Boolean(Number(row.emailVerified)),
     ...(row.stripeCustomerId ? { stripeCustomerId: row.stripeCustomerId } : {}),
     createdAt: toIsoString(row.createdAt),
     updatedAt: toIsoString(row.updatedAt),
@@ -102,7 +99,6 @@ async function getUsersFromDb(): Promise<AdminUser[]> {
         u.name,
         u.email,
         u.googleId,
-        u.emailVerified,
         u.stripeCustomerId,
         u.createdAt,
         u.updatedAt,
@@ -127,7 +123,6 @@ async function getUserFromDb(userId: number): Promise<AdminUser> {
         u.name,
         u.email,
         u.googleId,
-        u.emailVerified,
         u.stripeCustomerId,
         u.createdAt,
         u.updatedAt,

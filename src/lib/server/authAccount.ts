@@ -10,7 +10,6 @@ interface AuthUserRow extends RowDataPacket {
   name: string;
   email: string;
   googleId: string | null;
-  emailVerified: number | boolean;
   stripeCustomerId: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
@@ -34,7 +33,6 @@ export interface AccountUser {
   name: string;
   email: string;
   googleId?: string;
-  emailVerified: boolean;
   stripeCustomerId?: string;
   createdAt: string;
   updatedAt: string;
@@ -82,7 +80,6 @@ function mapAccountUser(row: AuthUserRow): AccountUser {
     name: row.name,
     email: row.email,
     ...(row.googleId ? { googleId: row.googleId } : {}),
-    emailVerified: Boolean(Number(row.emailVerified)),
     ...(row.stripeCustomerId ? { stripeCustomerId: row.stripeCustomerId } : {}),
     createdAt: toIsoString(row.createdAt),
     updatedAt: toIsoString(row.updatedAt),
@@ -211,7 +208,6 @@ async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<AuthUserR
           u.name,
           u.email,
           u.googleId,
-          u.emailVerified,
           u.stripeCustomerId,
           u.createdAt,
           u.updatedAt,
@@ -238,7 +234,6 @@ async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<AuthUserR
             u.name,
             u.email,
             u.googleId,
-            u.emailVerified,
             u.stripeCustomerId,
             u.createdAt,
             u.updatedAt,
@@ -262,8 +257,8 @@ async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<AuthUserR
       const [insertResult] = await connection.query<ResultSetHeader>(
         `
           INSERT INTO \`user\`
-            (name, email, password, googleId, emailVerified, createdAt, updatedAt)
-          VALUES (?, ?, NULL, ?, TRUE, NOW(), NOW())
+            (name, email, googleId, createdAt, updatedAt)
+          VALUES (?, ?, ?, NOW(), NOW())
         `,
         [profile.name || email, email, profile.sub],
       );
@@ -283,7 +278,6 @@ async function findOrCreateGoogleUser(profile: GoogleProfile): Promise<AuthUserR
         `
           UPDATE \`user\`
           SET googleId = ?,
-              emailVerified = TRUE,
               updatedAt = NOW()
           WHERE id = ?
             AND deletedAt IS NULL
@@ -311,7 +305,6 @@ async function getAuthUserByGoogleId(googleId: string): Promise<AuthUserRow> {
         u.name,
         u.email,
         u.googleId,
-        u.emailVerified,
         u.stripeCustomerId,
         u.createdAt,
         u.updatedAt,
@@ -363,7 +356,6 @@ async function getAuthUserFromDb(userId: number | string): Promise<AuthUserRow> 
         u.name,
         u.email,
         u.googleId,
-        u.emailVerified,
         u.stripeCustomerId,
         u.createdAt,
         u.updatedAt,
