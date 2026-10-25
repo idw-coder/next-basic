@@ -21,13 +21,23 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/package*.json ./
+ENV NODE_ENV=production
+ENV PORT=3000
+# server.js は HOSTNAME で待ち受ける。Docker は HOSTNAME にコンテナIDを入れるため、全インターフェースを明示する
+ENV HOSTNAME=0.0.0.0
 
-RUN npm ci --only=production
+# output: 'standalone'（next.config.ts）で集めた実行用ファイルだけをコピーする。
+# 以前は npm ci --only=production + npm start で、起動時に next.config.ts を読むための typescript がなく、
+# Next.js がその場でインストールして1回目の起動が落ちていた（restart で2回目に動いていた）。
+# standalone では設定はビルド時に読み込み済みのため、typescript も npm ci も要らない。
+# static と public は standalone に含まれないので別にコピーする（Next.js 公式の with-docker と同じ）
+# .next/cache（ISRなど）を実行時に書くので、node ユーザーの持ち物にする
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/public ./public
+
+USER node
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

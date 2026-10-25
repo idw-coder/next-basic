@@ -20,6 +20,9 @@ class VeliteWebpackPlugin {
 }
 
 const nextConfig: NextConfig = {
+  // 本番の Docker イメージ用。ビルド時に、実行に要るファイルだけを .next/standalone に集める。
+  // 起動は `node server.js` で、node_modules の npm ci も typescript も要らない（Dockerfile 参照）
+  output: 'standalone',
   serverExternalPackages: ['mysql2'],
   webpack: (config) => {
     config.plugins.push(new VeliteWebpackPlugin());
