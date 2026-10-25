@@ -104,27 +104,22 @@ export default function HeaderNav({ books }: HeaderNavProps) {
 
   useEffect(() => {
     setOpen(false);
-    const token = localStorage.getItem('token');
 
-    if (!token) {
-      localStorage.removeItem('user');
-      setIsLoggedIn(false);
-      setUserEmail(null);
-      setIsAdmin(false);
-      return;
-    }
+    // 以前のログイン方式で localStorage に保存していた JWT（最大7日有効）とユーザー情報の控えを消す。
+    // もう使わないのに残すと、XSS で盗まれる危険（JWT）や古い role（控え）だけが残るため
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
 
+    // ログイン状態は httpOnly の session cookie で、画面の JavaScript からは見えない。
+    // そのため毎回 /api/auth/me に聞く（200ならログイン中、401なら未ログイン）
     let active = true;
 
     void (async () => {
       try {
-        const response = await fetchNextApiJson<MeResponse>('/api/auth/me', {
-          auth: true,
-        });
+        const response = await fetchNextApiJson<MeResponse>('/api/auth/me');
         if (!active) return;
 
         const role = response.role ?? 'user';
-        localStorage.setItem('user', JSON.stringify({ ...response.user, role }));
         setIsLoggedIn(true);
         setUserEmail(response.user.email);
         setIsAdmin(role === 'admin');

@@ -158,17 +158,11 @@ export default function QuizListPage() {
         params.set("category_id", String(selectedCategoryId));
       }
 
-      const headers = new Headers();
-      const token = localStorage.getItem("token");
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-      }
-
+      // ログイン状態は session cookie で送られる（同じサイトへの fetch はブラウザが自動で付ける）
       const res = await fetch(
         `/api/quiz/csv/export${params.size ? `?${params.toString()}` : ""}`,
         {
           cache: "no-store",
-          headers,
         },
       );
       if (!res.ok) {
@@ -207,7 +201,6 @@ export default function QuizListPage() {
         created_tags: string[];
         errors: string[];
       }>("/api/quiz/csv/import", {
-        auth: true,
         method: "POST",
         body: { csv: csvText },
       });
@@ -234,7 +227,6 @@ export default function QuizListPage() {
   const handleDelete = async (id: number) => {
     if (!confirm("削除しますか？")) return;
     await fetchNextApiJson<{ message: string }>(`/api/quiz/${id}`, {
-      auth: true,
       method: "DELETE",
     });
     setQuizzes((prev) => prev.filter((q) => q.id !== id));

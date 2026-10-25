@@ -1,5 +1,6 @@
+// ログイン状態は httpOnly の session cookie で送られる。同じサイトへの fetch はブラウザが自動で付けるため、
+// ここでヘッダーを足す必要はない（以前は localStorage の JWT を Authorization ヘッダーに付けていた）
 interface FetchNextApiJsonOptions {
-  auth?: boolean;
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
 }
@@ -18,13 +19,6 @@ export async function fetchNextApiJson<T>(
   options: FetchNextApiJsonOptions = {},
 ): Promise<T> {
   const headers = new Headers();
-
-  if (options.auth && typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-  }
 
   if (options.body !== undefined) {
     headers.set('Content-Type', 'application/json');

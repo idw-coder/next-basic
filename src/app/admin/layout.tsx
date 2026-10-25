@@ -44,24 +44,16 @@ export default function AdminLayout({
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      localStorage.removeItem("user");
-      router.replace("/login");
-      return;
-    }
-
+    // ログイン状態は httpOnly の session cookie で見えないため、/api/auth/me に聞く。
+    // 401（未ログイン）なら下の catch で /login へ送る
     let active = true;
 
     void (async () => {
       try {
-        const response = await fetchNextApiJson<MeResponse>("/api/auth/me", {
-          auth: true,
-        });
+        const response = await fetchNextApiJson<MeResponse>("/api/auth/me");
         if (!active) return;
 
         const role = response.role ?? "user";
-        localStorage.setItem("user", JSON.stringify({ ...response.user, role }));
 
         if (role !== "admin") {
           router.replace("/");
@@ -89,7 +81,10 @@ export default function AdminLayout({
     };
   }, [router]);
 
-  const handleSignout = () => {
+  const handleSignout = async () => {
+    // session cookie は httpOnly で画面から消せないため、サーバーに消してもらう。
+    // 失敗しても画面上はログアウトさせる（/login へ送る）
+    await fetchNextApiJson("/api/auth/logout", { method: "POST" }).catch(() => {});
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     router.push("/login");

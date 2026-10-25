@@ -110,7 +110,7 @@ export async function findSessionUser(token: string): Promise<AuthUser | null> {
   return {
     userId: Number(row.userId),
     email: row.email,
-    // JWT を発行していたとき（signToken）と同じく、role の行がなければ 'user' 扱い
+    // JWT を発行していたときと同じく、role の行がなければ 'user' 扱い
     role: row.role || 'user',
   };
 }

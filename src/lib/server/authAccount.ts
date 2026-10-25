@@ -1,9 +1,7 @@
 import { randomUUID } from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
-import jwt from 'jsonwebtoken';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
-import { getJwtSecret } from '@/lib/server/auth';
 import { getMysqlPool } from '@/lib/server/mysql';
 import { createSession } from '@/lib/server/session';
 
@@ -87,15 +85,6 @@ function mapAccountUser(row: AuthUserRow): AccountUser {
     updatedAt: toIsoString(row.updatedAt),
     ...(row.deletedAt ? { deletedAt: toIsoString(row.deletedAt) } : {}),
   };
-}
-
-function signToken(user: AuthUserRow, role: string): string {
-  return jwt.sign(
-    { userId: String(user.id), email: user.email, role },
-    // 秘密鍵は getJwtSecret() 経由で取る（未設定ならエラー。理由は auth.ts のコメント参照）
-    getJwtSecret(),
-    { expiresIn: '7d' },
-  );
 }
 
 function getFrontendUrl(request: Request): string {
@@ -335,12 +324,8 @@ export async function handleGoogleCallback(
   const profile = await fetchGoogleProfile(request, code);
   const user = await findOrCreateGoogleUser(profile);
   const sessionToken = await createSession(user.id);
-  const token = signToken(user, user.role || 'user');
+  // URL には何も載せない。ログイン状態は呼び出し側（コールバックのルート）がセットする session cookie で渡す
   const redirectUrl = new URL('/auth/callback', getFrontendUrl(request));
-
-  // 移行期間中は JWT も渡す。画面側はまだ URL の token を localStorage に保存してログインするため。
-  // 画面側を session cookie に切り替えたら、signToken とこの行を消す
-  redirectUrl.searchParams.set('token', token);
 
   return { redirectUrl, sessionToken };
 }

@@ -56,20 +56,14 @@ export default function UserManagePage() {
   const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      try {
-        setCurrentUserId(String(JSON.parse(stored).id));
-      } catch {
-        /* ignore */
-      }
-    }
+    // 自分の id は /api/auth/me から取る（以前は localStorage の user の控えを読んでいた）
+    fetchNextApiJson<{ user: { id: string } }>('/api/auth/me')
+      .then((res) => setCurrentUserId(String(res.user.id)))
+      .catch(() => {});
     (async () => {
       setLoading(true);
       try {
-        const res = await fetchNextApiJson<{ users: User[] }>('/api/users', {
-          auth: true,
-        });
+        const res = await fetchNextApiJson<{ users: User[] }>('/api/users');
         setUsers(res.users);
       } catch {
         setError('ユーザーの取得に失敗しました');
@@ -117,7 +111,6 @@ export default function UserManagePage() {
       if (email !== editTarget.email) params.email = email;
       if (editRole !== editTarget.role) params.role = editRole;
       const updated = await fetchNextApiJson<User>(`/api/users/${editTarget.id}`, {
-        auth: true,
         method: 'PATCH',
         body: params,
       });
@@ -139,7 +132,6 @@ export default function UserManagePage() {
     if (!confirm(`「${user.name}」を削除しますか？`)) return;
     try {
       await fetchNextApiJson<{ message: string }>(`/api/users/${user.id}`, {
-        auth: true,
         method: 'DELETE',
       });
       setUsers((prev) => prev.filter((u) => u.id !== user.id));

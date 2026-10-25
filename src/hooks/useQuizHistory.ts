@@ -16,11 +16,6 @@ interface QuizHistoryData {
 
 const STORAGE_KEY = "quiz_history";
 
-function isLoggedIn(): boolean {
-  if (typeof window === "undefined") return false;
-  return !!localStorage.getItem("token");
-}
-
 /**
  * localStorageから履歴を読み込み、QuizAnswer[]を返す
  */
@@ -59,7 +54,6 @@ export async function syncLocalHistoryToServer(): Promise<void> {
 
   try {
     await fetchNextApiJson<{ synced: number }>("/api/quiz/history/sync", {
-      auth: true,
       method: "POST",
       body: { answers: local },
     });
@@ -104,17 +98,19 @@ export function useQuizHistory() {
         return updated;
       });
 
-      if (isLoggedIn()) {
-        fetchNextApiJson<{ id: number } | { message: "already exists" }>(
-          "/api/quiz/history",
-          {
-            auth: true,
-            method: "POST",
-            body: newAnswer,
-          },
-        )
-          .catch((err) => console.error("Failed to save answer to server:", err));
-      }
+      // ログイン状態は httpOnly の session cookie で画面から見えないため、いつも送る。
+      // 未ログインなら 401 が返るだけで、回答は上の localStorage にだけ残る（ログイン時に sync で送られる）
+      fetchNextApiJson<{ id: number } | { message: "already exists" }>(
+        "/api/quiz/history",
+        {
+          method: "POST",
+          body: newAnswer,
+        },
+      )
+        .catch((err) => {
+          if ((err as { response?: { status?: number } }).response?.status === 401) return;
+          console.error("Failed to save answer to server:", err);
+        });
     },
     []
   );

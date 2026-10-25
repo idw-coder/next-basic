@@ -161,32 +161,33 @@ export default function ProfilePage() {
     [answers, categoryById],
   );
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    // session cookie は httpOnly で画面から消せないため、サーバーに消してもらう。
+    // 失敗しても画面上はログアウトさせる（/login へ送る）
+    await fetchNextApiJson('/api/auth/logout', { method: 'POST' }).catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     router.push('/login');
   }, [router]);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    // 未ログイン（401）なら handleLogout で /login へ送り、false を返す
+    const fetchUser = async (): Promise<boolean> => {
       try {
-        const res = await fetchNextApiJson<MeResponse>('/api/auth/me', {
-          auth: true,
-        });
+        const res = await fetchNextApiJson<MeResponse>('/api/auth/me');
         setUser(res.user);
         setRole(res.role ?? 'user');
-        localStorage.setItem('user', JSON.stringify(res.user));
+        return true;
       } catch (error) {
         console.error('Failed to fetch user:', error);
-        handleLogout();
+        void handleLogout();
+        return false;
       }
     };
 
     const fetchAnswers = async () => {
       try {
-        const answers = await fetchNextApiJson<QuizAnswerRecord[]>('/api/quiz/history', {
-          auth: true,
-        });
+        const answers = await fetchNextApiJson<QuizAnswerRecord[]>('/api/quiz/history');
         setAnswers(answers);
       } catch (error) {
         console.error('Failed to fetch quiz history:', error);
@@ -209,14 +210,13 @@ export default function ProfilePage() {
       }
     };
 
-    if (!localStorage.getItem('token')) {
-      router.replace('/login');
-    } else {
-      fetchUser();
+    // ログイン状態は httpOnly の session cookie で見えないため、/api/auth/me に聞いてから続ける
+    void fetchUser().then((loggedIn) => {
+      if (!loggedIn) return;
       fetchAnswers();
       fetchCategories();
-    }
-  }, [router, handleLogout]);
+    });
+  }, [handleLogout]);
 
   const avatarSvg = useMemo(() => {
     if (!user) return null;
@@ -258,13 +258,11 @@ export default function ProfilePage() {
       };
 
       const res = await fetchNextApiJson<MeResponse>('/api/auth/me', {
-        auth: true,
         method: 'PATCH',
         body: payload,
       });
       const updated: User = res.user;
       setUser(updated);
-      localStorage.setItem('user', JSON.stringify(updated));
       setSuccess('プロフィールを更新しました');
       setIsEditing(false);
     } catch (err: unknown) {

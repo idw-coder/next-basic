@@ -203,13 +203,17 @@ export default function QuizInteraction({
   const resultRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (!stored) return;
-    try {
-      setIsAdmin(JSON.parse(stored)?.role === 'admin');
-    } catch {
-      setIsAdmin(false);
-    }
+    // role は /api/auth/me から取る（以前は localStorage の user の控えを読んでいた）。未ログインなら 401 で false のまま
+    let active = true;
+    fetchNextApiJson<{ role?: string }>('/api/auth/me')
+      .then((res) => {
+        if (active) setIsAdmin(res.role === 'admin');
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -453,7 +457,6 @@ export default function QuizInteraction({
     setTagError(null);
     try {
       const created = await fetchNextApiJson<QuizTag>('/api/quiz/tags', {
-        auth: true,
         method: 'POST',
         body: { slug, name },
       });
@@ -474,7 +477,6 @@ export default function QuizInteraction({
     setTagError(null);
     try {
       const res = await fetchNextApiJson<QuizDetail>(`/api/quiz/${quiz.id}`, {
-        auth: true,
         method: 'PUT',
         body: { tags: selectedTagSlugs },
       });

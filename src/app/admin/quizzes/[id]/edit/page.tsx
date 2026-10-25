@@ -240,7 +240,6 @@ export default function QuizEditPage() {
     setCreatingTag(true);
     try {
       const created = await fetchNextApiJson<QuizTag>('/api/quiz/tags', {
-        auth: true,
         method: 'POST',
         body: {
           slug: tagSlug,
@@ -296,7 +295,6 @@ export default function QuizEditPage() {
       };
       if (isNew) {
         const quiz = await fetchNextApiJson<QuizForm & { id: number }>('/api/quiz', {
-          auth: true,
           method: 'POST',
           body: payload,
         });
@@ -304,7 +302,6 @@ export default function QuizEditPage() {
         router.replace(`/admin/quizzes/${quiz.id}/edit`);
       } else {
         await fetchNextApiJson<QuizForm>(`/api/quiz/${quizId.current}`, {
-          auth: true,
           method: 'PUT',
           body: payload,
         });

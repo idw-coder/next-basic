@@ -87,7 +87,6 @@ export default function QuizTagManagePage() {
     setCreating(true);
     try {
       const tag = await fetchNextApiJson<QuizTag>("/api/quiz/tags", {
-        auth: true,
         method: "POST",
         body: {
           slug: newSlug.trim(),
@@ -135,7 +134,6 @@ export default function QuizTagManagePage() {
 
         try {
           const createdTag = await fetchNextApiJson<QuizTag>("/api/quiz/tags", {
-            auth: true,
             method: "POST",
             body: tag,
           });
@@ -173,7 +171,6 @@ export default function QuizTagManagePage() {
     setSaving(true);
     try {
       const tag = await fetchNextApiJson<QuizTag>(`/api/quiz/tags/${id}`, {
-        auth: true,
         method: "PUT",
         body: {
           slug: editSlug.trim(),
@@ -198,7 +195,6 @@ export default function QuizTagManagePage() {
     try {
       const tagDetail = await fetchNextApiJson<QuizTagDetail>(
         `/api/quiz/tags/${tag.id}`,
-        { auth: true },
       );
       const quizCount = tagDetail.quizCount ?? 0;
       const confirmed =
@@ -214,7 +210,6 @@ export default function QuizTagManagePage() {
       await fetchNextApiJson<{ message: string; deletedId: number; detachedCount: number }>(
         `/api/quiz/tags/${tag.id}`,
         {
-          auth: true,
           method: "DELETE",
         },
       );

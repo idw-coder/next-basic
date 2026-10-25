@@ -48,7 +48,6 @@ export default function QuizCategoryManagePage() {
     setCreating(true);
     try {
       const category = await fetchNextApiJson<QuizCategory>("/api/quiz/categories", {
-        auth: true,
         method: "POST",
         body: {
           slug: newSlug.trim(),
@@ -87,7 +86,6 @@ export default function QuizCategoryManagePage() {
       const category = await fetchNextApiJson<QuizCategory>(
         `/api/quiz/categories/${id}`,
         {
-          auth: true,
           method: "PUT",
           body: {
             slug: editSlug.trim(),
@@ -112,7 +110,6 @@ export default function QuizCategoryManagePage() {
     setError(null);
     try {
       await fetchNextApiJson<{ message: string }>(`/api/quiz/categories/${id}`, {
-        auth: true,
         method: "DELETE",
       });
       setCategories((prev) => prev.filter((c) => c.id !== id));

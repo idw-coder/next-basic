@@ -102,7 +102,17 @@ export default function SubscriptionClient() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem('token'));
+    // ログイン状態は httpOnly の session cookie で見えないため、/api/auth/me に聞く（401なら未ログインのまま）
+    let active = true;
+    fetchNextApiJson('/api/auth/me')
+      .then(() => {
+        if (active) setIsLoggedIn(true);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleSubscribe = async (plan: Plan) => {
@@ -120,7 +130,6 @@ export default function SubscriptionClient() {
     try {
       setLoadingPlan(plan.id);
       const res = await fetchNextApiJson<CheckoutSessionResponse>('/api/payment/subscription', {
-        auth: true,
         method: 'POST',
         body: {
           plan: plan.planKey,
@@ -144,7 +153,6 @@ export default function SubscriptionClient() {
     try {
       setPortalLoading(true);
       const res = await fetchNextApiJson<PortalSessionResponse>('/api/payment/portal', {
-        auth: true,
         method: 'POST',
       });
       if (res.url) {
@@ -164,7 +172,7 @@ export default function SubscriptionClient() {
   // 取得できるまでは「準備中」として扱う
   const [config, setConfig] = useState<PaymentConfigResponse | null>(null);
   useEffect(() => {
-    fetchNextApiJson<PaymentConfigResponse>('/api/payment/config', { auth: true })
+    fetchNextApiJson<PaymentConfigResponse>('/api/payment/config')
       .then(setConfig)
       .catch(() => setConfig(null));
   }, []);

@@ -31,7 +31,6 @@ export default function SuccessContent() {
       try {
         const res = await fetchNextApiJson<PaymentStatusResponse>(
           `/api/payment/status/${sessionId}`,
-          { auth: true },
         );
         setPayment(res.payment);
       } catch {
