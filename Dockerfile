@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 # 本番ステージへコピーすると巨大レイヤーになりGHCRへのpushが失敗しやすくなるため、ここで削除する。
 RUN npm run build && rm -rf .next/cache
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
