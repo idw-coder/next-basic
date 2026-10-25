@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { ConfidentialClientApplication, CryptoProvider } from '@azure/msal-node';
 import { OAuth2Client } from 'google-auth-library';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
@@ -62,6 +63,19 @@ export class GoogleAuthError extends Error {
   constructor(message = 'Google login failed') {
     super(message);
     this.name = 'GoogleAuthError';
+  }
+}
+
+// ログイン画面に出し分けるための失敗理由。/login?error=microsoft_<reason> になる（failed は error=microsoft）
+export type MicrosoftAuthFailureReason = 'failed' | 'no_email' | 'email_taken';
+
+export class MicrosoftAuthError extends Error {
+  reason: MicrosoftAuthFailureReason;
+
+  constructor(message = 'Microsoft login failed', reason: MicrosoftAuthFailureReason = 'failed') {
+    super(message);
+    this.name = 'MicrosoftAuthError';
+    this.reason = reason;
   }
 }
 
@@ -325,6 +339,224 @@ export async function handleGoogleCallback(
   const user = await findOrCreateGoogleUser(profile);
   const sessionToken = await createSession(user.id);
   // URL には何も載せない。ログイン状態は呼び出し側（コールバックのルート）がセットする session cookie で渡す
+  const redirectUrl = new URL('/auth/callback', getFrontendUrl(request));
+
+  return { redirectUrl, sessionToken };
+}
+
+// 個人の Microsoft アカウントと、組織（職場・学校）のアカウントの両方を受け付ける
+const MICROSOFT_AUTHORITY = 'https://login.microsoftonline.com/common';
+// email を付けないと、IDトークンに email クレームが入らない
+const MICROSOFT_SCOPES = ['openid', 'profile', 'email'];
+// 認可リクエストとコールバックのあいだで、state・nonce・PKCE の code_verifier を持ち回る cookie
+export const MICROSOFT_OAUTH_COOKIE_NAME = 'microsoft_oauth';
+
+interface MicrosoftProfile {
+  homeAccountId: string;
+  email: string;
+  name?: string;
+}
+
+function getMicrosoftCallbackUrl(request: Request): string {
+  return (
+    process.env.NEXT_MICROSOFT_CALLBACK_URL ||
+    new URL('/api/auth/microsoft/callback', request.url).toString()
+  );
+}
+
+/**
+ * MSAL のクライアントを作る。
+ * トークンは保存しない（ログインした人を特定したら捨てる）ので、リクエストごとに作って捨てる。
+ * 1つを使い回すと、ログインした全員分のトークンが MSAL のメモリキャッシュに溜まっていく。
+ */
+function createMicrosoftClient(): ConfidentialClientApplication {
+  const clientId = process.env.MICROSOFT_CLIENT_ID;
+  const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new MicrosoftAuthError('Microsoft OAuth environment variables are not configured');
+  }
+
+  return new ConfidentialClientApplication({
+    auth: { clientId, clientSecret, authority: MICROSOFT_AUTHORITY },
+  });
+}
+
+export async function createMicrosoftAuthorization(request: Request): Promise<{
+  url: string;
+  oauthCookieValue: string;
+}> {
+  const client = createMicrosoftClient();
+  const { verifier, challenge } = await new CryptoProvider().generatePkceCodes();
+  const state = randomUUID();
+  const nonce = randomUUID();
+
+  const url = await client.getAuthCodeUrl({
+    scopes: MICROSOFT_SCOPES,
+    redirectUri: getMicrosoftCallbackUrl(request),
+    state,
+    nonce,
+    codeChallenge: challenge,
+    codeChallengeMethod: 'S256',
+    // 複数の Microsoft アカウントを持つ人が、どれでログインするか選べるようにする
+    prompt: 'select_account',
+  });
+
+  // state・nonce は UUID、verifier は base64url なので、どれも '.' を含まない
+  return { url, oauthCookieValue: [state, nonce, verifier].join('.') };
+}
+
+/**
+ * 認可コードをトークンに交換し、IDトークンからプロフィールを取り出す。
+ *
+ * IDトークンは MSAL が Microsoft のトークンエンドポイントから TLS で直接受け取ったもので、
+ * MSAL は署名の検証はしない（OpenID Connect の仕様上、TLSで直接受け取ったIDトークンは署名検証を省ける）。
+ * nonce は MSAL が照合する（不一致なら例外）。PKCE の code_verifier は Microsoft 側で照合される。
+ */
+async function fetchMicrosoftProfile(
+  request: Request,
+  code: string,
+  nonce: string,
+  codeVerifier: string,
+): Promise<MicrosoftProfile> {
+  const client = createMicrosoftClient();
+  const result = await client.acquireTokenByCode({
+    code,
+    scopes: MICROSOFT_SCOPES,
+    redirectUri: getMicrosoftCallbackUrl(request),
+    nonce,
+    codeVerifier,
+  });
+
+  // homeAccountId は `<oid>.<tid>`（ホームテナント基準）。oid はテナントごとに違う値なので、oid 単体ではキーにしない
+  const homeAccountId = result.account?.homeAccountId;
+  if (!homeAccountId) {
+    throw new MicrosoftAuthError();
+  }
+
+  const claims = result.idTokenClaims as { email?: unknown; name?: unknown };
+  const email = typeof claims.email === 'string' ? claims.email.trim() : '';
+  // user.email は必須なので、メールアドレスのないアカウント（組織でメールボックスがない人など）は受け付けない
+  if (!email) {
+    throw new MicrosoftAuthError('Microsoft account does not have an email address', 'no_email');
+  }
+
+  return {
+    homeAccountId,
+    email,
+    ...(typeof claims.name === 'string' && claims.name ? { name: claims.name } : {}),
+  };
+}
+
+/**
+ * microsoftId で既存ユーザーを探し、いなければ新規作成して、ユーザーIDを返す。
+ *
+ * Google と違い、メールアドレスで既存ユーザーに紐付けない。
+ * Microsoft の email クレームは、組織のテナント管理者が自由に設定でき、持ち主の確認も保証されない。
+ * 公式ドキュメントも「認可やユーザーの特定に使わない」としている
+ * （https://learn.microsoft.com/en-us/entra/identity-platform/claims-validation）。
+ * メールで紐付けると、他人のアドレスを設定した組織アカウントで、その人（管理者を含む）として
+ * ログインできてしまう。
+ *
+ * user.email は UNIQUE なので、同じメールのユーザーがすでにいるときは新規作成もできない。
+ * そのときはログインを断り、元の方法（Google）でログインしてもらう。
+ * 削除済み（deletedAt あり）の行も UNIQUE にかかるため、メールの照合では deletedAt を見ない。
+ */
+async function findOrCreateMicrosoftUser(profile: MicrosoftProfile): Promise<number | string> {
+  const connection = await getMysqlPool().getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [microsoftRows] = await connection.query<IdRow[]>(
+      `
+        SELECT id
+        FROM \`user\`
+        WHERE microsoftId = ?
+          AND deletedAt IS NULL
+        LIMIT 1
+      `,
+      [profile.homeAccountId],
+    );
+
+    if (microsoftRows[0]) {
+      await connection.commit();
+      return microsoftRows[0].id;
+    }
+
+    const [emailRows] = await connection.query<IdRow[]>(
+      `
+        SELECT id
+        FROM \`user\`
+        WHERE email = ?
+        LIMIT 1
+      `,
+      [profile.email],
+    );
+
+    if (emailRows[0]) {
+      throw new MicrosoftAuthError(
+        'Email address is already registered with another login method',
+        'email_taken',
+      );
+    }
+
+    const [insertResult] = await connection.query<ResultSetHeader>(
+      `
+        INSERT INTO \`user\`
+          (name, email, microsoftId, createdAt, updatedAt)
+        VALUES (?, ?, ?, NOW(), NOW())
+      `,
+      [profile.name || profile.email, profile.email, profile.homeAccountId],
+    );
+
+    const userId = Number(insertResult.insertId);
+
+    await connection.query(
+      `
+        INSERT INTO user_meta
+          (userId, metaKey, metaValue, createdAt, updatedAt)
+        VALUES (?, 'role', 'user', NOW(), NOW())
+      `,
+      [userId],
+    );
+
+    await connection.commit();
+
+    return userId;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export function getMicrosoftFailureRedirect(
+  request: Request,
+  reason: MicrosoftAuthFailureReason = 'failed',
+): URL {
+  const error = reason === 'failed' ? 'microsoft' : `microsoft_${reason}`;
+  return new URL(`/login?error=${error}`, getFrontendUrl(request));
+}
+
+export async function handleMicrosoftCallback(
+  request: Request,
+  params: { code: string | null; state: string | null; oauthCookieValue: string | null },
+): Promise<{ redirectUrl: URL; sessionToken: string }> {
+  const [expectedState, nonce, codeVerifier] = params.oauthCookieValue?.split('.') ?? [];
+
+  if (!params.code || !params.state || !expectedState || !nonce || !codeVerifier) {
+    throw new MicrosoftAuthError();
+  }
+  if (params.state !== expectedState) {
+    throw new MicrosoftAuthError();
+  }
+
+  const profile = await fetchMicrosoftProfile(request, params.code, nonce, codeVerifier);
+  const userId = await findOrCreateMicrosoftUser(profile);
+  const sessionToken = await createSession(userId);
+  // Google と同じく、ログイン状態は呼び出し側がセットする session cookie で渡す
   const redirectUrl = new URL('/auth/callback', getFrontendUrl(request));
 
   return { redirectUrl, sessionToken };

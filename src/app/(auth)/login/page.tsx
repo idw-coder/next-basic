@@ -1,10 +1,35 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
+
+// ログインのコールバックが失敗したとき /login?error=... に戻ってくる。値は src/lib/server/authAccount.ts
+const LOGIN_ERROR_MESSAGES: Record<string, string> = {
+  google: "Googleでのログインに失敗しました。もう一度お試しください。",
+  microsoft: "Microsoftでのログインに失敗しました。もう一度お試しください。",
+  microsoft_no_email:
+    "このMicrosoftアカウントにはメールアドレスがないため、ログインできません。",
+  microsoft_email_taken:
+    "このメールアドレスは別のログイン方法で登録されています。Googleでログインしてください。",
+};
+
+function LoginError() {
+  const error = useSearchParams().get("error");
+  const message = error ? LOGIN_ERROR_MESSAGES[error] : undefined;
+  if (!message) return null;
+
+  return (
+    <p role="alert" className="text-sm text-red-500 dark:text-red-400">
+      {message}
+    </p>
+  );
+}
 
 // ログイン手段はOAuthのみ。プロバイダを足すときはボタンを並べる
 export default function LoginPage() {
@@ -13,6 +38,9 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardContent>
           <div className="space-y-3">
+            <Suspense fallback={null}>
+              <LoginError />
+            </Suspense>
             <p className="text-sm text-gray-500">初めての方も、そのまま無料で登録できます。</p>
             <Button
               type="button"
@@ -41,6 +69,22 @@ export default function LoginPage() {
                 />
               </svg>
               Googleでログイン
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                window.location.href = "/api/auth/microsoft";
+              }}
+            >
+              <svg className="mr-2 h-4 w-4" viewBox="0 0 21 21" aria-hidden="true">
+                <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+              </svg>
+              Microsoftでログイン
             </Button>
           </div>
         </CardContent>
