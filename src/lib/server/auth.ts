@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 
+import { findSessionUser, getSessionToken } from '@/lib/server/session';
+
 const ROLE_ORDER: Record<string, number> = {
   user: 0,
   editor: 1,
@@ -66,7 +68,26 @@ function getBearerToken(request: Request): string {
   return token;
 }
 
-export function verifyAuth(request: Request): AuthUser {
+/**
+ * ログイン中のユーザーを返す。ログインしていなければ AuthError（401）を投げる。
+ *
+ * session cookie を先に見て、DB の session 行から user と role を引く。
+ * role を毎回 DB から読むので、管理画面での変更やユーザー削除は次のリクエストから反映される。
+ *
+ * 移行期間中は、cookie で判定できなければ従来の Authorization ヘッダーの JWT も受け付ける。
+ * 画面側がまだ localStorage の JWT を送っているため。画面側を切り替えたら verifyJwt ごと消す。
+ */
+export async function verifyAuth(request: Request): Promise<AuthUser> {
+  const sessionToken = getSessionToken(request);
+  if (sessionToken) {
+    const user = await findSessionUser(sessionToken);
+    if (user) return user;
+  }
+
+  return verifyJwt(request);
+}
+
+function verifyJwt(request: Request): AuthUser {
   // try の外で取得する。中で取得すると、JWT_SECRETの設定漏れが下の catch で
   // 「トークンが無効です（401）」に化けて気づけないため。500として表に出す。
   const secret = getJwtSecret();

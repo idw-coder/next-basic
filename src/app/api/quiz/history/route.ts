@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     const { answers } = await getQuizHistory(user.userId);
 
     return NextResponse.json(answers);
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     const result = await addQuizHistoryAnswer(
       user.userId,
       await request.json(),

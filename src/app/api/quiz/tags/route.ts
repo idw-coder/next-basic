@@ -23,7 +23,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'editor');
 
     const result = await createQuizTag(await request.json());

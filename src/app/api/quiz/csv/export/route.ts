@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    verifyAuth(request);
+    await verifyAuth(request);
 
     const url = new URL(request.url);
     const result = await exportQuizCsv(url.searchParams.get('category_id'));

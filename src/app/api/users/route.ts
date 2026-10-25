@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'admin');
 
     const result = await getAdminUsers();

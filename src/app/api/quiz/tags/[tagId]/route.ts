@@ -20,7 +20,7 @@ export async function GET(
   const { tagId } = await params;
 
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'editor');
 
     const { tag } = await getQuizTagDetail(tagId);
@@ -55,7 +55,7 @@ export async function PUT(
   const { tagId } = await params;
 
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'editor');
 
     const result = await updateQuizTag(
@@ -93,7 +93,7 @@ export async function DELETE(
   const { tagId } = await params;
 
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'editor');
 
     const result = await deleteQuizTag(tagId);

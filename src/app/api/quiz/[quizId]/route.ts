@@ -50,7 +50,7 @@ export async function PUT(
   const { quizId } = await params;
 
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'editor');
 
     const result = await updateQuiz(
@@ -90,7 +90,7 @@ export async function DELETE(
   const { quizId } = await params;
 
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'editor');
 
     const result = await deleteQuiz(quizId);

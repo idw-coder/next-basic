@@ -5,6 +5,7 @@ import {
   getGoogleFailureRedirect,
   handleGoogleCallback,
 } from '@/lib/server/authAccount';
+import { SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from '@/lib/server/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,8 +35,10 @@ export async function GET(request: Request) {
       throw new GoogleAuthError();
     }
 
-    const redirectUrl = await handleGoogleCallback(request, code);
+    const { redirectUrl, sessionToken } = await handleGoogleCallback(request, code);
     const response = NextResponse.redirect(redirectUrl);
+
+    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
 
     response.cookies.set('google_oauth_state', '', {
       maxAge: 0,

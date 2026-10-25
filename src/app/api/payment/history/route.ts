@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     const result = await getPaymentHistory(user.userId, request.url);
 
     return NextResponse.json(result.body);

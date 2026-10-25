@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 import { getJwtSecret } from '@/lib/server/auth';
 import { getMysqlPool } from '@/lib/server/mysql';
+import { createSession } from '@/lib/server/session';
 
 interface AuthUserRow extends RowDataPacket {
   id: number | string;
@@ -126,65 +128,58 @@ function getGoogleOAuthConfig(request: Request): {
   };
 }
 
+function createGoogleOAuthClient(request: Request): { client: OAuth2Client; clientId: string } {
+  const { clientId, clientSecret, callbackUrl } = getGoogleOAuthConfig(request);
+
+  return {
+    client: new OAuth2Client({ clientId, clientSecret, redirectUri: callbackUrl }),
+    clientId,
+  };
+}
+
 export function createGoogleAuthorization(request: Request): {
   url: string;
   state: string;
 } {
-  const { clientId, callbackUrl } = getGoogleOAuthConfig(request);
+  const { client } = createGoogleOAuthClient(request);
   const state = randomUUID();
-  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-
-  url.searchParams.set('client_id', clientId);
-  url.searchParams.set('redirect_uri', callbackUrl);
-  url.searchParams.set('response_type', 'code');
-  url.searchParams.set('scope', 'email profile');
-  url.searchParams.set('state', state);
 
   return {
-    url: url.toString(),
+    // openid を付けると、コード交換の応答に IDトークンが入る（fetchGoogleProfile で検証して使う）
+    url: client.generateAuthUrl({ scope: ['openid', 'email', 'profile'], state }),
     state,
   };
 }
 
-async function exchangeGoogleCodeForAccessToken(
-  request: Request,
-  code: string,
-): Promise<string> {
-  const { clientId, clientSecret, callbackUrl } = getGoogleOAuthConfig(request);
-  const params = new URLSearchParams({
-    code,
-    client_id: clientId,
-    client_secret: clientSecret,
-    redirect_uri: callbackUrl,
-    grant_type: 'authorization_code',
-  });
+/**
+ * 認可コードをトークンに交換し、IDトークンを検証してプロフィールを取り出す。
+ * IDトークンは Google の署名・発行者・宛先（audience = 自分の clientId）・期限をライブラリが検証する。
+ * 以前は access_token で userinfo API をもう一度呼んでいたが、IDトークンに同じ項目が入っているため不要。
+ */
+async function fetchGoogleProfile(request: Request, code: string): Promise<GoogleProfile> {
+  const { client, clientId } = createGoogleOAuthClient(request);
+  const { tokens } = await client.getToken(code);
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params,
-  });
-
-  const body = (await res.json()) as { access_token?: string };
-  if (!res.ok || !body.access_token) {
+  if (!tokens.id_token) {
     throw new GoogleAuthError();
   }
 
-  return body.access_token;
-}
-
-async function fetchGoogleProfile(accessToken: string): Promise<GoogleProfile> {
-  const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  const profile = (await res.json()) as GoogleProfile;
-  if (!res.ok || !profile.sub || !profile.email) {
+  const ticket = await client.verifyIdToken({ idToken: tokens.id_token, audience: clientId });
+  const profile = ticket.getPayload();
+  if (!profile?.sub || !profile.email) {
     throw new GoogleAuthError();
+  }
+
+  // メールアドレスが確認済み（email_verified: true）のGoogleアカウントしか受け付けない。
+  //
+  // findOrCreateGoogleUser は、Googleの sub で見つからないとき、同じメールアドレスの既存ユーザーに紐付ける。
+  // Googleアカウントは Gmail 以外のアドレス（例: taro@example.com）でも作れ、作った時点では
+  // そのアドレスの持ち主か確認されていないことがある（そのとき Google は email_verified: false を返す）。
+  // この確認をしないと、他人のアドレスでGoogleアカウントを作るだけで、そのユーザー（管理者を含む）として
+  // ログインできてしまう。未確認のまま新規作成させると、本人が後から登録したときに乗っ取られる。
+  // Gmail のアドレスは常に確認済みなので、通常のユーザーには影響しない
+  if (profile.email_verified !== true) {
+    throw new GoogleAuthError('Google account email is not verified');
   }
 
   return profile;
@@ -336,16 +331,18 @@ export function getGoogleFailureRedirect(request: Request): URL {
 export async function handleGoogleCallback(
   request: Request,
   code: string,
-): Promise<URL> {
-  const accessToken = await exchangeGoogleCodeForAccessToken(request, code);
-  const profile = await fetchGoogleProfile(accessToken);
+): Promise<{ redirectUrl: URL; sessionToken: string }> {
+  const profile = await fetchGoogleProfile(request, code);
   const user = await findOrCreateGoogleUser(profile);
+  const sessionToken = await createSession(user.id);
   const token = signToken(user, user.role || 'user');
   const redirectUrl = new URL('/auth/callback', getFrontendUrl(request));
 
+  // 移行期間中は JWT も渡す。画面側はまだ URL の token を localStorage に保存してログインするため。
+  // 画面側を session cookie に切り替えたら、signToken とこの行を消す
   redirectUrl.searchParams.set('token', token);
 
-  return redirectUrl;
+  return { redirectUrl, sessionToken };
 }
 
 async function getAuthUserFromDb(userId: number | string): Promise<AuthUserRow> {

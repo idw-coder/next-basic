@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const authUser = verifyAuth(request);
+    const authUser = await verifyAuth(request);
     const result = await getMe(authUser.userId);
 
     return NextResponse.json(result.body);
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const authUser = verifyAuth(request);
+    const authUser = await verifyAuth(request);
     const result = await updateMe(authUser.userId, await request.json());
 
     return NextResponse.json(result.body);

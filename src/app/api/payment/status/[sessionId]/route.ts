@@ -13,7 +13,7 @@ export async function GET(
   const { sessionId } = await params;
 
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     const result = await getPaymentStatus(user.userId, sessionId);
 
     return NextResponse.json(result.body);

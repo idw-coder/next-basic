@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     const result = await syncQuizHistory(
       user.userId,
       await request.json(),

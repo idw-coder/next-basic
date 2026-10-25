@@ -20,7 +20,7 @@ export async function PATCH(
   const { userId } = await params;
 
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'admin');
 
     const result = await updateAdminUser(userId, await request.json());
@@ -55,7 +55,7 @@ export async function DELETE(
   const { userId } = await params;
 
   try {
-    const user = verifyAuth(request);
+    const user = await verifyAuth(request);
     requireRole(user, 'admin');
 
     const result = await deleteAdminUser(userId, user.userId);
