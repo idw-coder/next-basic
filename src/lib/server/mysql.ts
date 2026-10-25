@@ -12,7 +12,7 @@ import mysql, { type Pool } from 'mysql2/promise';
 // 経路が違うだけで結果は同じなので、このコードは両方の環境で共通に動く。
 //
 // 認証情報を compose に直書きしないのは、それが git 追跡下に入るため。
-// 詳細は docs/technical/todo.md を参照。
+// 詳細は docs/technical/known-issues.md を参照。
 
 const globalForMysql = globalThis as typeof globalThis & {
   mysqlPool?: Pool;

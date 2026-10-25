@@ -3,7 +3,7 @@
 教科書（Books）機能の改善タスクを、別のAIセッションへコピペで委任するための指示書。
 優先度順（P1が最優先）。各コードブロックを丸ごと貼り、「添付」欄のファイルを一緒に渡す。
 
-> 整理メモ（2026-08-08）: Books 仕様の一次情報は `docs/books.md`。このファイルは未完了タスクの委任用プロンプトとして使う。完了したタスクは削除する（経緯はgit履歴で追える）。
+> 整理メモ（2026-08-08）: Books 仕様の一次情報は `docs/books/guide.md`。このファイルは未完了タスクの委任用プロンプトとして使う。完了したタスクは削除する（経緯はgit履歴で追える）。
 
 ## 全タスク共通の注意（委任前に必ず伝える）
 
@@ -26,14 +26,14 @@
 執筆完了時のチェック: frontmatterの `draft: true` を削除 → noindexが外れsitemapに載る。章末に参考リンク＋QuizLinkを置く。draft章へのMarkdownリンクは張らない（執筆中ページに誘導しない）。
 
 ```
-docs/books.md 仕様の教科書、JavaScript本の未執筆章を1章書いてほしい。
+docs/books/guide.md 仕様の教科書、JavaScript本の未執筆章を1章書いてほしい。
 
 # 対象
 ファイル: content/books/javascript/[ここに指定。例: 12-closures.mdx]
 （現在は「執筆中」プレースホルダー。frontmatter の title / description / order は維持）
 
-# 守ること（docs/books.md の規約。必ず読んでから書くこと）
-- 規約は3層（必須/原則/裁量）。docs/books.md「規約の優先度」の節に従い、
+# 守ること（docs/books/guide.md の規約。必ず読んでから書くこと）
+- 規約は3層（必須/原則/裁量）。docs/books/guide.md「規約の優先度」の節に従い、
   吹き出しや図を規定数合わせで入れない。最優先は検索意図に答える中身の正確さ
 - H1なし・H2始まり。手書きの「## 目次」は入れない（自動TOCが表示される）
 - メソッド・APIの解説には「構文」「引数の表」「戻り値」を必ず明示（MDN代替の粒度）
@@ -48,7 +48,7 @@ docs/books.md 仕様の教科書、JavaScript本の未執筆章を1章書いて�
 - 完成したら frontmatter の draft: true を削除する（無ければ何もしない）
 
 # 添付
-docs/books.md / 対象ファイル / content/books/javascript/07-arrays.mdx（トーン参考）
+docs/books/guide.md / 対象ファイル / content/books/javascript/07-arrays.mdx（トーン参考）
 ```
 
 ---
@@ -65,7 +65,7 @@ docs/books.md / 対象ファイル / content/books/javascript/07-arrays.mdx（�
 React=ja.react.dev、Next.js=nextjs.org/docs。
 
 ```
-docs/books.md の「外部公式ドキュメントへのリンク」の節に厳密に従い、
+docs/books/guide.md の「外部公式ドキュメントへのリンク」の節に厳密に従い、
 content/books/[ここに指定。例: typescript]/ の公開章に公式ドキュメントへの
 参考リンクを追加してほしい。
 
@@ -84,7 +84,7 @@ content/books/[ここに指定。例: typescript]/ の公開章に公式ドキ�
 content/books/javascript/08-string-methods.mdx が導入済みの見本。
 
 # 添付
-docs/books.md / 対象の本の全章
+docs/books/guide.md / 対象の本の全章
 ```
 
 ---
@@ -111,7 +111,7 @@ Next.js App Router の教科書章ページに動的OG画像を追加してほ�
 - npm run build が通る（ビルド時間の増加も報告）
 
 # 添付
-docs/books.md / 章ページ page.tsx / src/lib/book-theme.ts / src/app/layout.tsx
+docs/books/guide.md / 章ページ page.tsx / src/lib/book-theme.ts / src/app/layout.tsx
 ```
 
 ---
@@ -122,7 +122,7 @@ docs/books.md / 章ページ page.tsx / src/lib/book-theme.ts / src/app/layout.t
 **状態**: 未着手。着手時は以下をそのまま委任できる。
 
 ```
-docs/books.md 仕様の教科書サイトに、章末フィードバックウィジェットを実装してほしい。
+docs/books/guide.md 仕様の教科書サイトに、章末フィードバックウィジェットを実装してほしい。
 
 # 要件
 - 各章ページの末尾（QuizLinkバナーの下、ChapterNavの上）に
@@ -141,7 +141,7 @@ docs/books.md 仕様の教科書サイトに、章末フィードバックウィ
 - 管理画面（/admin）に章ごとの集計を表示できる形でデータを持つ
 
 # 添付
-docs/books.md / 章ページ page.tsx / src/app/api/ 配下の既存Route Handler例 / sitemap.ts
+docs/books/guide.md / 章ページ page.tsx / src/app/api/ 配下の既存Route Handler例 / sitemap.ts
 ```
 
 ---
@@ -265,7 +265,7 @@ https://study.ntorelabo.com/books/javascript/{chapterSlug}#セクション名
 
 ```
 Search Console のデータ（添付CSV: クエリ / 表示回数 / クリック数 / 掲載順位）を分析してほしい。
-サイトは docs/books.md 仕様の学習サイト（クイズ + 教科書）。
+サイトは docs/books/guide.md 仕様の学習サイト（クイズ + 教科書）。
 
 # やること
 1. 掲載順位5〜20位 かつ 表示回数が多いクエリを抽出
@@ -277,5 +277,5 @@ Search Console のデータ（添付CSV: クエリ / 表示回数 / クリック
 - 提案のみで停止し、承認後に修正へ着手する
 
 # 添付
-GSCのCSVエクスポート / docs/books.md
+GSCのCSVエクスポート / docs/books/guide.md
 ```

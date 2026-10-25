@@ -577,7 +577,7 @@ const sharedComponents = {
 
 ウェブエンジニア問題集（study.ntorelabo.com）の教科書を、AIに作成・追加してもらうときに使うプロンプトと添付ファイルのリスト。
 
-> **改善タスクの指示書集は [docs/content/ai-tasks.md](./content/ai-tasks.md) にある。** SEO・UX改善（未執筆章の執筆、公式リンク横展開、OG画像、章末フィードバック、GSC分析）は優先度順の指示書をコピペして委任する。委任時は「devサーバーは1セッションだけ」「同じ本を並行編集しない」を必ず守る。
+> **改善タスクの指示書集は [docs/books/delegation-prompts.md](./delegation-prompts.md) にある。** SEO・UX改善（未執筆章の執筆、公式リンク横展開、OG画像、章末フィードバック、GSC分析）は優先度順の指示書をコピペして委任する。委任時は「devサーバーは1セッションだけ」「同じ本を並行編集しない」を必ず守る。
 
 ### 規約の優先度 — チェックリストではなくガードレール
 
@@ -601,7 +601,7 @@ const sharedComponents = {
 
 | ファイル          | パス例                           | 用途                                                   |
 | ----------------- | -------------------------------- | ------------------------------------------------------ |
-| 仕様書            | `docs/books.md`（本ファイル）    | 本機能の全体仕様                                       |
+| 仕様書            | `docs/books/guide.md`（本ファイル）    | 本機能の全体仕様                                       |
 | Velite設定        | `velite.config.ts`               | frontmatterスキーマ確認                                |
 | MDXコンポーネント | `src/components/mdx-content.tsx` | 使えるカスタムコンポーネント（MermaidDiagram等）の把握 |
 
@@ -654,7 +654,7 @@ const sharedComponents = {
 - 次章への橋渡し文で締める
 
 # 添付ファイル
-- docs/books.md（本ファイル）
+- docs/books/guide.md（本ファイル）
 - velite.config.ts
 - mdx-content.tsx
 - 既存本のindex.yaml 1つ
@@ -675,7 +675,7 @@ const sharedComponents = {
 
 # 添付ファイル
 - 追加先の本の既存章MDX 2〜3個（トーン合わせ用）
-- docs/books.md（本ファイル）
+- docs/books/guide.md（本ファイル）
 - velite.config.ts
 
 ```
@@ -700,7 +700,7 @@ const sharedComponents = {
 4. 選んだテーマで章構成を設計
 
 # 添付ファイル
-- docs/books.md（本ファイル）
+- docs/books/guide.md（本ファイル）
 - books.ts（categoryToBookMap確認用）
 - 既存本のMDX（トーン参考）
 ```
