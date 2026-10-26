@@ -1,6 +1,6 @@
 ---
 title: '監視と運用 — CloudWatch Metrics・Logs・Logs Insights・EventBridge'
-description: 'Amazon CloudWatch Metrics、CloudWatch Logs、Logs Insights、EventBridgeでAWSリソースの監視・ログ分析・イベント駆動の運用を設計します。'
+description: 'Amazon CloudWatch Metrics、CloudWatch Logs、Logs Insights、EventBridge、EventBridge SchedulerでAWSリソースの監視・ログ分析・イベント駆動と定期実行の運用を設計します。'
 order: 7
 ---
 
@@ -215,7 +215,7 @@ flowchart LR
 |---|---|---|
 | EC2インスタンスが停止したら通知 | EC2 State Change | SNS |
 | S3にファイルがアップロードされたら処理 | S3 PutObject | Lambda |
-| 毎日深夜にバッチ処理を実行 | スケジュール（cron） | Lambda / ECS Task |
+| 毎日深夜にバッチ処理を実行 | スケジュール（cron）。今は後述のEventBridge Schedulerが推奨 | Lambda / ECS Task |
 | AWS Health イベントを検知して対応 | AWS Health | Lambda / SNS |
 
 <SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
@@ -228,6 +228,110 @@ EventBridgeは[疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-arch
 どちらもイベントを配信しますが、EventBridgeは**イベントの内容でフィルタリング**できるのが強みです。SNSはシンプルなPub/Subで、EventBridgeはイベントパターンマッチングによる細かいルーティングが可能です。
 
 </Callout>
+
+---
+
+## EventBridge Scheduler
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+上の表に「毎日深夜にバッチ処理を実行」がありました。決まった時刻に動かすのも、EventBridgeのルールで作るんですか？
+</SpeechBubble>
+
+ルールにスケジュールを設定するやり方（**スケジュールルール**）もありますが、AWSの公式ドキュメントは、スケジュールでターゲットを呼び出すなら **EventBridge Scheduler** を使うよう勧めています。スケジュールルールは「EventBridgeのレガシー機能」と書かれています（[スケジュールに従って実行するルールの作成](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-create-rule-schedule.html)）。
+
+EventBridge Schedulerは、**スケジュールの作成・実行・管理だけを受け持つサーバーレスのサービス**です。イベントバスやルールは使わず、スケジュールそのものにターゲットを1つ設定します。
+
+<Figure src="/images/calling_suit_man_color.png" alt="決まった時刻に処理を呼び出す人のイラスト" maxWidth="320px" />
+
+### スケジュールルールとの違い
+
+| 項目 | スケジュールルール | EventBridge Scheduler |
+|---|---|---|
+| 位置づけ | EventBridgeのレガシー機能 | スケジュール専用のサービス。公式の推奨 |
+| スケジュールの種類 | `rate` / `cron` | `rate` / `cron` / 1回限り（`at`） |
+| タイムゾーン | UTC+0 のみ | タイムゾーンを指定できる（例: `Asia/Tokyo`） |
+| 作れる場所 | デフォルトのイベントバスだけ | スケジュールグループにまとめて管理 |
+
+スケジュールルールでは、日本時間の深夜2時に動かしたければ、UTCに直して「前日の17時」と書く必要があります。EventBridge Schedulerならタイムゾーンを指定して、そのまま「2時」と書けます。タイムゾーンを指定したスケジュールは夏時間にも自動で合わせられます（[スケジュールの種類](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/schedule-types.html)）。
+
+### スケジュール式の3種類
+
+| 式 | 書き方 | 例 | 意味 |
+|---|---|---|---|
+| rate式 | `rate(値 単位)` | `rate(5 minutes)` | 5分ごとに実行 |
+| cron式 | `cron(分 時 日 月 曜日 年)` | `cron(0 2 * * ? *)` | 毎日2時0分に実行 |
+| at式（1回限り） | `at(yyyy-mm-ddThh:mm:ss)` | `at(2026-12-01T09:00:00)` | 指定した日時に1回だけ実行 |
+
+cron式では、日と曜日の両方に `*` は書けません。片方に `*` を使ったら、もう片方は `?` にします。
+
+<Callout type="warning">
+### 1回限りのスケジュールは、実行後も残る
+
+`at` 式で作ったスケジュールは、実行が終わっても自動では消えず、アカウントのスケジュール数の上限にも数えられます。公式は実行後に削除することを勧めており、作成時に `ActionAfterCompletion` を `DELETE` にしておくと、完了後に自動で削除されます（[EventBridge スケジューラのクォータ](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/scheduler-quotas.html)、[CreateSchedule API](https://docs.aws.amazon.com/scheduler/latest/APIReference/API_CreateSchedule.html)）。
+
+</Callout>
+
+### 仕組み — 実行ロールとDLQ
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    ROLE["実行ロール"] --- SCH["EventBridge Scheduler"]
+    SCH -->|"cron / rate / at"| T["ターゲット"]
+    SCH -->|"再試行を使い切った"| DLQ["SQS DLQ"]
+`}
+/>
+
+時刻が来ると、EventBridge Schedulerは次の順で動きます。
+
+1. スケジュールに設定された**実行ロール**（IAMロール）を引き受ける
+2. そのロールの権限でターゲットを呼び出す
+3. 呼び出しに失敗したら、設定した再試行回数と最大保持時間の範囲で再試行する
+4. それでも届かなかったイベントは、設定していれば**DLQ**（SQSの標準キュー）に送る
+
+<Marker>ターゲットを呼び出す権限は、実行ロールにアタッチしたポリシーで与えます。</Marker>ロールの信頼ポリシーで、EventBridge Schedulerがそのロールを引き受けられるようにしておく必要があります（[EventBridge スケジューラのセットアップ](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/setting-up.html)）。DLQにはFIFOキューは使えません（[デッドレターキューの設定](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/configuring-schedule-dlq.html)）。
+
+### 呼び出せるターゲット
+
+| 種類 | 内容 |
+|---|---|
+| テンプレート化されたターゲット | Lambda、SQS、SNS、Step Functions、ECS（RunTask）、EventBridge（イベントバス）など12サービスの代表的な操作を、ARNを指定するだけで呼び出せる |
+| ユニバーサルターゲット | 270以上のAWSサービス、6,000以上のAPIオペレーションを直接呼び出せる |
+
+ユニバーサルターゲットを使えば、「毎晩20時に開発環境のRDSを停止する」のような処理を、Lambdaを書かずにRDSの `StopDBInstance` APIを直接呼ぶ形で作れます。サービス数・API数は[EventBridge スケジューラとは](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/what-is-scheduler.html)、テンプレート化されたターゲットの一覧は[テンプレート化されたターゲット](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/managing-targets-templated.html)の記載によるものです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+きっちりその時刻でなくてもいい処理もありますよね。
+</SpeechBubble>
+
+そういう処理には**柔軟な時間枠**（Flexible time windows）を設定します。たとえば1時間ごとのスケジュールに15分の時間枠を付けると、予定時刻から15分以内のどこかでターゲットを呼び出します。呼び出しが分散されるので、たくさんのスケジュールが同じ時刻に集中してターゲットに負荷がかかるのを避けられます（[柔軟な時間枠の設定](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/managing-schedule-flexible-time-windows.html)）。時刻どおりに動かしたいときは `Mode` を `OFF` にします。
+
+### CLIで作るときのパラメーター
+
+日本時間の毎日2時にLambdaを呼び出すスケジュールは、次のように作ります。
+
+```bash
+aws scheduler create-schedule \
+  --name nightly-batch \
+  --schedule-expression "cron(0 2 * * ? *)" \
+  --schedule-expression-timezone "Asia/Tokyo" \
+  --flexible-time-window '{"Mode": "OFF"}' \
+  --target '{"RoleArn": "<実行ロールのARN>", "Arn": "<LambdaのARN>"}'
+```
+
+| パラメーター | 説明 |
+|---|---|
+| `--name` | スケジュールの名前 |
+| `--schedule-expression` | `rate` / `cron` / `at` のいずれかの式 |
+| `--schedule-expression-timezone` | タイムゾーン。省略すると式はUTC+0で評価される |
+| `--flexible-time-window` | 柔軟な時間枠。`Mode` は `OFF` か `FLEXIBLE`（`FLEXIBLE` なら `MaximumWindowInMinutes` も指定） |
+| `--target` | 呼び出すターゲットのARNと、Schedulerが引き受ける実行ロールのARN |
+
+**戻り値：** 作成したスケジュールのARN（`ScheduleArn`）
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+「イベントに反応して動かす」ならEventBridgeのルール、「日時を決めて動かす」ならEventBridge Scheduler、と分けて覚えると整理しやすいです。これは公式がスケジュール用途にSchedulerを勧めていることをもとにした、筆者の整理です。
+</SpeechBubble>
 
 ---
 
@@ -266,6 +370,7 @@ SAA-C03では「メモリ使用率を監視したい → カスタムメトリ�
 - [CloudWatch Logs ユーザーガイド](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html)
 - [CloudWatch Logs Insights クエリ構文](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html)
 - [Amazon EventBridge ユーザーガイド](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-what-is.html)
+- [EventBridge Scheduler ユーザーガイド](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/what-is-scheduler.html)
 
 ---
 
@@ -276,7 +381,8 @@ CloudWatchとEventBridgeは、AWSの運用・監視の土台です。
 - <Marker>**Metrics** — AWSリソースの数値を収集・可視化。メモリ監視にはカスタムメトリクスが必要</Marker>
 - **Logs** — ログの収集・保存。サブスクリプションフィルターで他サービスへ転送可能
 - **Logs Insights** — ログに対するSQLライクなクエリ分析。アドホックな調査に最適
-- **EventBridge** — AWSリソースの状態変化やスケジュールで自動アクションを実行
+- **EventBridge** — AWSリソースの状態変化に反応して自動アクションを実行
+- **EventBridge Scheduler** — 日時を決めてターゲットを呼び出す。タイムゾーン指定・1回限り・再試行とDLQに対応し、スケジュール用途では公式の推奨
 
 次の章では、疎結合アーキテクチャとしてSQS、SNS、EventBridge、Step Functionsの使い分けを扱います。
 
