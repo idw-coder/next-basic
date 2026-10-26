@@ -9,13 +9,13 @@ import { SITE_URL } from '@/lib/site';
 import { Box, Card, Chip, Typography } from '@mui/material';
 
 export const metadata: Metadata = {
-  title: 'プログラミングチートシート一覧｜目的からすぐ引ける早見表',
+  title: '技術チートシート一覧｜目的からすぐ引ける早見表',
   description:
-    'HTML文字参照、JavaScript、正規表現、Docker、Git、GitHub Actions、Zod、AIエージェント開発のチートシートをまとめています。構文やコマンドを目的別に素早く確認できます。',
+    'HTML文字参照、JavaScript、正規表現、Docker、Git、GitHub Actions、Zod、AWS、AIエージェント開発のチートシートをまとめています。構文、コマンド、サービスを目的別に素早く確認できます。',
   alternates: { canonical: '/cheatsheets' },
   openGraph: {
-    title: 'プログラミングチートシート一覧',
-    description: 'Web開発の構文・コマンド・設定を目的別にすぐ引けるチートシート集です。',
+    title: '技術チートシート一覧',
+    description: 'Web開発の構文・コマンド・サービスを目的別にすぐ引けるチートシート集です。',
     type: 'website',
     locale: 'ja_JP',
     url: `${SITE_URL}/cheatsheets`,
@@ -83,6 +83,12 @@ const CHEATSHEET_SHORTCUTS = [
     chapterSlug: '12-cheatsheet',
   },
   {
+    label: 'AWSサービス',
+    summary: 'ECR・CloudWatch・EventBridge',
+    bookSlug: 'aws-saa-c03',
+    chapterSlug: 'aws-service-link-cheatsheet',
+  },
+  {
     label: 'AIエージェント',
     summary: 'プロンプト指示・ルール設定・権限',
     bookSlug: 'ai-agent-development',
@@ -107,8 +113,8 @@ export default function CheatsheetsPage() {
     {
       '@context': 'https://schema.org',
       '@type': 'CollectionPage',
-      name: 'プログラミングチートシート一覧',
-      description: 'Web開発の構文・コマンド・設定を目的別に確認できるチートシート集です。',
+      name: '技術チートシート一覧',
+      description: 'Web開発の構文・コマンド・サービスを目的別に確認できるチートシート集です。',
       url: `${SITE_URL}/cheatsheets`,
       mainEntity: {
         '@type': 'ItemList',

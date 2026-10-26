@@ -1,0 +1,217 @@
+---
+title: 'AWSサービス別リンク集 — ECR・CloudWatch・EventBridgeから解説章を逆引き'
+description: 'SAA-C03で扱う主要AWSサービスをカテゴリ別に整理し、ECR、CloudWatch、EventBridge、S3、EC2、RDSなどの解説章へすぐ移動できるチートシートです。'
+order: 21
+chapterLabel: '付録'
+---
+
+<Figure src="/images/phone_check.png" alt="AWSサービスの解説ページを確認する人のイラスト" maxWidth="280px" />
+
+AWSサービス名は分かっていても、「この本のどの章で説明していたか」を探すのは大変です。このチートシートでは、この本で扱う主要AWSサービスをカテゴリ別に整理し、詳しい解説がある章へリンクします。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ECR、ECS、Fargateの違いを確認したいときや、CloudWatchとEventBridgeの説明へ戻りたいときに使えますか？
+</SpeechBubble>
+
+はい。サービス名から該当章へ移動し、章内検索でサービス名を入力すると、目的の説明をすぐ見つけられます。
+
+<Marker>サービス名の暗記ではなく、「何を解決するサービスか」と「似たサービスとの違い」を確認するために使います。</Marker>
+
+---
+
+## アカウント・ID・セキュリティ
+
+| AWSサービス・機能 | 主な役割 | 解説章 |
+|---|---|---|
+| AWS Identity and Access Management（IAM） | ユーザー、ロール、ポリシーによる認証・認可 | [IAMと最小権限](/books/aws-saa-c03/iam-and-least-privilege) |
+| AWS Security Token Service（STS） | 期限付きの一時認証情報を発行 | [IAMと最小権限](/books/aws-saa-c03/iam-and-least-privilege) |
+| IAM Identity Center | 社員のAWSアカウントアクセスを一元管理 | [マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation) |
+| AWS Organizations | 複数のAWSアカウントを組織として管理 | [マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation) |
+| Service Control Policy（SCP） | 組織・OU・アカウントの権限上限を設定 | [マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation) |
+| AWS Control Tower | マルチアカウント環境の初期構築と統制を自動化 | [マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation) |
+| AWS Directory Service | Microsoft Active Directoryとの連携やマネージドディレクトリを提供 | [マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation) |
+| Amazon Cognito | Web・モバイルアプリケーション利用者の認証 | [アプリケーション保護](/books/aws-saa-c03/application-security) |
+| AWS WAF | Webリクエストをルールで検査・遮断 | [アプリケーション保護](/books/aws-saa-c03/application-security) |
+| AWS Shield | DDoS攻撃からAWSリソースを保護 | [アプリケーション保護](/books/aws-saa-c03/application-security) |
+| AWS Secrets Manager | パスワードやAPIキーなどのシークレットを保管・ローテーション | [アプリケーション保護](/books/aws-saa-c03/application-security) |
+| AWS Key Management Service（KMS） | 暗号鍵を作成・管理し、暗号化を制御 | [データ保護](/books/aws-saa-c03/data-security) |
+| AWS Certificate Manager（ACM） | AWS統合サービスで使うTLS証明書を発行・更新 | [データ保護](/books/aws-saa-c03/data-security) |
+| AWS Artifact | AWSのコンプライアンスレポートや契約文書を取得 | [データ保護](/books/aws-saa-c03/data-security) |
+
+---
+
+## ネットワーク・配信
+
+| AWSサービス・機能 | 主な役割 | 解説章 |
+|---|---|---|
+| Amazon Virtual Private Cloud（VPC） | AWS上に論理的に分離したネットワークを作成 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| Security Group | ENIやEC2などへの通信をステートフルに制御 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| Network ACL（NACL） | サブネット境界の通信をステートレスに制御 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| NAT Gateway | Private Subnetから外向き通信を開始 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| VPC Endpoint | NATやInternet Gatewayを経由せずAWSサービスへ接続 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| AWS PrivateLink | VPC間でサービスをプライベートに公開・利用 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| VPC Peering | 2つのVPCをプライベートに接続 | [ネットワークパフォーマンス](/books/aws-saa-c03/network-performance) |
+| AWS Transit Gateway | 複数VPCやオンプレミス接続をハブ型で集約 | [ネットワークパフォーマンス](/books/aws-saa-c03/network-performance) |
+| AWS Site-to-Site VPN | インターネット上のIPsecトンネルで拠点とAWSを接続 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| AWS Direct Connect | 専用ネットワーク接続で拠点とAWSを接続 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| Elastic Load Balancing（ELB） | 複数ターゲットへ通信を分散 | [スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha) |
+| Amazon Route 53 | DNS、ルーティング、ヘルスチェックを提供 | [ネットワークパフォーマンス](/books/aws-saa-c03/network-performance) |
+| Amazon CloudFront | CDNとしてコンテンツをエッジから配信・キャッシュ | [ネットワークパフォーマンス](/books/aws-saa-c03/network-performance) |
+| AWS Global Accelerator | AWSグローバルネットワーク経由でTCP・UDP通信を高速化 | [ネットワークパフォーマンス](/books/aws-saa-c03/network-performance) |
+
+---
+
+## コンピューティング・コンテナ
+
+| AWSサービス・機能 | 主な役割 | 解説章 |
+|---|---|---|
+| Amazon EC2 | 仮想サーバーを起動し、OSから制御 | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| EC2 Auto Scaling | 需要やスケジュールに合わせてEC2台数を調整 | [スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha) |
+| AWS Lambda | イベントに応じてコードをサーバーレスで実行 | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| Amazon Elastic Container Service（ECS） | AWSでコンテナをオーケストレーション | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| AWS Fargate | ECS・EKSのコンテナをサーバー管理なしで実行 | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| Amazon Elastic Kubernetes Service（EKS） | マネージドKubernetesクラスターを提供 | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| Amazon Elastic Container Registry（ECR） | コンテナイメージを保管・配布 | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| AWS Elastic Beanstalk | アプリケーションの実行環境を構築・運用 | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| AWS Batch | バッチジョブのキューイングと実行基盤を管理 | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+
+<Callout type="note">
+### ECR・ECS・Fargateの最短整理
+
+- **ECR**はコンテナイメージの保管庫
+- **ECS**はコンテナを配置・管理するオーケストレーター
+- **Fargate**はEC2を管理せずにコンテナを実行する起動方式
+
+</Callout>
+
+---
+
+## ストレージ・バックアップ・移行
+
+| AWSサービス・機能 | 主な役割 | 解説章 |
+|---|---|---|
+| Amazon Simple Storage Service（S3） | 高耐久なオブジェクトストレージ | [ストレージ選択](/books/aws-saa-c03/storage-selection) |
+| Amazon Elastic Block Store（EBS） | EC2で使う永続ブロックストレージ | [ストレージ選択](/books/aws-saa-c03/storage-selection) |
+| Amazon Elastic File System（EFS） | 複数のLinux環境で共有できるファイルストレージ | [ストレージ選択](/books/aws-saa-c03/storage-selection) |
+| Amazon FSx | Windows、Lustre、ONTAP、OpenZFS向けファイルストレージ | [ストレージ選択](/books/aws-saa-c03/storage-selection) |
+| AWS Storage Gateway | オンプレミスからAWSストレージを利用 | [ストレージ選択](/books/aws-saa-c03/storage-selection) |
+| AWS DataSync | オンプレミス・AWS・他クラウド間でデータをオンライン転送 | [ストレージ選択](/books/aws-saa-c03/storage-selection) |
+| AWS Snow Family | ネットワーク転送が難しい大容量データを物理デバイスで移動 | [ストレージ選択](/books/aws-saa-c03/storage-selection) |
+| AWS Backup | 複数サービスのバックアップ計画と保持を一元管理 | [データ保護](/books/aws-saa-c03/data-security) |
+| AWS Elastic Disaster Recovery | サーバーを継続複製し、AWS上で復旧 | [災害復旧](/books/aws-saa-c03/disaster-recovery) |
+
+---
+
+## データベース・キャッシュ
+
+| AWSサービス・機能 | 主な役割 | 解説章 |
+|---|---|---|
+| Amazon Relational Database Service（RDS） | リレーショナルデータベースをマネージドで運用 | [データベース選択](/books/aws-saa-c03/database-selection) |
+| Amazon Aurora | AWS向けに設計されたMySQL・PostgreSQL互換DB | [データベース選択](/books/aws-saa-c03/database-selection) |
+| Amazon RDS Proxy | DB接続をプールして接続急増を吸収 | [スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha) |
+| Amazon DynamoDB | サーバーレスなキーバリュー・ドキュメントDB | [データベース選択](/books/aws-saa-c03/database-selection) |
+| DynamoDB Accelerator（DAX） | DynamoDB専用のインメモリキャッシュ | [データベース選択](/books/aws-saa-c03/database-selection) |
+| Amazon ElastiCache | Valkey・Redis OSS・Memcachedのマネージドキャッシュ | [データベース選択](/books/aws-saa-c03/database-selection) |
+| Amazon DocumentDB | MongoDB互換APIを持つドキュメントDB | [データベース選択](/books/aws-saa-c03/database-selection) |
+| Amazon Neptune | グラフデータベース | [データベース選択](/books/aws-saa-c03/database-selection) |
+| Amazon Redshift | データウェアハウス | [データベース選択](/books/aws-saa-c03/database-selection) |
+| AWS Database Migration Service（DMS） | データベースの全ロードと継続レプリケーション | [データベース選択](/books/aws-saa-c03/database-selection) |
+
+---
+
+## API・メッセージ・イベント
+
+| AWSサービス・機能 | 主な役割 | 解説章 |
+|---|---|---|
+| Amazon API Gateway | REST・HTTP・WebSocket APIの入口を管理 | [疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture) |
+| Amazon Simple Queue Service（SQS） | メッセージをキューにためて非同期処理 | [疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture) |
+| Amazon Simple Notification Service（SNS） | 1つのメッセージを複数の購読先へ配信 | [疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture) |
+| Amazon EventBridge | イベント内容に応じて送信先を振り分け | [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) |
+| EventBridge Scheduler | 1回限り・定期・cronのスケジュールでターゲットを実行 | [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) |
+| AWS Step Functions | 処理の順序、分岐、再試行、状態遷移を管理 | [疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture) |
+
+<Callout type="info">
+### SQS・SNS・EventBridge・Step Functionsの最短整理
+
+- **SQS**は処理をためる
+- **SNS**は同じ通知を複数へ配る
+- **EventBridge**はイベント内容で振り分ける
+- **Step Functions**は複数処理の順序と状態を管理する
+
+</Callout>
+
+---
+
+## データ取り込み・分析
+
+| AWSサービス・機能 | 主な役割 | 解説章 |
+|---|---|---|
+| Amazon Kinesis Data Streams | ストリームデータを保持し、複数コンシューマーで処理 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| Amazon Data Firehose | ストリームデータをS3やOpenSearchなどへ配信 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| Amazon Managed Streaming for Apache Kafka（MSK） | Apache Kafkaをマネージドで運用 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| AWS Glue | データカタログ、クローラー、ETLを提供 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| AWS Lake Formation | S3データレイクの構築と権限管理を支援 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| Amazon Athena | S3上のデータをSQLで直接分析 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| Amazon EMR | Spark・Hadoopなどの分散処理基盤を提供 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| Amazon QuickSight | データをダッシュボードで可視化 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| Amazon OpenSearch Service | 検索、ログ分析、可視化を提供 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+| AWS Transfer Family | SFTP・FTPS・FTP・AS2でAWSストレージへファイル転送 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+
+---
+
+## 監視・監査・コスト・IaC
+
+IaC（Infrastructure as Code）は、AWS構成をコードで定義し、同じ構成を再現できるようにする運用方法です。
+
+| AWSサービス・機能 | 主な役割 | 解説章 |
+|---|---|---|
+| Amazon CloudWatch | メトリクス、アラーム、ログ、ダッシュボードを管理 | [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) |
+| CloudWatch Logs Insights | CloudWatch Logsをクエリで横断分析 | [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) |
+| AWS CloudTrail | AWS API操作を記録 | [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) |
+| AWS Config | AWSリソースの設定履歴と準拠状態を記録・評価 | [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) |
+| AWS X-Ray | 分散トレースでサービス間の遅延やエラーを分析 | [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) |
+| AWS Cost Explorer | AWS費用と使用量を分析 | [コンピューティングのコスト最適化](/books/aws-saa-c03/cost-optimized-compute) |
+| AWS Budgets | 予算、使用量、RI・Savings Plansの利用状況を通知 | [コンピューティングのコスト最適化](/books/aws-saa-c03/cost-optimized-compute) |
+| AWS Compute Optimizer | メトリクスからリソースの適正化候補を提示 | [コンピューティングのコスト最適化](/books/aws-saa-c03/cost-optimized-compute) |
+| Service Quotas | AWSサービスのクォータを確認・引き上げ申請 | [スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha) |
+| AWS CloudFormation | テンプレートからAWSリソースをスタックとして管理 | [Infrastructure as Codeと運用自動化](/books/aws-saa-c03/infrastructure-as-code-and-operations) |
+| AWS Cloud Development Kit（CDK） | プログラミング言語からCloudFormationテンプレートを生成 | [Infrastructure as Codeと運用自動化](/books/aws-saa-c03/infrastructure-as-code-and-operations) |
+| CloudFormation StackSets | 複数アカウント・複数リージョンへスタックを展開 | [Infrastructure as Codeと運用自動化](/books/aws-saa-c03/infrastructure-as-code-and-operations) |
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+CloudWatchは状態を監視し、CloudTrailは操作を記録し、AWS Configは設定の変化と準拠状態を追跡します。EventBridgeは、それらのイベントを受けて別の処理を起動するときに使います。
+</SpeechBubble>
+
+---
+
+## 混同しやすいサービスの早見表
+
+| 迷いやすい組み合わせ | 判断の軸 | 解説章 |
+|---|---|---|
+| ECR / ECS / Fargate | イメージ保管 / コンテナ管理 / サーバー管理なしの実行 | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| CloudWatch / CloudTrail / AWS Config / X-Ray | 監視 / API操作 / 設定履歴 / 分散トレース | [監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch) |
+| SQS / SNS / EventBridge / Step Functions | 蓄積 / 配信 / 振り分け / ワークフロー | [疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture) |
+| CloudFront / Global Accelerator / Route 53 | CDN / ネットワーク高速化 / DNSルーティング | [ネットワークパフォーマンス](/books/aws-saa-c03/network-performance) |
+| Security Group / NACL | ステートフルなリソース境界 / ステートレスなサブネット境界 | [VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security) |
+| RDS Multi-AZ / Read Replica | 可用性 / 読み取りスケール | [スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha) |
+| EBS / EFS / S3 | ブロック / 共有ファイル / オブジェクト | [ストレージ選択](/books/aws-saa-c03/storage-selection) |
+| Kinesis Data Streams / Data Firehose | ストリーム保持・処理 / 配信先へのマネージド配信 | [データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics) |
+
+---
+
+## 使い方
+
+1. 問題文や設計書に出てきたAWSサービスをこのページで探す
+2. 「主な役割」で、そのサービスが解決する課題を確認する
+3. 「解説章」から、比較表・構成図・試験問題での判断パターンを読む
+4. 似たサービスがある場合は「混同しやすいサービスの早見表」で違いを確認する
+
+<Callout type="warning">
+このリンク集は、この本で扱う主要サービスの索引です。AWSが提供する全サービスの一覧ではありません。サービスの最新仕様、対応リージョン、料金、クォータはAWS公式ドキュメントで確認してください。
+</Callout>
+
+<QuizLink
+  href="/quiz/aws-basic"
+  title="AWSクイズに挑戦する"
+  description="サービスの役割と使い分けを、4択クイズでアウトプットして定着させよう"
+/>
