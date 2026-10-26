@@ -233,6 +233,167 @@ EventBridgeは[疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-arch
 
 </Callout>
 
+### イベントパターンの書き方
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+「イベントの内容でフィルタリングできる」とありましたが、ルールにはどうやって条件を書くんですか？
+</SpeechBubble>
+
+ルールの条件は**イベントパターン**というJSONで書きます。イベントパターンは、絞り込みたいイベントと同じ形をしています。たとえばEC2インスタンスが終了（`terminated`）したときのイベントは、次のような形で届きます。
+
+```json
+{
+  "version": "0",
+  "detail-type": "EC2 Instance State-change Notification",
+  "source": "aws.ec2",
+  "account": "111122223333",
+  "region": "us-west-1",
+  "detail": {
+    "instance-id": "i-1234567890abcdef0",
+    "state": "terminated"
+  }
+}
+```
+
+このイベントだけを拾うルールのイベントパターンは、次のように書きます。
+
+```json
+{
+  "source": ["aws.ec2"],
+  "detail-type": ["EC2 Instance State-change Notification"],
+  "detail": {
+    "state": ["terminated"]
+  }
+}
+```
+
+照合の決まりは次の2つです。
+
+1. **値は配列で書き、どれか1つに一致すればよい。** `"state": ["terminated", "stopped"]` なら、終了か停止のどちらでも一致する
+2. **複数のフィールドを書いたら、すべてを満たす必要がある。** 上の例では、`source`・`detail-type`・`detail.state` の3つがすべて一致したときだけルールが動く
+
+完全一致のほかに、次のような条件も書けます（[コンテンツフィルタリング](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-event-patterns-content-based-filtering.html)）。
+
+| 条件 | 書き方の例 | 意味 |
+|---|---|---|
+| 前方一致 | `"region": [{ "prefix": "us-" }]` | `us-` で始まる |
+| 後方一致 | `"FileName": [{ "suffix": ".png" }]` | `.png` で終わる |
+| 否定 | `"state": [{ "anything-but": "initializing" }]` | `initializing` 以外 |
+| 数値の範囲 | `"Price": [{ "numeric": [">", 10, "<=", 20] }]` | 10より大きく20以下 |
+| 存在する | `"ProductName": [{ "exists": true }]` | フィールドがある |
+
+<Marker>1つのルールに設定できるターゲットは最大5つです。</Marker>同じイベントをもっと多くの宛先に配りたいときは、ルールを分けます（[イベントバス](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-event-bus.html)）。
+
+### イベントバスの種類
+
+| 種類 | 受け取るイベント | 使いどころ |
+|---|---|---|
+| デフォルトイベントバス | AWSサービスのイベント（EC2の状態変化など）を自動で受け取る | AWSリソースの変化に反応する |
+| カスタムイベントバス | 自分のアプリケーションが送るイベント | 注文確定などアプリのイベントを配る |
+| パートナーイベントバス | SaaSパートナーが送るイベント | 外部SaaSの出来事に反応する |
+
+公式ドキュメントは、新しいアプリケーションならカスタムイベントバスから始めるよう勧めています（[イベントバス](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-event-bus.html)）。アプリケーションからは、`PutEvents` APIでカスタムイベントを送ります。
+
+```bash
+aws events put-events \
+  --entries '[{"EventBusName": "orders", "Source": "com.example.orders", "DetailType": "OrderPlaced", "Detail": "{\"orderId\": \"1234\"}"}]'
+```
+
+| パラメーター | 説明 |
+|---|---|
+| `EventBusName` | 送り先のイベントバス（名前かARN）。省略するとデフォルトイベントバス |
+| `Source` | イベントの送り元を表す名前。ルールの `source` で絞り込む |
+| `DetailType` | イベントの種類。ルールの `detail-type` で絞り込む |
+| `Detail` | イベントの中身（JSON文字列）。ルールの `detail` で絞り込む |
+
+`Source`・`DetailType`・`Detail` の3つがないエントリは失敗します（[PutEventsRequestEntry](https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_PutEventsRequestEntry.html)）。
+
+**戻り値：** エントリごとの結果（成功なら `EventId`、失敗なら `ErrorCode` と `ErrorMessage`）。一部のエントリが失敗しても残りは処理されるので、失敗したエントリだけ送り直す（[PutEvents でのイベントの送信](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-putevents.html)）
+
+SaaSのイベントを受け取るには、パートナー側で作られた**パートナーイベントソース**を、自分のアカウントのパートナーイベントバスに関連付けます（[SaaSパートナーからイベントを受信する](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-saas.html)）。
+
+<Figure src="/images/inspiration_color.png" alt="イベントの流れを組み立てるイラスト" maxWidth="320px" />
+
+### 別のアカウントへイベントを送る
+
+複数のAWSアカウントを使っていると、各アカウントのイベントを監視用のアカウントに集めたくなります。EventBridgeでは、**別のアカウントのイベントバスをルールのターゲットにできます**。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    SRC["アカウントAのイベント"] --> RA["アカウントAのルール"]
+    RA -->|"IAMロール"| BUS["アカウントBのイベントバス"]
+    BUS --> RB["アカウントBのルール"]
+    RB --> T["ターゲット"]
+`}
+/>
+
+設定は次の3つです（[AWS アカウント間でのイベントの送受信](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-cross-account.html)）。
+
+1. **受信側:** イベントバスの**リソースベースポリシー**で、送信を許すアカウントIDか、Organizationsの組織IDを指定する
+2. **送信側:** ルールのターゲットに、受信側のイベントバスのARNを指定する。送信側にはイベントを送るためのIAMロールが必要
+3. **受信側:** 届いたイベントに一致するルールを作り、ターゲットを設定する
+
+<Callout type="warning">
+### 受信側のルールには account を書く
+
+他のアカウントからイベントを受け入れると、受信側のルールのうち、そのイベントに一致するものがすべて動きます。公式は、他のアカウントからのイベントを受け入れるアカウントでは、ルールのイベントパターンに `account` を書いて、どのアカウントのイベントかを絞るよう強く勧めています。また、受信側でさらに別のアカウントへ転送するルールを作っても、受け取ったイベントは3つ目のアカウントには届きません。
+
+</Callout>
+
+### アーカイブとリプレイ
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ターゲットのLambdaにバグがあって、イベントを正しく処理できていなかったら、そのイベントはもう取り戻せないんですか？
+</SpeechBubble>
+
+**アーカイブ**を作っておけば取り戻せます。アーカイブは、イベントバスに届いたイベントを（イベントパターンで絞り込んで）保存しておく機能です。保持日数を指定でき、指定しなければ無期限に保存されます。
+
+保存したイベントは**リプレイ**で、イベントバスにもう一度流せます（[イベントのアーカイブと再生](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-archive.html)）。
+
+1. リプレイする期間（開始時刻と終了時刻）を指定する
+2. 必要なら、そのうち特定のルールだけに流すよう指定する
+3. イベントは、アーカイブ元のイベントバスに流れる。別のイベントバスには流せない
+4. リプレイしてもアーカイブからイベントは消えない
+
+リプレイされたイベントには `replay-name` フィールドが付くので、受け取った側で「再送されたイベントか」を見分けられます。バグを直したあとに処理をやり直す、新しく追加したターゲットに過去のイベントを流して試す、といった使い方をします。
+
+### EventBridge Pipes
+
+**EventBridge Pipes**は、1つのソースと1つのターゲットを、間に処理を挟んでつなぐ機能です（[Amazon EventBridge Pipes](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-pipes.html)）。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    SRC["ソース（SQSなど）"] --> F["フィルター"]
+    F --> E["エンリッチメント"]
+    E --> T["ターゲット（Step Functionsなど）"]
+`}
+/>
+
+| 段階 | 役割 | 必須か |
+|---|---|---|
+| ソース | イベントを取り出す元。SQSキュー、Kinesis Data Streams、DynamoDBストリーム、Amazon MQ、Amazon MSK、Apache Kafkaのいずれか | 必須 |
+| フィルター | イベントパターンで、ターゲットに送るイベントを絞る。課金されるのは一致したイベントだけ | 任意 |
+| エンリッチメント | Lambda関数、Step Functions（Expressワークフロー）、API Gateway、API送信先のいずれかを呼んで、イベントのデータを補う | 任意 |
+| ターゲット | 処理したイベントの送り先 | 必須 |
+
+たとえば「SQSに届いた注文から、決済済みのものだけを選び、顧客情報を足してStep Functionsのワークフローを始める」処理を、つなぎ役のLambdaを書かずに作れます。ソースの順序が保証されている場合は、その順序のままターゲットまで届きます（[パイプのソース](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-pipes-event-source.html)、[エンリッチメント](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/pipes-enrichment.html)）。
+
+公式ドキュメントは、<Marker>Pipesをソースとターゲットをつなぐポイントツーポイントの連携、イベントバスを多対多のルーティング</Marker>に向くものと位置づけています。複数のサービスにイベントを配るならイベントバス、決まったソースとターゲットを1本でつなぐならPipesです。
+
+### API送信先
+
+**API送信先**（API destinations）を使うと、ルールやPipesのターゲットに外部のHTTPSエンドポイントを指定できます（[API 送信先](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-api-destinations.html)）。
+
+- 認証方法と認証情報は**接続**（Connection）で設定する。認証情報はSecrets Managerに保存される
+- 1秒あたりの呼び出し回数の上限を設定でき、外部APIに負荷をかけすぎないようにできる
+- 呼び出しに失敗したイベントは再試行され、上限を超えたらDLQに送るか破棄される。上限を低くしすぎると処理が追いつかないため、DLQを設定しておく
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+問題文の要件とEventBridgeの機能は、「複数アカウントのイベントを1か所に集める → 別アカウントのイベントバスをターゲットにする」「過去のイベントをもう一度処理したい → アーカイブとリプレイ」「SQSからStep Functionsへ、コードを書かずにつなぎたい → Pipes」「外部のSaaSのAPIを呼びたい → API送信先」と対応させて覚えると整理しやすいです。これは公式ドキュメントの各機能の説明をもとにした、筆者の整理です。
+</SpeechBubble>
+
 ---
 
 ## EventBridge Scheduler
