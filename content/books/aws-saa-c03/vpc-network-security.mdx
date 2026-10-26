@@ -38,10 +38,10 @@ Webアプリケーションでは、ALBだけをPublic Subnetに置き、アプ�
 
 <MermaidDiagram chart={`
 flowchart LR
-    U["User"] --> ALB["ALB\\nPublic Subnet"]
-    ALB --> APP["EC2 / ECS\\nPrivate Subnet"]
-    APP --> DB["RDS / ElastiCache\\nPrivate Subnet"]
-    APP --> NAT["NAT Gateway\\nPublic Subnet"]
+    U["User"] --> ALB["ALB<br/>Public Subnet"]
+    ALB --> APP["EC2 / ECS<br/>Private Subnet"]
+    APP --> DB["RDS / ElastiCache<br/>Private Subnet"]
+    APP --> NAT["NAT Gateway<br/>Public Subnet"]
     NAT --> NET["Internet"]
 `} />
 

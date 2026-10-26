@@ -36,8 +36,8 @@ Auto Scalingを入れれば、それだけで高可用性になるんですか�
 flowchart TD
     U["Users"] --> R53["Route 53"]
     R53 --> ALB["Application Load Balancer"]
-    ALB --> EC2A["EC2 Auto Scaling\\nAZ-a"]
-    ALB --> EC2B["EC2 Auto Scaling\\nAZ-c"]
+    ALB --> EC2A["EC2 Auto Scaling<br/>AZ-a"]
+    ALB --> EC2B["EC2 Auto Scaling<br/>AZ-c"]
     EC2A --> RDS["RDS Multi-AZ"]
     EC2B --> RDS
 `} />
