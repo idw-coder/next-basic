@@ -4,17 +4,6 @@ description: 'CloudFront、Route 53、Global Accelerator、VPC Endpoint、Direct
 order: 14
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- VPCピアリングとTransit Gatewayの使い分け
-- ロードバランサーの選び方とリソースの配置
-- 構成図と試験問題での判断パターン
-
-</Callout>
-
 <Figure src="/images/running_man_color-1.png" alt="高速化をイメージする人のイラスト" maxWidth="300px" />
 
 <SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
@@ -23,22 +12,41 @@ CloudFront、Route 53、Global Acceleratorは、どれも通信をよくする�
 
 ネットワーク性能では、ユーザーに近い場所から配信する、適切に名前解決する、閉域接続を使う、データ転送経路を最適化する、といった観点が重要です。
 
+[SAA-C03試験ガイドのタスク3.4](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)では、エッジサービス、ロードバランシング、ネットワーク接続、ルーティング、レイテンシー、帯域幅を要件に合わせて選ぶ力が対象です。
+
+<Marker>ネットワーク性能は「利用者から入口」「入口からアプリケーション」「VPC間」「オンプレミスからAWS」の区間に分け、遅延、帯域幅、プロトコル、可用性を区間ごとに改善します。</Marker>
+
 ---
 
 ## グローバル配信
 
 | サービス | 用途 |
 |---|---|
-| CloudFront | 静的・動的コンテンツをエッジで配信するCDN |
-| Route 53 | DNS、ヘルスチェック、ルーティング |
-| Global Accelerator | Anycast IPでグローバルな入口を最適化 |
+| CloudFront | 静的・動的コンテンツをエッジで配信するContent Delivery Network（CDN） |
+| Route 53 | Domain Name System（DNS）による名前解決、ヘルスチェック、ルーティング |
+| Global Accelerator | 固定IPでグローバルな入口を最適化 |
 
-静的ファイルや画像、動画、Webサイト配信ではCloudFrontがよく使われます。ALBやS3をオリジンにして、ユーザーに近いエッジロケーションから配信します。
+CDNは、利用者に近い拠点からコンテンツを配信する仕組みです。CloudFrontはS3、ALB、API Gatewayなどをオリジンにして、キャッシュ可能なレスポンスをエッジロケーションから返します。キャッシュヒット率、TTL（キャッシュ保持時間）、キャッシュキー、無効化、オリジン保護を設計します。
+
+Global Acceleratorは、Anycast（同じIPアドレスを複数拠点で広告する方式）の固定IPアドレスをグローバルな入口として公開し、AWSグローバルネットワークを使って正常なリージョナルエンドポイントへTCP・UDP通信を送ります。DNS名ではなく固定IPが必要なクライアントや、非HTTPワークロードも候補です。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Global Users"] --> DNS["Route 53<br/>DNS Routing"]
+    USERS --> CF["CloudFront<br/>HTTP/HTTPS + Cache"]
+    USERS --> GA["Global Accelerator<br/>Static Anycast IP"]
+    CF --> ORIGIN["S3 / ALB / API Origin"]
+    GA --> ENDPOINT["ALB / NLB / EC2 / EIP"]
+`}
+/>
+
+CloudFrontの配信動作はAWS公式の[Amazon CloudFrontとは](https://docs.aws.amazon.com/ja_jp/AmazonCloudFront/latest/DeveloperGuide/Introduction.html)、Global Acceleratorの入口とエンドポイントは[AWS Global Acceleratorとは](https://docs.aws.amazon.com/ja_jp/global-accelerator/latest/dg/what-is-global-accelerator.html)で確認できます。CloudFrontを含むキャッシュ層の使い分けは[疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture)で扱います。
 
 <Callout type="note">
 ### CloudFrontとGlobal Accelerator
 
-CloudFrontはHTTP/HTTPSコンテンツ配信に強いCDNです。Global Acceleratorは固定Anycast IPでTCP/UDPアプリケーションへの経路を最適化します。Webコンテンツ配信ならCloudFrontが第一候補です。
+CloudFrontはHTTP/HTTPSコンテンツ配信とエッジキャッシュ、Global Acceleratorは固定Anycast IPとTCP・UDP経路の最適化、Route 53はDNS応答による接続先の選択を担当します。HTTPアプリケーションでも、キャッシュが目的ならCloudFront、固定IPとリージョン間フェイルオーバーが目的ならGlobal Acceleratorというように要件を分けます。
 
 </Callout>
 
@@ -55,8 +63,79 @@ Route 53はDNSサービスです。単なる名前解決だけでなく、複数
 | Latency | レイテンシが低いリージョンへ誘導 |
 | Failover | ヘルスチェックに応じて切り替え |
 | Geolocation | 地理条件で振り分け |
+| Geoproximity | リソースの場所とバイアス値に基づいて振り分け |
+| Multivalue Answer | 正常な複数レコードから複数の値を返す |
+| IP-based | 送信元IP範囲に基づいて振り分け |
 
-DR要件では、Route 53 Failover Routingがよく出ます。
+Route 53はDNSレベルで接続先を選びます。Weightedは新旧環境への段階移行、Latencyは利用者から低遅延なAWSリージョンへの誘導、Failoverはプライマリとセカンダリの切り替えに使います。ルーティングポリシーの仕様はAWS公式の[ルーティングポリシーの選択](https://docs.aws.amazon.com/ja_jp/Route53/latest/DeveloperGuide/routing-policy.html)で確認できます。
+
+ヘルスチェックとDNSフェイルオーバーは[スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha)、RTO・RPOを含むリージョン切り替えは[災害復旧](/books/aws-saa-c03/disaster-recovery)で扱います。
+
+<Callout type="warning">
+### DNSの切り替えは全利用者へ同時反映されない
+
+DNS応答はTTLの間キャッシュされるため、Route 53が応答先を変更しても、利用者の再接続には時間差が生じます。ヘルスチェック間隔だけでなく、TTLとクライアントの再試行を含めて復旧時間を評価します。動作はAWS公式の[DNSフェイルオーバーの設定](https://docs.aws.amazon.com/ja_jp/Route53/latest/DeveloperGuide/dns-failover.html)で確認できます。
+
+</Callout>
+
+---
+
+## ロードバランサーとリソース配置
+
+| ロードバランサー | 主な判断軸 |
+|---|---|
+| Application Load Balancer（ALB） | HTTP・HTTPS、ホスト・パス・ヘッダーなどによるレイヤー7ルーティング |
+| Network Load Balancer（NLB） | TCP・UDP・TLS、固定IP、高スループットなレイヤー4接続 |
+| Gateway Load Balancer（GWLB） | ファイアウォールなど仮想ネットワークアプライアンスの透過的な挿入 |
+
+インターネット向けALB・NLBはパブリックサブネットに配置し、ターゲットのEC2やコンテナはプライベートサブネットに配置できます。ロードバランサーを複数AZで有効にし、正常なターゲットへ通信を分散します。種類と動作はAWS公式の[Elastic Load Balancingとは](https://docs.aws.amazon.com/ja_jp/elasticloadbalancing/latest/userguide/what-is-load-balancing.html)で確認できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Users"] --> EDGE["CloudFront / Global Accelerator"]
+    EDGE --> LB["ALB or NLB<br/>Public Subnets"]
+    LB --> APP_A["Application<br/>Private Subnet / AZ-a"]
+    LB --> APP_C["Application<br/>Private Subnet / AZ-c"]
+    APP_A --> DB["Database<br/>Isolated Subnets"]
+    APP_C --> DB
+`}
+/>
+
+<Callout type="note">
+### 配置は公開範囲と通信方向から決める
+
+利用者から直接到達させる入口だけを公開し、アプリケーションとデータベースには必要な経路だけを許可します。サブネット、Security Group、Network ACL（NACL）、NAT Gatewayを含む境界設計は[VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security)で扱います。
+
+</Callout>
+
+---
+
+## VPCピアリングとTransit Gateway
+
+| 判断軸 | VPCピアリング | Transit Gateway |
+|---|---|---|
+| 接続形態 | 2つのVPCを1対1で接続 | 複数VPC・VPNをハブへ集約 |
+| 推移的ルーティング | しない | Transit Gatewayのルートテーブルで制御する |
+| 向く規模 | 少数VPCの直接接続 | 多数VPC、複数アカウント、オンプレミス接続の集約 |
+| 運用 | 接続ごとのルート管理 | ハブを中心に接続と分離を管理 |
+
+VPCピアリングは、VPC AとB、BとCが接続されていても、AからB経由でCへ通信する推移的ルーティングを提供しません。VPCが増えるとピアリング接続と各ルートテーブルの管理が増えます。
+
+Transit GatewayはVPCやVPN接続を中央のハブへアタッチし、Transit Gatewayルートテーブルで通信可能なネットワークを分離・集約します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    ONPREM["On-Premises"] --> TGW["Transit Gateway"]
+    VPC_A["Shared Services VPC"] --> TGW
+    VPC_B["Production VPC"] --> TGW
+    VPC_C["Development VPC"] --> TGW
+    TGW --> ROUTES["Transit Gateway<br/>Route Tables"]
+`}
+/>
+
+VPCピアリングの制約はAWS公式の[VPCピアリングとは](https://docs.aws.amazon.com/ja_jp/vpc/latest/peering/what-is-vpc-peering.html)、ハブ構成は[Transit Gatewayとは](https://docs.aws.amazon.com/ja_jp/vpc/latest/tgw/what-is-transit-gateway.html)で確認できます。
 
 ---
 
@@ -70,7 +149,115 @@ DR要件では、Route 53 Failover Routingがよく出ます。
 | オンプレミスとAWSをVPN接続 | Site-to-Site VPN |
 | 複数VPCやオンプレを集約接続 | Transit Gateway |
 
-実務では、NAT Gateway経由でAWSサービスへ出るより、VPC Endpointを使った方がセキュリティとコストの両面で有利なことがあります。
+Gateway VPC EndpointはS3とDynamoDBへの経路をルートテーブルへ追加します。Interface VPC EndpointはAWS PrivateLinkを使い、サブネットに作成するENI（Elastic Network Interface、仮想ネットワークインターフェイス）のプライベートIPから対応サービスへ接続します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    APP["Private Subnet<br/>Application"] --> GATEWAY["Gateway Endpoint"]
+    APP --> INTERFACE["Interface Endpoint<br/>Private IP"]
+    GATEWAY --> S3["S3 / DynamoDB"]
+    INTERFACE --> SERVICES["AWS Services<br/>PrivateLink"]
+    APP --> NAT["NAT Gateway"]
+    NAT --> INTERNET["Public APIs / Internet"]
+`}
+/>
+
+VPC Endpointを使うとInternet GatewayやNAT Gatewayを経由せず、対応サービスへプライベートに到達できます。ただし、Interface Endpointの時間・データ処理料金、NAT Gatewayの料金、通信量、サービス対応状況を比較します。仕様はAWS公式の[AWS PrivateLinkの概念](https://docs.aws.amazon.com/ja_jp/vpc/latest/privatelink/concepts.html)と[Gateway Endpoint](https://docs.aws.amazon.com/ja_jp/vpc/latest/privatelink/gateway-endpoints.html)で確認できます。
+
+Direct Connectは専用のネットワーク接続を使い、オンプレミスからAWSへ一貫した経路が必要な場合に検討します。Site-to-Site VPNはIPsec（Internet Protocol Security）で暗号化したトンネルをインターネット上に作り、比較的短期間で接続を用意する場合やDirect Connectのバックアップ経路に使えます。
+
+Direct Connectの接続方式はAWS公式の[AWS Direct Connectとは](https://docs.aws.amazon.com/ja_jp/directconnect/latest/UserGuide/Welcome.html)、Site-to-Site VPNの構成は[AWS Site-to-Site VPNとは](https://docs.aws.amazon.com/ja_jp/vpn/latest/s2svpn/VPC_VPN.html)で確認できます。
+
+<Callout type="warning">
+### Direct Connectを1本だけ用意して高可用と考えない
+
+物理接続、Direct Connectロケーション、顧客ルーターなどの障害を考え、RTO（復旧目標時間）に応じて冗長な接続やSite-to-Site VPNのバックアップを設計します。AWSが示す回復性モデルは[Direct Connect Resiliency Toolkit](https://docs.aws.amazon.com/ja_jp/directconnect/latest/UserGuide/resiliency_toolkit.html)で確認できます。
+
+</Callout>
+
+---
+
+## 実務での構成例 — グローバルWebアプリケーション
+
+世界中の利用者へ画像とAPIを配信し、社内データセンターからAWSの業務システムへ接続する構成を考えます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Global Users"] --> R53["Route 53"]
+    R53 --> CF["CloudFront"]
+    CF --> S3["S3<br/>Static Content"]
+    CF --> ALB["ALB<br/>Public Subnets"]
+    ALB --> APP_A["Application<br/>Private Subnet / AZ-a"]
+    ALB --> APP_C["Application<br/>Private Subnet / AZ-c"]
+    APP_A --> ENDPOINT["VPC Endpoint"]
+    APP_C --> ENDPOINT
+    ONPREM["On-Premises"] --> DX["Direct Connect + VPN Backup"]
+    DX --> TGW["Transit Gateway"]
+    TGW --> APP_A
+    TGW --> APP_C
+`}
+/>
+
+設計では次を確認します。
+
+1. 画像とキャッシュ可能なAPIレスポンスをCloudFrontから配信する
+2. キャッシュキーへ不要なCookieやヘッダーを含めず、キャッシュヒット率を測る
+3. ALBとアプリケーションを複数AZへ配置する
+4. S3や対応AWSサービスへの通信をVPC Endpointへ分離する
+5. オンプレミス接続をDirect ConnectとVPNで冗長化する
+6. Transit Gatewayのルートテーブルで本番、開発、共有サービスの通信を分離する
+7. レイテンシー、パケット損失、帯域幅、正常なターゲット数を監視する
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| 静的・動的なHTTPコンテンツをエッジで配信し、オリジン負荷を減らしたい | CloudFront | CDNキャッシュとエッジ配信を使える |
+| TCP・UDPアプリケーションへ固定グローバルIPで接続したい | Global Accelerator | Anycast IPからAWSグローバルネットワークへ入れる |
+| DNSで利用者を低遅延なAWSリージョンへ誘導したい | Route 53 Latency Routing | DNS応答で低遅延なリージョンを選べる |
+| HTTPのパスやホスト名でターゲットを振り分けたい | ALB | レイヤー7のルーティングを使える |
+| TCP・UDP、固定IP、高スループットが必要 | NLB | レイヤー4で接続を分散できる |
+| 2つのVPCだけをプライベートに直接接続したい | VPCピアリング | 1対1の接続を構成できる |
+| 多数のVPCとVPNをハブへ集約したい | Transit Gateway | アタッチメントとルートテーブルを中央管理できる |
+| Private SubnetからS3へNATを通さず接続したい | Gateway VPC Endpoint | ルートテーブル経由でS3へ到達できる |
+| Private SubnetからSecrets Managerへプライベートに接続したい | Interface VPC Endpoint | PrivateLinkのプライベートIPを使える |
+| オンプレミスとAWSを専用ネットワークで継続接続したい | Direct Connect | インターネットを経由しない接続を用意できる |
+| 暗号化した接続を短期間で用意したい | Site-to-Site VPN | インターネット上にIPsecトンネルを作成できる |
+
+この表は、要件から第一候補を絞るための筆者の整理です。実際にはプロトコル、レイテンシー、帯域幅、可用性、暗号化、料金、サービスクォータを確認します。
+
+---
+
+## よくあるハマりどころ
+
+### CloudFrontとGlobal Acceleratorを固定IPだけで選ぶ
+
+CloudFrontはコンテンツ配信とキャッシュ、Global Acceleratorは固定Anycast IPとネットワーク経路の最適化が中心です。プロトコル、キャッシュ、オリジン、クライアントの固定IP要件を分けます。
+
+### VPCピアリングを経由して別のVPCへ到達しようとする
+
+VPCピアリングは推移的ルーティングを提供しません。多数VPCを相互接続する場合はTransit Gatewayなどのハブ構成を検討します。
+
+### VPC Endpointを作ればすべての外向き通信が不要になると思う
+
+VPC Endpointは対応するサービスへの経路です。OSパッケージ配布サイト、外部API、VPC Endpointに対応しないサービスにはNAT Gatewayなど別の経路が必要です。
+
+### Direct Connectだけで暗号化と冗長化も完了したと思う
+
+Direct Connectの物理経路と暗号化要件を分けて確認します。接続、ロケーション、ルーターの冗長化と、必要に応じたVPNを設計します。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク3.4](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)
+- [Amazon CloudFrontとは](https://docs.aws.amazon.com/ja_jp/AmazonCloudFront/latest/DeveloperGuide/Introduction.html)
+- [AWS Global Acceleratorとは](https://docs.aws.amazon.com/ja_jp/global-accelerator/latest/dg/what-is-global-accelerator.html)
+- [Transit Gatewayとは](https://docs.aws.amazon.com/ja_jp/vpc/latest/tgw/what-is-transit-gateway.html)
 
 ---
 
@@ -83,8 +270,10 @@ DR要件では、Route 53 Failover Routingがよく出ます。
 - グローバルな入口最適化はGlobal Accelerator
 - AWSサービスへの閉域アクセスはVPC Endpoint
 - オンプレ連携はDirect Connect、VPN、Transit Gateway
+- 2つのVPCを直接つなぐならVPCピアリング、多数のネットワークを集約するならTransit Gateway
+- HTTPの条件分岐はALB、TCP・UDPと固定IPはNLB、仮想アプライアンスはGWLB
 
-次の章では、Kinesis、Glue、Athena、DataSyncなどのデータ取り込みと変換を扱います。
+Kinesis、Glue、Athena、DataSyncなどによるデータの取り込みと変換は、[データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

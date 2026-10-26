@@ -4,25 +4,17 @@ description: 'Kinesis Data Streams、Kinesis Data Firehose、Glue、Athena、Ama
 order: 15
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- AWS Lake Formationによるデータレイクの保護
-- Amazon QuickSightによる可視化
-- Amazon EMR
-- データ形式の変換（Parquetなど）
-
-</Callout>
-
 <Figure src="/images/inspiration_color.png" alt="データ活用のアイデアを考えるイラスト" maxWidth="320px" />
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 Kinesis、Glue、Athenaは普段のWebアプリ開発では見かけにくくて、イメージしづらいです。
 </SpeechBubble>
 
-SAA-C03では、ストリーミングデータ、ログ収集、ETL、S3上の分析、オンプレミスからのデータ移行が問われます。実務でも、アプリケーションの裏側でデータ基盤をどう作るかは重要です。
+データ基盤では、データをどの速度で取り込み、どこへ保存し、どの形式へ変換し、誰がどう分析するかを一続きの経路として設計します。
+
+[SAA-C03試験ガイドのタスク3.5](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)では、データ取り込み、変換、可視化、バッチ・ストリーム処理、データ転送を要件に合わせて選ぶ力が対象です。
+
+<Marker>最初にリアルタイムかバッチかを分けます。次に、配信だけでよいか、アプリケーションでレコードを処理するか、SQL・検索・分散処理のどれで分析するかを決めます。</Marker>
 
 ---
 
@@ -35,6 +27,9 @@ SAA-C03では、ストリーミングデータ、ログ収集、ETL、S3上の�
 | AWS Glue | ETL、データカタログ |
 | Amazon Athena | S3上のデータをSQLでクエリ |
 | Amazon OpenSearch Service | ログ分析、全文検索、リアルタイムダッシュボード |
+| Amazon EMR | Apache Sparkなどによる大規模分散処理 |
+| AWS Lake Formation | S3データレイクの権限・ガバナンス |
+| Amazon QuickSight | ダッシュボードとBIによる可視化 |
 | AWS DataSync | オンプレミスや他ストレージからAWSへデータ転送 |
 | AWS Transfer Family | SFTP/FTPS/FTPでS3やEFSへ転送 |
 
@@ -50,13 +45,17 @@ SAA-C03では、ストリーミングデータ、ログ収集、ETL、S3上の�
 
 Firehoseは運用が簡単ですが、Streamsほど細かい制御には向きません。リアルタイム処理の自由度が必要ならStreamsを選びます。
 
+Kinesis Data Streamsでは、複数のコンシューマーがストリームのレコードを読み取り、順序や再処理を考慮したアプリケーションを実装できます。Amazon Data Firehoseは、受け取ったレコードをバッファリングし、変換や形式変換を適用して配信先へ届けます。KafkaのAPIとエコシステムが必要ならAmazon MSKを検討します。
+
+役割はAWS公式の[Kinesis Data Streamsとは](https://docs.aws.amazon.com/ja_jp/streams/latest/dev/introduction.html)、[Amazon Data Firehoseとは](https://docs.aws.amazon.com/ja_jp/firehose/latest/dev/what-is-this-service.html)、[Amazon MSKとは](https://docs.aws.amazon.com/ja_jp/msk/latest/developerguide/what-is-msk.html)で確認できます。
+
 ---
 
 ## Amazon Data Firehose
 
 <Figure src="/images/running_man_color-1.png" alt="データをリアルタイムに配信するイメージ" maxWidth="320px" />
 
-Amazon Data Firehose（旧 Kinesis Data Firehose）は、ストリーミングデータを**変換なし、またはLambdaで軽い変換をしてから、配信先へリアルタイムに届ける**フルマネージドサービスです。サーバーの管理やスケーリングは不要で、データを流し込むだけで配信先に届きます。
+Amazon Data Firehose（旧 Kinesis Data Firehose）は、ストリーミングデータを変換なし、またはLambdaで変換してから、配信先へ継続的に届けるフルマネージドサービスです。利用者は配信ストリーム、変換、バッファリング、配信先、失敗時の処理を設定します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 Firehoseの配信先はS3だけですか？Datadogのような外部ツールにも送れますか？
@@ -68,7 +67,7 @@ S3だけではありません。AWSサービスに加えて、Datadog、Splunk�
 
 <MermaidDiagram
   chart={`
-flowchart LR
+flowchart TB
     SRC["Data Source"] --> KDS["Kinesis Data Streams"]
     SRC --> CWL["CloudWatch Logs"]
     KDS --> FH["Data Firehose"]
@@ -92,20 +91,20 @@ flowchart LR
 
 ### Firehoseの配信とバケットポリシー
 
-FirehoseからS3に配信する場合、S3バケット側で `firehose.amazonaws.com` からの書き込みを許可する[バケットポリシー](/books/aws-saa-c03/storage-selection#バケットポリシーの実務と試験)が必要です。Firehose用のIAMロールと合わせて設定します。
+FirehoseからS3へ配信する場合は、Firehoseが引き受けるIAMロールへ対象バケットの `s3:PutObject` など必要な操作を許可します。別アカウントのS3へ配信する場合は、バケットポリシー側でもFirehoseの配信ロールを許可します。S3のアクセス制御は[ストレージ選択](/books/aws-saa-c03/storage-selection)で扱います。
 
 <Callout type="note">
 ### Firehoseの特徴まとめ
 
 - フルマネージド — サーバー管理・スケーリング不要
-- ニアリアルタイム — 最短60秒のバッファリング間隔で配信
+- ニアリアルタイム — サイズまたは時間のバッファリング後に配信
 - 変換可能 — Lambdaを使ったデータ変換をインラインで実行できる
-- S3への自動バックアップ — 配信失敗時にS3へフォールバック可能
+- 失敗データの保護 — 配信先と設定に応じてS3へバックアップできる
 
 </Callout>
 
 <SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
-試験で「ログをS3やOpenSearchに簡単に配信したい」「サードパーティの分析ツールにストリーミングで送りたい」と出たらFirehoseです。運用の手間なく配信できるのが最大の特徴です。
+「ログをS3やOpenSearchへ継続配信したい」「サードパーティの分析ツールへHTTPで送りたい」という要件ではFirehoseを候補にします。独自コンシューマー、レコード単位の処理、再読み取りが必要ならKinesis Data Streamsと比較しましょう。
 </SpeechBubble>
 
 ---
@@ -126,12 +125,74 @@ S3はデータレイクの保存先としてよく使われます。
 
 実務では、S3のプレフィックス設計、ファイル形式、パーティション、ライフサイクルも性能とコストに影響します。
 
+Athenaは、標準SQLを使ってS3上のデータを分析するサーバーレスクエリサービスです。役割はAWS公式の[Amazon Athenaとは](https://docs.aws.amazon.com/ja_jp/athena/latest/ug/what-is.html)で確認できます。
+
 <Callout type="note">
 ### AthenaはS3スキャン量がコストに直結する
 
-Athenaは便利ですが、クエリでスキャンしたデータ量に課金されます。Parquetなどの列指向フォーマット、圧縮、パーティション分割でコストと速度を改善できます。
+AthenaのSQLクエリは、スキャンしたデータ量に基づく料金体系です。Parquetなどの列指向フォーマット、圧縮、パーティション分割で読み取るデータを減らせます。最新条件はAWS公式の[Amazon Athenaの料金](https://aws.amazon.com/jp/athena/pricing/)で確認します。
 
 </Callout>
+
+### GlueでカタログとETLを管理する
+
+**ETL**（Extract、Transform、Load）は、データを抽出し、分析しやすい形へ変換して、保存先へロードする処理です。AWS Glue Data Catalogは、S3などに保存したデータのデータベース、テーブル、列、パーティションをメタデータとして管理します。Glueクローラーはデータストアを読み取り、スキーマを推測してカタログへ登録できます。
+
+Glue ETLジョブでは、CSVやJSONなどの行指向データを、Parquetのような列指向形式へ変換できます。列指向形式は分析で必要な列だけを読みやすく、圧縮と組み合わせてAthenaのスキャン量を減らせます。
+
+| 最適化 | 効果 |
+|---|---|
+| Parquet・ORC | 必要な列を選んで読み取りやすくする |
+| 圧縮 | S3の保存量と読み取りデータ量を減らす |
+| パーティション | 日付、リージョン、テナントなどで読み取り範囲を絞る |
+| 適切なファイルサイズ | 大量の小ファイルによる一覧取得と計画処理の負荷を避ける |
+
+GlueのカタログとETL機能はAWS公式の[AWS Glueとは](https://docs.aws.amazon.com/ja_jp/glue/latest/dg/what-is-glue.html)、Athena向けのファイル形式、圧縮、パーティションは[データ最適化によるAthena性能チューニング](https://docs.aws.amazon.com/ja_jp/athena/latest/ug/performance-tuning-data-optimization-techniques.html)で確認できます。
+
+### Lake Formationでデータレイクを保護する
+
+AWS Lake Formationは、S3上のデータレイクとGlue Data Catalogを使い、データへのアクセス許可を一元管理するサービスです。データベース、テーブル、列などの単位で権限を付与し、IAMだけで個別のS3パスを管理する負荷を減らします。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    SOURCES["Application / Logs / On-Premises"] --> INGEST["Firehose / DataSync"]
+    INGEST --> RAW["S3 Raw Zone"]
+    RAW --> GLUE["Glue ETL"]
+    GLUE --> CURATED["S3 Curated Zone<br/>Parquet + Partition"]
+    CATALOG["Glue Data Catalog"] --> ATHENA["Athena"]
+    CATALOG --> EMR["Amazon EMR"]
+    CURATED --> CATALOG
+    LAKE["Lake Formation<br/>Permissions"] --> CATALOG
+    ATHENA --> QS["QuickSight Dashboard"]
+`}
+/>
+
+Lake FormationだけでS3の保護が完了するとは限りません。登録するS3ロケーション、IAMロール、データカタログ権限、暗号化、監査を合わせて設計します。役割はAWS公式の[AWS Lake Formationとは](https://docs.aws.amazon.com/ja_jp/lake-formation/latest/dg/what-is-lake-formation.html)で確認できます。
+
+S3データレイク、DataSync、FSx for Lustreのストレージ側の使い分けは[ストレージ選択](/books/aws-saa-c03/storage-selection)で扱います。
+
+### Amazon EMRで分散処理する
+
+Amazon EMRは、Apache Spark、Apache Hadoopなどの分散データ処理フレームワークをAWS上で実行するサービスです。大規模なETL、機械学習の前処理、ログ処理など、複数ノードで並列処理する要件に使います。
+
+単発のSQLでS3を分析するならAthena、分散処理フレームワークと処理ステップを細かく制御するならEMRを検討します。役割と実行方式はAWS公式の[Amazon EMRとは](https://docs.aws.amazon.com/ja_jp/emr/latest/ManagementGuide/emr-what-is-emr.html)で確認できます。
+
+### QuickSightで可視化する
+
+Amazon QuickSightは、データソースへ接続して分析とダッシュボードを作成し、利用者へ共有するビジネスインテリジェンスサービスです。Athena、Redshift、RDSなどの分析結果をグラフや表で提供する最終層として使います。
+
+データ取り込みやETLをQuickSightに担当させるのではなく、分析可能なデータセットを用意してから可視化します。機能はAWS公式の[Amazon QuickSightとは](https://docs.aws.amazon.com/ja_jp/quicksight/latest/user/welcome.html)で確認できます。
+
+AthenaとRedshiftの選択は[データベース選択](/books/aws-saa-c03/database-selection)で詳しく扱います。
+
+### DataSyncとTransfer Familyでファイルを取り込む
+
+AWS DataSyncは、オンプレミス、他クラウド、AWSストレージサービスの間でデータをオンライン転送します。大量ファイルの移行、定期転送、検証をAWS側で管理したい場合に使います。
+
+AWS Transfer Familyは、既存のSFTP、FTPS、FTP、AS2クライアントからS3やEFSへファイルを転送するマネージドサービスです。取引先が既存プロトコルを変更できない場合や、管理されたファイル転送の入口が必要な場合に使います。
+
+対応する転送元・転送先はAWS公式の[AWS DataSyncとは](https://docs.aws.amazon.com/ja_jp/datasync/latest/userguide/what-is-datasync.html)、プロトコルと保存先は[AWS Transfer Familyとは](https://docs.aws.amazon.com/ja_jp/transfer/latest/userguide/what-is-aws-transfer-family.html)で確認できます。
 
 ---
 
@@ -168,7 +229,7 @@ ECS Task (awslogs driver)
 <Callout type="note">
 ### CloudWatch Logsとの使い分け
 
-CloudWatch Logsだけでも運用は可能ですが、複数サービスのログを横断的にグラフ化・全文検索したい場合はOpenSearchが適しています。CloudWatch Logs Insightsでもクエリはできますが、ダッシュボードの柔軟さや検索速度ではOpenSearchに優位性があります。
+CloudWatch Logsではログ保存、Logs Insightsによるクエリ、メトリクスフィルター、アラームを構成できます。全文検索用インデックスとOpenSearch Dashboardsを継続運用する要件ではOpenSearch Serviceを検討します。検索要件、保持期間、取り込み量、クラスター運用、費用を比較します。
 
 </Callout>
 
@@ -183,10 +244,10 @@ CloudWatch Logsだけでも運用は可能ですが、複数サービスのロ�
 | インデックス管理 | ISM（Index State Management）で古いインデックスを自動削除 |
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-試験ではどういう問われ方をしますか？
+OpenSearchはどの要件を手掛かりに選べばよいですか？
 </SpeechBubble>
 
-SAA-C03では「ログの全文検索」「リアルタイムダッシュボード」「Elasticsearch互換」というキーワードが出たらOpenSearch Serviceを選びます。Firehoseの配信先としてもよく登場します。
+「ログの全文検索」「検索用インデックス」「OpenSearch Dashboards」「Elasticsearch互換API」という要件ではOpenSearch Serviceを候補にします。単純なログ確認やアラームならCloudWatch Logsと比較します。
 
 ### 参考リンク
 
@@ -198,6 +259,92 @@ SAA-C03では「ログの全文検索」「リアルタイムダッシュボー�
 
 ---
 
+## 実務での構成例 — アプリケーションイベントを分析する
+
+ECサイトのクリックと注文イベントを継続収集し、リアルタイム監視と日次分析の両方へ使う構成を考えます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    APP["Web / Mobile Application"] --> KDS["Kinesis Data Streams"]
+    KDS --> CONSUMER["Stream Consumer<br/>Real-Time Detection"]
+    KDS --> FIREHOSE["Amazon Data Firehose"]
+    FIREHOSE --> RAW["S3 Raw Zone<br/>JSON"]
+    RAW --> GLUE["Glue ETL"]
+    GLUE --> CURATED["S3 Curated Zone<br/>Parquet + Partition"]
+    CURATED --> ATHENA["Athena"]
+    CURATED --> EMR["Amazon EMR"]
+    ATHENA --> QS["QuickSight"]
+    CONSUMER --> OS["OpenSearch Service"]
+`}
+/>
+
+設計では次を確認します。
+
+1. イベントのパーティションキーが一部へ集中しないようにする
+2. コンシューマーの失敗時に再処理できる位置と保持期間を決める
+3. Firehoseのバッファリング、変換失敗、配信失敗の保存先を決める
+4. Raw Zoneは元データを保持し、Curated ZoneへParquetとパーティションを適用する
+5. Lake Formationでテーブル・列への権限を分ける
+6. Athenaのスキャン量、Glueジョブ、Kinesis処理遅延、OpenSearch容量を監視する
+7. QuickSightでは利用者ごとの共有範囲と更新頻度を決める
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| 複数コンシューマーでストリームを独自処理・再処理したい | Kinesis Data Streams | コンシューマーがレコードを読み取って処理できる |
+| ストリームをS3やOpenSearchへ管理負荷を抑えて配信したい | Amazon Data Firehose | バッファリング、変換、配信を管理できる |
+| KafkaクライアントとKafka APIを維持したい | Amazon MSK | マネージドKafkaクラスターを利用できる |
+| S3データのスキーマを検出し、ETLジョブで変換したい | AWS Glue | Data Catalog、クローラー、ETLを使える |
+| S3データレイクのテーブル・列権限を一元管理したい | Lake Formation | Glue Data CatalogとS3データへの許可を管理できる |
+| S3上のデータを単発のSQLで分析したい | Athena | サーバーを管理せずS3へSQLを実行できる |
+| SparkやHadoopで大規模分散処理を実行したい | Amazon EMR | 分散処理フレームワークを管理して実行できる |
+| ログを全文検索し、検索ダッシュボードを作りたい | OpenSearch Service | 検索用インデックスとDashboardsを使える |
+| 分析結果を業務利用者へグラフで共有したい | QuickSight | BIダッシュボードを作成・共有できる |
+| オンプレミスの大量ファイルをS3・EFS・FSxへ転送したい | DataSync | オンライン転送と検証を管理できる |
+| 取引先のSFTPクライアントを維持してS3へ受信したい | Transfer Family | マネージドSFTPエンドポイントを提供できる |
+
+この表は、要件から第一候補を絞るための筆者の整理です。実際にはレイテンシー、再処理、順序、データ量、形式、権限、保持、費用を確認します。
+
+---
+
+## よくあるハマりどころ
+
+### Kinesis Data StreamsとFirehoseを同じ用途で選ぶ
+
+独自コンシューマーでレコードを処理・再処理するならKinesis Data Streams、対応する配信先へバッファリングして届けるならFirehoseを検討します。
+
+### 小さなJSONファイルを大量に作る
+
+小さなファイルが増えると、Athenaや分散処理でファイル一覧取得と計画処理の負荷が増えます。Glueなどで適切なサイズのParquetへまとめ、パーティションと圧縮を設計します。
+
+### Lake FormationだけでS3アクセスがすべて決まると思う
+
+Lake Formationの許可に加えて、IAM、S3ロケーション登録、暗号化キー、サービスロールを確認します。拒否時はどの許可レイヤーで止まったかを分けて調べます。
+
+### AthenaをトランザクションAPIのデータベースに使う
+
+AthenaはS3上のデータを対話的に分析するサービスです。低レイテンシーなキー検索やトランザクションは、RDS、Aurora、DynamoDBなど要件に合うデータベースを選びます。
+
+### OpenSearchを唯一の保存先にする
+
+再取り込みできるよう、元ログやイベントをS3などへ保持します。OpenSearchのインデックスは検索用途として、保持と復旧方法を別に設計します。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク3.5](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)
+- [Amazon Data Firehoseとは](https://docs.aws.amazon.com/ja_jp/firehose/latest/dev/what-is-this-service.html)
+- [AWS Glueとは](https://docs.aws.amazon.com/ja_jp/glue/latest/dg/what-is-glue.html)
+- [AWS Lake Formationとは](https://docs.aws.amazon.com/ja_jp/lake-formation/latest/dg/what-is-lake-formation.html)
+- [Amazon EMRとは](https://docs.aws.amazon.com/ja_jp/emr/latest/ManagementGuide/emr-what-is-emr.html)
+
+---
+
 ## まとめ
 
 データ取り込みと分析では、リアルタイム性と運用負荷を見てサービスを選びます。
@@ -205,11 +352,14 @@ SAA-C03では「ログの全文検索」「リアルタイムダッシュボー�
 - <Marker>細かいストリーム処理はKinesis Data Streams</Marker>
 - 配信中心ならKinesis Data Firehose
 - ETLとカタログはGlue
+- データレイクの権限管理はLake Formation
 - S3上のSQL分析はAthena
+- 大規模分散処理はAmazon EMR
 - ログの全文検索・ダッシュボードはOpenSearch Service
+- 業務向けの可視化はQuickSight
 - オンプレ転送はDataSyncやTransfer Family
 
-次の章からは、コスト最適化としてストレージ、コンピューティング、DB、ネットワークを順に扱います。
+ストレージの保持期間とアクセス頻度による費用最適化は、[コスト最適化 — ストレージ](/books/aws-saa-c03/cost-optimized-storage)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

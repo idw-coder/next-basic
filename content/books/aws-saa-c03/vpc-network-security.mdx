@@ -4,26 +4,15 @@ description: 'VPC、Public Subnet、Private Subnet、Route Table、Internet Gate
 order: 4
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- VPCピアリングとAWS PrivateLink
-- VPNとDirect Connectによる外部接続の保護
-- 試験問題での判断パターン
-
-</Callout>
-
 <Figure src="/images/planning_suit_man_color.png" alt="ネットワーク構成を計画する人のイラスト" maxWidth="330px" />
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 Public SubnetとPrivate Subnetの違いは名前では分かります。でも、実際に何をどこへ置けばいいんでしょう？
 </SpeechBubble>
 
-AWS上の多くのシステムは **VPC（Virtual Private Cloud）** の中に構築します。VPC設計では、インターネットに公開するもの、内部に閉じるもの、外向き通信だけ許可するものを分けることが重要です。
+AWS上の多くのシステムは **VPC**（Virtual Private Cloud）の中に構築します。VPC設計では、インターネットに公開するもの、内部に閉じるもの、外向き通信だけ許可するものを分けることが重要です。
 
-SAA-C03では、VPC、サブネット、ルートテーブル、Internet Gateway、NAT Gateway、Security Group、Network ACLの組み合わせが頻出です。
+SAA-C03の[試験ガイドのタスク1.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)では、Security Group、ルートテーブル、Network ACL、NAT Gatewayを使うVPCアーキテクチャ、ネットワーク分離、VPNやDirect Connectによる外部接続の保護が対象です。WAF、Shield、Cognito、Secrets Managerは[アプリケーションセキュリティ](/books/aws-saa-c03/application-security)で扱います。
 
 ---
 
@@ -33,17 +22,22 @@ SAA-C03では、VPC、サブネット、ルートテーブル、Internet Gateway
 |---|---|---|
 | Public Subnet | Internet Gatewayへのルートを持つ | ALB、NAT Gateway、踏み台が必要な場合のBastion |
 | Private Subnet | 直接インターネットから到達できない | EC2、ECS Task、RDS、ElastiCache |
+| Isolated Subnet | VPC外へのルートを持たない | 外部通信が不要なデータストアや内部処理 |
 
 Webアプリケーションでは、ALBだけをPublic Subnetに置き、アプリケーションサーバーやDBはPrivate Subnetに置く構成が基本です。
 
 <MermaidDiagram chart={`
-flowchart LR
+flowchart TB
     U["User"] --> ALB["ALB<br/>Public Subnet"]
     ALB --> APP["EC2 / ECS<br/>Private Subnet"]
     APP --> DB["RDS / ElastiCache<br/>Private Subnet"]
     APP --> NAT["NAT Gateway<br/>Public Subnet"]
     NAT --> NET["Internet"]
 `} />
+
+サブネットがPublicかPrivateかは名前ではなく、関連付けた**ルートテーブル**で決まります。Internet Gatewayへの直接ルートがあればPublic Subnet、直接ルートがなければPrivate Subnetです。サブネット内のEC2へパブリックIPv4アドレスを付けるだけでは、Internet Gatewayへのルートがなければインターネットと通信できません。
+
+ルートは、送信先CIDRと、Internet Gateway、NAT Gateway、VPCピアリング、VPNなどのターゲットを組み合わせます。AWS公式の[サブネットの設定](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/configure-subnets.html)と[ルートテーブル](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/VPC_Route_Tables.html)で、サブネット種別と経路の決まり方を確認できます。
 
 ---
 
@@ -58,6 +52,21 @@ flowchart LR
 
 実務では、まずSecurity Groupで設計します。NACLは追加の境界防御や明示的な拒否が必要な場合に使います。
 
+Security Groupは許可ルールだけを持つステートフルな仮想ファイアウォールです。許可した通信への応答は、反対方向のルールに関係なく通過できます。送信元や送信先にはCIDRだけでなく、同じVPCや接続されたVPCのSecurity Groupを指定できる場合があります。
+
+たとえば、次のようにSecurity Group同士の関係で許可すると、アプリケーションサーバーのIPアドレスが変わってもDB側のルールを書き換えずに済みます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    NET["Internet"] -->|"HTTPS 443"| ALB["ALB SG"]
+    ALB -->|"App Port"| APP["Application SG"]
+    APP -->|"DB Port"| DB["Database SG"]
+`}
+/>
+
+Security Groupの状態追跡とルールは、AWS公式の[VPCのSecurity Group](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/vpc-security-groups.html)で確認できます。
+
 <Callout type="warning">
 ### NACLは戻り通信も考える
 
@@ -65,11 +74,15 @@ NACLはステートレスです。インバウンドを許可しても、戻り�
 
 </Callout>
 
+NACLは番号の小さいルールから順に評価され、最初に一致した `Allow` または `Deny` が適用されます。戻り通信に使う一時ポートも含め、インバウンドとアウトバウンドの両方を設計します。詳しい評価方法は、AWS公式の[VPCのNetwork ACL](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/vpc-network-acls.html)で確認できます。
+
 ---
 
 ## NAT GatewayとVPC Endpoint
 
-Private SubnetのEC2やECS Taskが外部APIやパッケージレジストリへアクセスするには、NAT Gatewayを使います。ただしNAT Gatewayはコストが高くなりやすいです。
+Private SubnetのEC2やECS Taskが外部APIやパッケージレジストリへアクセスするには、Public Subnetに置いたNAT Gatewayを経由させます。NAT Gatewayを使うとPrivate Subnetから外向きの接続を開始できますが、インターネット側から未承諾の接続を開始することはできません（[NAT Gateway](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/vpc-nat-gateway.html)）。
+
+NAT Gatewayには時間料金とデータ処理料金があるため、AWSサービス宛ての通信までNAT Gatewayへ集約すると費用が増える場合があります。料金は変わるため、設計時に[NAT Gatewayの料金](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/nat-gateway-pricing.html)を確認します。
 
 AWSサービスへ閉域でアクセスしたい場合は **VPC Endpoint** を検討します。
 
@@ -78,6 +91,187 @@ AWSサービスへ閉域でアクセスしたい場合は **VPC Endpoint** を�
 | Private Subnetからインターネットへ出たい | NAT Gateway |
 | Private SubnetからS3へ閉域アクセスしたい | Gateway Endpoint for S3 |
 | Private SubnetからSecrets ManagerやCloudWatchへ閉域アクセスしたい | Interface Endpoint |
+
+| エンドポイント | 接続先 | 仕組み |
+|---|---|---|
+| Gateway Endpoint | Amazon S3、DynamoDB | ルートテーブルへ経路を追加する。PrivateLinkは使わない |
+| Interface Endpoint | 対応するAWSサービス、SaaS、自社のエンドポイントサービス | サブネットにプライベートIPを持つENIを作る。AWS PrivateLinkを使う |
+
+VPC Endpointを使うと、Internet GatewayやNAT Gatewayを経由せず、対応サービスへプライベートに到達できます。エンドポイントポリシーで、そのエンドポイントを経由して実行できる操作やアクセス先を絞れるサービスもあります。エンドポイントの種類とポリシーは、AWS公式の[AWS PrivateLinkの概念](https://docs.aws.amazon.com/ja_jp/vpc/latest/privatelink/concepts.html)で確認できます。
+
+<Callout type="note">
+### Gateway EndpointとNAT Gatewayを使い分ける
+
+Private SubnetからS3へアクセスするだけなら、Gateway Endpointを使うことでS3宛ての通信をNAT Gatewayから分離できます。外部のパッケージ配布サイトや公開APIへの通信にはVPC Endpointを使えないため、NAT Gatewayなどのインターネット向け経路が必要です。
+
+</Callout>
+
+---
+
+## VPCピアリングとAWS PrivateLink
+
+VPC間をプライベートに接続する方法は、相互にネットワーク通信させたいのか、特定サービスだけを公開したいのかで選びます。
+
+### VPCピアリング
+
+**VPCピアリング**は、2つのVPCを接続し、プライベートIPv4またはIPv6アドレスで相互にルーティングする機能です。同一アカウント、別アカウント、別リージョンのVPC間で作成できます（[VPCピアリングとは](https://docs.aws.amazon.com/ja_jp/vpc/latest/peering/what-is-vpc-peering.html)）。
+
+接続を作成しただけでは通信できません。両方のVPCで、相手VPCのCIDRをVPCピアリング接続へ向けるルートと、必要なSecurity Group・NACLの許可を設定します。
+
+<Callout type="warning">
+### VPCピアリングは推移しない
+
+VPC AとVPC B、VPC AとVPC Cをピアリングしても、VPC BからVPC Aを中継してVPC Cへは通信できません。また、CIDRが重複するVPC間にはピアリング接続を作成できません。制約はAWS公式の[VPCピアリングの基本](https://docs.aws.amazon.com/ja_jp/vpc/latest/peering/vpc-peering-basics.html#vpc-peering-limitations)で確認できます。
+
+</Callout>
+
+VPCが増えてフルメッシュのピアリング管理が複雑になる場合は、**AWS Transit Gateway**をハブとしてVPC、VPN、Direct Connect Gatewayを接続できます（[Transit Gatewayとは](https://docs.aws.amazon.com/ja_jp/vpc/latest/tgw/what-is-transit-gateway.html)）。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    TGW["Transit Gateway"] --> PROD["Production VPC"]
+    TGW --> DEV["Development VPC"]
+    TGW --> SHARED["Shared Services VPC"]
+    TGW --> VPN["Site-to-Site VPN"]
+    TGW --> DX["Direct Connect Gateway"]
+`}
+/>
+
+### AWS PrivateLink
+
+**AWS PrivateLink**は、VPCをAWSサービス、SaaS、別VPCで提供するサービスなどへプライベートに接続する技術です。コンシューマー側はInterface Endpointを作り、サービスのプライベートな入口として使います。通信はパブリックインターネットを経由せず、サービス提供側のVPC全体を相手へ公開する必要もありません。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    APP["コンシューマーVPC<br/>アプリ"] --> ENI["Interface Endpoint"]
+    ENI --> PL["AWS PrivateLink"]
+    PL --> NLB["サービス提供側<br/>ロードバランサー"]
+    NLB --> SVC["提供サービス"]
+`}
+/>
+
+PrivateLinkの利用者は、インターネットゲートウェイ、NATデバイス、パブリックIPアドレスを使わずに公開されたサービスへ接続できます。詳細はAWS公式の[AWS PrivateLinkとは](https://docs.aws.amazon.com/ja_jp/vpc/latest/privatelink/what-is-privatelink.html)で確認できます。
+
+| 要件 | 選択肢 |
+|---|---|
+| 2つのVPCをネットワークとして相互接続したい | VPCピアリング |
+| 多数のVPCとオンプレミス接続をハブへ集約したい | Transit Gateway |
+| 別VPCやSaaSの特定サービスだけを利用者へ公開したい | AWS PrivateLink |
+
+この表は、各サービスの公式な役割を接続範囲で整理した筆者の整理です。
+
+---
+
+## VPNとDirect Connectで外部ネットワークへ接続する
+
+オンプレミスのデータセンターとVPCを接続する代表的な方法は、AWS Site-to-Site VPNとAWS Direct Connectです。
+
+| 比較 | AWS Site-to-Site VPN | AWS Direct Connect |
+|---|---|---|
+| 経路 | インターネット上のIPsec VPN | Direct Connectロケーションを経由する専用ネットワーク接続 |
+| 暗号化 | IPsecトンネルで暗号化 | デフォルトでは暗号化されない |
+| 導入判断 | 暗号化された接続を早く用意したい | インターネットを経由しない一貫したネットワーク経路が必要 |
+| 組み合わせ | Direct Connect上の通信をIPsecで暗号化する構成に使える | Site-to-Site VPNと組み合わせられる |
+
+Site-to-Site VPNは、カスタマーゲートウェイとAWS側の仮想プライベートゲートウェイまたはTransit GatewayをIPsecトンネルで接続します（[AWS Site-to-Site VPNとは](https://docs.aws.amazon.com/ja_jp/vpn/latest/s2svpn/VPC_VPN.html)）。
+
+Direct Connectは、オンプレミスネットワークをDirect Connectロケーションへ接続し、インターネットサービスプロバイダーを経由せずにVPCやAWSのパブリックサービスへ到達する経路を提供します（[AWS Direct Connectとは](https://docs.aws.amazon.com/ja_jp/directconnect/latest/UserGuide/Welcome.html)）。
+
+重要な接続を1本のDirect Connectだけに依存させず、複数のロケーションやデバイスで冗長化します。AWS公式の[Direct Connect Resiliency Toolkit](https://docs.aws.amazon.com/ja_jp/directconnect/latest/UserGuide/resiliency_toolkit.html)では、求める回復性に応じた複数接続のモデルを確認できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    ONPREM["オンプレミス"] --> DX["Direct Connect<br/>主経路"]
+    ONPREM --> VPN["Site-to-Site VPN<br/>IPsec暗号化"]
+    DX --> DXGW["Direct Connect Gateway"]
+    VPN --> TGW["Transit Gateway"]
+    DXGW --> TGW
+    TGW --> VPC["AWS VPC"]
+`}
+/>
+
+<Callout type="warning">
+### Direct Connectはデフォルトで暗号化されない
+
+専用接続であることと、転送中データが暗号化されることは別です。暗号化が必要なら、対応する専用接続でMACsecを使うか、Site-to-Site VPNをDirect Connectと組み合わせます。AWS公式の[Direct Connectでの暗号化](https://docs.aws.amazon.com/ja_jp/directconnect/latest/UserGuide/encryption-in-transit.html)で利用条件を確認します。
+
+</Callout>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「VPNかDirect Connectか」を暗号化の有無だけで選ばず、経路、導入期間、帯域、可用性、暗号化要件を分けて判断します。これは筆者の整理です。
+</SpeechBubble>
+
+---
+
+## 実務での構成例 — 公開Webと社内管理経路を分離する
+
+インターネット向けWebアプリケーションと、オンプレミスからの管理アクセスを同じVPCに構築する例です。
+
+1. 複数のAvailability ZoneにPublic Subnet、Private Subnet、DB用のIsolated Subnetを作る
+2. Public SubnetのALBだけをInternet Gateway経由で公開する
+3. Application Security GroupはALB Security Groupからのアプリケーションポートだけを許可する
+4. Database Security GroupはApplication Security GroupからのDBポートだけを許可する
+5. アプリケーションからS3とSecrets Managerへの通信はVPC Endpointへ分離する
+6. 外部APIへの通信だけをNAT Gatewayへ送る
+7. オンプレミスからの管理経路はSite-to-Site VPNまたはDirect ConnectとTransit Gatewayへ集約する
+
+これは、この章で扱ったネットワーク部品を最小公開範囲という目的で組み合わせた、筆者の設計例です。
+
+---
+
+## 試験問題での判断パターン
+
+次の対応は、AWS公式ドキュメントの各機能を要件別に整理した、筆者の整理です。
+
+| 問題文の要件 | 選ぶ候補 | 注意点 |
+|---|---|---|
+| インターネットからALBへ到達させたい | Public Subnet、Internet Gateway、ALB Security Group | Public Subnetはルートで決まる |
+| Private Subnetから外部APIへ接続したい | Public NAT Gateway | 外部から接続を開始する用途ではない |
+| Private SubnetからS3へ閉域接続したい | Gateway Endpoint | S3宛て通信をNAT Gatewayから分離できる |
+| Private SubnetからSecrets Managerへ閉域接続したい | Interface Endpoint | エンドポイントのSecurity Groupも確認する |
+| IP単位で特定送信元を明示的に拒否したい | Network ACL | 戻り通信とルール順序も設計する |
+| アプリ層からDB層への通信だけを許可したい | Security Group参照 | IPアドレスではなくSG間の関係で許可する |
+| 2つのVPCを相互接続したい | VPCピアリング | CIDR重複不可、推移的ルーティングなし |
+| 多数のVPCとオンプレミスをハブ接続したい | Transit Gateway | アタッチメントとルートテーブルを設計する |
+| 特定サービスだけを別VPCへ非公開で提供したい | AWS PrivateLink | VPC全体の相互接続ではない |
+| オンプレミスとVPCをIPsecで暗号化したい | Site-to-Site VPN | インターネット経由の暗号化トンネル |
+| オンプレミスからインターネットを経由しない専用経路が必要 | Direct Connect | デフォルトでは暗号化されない |
+
+---
+
+## よくあるハマりどころ
+
+### Public Subnetという名前だけで公開されると思う
+
+Internet Gatewayへのルート、リソースのパブリックIP、Security GroupやNACLの許可がそろって初めて、インターネットとの通信経路が成立します。
+
+### NAT GatewayをPrivate Subnetへ置く
+
+インターネット接続に使うPublic NAT GatewayはPublic Subnetへ置き、Internet Gatewayへの経路を持たせます。Private SubnetのデフォルトルートはNAT Gatewayへ向けます。
+
+### NACLでインバウンドだけを許可する
+
+NACLはステートレスなので、応答に必要なアウトバウンドルールも必要です。Security Groupのステートフルな動作と混同しないようにします。
+
+### VPCピアリングを中継に使う
+
+VPCピアリングは推移しません。接続数が増える場合やオンプレミス接続を集約する場合は、Transit Gatewayを検討します。
+
+### Direct Connectなら暗号化済みだと思う
+
+Direct Connectはデフォルトで転送中のトラフィックを暗号化しません。機密性の要件があればMACsecやVPNとの組み合わせを検討します。
+
+---
+
+## 参考リンク
+
+- [SAA-C03 試験ガイド — タスク1.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)
+- [Amazon VPCのサブネット](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/configure-subnets.html)
+- [AWS PrivateLinkとは](https://docs.aws.amazon.com/ja_jp/vpc/latest/privatelink/what-is-privatelink.html)
+- [AWS Site-to-Site VPNとは](https://docs.aws.amazon.com/ja_jp/vpn/latest/s2svpn/VPC_VPN.html)
 
 ---
 
@@ -90,8 +284,11 @@ VPCセキュリティは、公開範囲を小さくする設計です。
 - 通常のアクセス制御はSecurity Groupで行う
 - NACLはサブネット単位の追加制御に使う
 - AWSサービスへの閉域アクセスにはVPC Endpointを検討する
+- 2つのVPCを相互接続するならVPCピアリング、多数の接続を集約するならTransit Gatewayを検討する
+- 特定サービスだけをプライベートに公開するならAWS PrivateLinkを使う
+- VPNはIPsecで暗号化し、Direct Connectは専用経路だがデフォルトでは暗号化されない
 
-次の章では、WAF、Shield、Cognito、Secrets Managerなどを使ったアプリケーション保護を扱います。
+WAF、Shield、Cognito、Secrets Managerなどを使ったアプリケーション保護は、[アプリケーションセキュリティ](/books/aws-saa-c03/application-security)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

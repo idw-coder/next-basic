@@ -1,20 +1,8 @@
 ---
 title: '疎結合アーキテクチャ — SQS・SNS・EventBridge・Step Functions'
-description: 'Amazon SQS、SNS、EventBridge、Step Functions、Lambda、DLQを使ってスケーラブルで疎結合なアーキテクチャを設計します。'
+description: 'Amazon API Gateway、SQS、SNS、EventBridge、Step Functions、DLQ、キャッシュを使ってスケーラブルで疎結合なアーキテクチャを設計します。'
 order: 8
 ---
-
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- Amazon API Gatewayの使い方
-- SQSの標準キューとFIFOキューの違い
-- キャッシュ戦略
-- fan-outなどの構成図と試験問題での判断パターン
-
-</Callout>
 
 <Figure src="/images/creative_color.png" alt="処理のつながりを考えるイラスト" maxWidth="320px" />
 
@@ -22,7 +10,11 @@ order: 8
 APIで直接呼び出せばシンプルなのに、なぜわざわざSQSやSNSを挟むんですか？
 </SpeechBubble>
 
-システム同士を直接呼び合う構成は、片方の障害や負荷がもう片方へ伝わりやすくなります。SAA-C03の「スケーラブルで疎結合なアーキテクチャ」では、SQS、SNS、EventBridge、Step Functionsがよく登場します。
+システム同士を直接呼び合う構成は、片方の障害や負荷がもう片方へ伝わりやすくなります。SQS、SNS、EventBridge、Step Functionsを使い、送信側と受信側が同時に動いていなくても連携できる構成へ変えます。
+
+[SAA-C03試験ガイドのタスク2.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain2.html)では、APIの作成と管理、キャッシュ、マイクロサービス、イベント駆動、スケーリング、エッジアクセラレーターを組み合わせた疎結合設計が対象です。
+
+<Marker>疎結合では、呼び出し元が呼び出し先の処理速度や一時障害へ直接依存しない境界を作ります。</Marker>
 
 ---
 
@@ -37,9 +29,69 @@ APIで直接呼び出せばシンプルなのに、なぜわざわざSQSやSNS�
 
 キューやイベントを挟むと、処理を非同期化し、負荷を平準化できます。
 
+<MermaidDiagram
+  chart={`
+flowchart TB
+    P["Producer"] --> Q["SQS Queue"]
+    Q -->|"タスクを分担"| C1["Worker 1"]
+    Q -->|"タスクを分担"| C2["Worker 2"]
+    Q -->|"タスクを分担"| C3["Worker 3"]
+`}
+/>
+
+### ワーカーをステートレスにする
+
+キューからメッセージを受け取るワーカーは、処理状態をローカルディスクやメモリへ持たせず、S3、DynamoDB、RDS、ElastiCacheなどへ外出しします。どのワーカーでも同じメッセージを処理できれば、キューの滞留量に応じてコンピューティングリソースを水平に増減できます。
+
+ステートレス設計の考え方は、AWS Well-Architected Frameworkの[可能な限りシステムをステートレスにする](https://docs.aws.amazon.com/ja_jp/wellarchitected/latest/framework/rel_mitigate_interaction_failure_stateless.html)で確認できます。Auto Scalingの判断は[スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha)で扱います。
+
 ---
 
-## SQS、SNS、EventBridgeの使い分け
+## Amazon API GatewayでAPIの入口を分離する
+
+**Amazon API Gateway**は、クライアントへ公開するAPIの入口を作り、Lambda関数、HTTPエンドポイント、AWSサービスなどのバックエンドへリクエストを渡すマネージドサービスです。
+
+| APIの種類 | 主な用途 |
+|---|---|
+| REST API | APIキー、使用量プラン、レスポンスキャッシュなどを含む多機能なREST API |
+| HTTP API | LambdaやHTTPバックエンドへ接続する軽量なRESTful API |
+| WebSocket API | クライアントとの双方向通信を維持するAPI |
+
+API Gatewayを入口にすると、クライアントはバックエンドの実装や台数を知る必要がありません。同期応答が必要な処理はLambdaやHTTPバックエンドへ渡し、時間のかかる処理はSQSへ受け渡して受付結果を先に返す構成を検討します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    CLIENT["Web / Mobile"] --> API["API Gateway"]
+    API --> L1["受付Lambda"]
+    L1 --> SQS["SQS"]
+    SQS --> L2["処理Lambda"]
+    L2 --> DB["DynamoDB"]
+`}
+/>
+
+API GatewayのAPIタイプと統合先はAWS公式の[Amazon API Gatewayとは](https://docs.aws.amazon.com/ja_jp/apigateway/latest/developerguide/welcome.html)で確認できます。認証とWAFによる保護は[アプリケーションセキュリティ](/books/aws-saa-c03/application-security)で扱います。
+
+---
+
+## SQSの標準キューとFIFOキュー
+
+SQSはメッセージをキューへ保持し、プロデューサーとコンシューマーを時間的に分離します。コンシューマーが一時停止しても、保持期間内のメッセージを復旧後に処理できます。
+
+| 比較 | 標準キュー | FIFOキュー |
+|---|---|---|
+| 配信 | 1回以上。重複する可能性がある | 重複排除を使った1回のみ処理を支援する |
+| 順序 | ベストエフォート | 同じメッセージグループ内で順序を維持する |
+| スケールの考え方 | 大量の独立タスクを並列処理する | メッセージグループを分けて順序と並列性を両立する |
+| 向く要件 | 順序を問わない画像変換やログ処理 | 注文更新や台帳更新など順序が重要な処理 |
+
+標準キューは重複や順序の入れ替わりを許容でき、コンシューマーを冪等にできる場合の第一候補です。FIFOキューは順序や重複排除が要件の場合に選びますが、FIFOキューでも処理完了前の障害や再試行を考え、コンシューマーを冪等にします。
+
+標準キューの配信特性はAWS公式の[Amazon SQS標準キュー](https://docs.aws.amazon.com/ja_jp/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues.html)、FIFOキューの順序と重複排除は[Amazon SQS FIFOキュー](https://docs.aws.amazon.com/ja_jp/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html)で確認できます。
+
+---
+
+## SQS、SNS、EventBridge、Step Functionsの使い分け
 
 | サービス | 得意なこと | 典型例 |
 |---|---|---|
@@ -55,11 +107,82 @@ APIで直接呼び出せばシンプルなのに、なぜわざわざSQSやSNS�
 
 </Callout>
 
+SNSは、同じメッセージを複数の購読先へプッシュする単純なPub/Subに向きます。EventBridgeは、AWSサービス、自社アプリケーション、SaaSから届くイベントを、イベント内容に合うルールで振り分ける場合に向きます。EventBridgeのイベントバス、Pipes、Schedulerは[監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch)でも扱います。
+
+サービスの役割はAWS公式の[SNSからSQSへのfan-out](https://docs.aws.amazon.com/ja_jp/sns/latest/dg/sns-sqs-as-subscriber.html)と[Amazon EventBridgeとは](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-what-is.html)で確認できます。
+
+### SNSとSQSでfan-outする
+
+1件の注文イベントを在庫、通知、分析が独立して処理する場合、各処理専用のSQSキューをSNSトピックへ購読させます。1つの処理が遅延・停止しても、ほかのキューの処理を止めません。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    ORDER["注文サービス"] --> TOPIC["SNS Topic"]
+    TOPIC --> Q1["在庫SQS"]
+    TOPIC --> Q2["通知SQS"]
+    TOPIC --> Q3["分析SQS"]
+    Q1 --> W1["在庫Worker"]
+    Q2 --> W2["通知Worker"]
+    Q3 --> W3["分析Worker"]
+`}
+/>
+
+<Callout type="note">
+### fan-out先へ直接Lambdaを置くか、SQSを挟むか
+
+短時間で処理でき、イベントの一時保持が不要ならSNSからLambdaを直接呼び出す構成もあります。購読先ごとに滞留を吸収し、再処理やバックプレッシャーを管理したい場合は、SNSとコンシューマーの間にSQSを置きます。
+
+</Callout>
+
+### Step Functionsで処理手順を見える化する
+
+Step Functionsは、複数の処理をステートマシンとして定義し、順次実行、並列実行、条件分岐、待機、再試行、エラー処理を制御します。
+
+| ワークフロー | 向く要件 |
+|---|---|
+| Standard | 実行履歴を残したい、長時間の待機や人の承認を含む処理 |
+| Express | 短時間で高いイベントレートの処理 |
+
+SQSは独立したタスクをためて複数ワーカーへ渡すサービスです。Step Functionsは「決済に成功したら在庫を確保し、失敗したら補償処理を行う」のように、処理の順序と状態遷移を管理する場合に使います。ワークフロータイプの違いはAWS公式の[AWS Step Functionsとは](https://docs.aws.amazon.com/ja_jp/step-functions/latest/dg/welcome.html)で確認できます。
+
+---
+
+## キャッシュ戦略で下流への依存を減らす
+
+キャッシュは、繰り返し参照されるデータを利用者やアプリケーションに近い場所へ置き、オリジンやデータベースへの呼び出しを減らします。レイテンシーと下流負荷を下げられますが、古いデータを返せる時間、キャッシュキー、無効化方法を先に決めます。
+
+| キャッシュする場所 | AWSサービス | 向く要件 |
+|---|---|---|
+| エッジ | CloudFront | 世界中の利用者へ静的・動的コンテンツを低レイテンシーで配信する |
+| APIの入口 | API GatewayのREST APIキャッシュ | 同じAPIレスポンスへの呼び出しをバックエンドから減らす |
+| アプリとDBの間 | ElastiCache | セッション、頻繁に読むデータ、計算結果をインメモリで共有する |
+| DynamoDBの前 | DynamoDB Accelerator（DAX） | 結果整合性を許容できるDynamoDBの読み込みを高速化する |
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USER["利用者"] --> CF["CloudFront<br/>Edge Cache"]
+    CF --> API["API Gateway<br/>API Cache"]
+    API --> APP["Application"]
+    APP --> CACHE["ElastiCache / DAX"]
+    CACHE --> DB["Database"]
+`}
+/>
+
+キャッシュキーへ不要なCookie、ヘッダー、クエリ文字列を含めると、同じ内容でも別のキャッシュとして扱われ、ヒット率が下がります。一方、利用者ごとに異なるレスポンスを同じキーで共有すると、別利用者の情報を返す危険があります。更新頻度と機密性に応じてTTLを決め、キャッシュミス時にも下流が耐えられる構成にします。
+
+各キャッシュの役割はAWS公式の[Amazon CloudFrontとは](https://docs.aws.amazon.com/ja_jp/AmazonCloudFront/latest/DeveloperGuide/Introduction.html)、[API GatewayのREST APIキャッシュ](https://docs.aws.amazon.com/ja_jp/apigateway/latest/developerguide/api-gateway-caching.html)、[Amazon ElastiCacheとは](https://docs.aws.amazon.com/ja_jp/AmazonElastiCache/latest/dg/WhatIs.html)、[DynamoDB Accelerator](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/DAX.html)で確認できます。
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+キャッシュは「どこに置くか」だけでなく、「いつ古い値を捨てるか」と「キャッシュが空でも耐えられるか」まで決めると設計になります。
+</SpeechBubble>
+
 ---
 
 ## DLQとリトライ
 
-非同期処理では、失敗したメッセージをどう扱うかが重要です。SQSでは **DLQ（Dead Letter Queue）** を設定し、何度も失敗したメッセージを退避できます。
+非同期処理では、失敗したメッセージをどう扱うかが重要です。SQSでは **DLQ**（Dead Letter Queue）を設定し、何度も失敗したメッセージを退避できます。
 
 実務で見るべき項目:
 
@@ -69,6 +192,118 @@ APIで直接呼び出せばシンプルなのに、なぜわざわざSQSやSNS�
 - 冪等性を考慮しているか
 
 同じメッセージが複数回処理されても壊れないように、処理側は冪等に設計します。
+
+### メッセージ受信から削除まで
+
+コンシューマーがSQSメッセージを受信すると、そのメッセージは可視性タイムアウトの間、ほかのコンシューマーから見えなくなります。処理に成功したらメッセージを削除します。削除前に処理が失敗して可視性タイムアウトが切れると、メッセージが再表示され、再試行できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    Q["SQS Queue"] --> R["Receive"]
+    R --> P["Process"]
+    P -->|"成功"| D["DeleteMessage"]
+    P -->|"失敗 / timeout"| RETRY["Queueへ再表示"]
+    RETRY -->|"受信回数超過"| DLQ["Dead Letter Queue"]
+`}
+/>
+
+可視性タイムアウトが処理時間より短いと、処理中のメッセージを別のコンシューマーも受信する可能性があります。長すぎると、障害時の再試行開始が遅れます。通常の処理時間と異常時の回復時間を測り、必要なら処理中に延長します。
+
+DLQへ移ったメッセージは自動的に原因が直るわけではありません。CloudWatch Alarmなどで滞留を検知し、原因を修正してから再処理します。詳細はAWS公式の[SQSの可視性タイムアウト](https://docs.aws.amazon.com/ja_jp/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html)と[SQSのデッドレターキュー](https://docs.aws.amazon.com/ja_jp/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html)で確認できます。
+
+### 冪等性で重複処理に耐える
+
+**冪等性**は、同じ要求を複数回受けても、1回処理した場合と同じ結果に保つ性質です。注文IDや決済IDを冪等性キーとして保存し、処理済みなら副作用を繰り返さないようにします。
+
+LambdaがSQSをイベントソースとして使う場合も重複処理が起こり得るため、関数を冪等にするようAWS公式の[LambdaでSQSを使う方法](https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/with-sqs.html)で案内されています。
+
+---
+
+## 実務での構成例 — 注文受付と後続処理を分離する
+
+ECサイトで注文APIへのアクセスが急増しても、在庫更新、通知、分析をそれぞれの速度で処理できる構成を考えます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    CLIENT["Client"] --> API["API Gateway"]
+    API --> ACCEPT["受付Lambda"]
+    ACCEPT --> ORDERQ["注文SQS"]
+    ORDERQ --> WORKER["注文Worker"]
+    WORKER --> DB["DynamoDB"]
+    WORKER --> TOPIC["注文完了SNS"]
+    TOPIC --> MAILQ["通知SQS"]
+    TOPIC --> ANALYTICSQ["分析SQS"]
+    ORDERQ --> DLQ["注文DLQ"]
+`}
+/>
+
+この構成では、注文受付と後続処理を次のように分けます。
+
+1. API Gatewayと受付Lambdaが入力を検証し、注文IDを付ける
+2. 受付Lambdaが注文をSQSへ送り、クライアントへ受付結果を返す
+3. 注文Workerが自分の処理能力に合わせてメッセージを取得する
+4. 注文IDを冪等性キーとして、重複処理を防ぎながらDynamoDBを更新する
+5. 注文完了イベントをSNSへ発行し、通知と分析のSQSへfan-outする
+6. 繰り返し失敗する注文はDLQへ移し、アラームで運用担当者へ知らせる
+
+<Marker>SQSがアクセス急増を吸収するため、注文APIと注文Workerを同じ速度でスケールさせる必要がありません。</Marker>
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| RESTやWebSocketの公開APIをマネージドに作りたい | API Gateway | クライアントとバックエンドの入口を分離できる |
+| 急増する独立タスクをためて並列処理したい | SQS標準キュー | 順序を問わない大量の処理をバッファできる |
+| 同じ注文の更新を送信順に処理したい | SQS FIFOキュー | メッセージグループ内の順序を維持できる |
+| 同じ通知を複数の処理へ配り、各処理で滞留を吸収したい | SNS + 複数のSQS | fan-out先ごとに独立したキューを持てる |
+| AWSサービスやSaaSのイベントを内容で振り分けたい | EventBridge | イベントパターンでルーティングできる |
+| 分岐、待機、再試行を含む業務手順を管理したい | Step Functions | 状態遷移をワークフローとして管理できる |
+| 世界中の利用者への配信を高速化し、オリジン負荷を減らしたい | CloudFront | エッジでコンテンツをキャッシュできる |
+| DynamoDBの結果整合性読み込みを高速化したい | DAX | DynamoDB互換のインメモリキャッシュを使える |
+| 共有セッションやDB照会結果をキャッシュしたい | ElastiCache | アプリケーションから共有できるインメモリストアを使える |
+
+この表は、要件から第一候補を絞るための筆者の整理です。実際の設計では、順序、配信特性、整合性、保持、レイテンシー、費用を確認します。
+
+---
+
+## よくあるハマりどころ
+
+### 複数の処理が同じSQSキューを読めばfan-outになると思う
+
+同じキューを複数のコンシューマーが読むと、通常はメッセージを分担します。すべての処理へ同じイベントを届けたい場合は、SNSやEventBridgeから処理ごとのSQSキューへ配信します。
+
+### FIFOキューだけで業務処理も完全に1回になると思う
+
+FIFOキューは順序維持と重複排除を支援しますが、コンシューマーが副作用を実行した後、メッセージ削除前に失敗する場合があります。注文IDなどで処理済みを記録し、業務処理も冪等にします。
+
+### 可視性タイムアウトを処理時間より短くする
+
+処理中のメッセージが再表示され、別のコンシューマーが重複処理する可能性があります。通常時と遅延時の処理時間を測り、タイムアウトや延長方法を決めます。
+
+### DLQを設定して監視しない
+
+DLQは失敗メッセージを隔離する場所です。原因調査、アラーム、修正後の再処理まで運用手順へ含めます。
+
+### 利用者ごとのレスポンスを同じキャッシュキーで共有する
+
+認証情報や個人別データを含むレスポンスでは、キャッシュキーとキャッシュ可否を慎重に決めます。不要なキャッシュを避け、別利用者のデータを返さない設計にします。
+
+### 長い同期呼び出しをマイクロサービス間で連鎖させる
+
+途中の1サービスの遅延や障害が全体へ伝わります。即時応答が不要な境界ではSQSやイベントを使い、同期呼び出しではタイムアウトと再試行上限を決めます。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク2.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain2.html)
+- [Amazon API Gatewayとは](https://docs.aws.amazon.com/ja_jp/apigateway/latest/developerguide/welcome.html)
+- [Amazon SQS標準キュー](https://docs.aws.amazon.com/ja_jp/AWSSimpleQueueService/latest/SQSDeveloperGuide/standard-queues.html)
+- [Amazon SQS FIFOキュー](https://docs.aws.amazon.com/ja_jp/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html)
 
 ---
 
@@ -81,8 +316,11 @@ APIで直接呼び出せばシンプルなのに、なぜわざわざSQSやSNS�
 - EventBridgeはイベントルーティング
 - Step Functionsはワークフロー制御
 - DLQ、リトライ、冪等性をセットで設計する
+- API Gatewayでクライアントとバックエンドを分離する
+- CloudFront、API Gateway、ElastiCache、DAXをキャッシュ対象に合わせて選ぶ
+- ワーカーをステートレスにし、キューの滞留へ水平スケールで対応する
 
-次の章では、ELB、Auto Scaling、Multi-AZを使った可用性とスケーラビリティを扱います。
+ELB、Auto Scaling、Multi-AZによる水平スケーリングと冗長化は、[スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

@@ -1,20 +1,8 @@
 ---
 title: 'スケーラビリティと高可用性 — ELB・Auto Scaling・Multi-AZ'
-description: 'ALB、NLB、Auto Scaling、EC2 Auto Scaling、RDS Multi-AZ、Aurora、Route 53、ヘルスチェックで高可用性を設計します。'
+description: 'ALB、NLB、EC2 Auto Scalingのスケーリングポリシー、RDS Multi-AZ、RDS Proxy、Route 53ヘルスチェックで高可用性を設計します。'
 order: 9
 ---
-
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- Auto Scalingのスケーリングポリシーの種類（ターゲット追跡・ステップ・スケジュール・予測）
-- RDS Proxy
-- Route 53のヘルスチェック
-- 試験問題での判断パターン
-
-</Callout>
 
 <Figure src="/images/stepup_suit_man_color-1.png" alt="負荷に合わせて段階的に伸ばすイメージのイラスト" maxWidth="320px" />
 
@@ -22,7 +10,18 @@ order: 9
 Auto Scalingを入れれば、それだけで高可用性になるんですか？
 </SpeechBubble>
 
-弾力性に優れたアーキテクチャでは、負荷が増えても処理でき、障害が起きてもサービスを継続できる構成を作ります。SAA-C03では、ELB、Auto Scaling、Multi-AZ、Route 53の判断が頻出です。
+弾力性に優れたアーキテクチャでは、負荷が増えても処理でき、障害が起きてもサービスを継続できる構成を作ります。ELB、Auto Scaling、Multi-AZ、Route 53は、それぞれ異なる層の負荷分散、伸縮、冗長化、フェイルオーバーを担当します。
+
+[SAA-C03試験ガイドのタスク2.1と2.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain2.html)では、水平・垂直スケーリング、ロードバランシング、複数AZ・複数リージョン、フェイルオーバー、RDS Proxy、サービスクォータなどを要件に合わせて選ぶ力が対象です。
+
+| 設計特性 | 意味 | 代表的な実装 |
+|---|---|---|
+| スケーラビリティ | 負荷の増加に合わせて処理能力を増やせる | EC2 Auto Scaling、Read Replica |
+| 弾力性 | 負荷の増減に合わせて容量を自動調整する | 動的スケーリング、予測スケーリング |
+| 高可用性 | 一部が故障してもサービスを継続しやすくする | Multi-AZ、ELB、Route 53 |
+| 耐障害性 | コンポーネント障害を前提に処理やデータを保護する | 冗長化、再試行、フェイルオーバー |
+
+<Marker>Auto Scalingは台数を維持・調整し、ELBは正常なターゲットへ通信を分散します。両方を複数AZで組み合わせて高可用性を作ります。</Marker>
 
 ---
 
@@ -33,7 +32,7 @@ Auto Scalingを入れれば、それだけで高可用性になるんですか�
 基本構成:
 
 <MermaidDiagram chart={`
-flowchart TD
+flowchart TB
     U["Users"] --> R53["Route 53"]
     R53 --> ALB["Application Load Balancer"]
     ALB --> EC2A["EC2 Auto Scaling<br/>AZ-a"]
@@ -41,6 +40,15 @@ flowchart TD
     EC2A --> RDS["RDS Multi-AZ"]
     EC2B --> RDS
 `} />
+
+この構成では、Route 53がALBのDNS名を返し、ALBが複数AZの正常なEC2へリクエストを分散します。Auto Scaling Groupは必要な台数を維持し、RDS Multi-AZはデータベース障害時のフェイルオーバー先を用意します。
+
+<Callout type="warning">
+### 複数台でも同じAZだけではAZ障害に耐えられない
+
+EC2が複数台あっても、すべて同じAZにあればAZ障害が単一障害点になります。ALB、Auto Scaling Group、データベースを複数AZへ配置し、各AZに処理可能な容量を持たせます。
+
+</Callout>
 
 ---
 
@@ -52,13 +60,36 @@ flowchart TD
 | NLB | TCP/UDP、高スループット、固定IPが必要な場合 |
 | GWLB | セキュリティアプライアンスの挿入 |
 
-WebアプリケーションではALBが最もよく使われます。TCPレベルの高性能な負荷分散や固定IP要件があればNLBを検討します。
+WebアプリケーションでHTTPヘッダー、ホスト名、パスなどに基づいて振り分けるならALBを選びます。TCP・UDP・TLSの接続を低いレイヤーで分散し、ゾーンごとの固定IPが必要ならNLBを検討します。
+
+ロードバランサーはリスナーで受信プロトコルとポートを待ち受け、ルールに従ってターゲットグループへ転送します。ターゲットグループにはEC2インスタンス、IPアドレス、Lambda関数など、ロードバランサーの種類が対応するターゲットを登録します。
+
+### ヘルスチェックで異常なターゲットを外す
+
+ALBはターゲットグループごとにパス、ポート、成功コード、間隔、タイムアウト、正常・異常判定のしきい値を設定し、正常なターゲットへリクエストを送ります。`/health` が単にプロセスの起動だけでなく、アプリケーションがリクエストを処理できる状態を確認するように設計します。
+
+Elastic Load Balancingの分散動作はAWS公式の[Elastic Load Balancingの仕組み](https://docs.aws.amazon.com/ja_jp/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html)、ALBの判定項目は[ターゲットグループのヘルスチェック](https://docs.aws.amazon.com/ja_jp/elasticloadbalancing/latest/application/target-group-health-checks.html)で確認できます。
 
 ---
 
 ## Auto Scaling
 
 Auto Scalingは、負荷に応じてEC2インスタンス数を増減します。
+
+EC2 Auto Scalingでは、起動テンプレートにAMI、インスタンスタイプ、Security Group、IAM Instance Profile、User Dataなどを定義します。Auto Scaling Groupでは、最小・希望・最大キャパシティと、インスタンスを起動する複数AZのサブネットを指定します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    LT["Launch Template"] --> ASG["Auto Scaling Group<br/>min / desired / max"]
+    ASG --> AZA["EC2<br/>AZ-a"]
+    ASG --> AZC["EC2<br/>AZ-c"]
+    ALB["ALB Health Check"] --> ASG
+    ASG --> POLICY["Scaling Policy"]
+`}
+/>
+
+Auto Scaling Groupはインスタンスの状態を監視し、異常と判断したインスタンスを置き換えて希望キャパシティを維持します。ELBヘルスチェックを有効にすると、ロードバランサーが異常と判断したインスタンスも置換判断に使えます。グループとヘルスチェックの動作はAWS公式の[Auto Scaling Group](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/auto-scaling-groups.html)と[Auto Scalingのヘルスチェック](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/ec2-auto-scaling-health-checks.html)で確認できます。
 
 よく使うスケーリング指標:
 
@@ -67,7 +98,26 @@ Auto Scalingは、負荷に応じてEC2インスタンス数を増減します�
 - SQSキューの長さ
 - カスタムCloudWatchメトリクス
 
+SQSキューの長さを使う場合は、AWS公式の[SQSキューに基づくスケーリング](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/as-using-sqs-queue.html)を参考に、ワーカー1台あたりが許容できるバックログ量へ正規化したカスタムメトリクスを検討します。SQSがアクセスの山を吸収する構成は[疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture)で扱います。
+
+### スケーリングポリシーを選ぶ
+
+| ポリシー | 動作 | 向く要件 |
+|---|---|---|
+| ターゲット追跡 | 指標を目標値へ近づけるよう増減する | 平均CPU使用率やターゲットあたりのリクエスト数を一定に保ちたい |
+| ステップスケーリング | アラーム超過幅に応じて増減数を段階的に変える | 負荷の深刻度ごとに増やす台数を細かく制御したい |
+| スケジュールされたスケーリング | 指定日時に最小・最大・希望キャパシティを変更する | 営業開始や定期イベントなど時刻を事前に把握できる |
+| 予測スケーリング | 過去の周期的な負荷から将来容量を予測する | 日次・週次の繰り返しパターンへ事前に備えたい |
+
+ターゲット追跡は、温度を一定に保つサーモスタットのように、指標と目標値を指定して容量を自動調整します。ステップスケーリングは「しきい値を少し超えたら1台、大きく超えたら3台」のような制御に向きます。
+
+スケジュールされたスケーリングは人が予測済みの時刻を指定し、予測スケーリングは履歴から周期パターンを学習します。予測不能な急増にも反応できるよう、予測スケーリングと動的スケーリングを組み合わせる構成を検討します。
+
+ポリシーの仕様はAWS公式の[ターゲット追跡](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/as-scaling-target-tracking.html)、[動的スケーリング](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/as-scale-based-on-demand.html)、[スケジュールされたスケーリング](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/ec2-auto-scaling-scheduled-scaling.html)、[予測スケーリング](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/ec2-auto-scaling-predictive-scaling.html)で確認できます。
+
 実務では、スケールアウトだけでなくスケールイン時の影響も考えます。処理中のリクエストを安全に終わらせるには、ALBのderegistration delayやアプリケーションのgraceful shutdownが重要です。
+
+また、新しいインスタンスが起動しても、アプリケーションの初期化が終わるまでは負荷を受けられません。インスタンスのウォームアップ、ヘルスチェックの猶予期間、デプロイ処理時間を測り、同じインスタンスを短時間に増減するフラッピングを避けます。
 
 ---
 
@@ -81,6 +131,163 @@ Auto Scalingは、負荷に応じてEC2インスタンス数を増減します�
 
 試験では、Multi-AZとRead Replicaの目的を混同しないことが重要です。可用性ならMulti-AZ、読み取り性能ならRead Replicaです。
 
+単一スタンバイを持つRDS Multi-AZ DBインスタンス配置では、プライマリのデータを別AZのスタンバイへ同期的に複製します。スタンバイはフェイルオーバー用であり、読み取りトラフィックの分散には使いません。読み取り負荷を分散したい場合はRead Replicaを追加します。
+
+Aurora Replicaは読み取り処理を分散でき、Writer障害時にはフェイルオーバー先にもなります。アプリケーションは書き込みにクラスターエンドポイント、読み取りにリーダーエンドポイントを使い、個々のDBインスタンスへ固定接続しないようにします。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    APP["Application"] --> WRITER["Writer Endpoint"]
+    APP --> READER["Reader Endpoint"]
+    WRITER --> PRIMARY["Primary / Writer<br/>AZ-a"]
+    READER --> REP1["Aurora Replica<br/>AZ-c"]
+    READER --> REP2["Aurora Replica<br/>AZ-d"]
+    PRIMARY -->|"Replication"| REP1
+    PRIMARY -->|"Replication"| REP2
+`}
+/>
+
+RDS Multi-AZ DBインスタンスの同期スタンバイはAWS公式の[RDS Multi-AZ DBインスタンス](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html)、Aurora Replicaの読み取り分散とフェイルオーバーは[Auroraのレプリケーション](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/AuroraUserGuide/Aurora.Replication.html)で確認できます。
+
+### RDS Proxyで接続急増を吸収する
+
+Lambdaやコンテナが短時間に増えると、各実行環境がDB接続を作り、RDSの接続上限やCPU・メモリを圧迫する場合があります。**Amazon RDS Proxy**は、アプリケーションとRDS・Auroraの間でデータベース接続をプールして共有します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    L1["Lambda 1"] --> PROXY["RDS Proxy<br/>Connection Pool"]
+    L2["Lambda 2"] --> PROXY
+    L3["Lambda 3"] --> PROXY
+    PROXY --> DB["RDS / Aurora"]
+    SECRET["Secrets Manager / IAM認証"] --> PROXY
+`}
+/>
+
+RDS Proxyはアプリケーション接続を維持しながらスタンバイDBへ接続先を切り替え、フェイルオーバー時のアプリケーション影響を減らします。ただし、遅いクエリやDB自体の処理容量を増やすサービスではありません。役割と対応エンジンはAWS公式の[Amazon RDS Proxy](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/rds-proxy.html)で確認します。
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+Read Replicaは読み取り処理を増やし、RDS Proxyは接続を効率化します。どちらも書き込みDBの処理能力そのものを無制限に増やす機能ではありません。
+</SpeechBubble>
+
+---
+
+## Route 53のヘルスチェックとDNSフェイルオーバー
+
+Route 53のヘルスチェックは、指定したエンドポイント、別のヘルスチェックの状態、CloudWatch Alarmの状態を監視できます。フェイルオーバールーティングでは、プライマリが異常なときにセカンダリのDNSレコードを返します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Users"] --> R53["Route 53<br/>Failover Routing"]
+    HC1["Primary Health Check"] --> R53
+    HC2["Secondary Health Check"] --> R53
+    R53 -->|"Primary healthy"| PRIMARY["Primary Endpoint"]
+    R53 -->|"Primary unhealthy"| SECONDARY["Secondary Endpoint"]
+`}
+/>
+
+Route 53のDNSフェイルオーバーは、別リージョンや外部エンドポイントなど、DNS名の解決先を切り替える場合に使います。ALBのヘルスチェックはロードバランサー配下のターゲットを外し、Route 53のヘルスチェックはDNS応答で返すエンドポイントを選ぶため、担当する層が異なります。
+
+DNSレスポンスはリゾルバーやクライアントへTTLの間キャッシュされるため、Route 53が切り替えてもすべてのクライアントが即座に新しい接続先へ移るとは限りません。ヘルスチェックとDNSフェイルオーバーの動作はAWS公式の[Route 53ヘルスチェック](https://docs.aws.amazon.com/ja_jp/Route53/latest/DeveloperGuide/dns-failover.html)で確認できます。
+
+<Callout type="warning">
+### 待機系のサービスクォータも事前に確認する
+
+別リージョンへフェイルオーバーしても、EC2、Elastic IP、ロードバランサーなどのサービスクォータが必要容量を下回れば復旧できません。待機先リージョンのクォータを棚卸しし、必要な引き上げを障害発生前に申請します。申請方法はAWS公式の[クォータ引き上げのリクエスト](https://docs.aws.amazon.com/ja_jp/servicequotas/latest/userguide/request-quota-increase.html)で確認できます。
+
+</Callout>
+
+---
+
+## 実務での構成例 — アクセス急増とAZ障害へ備える
+
+キャンペーン時にアクセスが急増するWebアプリケーションを、1つのリージョン内で複数AZへ配置します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USER["Users"] --> R53["Route 53"]
+    R53 --> ALB["ALB<br/>Public Subnets"]
+    ALB --> ASGA["Auto Scaling<br/>AZ-a"]
+    ALB --> ASGC["Auto Scaling<br/>AZ-c"]
+    ASGA --> PROXY["RDS Proxy"]
+    ASGC --> PROXY
+    PROXY --> RDS["RDS Multi-AZ"]
+    CW["CloudWatch Metrics"] --> POLICY["Scaling Policy"]
+    POLICY --> ASGA
+    POLICY --> ASGC
+`}
+/>
+
+設計では次を確認します。
+
+1. ALBとAuto Scaling Groupで2つ以上のAZを有効にする
+2. 起動テンプレートから同じ構成のEC2を再作成できるようにする
+3. ALBヘルスチェックをAuto Scaling Groupの置換判断へ連携する
+4. 通常の変動にはターゲット追跡、開始時刻が決まったイベントにはスケジュールまたは予測スケーリングを使う
+5. スケールイン時に処理中リクエストを完了できる猶予を取る
+6. RDS Multi-AZでDBインスタンス障害とAZ障害に備える
+7. 接続数が急増するならRDS Proxyで接続をプールする
+8. CloudWatchで正常なターゲット数、レイテンシー、エラー、CPU、DB接続数を監視する
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| HTTPリクエストをパスやホスト名で振り分けたい | ALB | レイヤー7のルーティングを使える |
+| TCP・UDPで負荷分散し、ゾーンごとの固定IPが必要 | NLB | レイヤー4の接続と固定IP要件に対応できる |
+| 正常なEC2だけへ通信を送り、異常時に置き換えたい | ALB + EC2 Auto Scaling | ELBヘルスチェックと希望キャパシティ維持を組み合わせられる |
+| 平均CPU使用率を目標値付近に保ちたい | ターゲット追跡スケーリング | 指標と目標値に合わせて容量を増減できる |
+| 毎週決まった時刻の負荷増加へ備えたい | スケジュールされたスケーリング | 既知の時刻に事前増強できる |
+| 周期的な負荷を履歴から予測して事前増強したい | 予測スケーリング | 将来の必要容量を予測できる |
+| RDSの可用性を高め、自動フェイルオーバーしたい | RDS Multi-AZ | 別AZのスタンバイへ切り替えられる |
+| RDSの読み取り負荷を分散したい | Read Replica | 読み取り専用の複製へ問い合わせを分散できる |
+| Lambda急増時のDB接続数を抑えたい | RDS Proxy | 接続をプールして共有できる |
+| 異常なリージョンのエンドポイントからDNSを切り替えたい | Route 53フェイルオーバールーティング | ヘルスチェック結果で応答先を切り替えられる |
+
+この表は、要件から第一候補を絞るための筆者の整理です。実際の設計では、プロトコル、復旧時間、整合性、クォータ、費用を確認します。
+
+---
+
+## よくあるハマりどころ
+
+### Auto Scaling Groupを1つのAZだけに置く
+
+インスタンス障害には対応できても、AZ全体の障害には耐えられません。複数AZのサブネットを指定し、ALBも同じAZを有効にします。
+
+### CPU使用率だけでスケーリングする
+
+ワークロードによっては、CPUよりALBのターゲットあたりリクエスト数、SQSバックログ、レイテンシーなどが処理能力を正確に表します。1台増えたときに負荷がどう分散するかを確認して指標を選びます。
+
+### 新しいインスタンスが起動した瞬間に負荷を流す
+
+アプリケーションの起動やキャッシュの準備が終わる前にヘルスチェックへ合格させると、エラーが増えます。ウォームアップとヘルスチェックの猶予期間を実測値に合わせます。
+
+### Multi-AZを読み取りスケールに使おうとする
+
+単一スタンバイ型のRDS Multi-AZ DBインスタンスでは、スタンバイは読み取りに使いません。可用性はMulti-AZ、読み取りスケールはRead Replicaと目的を分けます。
+
+### RDS Proxyで遅いSQLも速くなると思う
+
+RDS Proxyが改善する中心は接続の再利用とフェイルオーバー時の接続管理です。SQL、インデックス、DBインスタンスの処理能力は別に改善します。
+
+### Route 53の切り替えが全利用者へ即時反映されると思う
+
+DNSキャッシュがTTLまで残る場合があります。TTL、ヘルスチェック間隔、アプリケーションの再接続動作を含めて復旧時間を評価します。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク2.1・2.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain2.html)
+- [Elastic Load Balancingの仕組み](https://docs.aws.amazon.com/ja_jp/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html)
+- [Amazon EC2 Auto Scalingのターゲット追跡](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/as-scaling-target-tracking.html)
+- [RDS Multi-AZ DBインスタンス](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html)
+
 ---
 
 ## まとめ
@@ -89,11 +296,13 @@ Auto Scalingは、負荷に応じてEC2インスタンス数を増減します�
 
 - <Marker>ALB/NLBで複数ターゲットに分散する</Marker>
 - EC2 Auto Scalingで台数を調整する
+- 負荷パターンに合うスケーリングポリシーを選ぶ
 - RDS Multi-AZでDB障害に備える
+- RDS Proxyで接続急増とフェイルオーバー時の影響を抑える
 - Route 53のヘルスチェックやルーティングも活用する
 - 可用性目的と性能目的を区別する
 
-次の章では、RTO、RPO、バックアップ、マルチリージョンを使ったDR設計を扱います。
+RTO、RPO、バックアップ、マルチリージョンによる復旧戦略は、[災害復旧](/books/aws-saa-c03/disaster-recovery)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

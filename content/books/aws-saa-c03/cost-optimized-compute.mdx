@@ -4,24 +4,45 @@ description: 'EC2 Savings Plans、Reserved Instances、Spot Instances、Auto Sca
 order: 17
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- Cost ExplorerとAWS Budgetsによるコストの把握
-- インスタンスファミリーとサイズの選び方
-- 試験問題での判断パターン
-
-</Callout>
-
 <Figure src="/images/oksign_man_color.png" alt="コスト削減の判断をする人のイラスト" maxWidth="300px" />
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 Savings Plans、Reserved Instances、Spot Instancesは、全部安くする仕組みに見えます。
 </SpeechBubble>
 
-コンピューティングコストは、利用時間、インスタンスタイプ、購入方式、スケーリング設定で大きく変わります。SAA-C03では、Savings Plans、Reserved Instances、Spot Instances、Auto Scaling、Lambdaの判断が出ます。
+コンピューティングコストは、利用時間、インスタンスタイプ、購入方式、スケーリング設定で大きく変わります。[SAA-C03試験ガイドのタスク4.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain4.html)では、購入オプション、インスタンスのファミリーとサイズ、サーバーレスやコンテナ、スケーリングなどを要件に合わせて選ぶ力が対象です。
+
+<Marker>コスト最適化は「安い購入方式を選ぶ」だけではありません。実測値から必要な性能を決め、需要に合わせて台数を変え、そのうえで継続利用分に割引を適用します。</Marker>
+
+---
+
+## Cost ExplorerとAWS Budgetsで費用を把握する
+
+購入方式を変える前に、どのサービスとワークロードが費用を生んでいるかを特定します。
+
+| ツール | 主な役割 | 判断例 |
+|---|---|---|
+| AWS Cost Explorer | コストと使用状況を期間、サービス、タグなどで分析する | EC2費用の増加時期や、RI・Savings Plansの推奨事項を調べる |
+| AWS Budgets | 実績・予測コスト、使用量、RI・Savings Plansの使用率やカバレッジを監視する | 月額予算の超過予測や、購入済みコミットメントの未使用を通知する |
+| AWS Cost and Usage Report（CUR） | 明細レベルのコストと使用状況データをS3へ配信する | Athenaなどでアカウント・リソース・タグ別に詳細分析する |
+
+[Cost Explorer](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/ce-what-is.html)はコストと使用状況の可視化・分析、[AWS Budgets](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/budgets-managing-costs.html)は予算とRI・Savings Plansの使用率やカバレッジの追跡に使えます。[AWS Cost and Usage Report](https://docs.aws.amazon.com/ja_jp/cur/latest/userguide/what-is-cur.html)は、詳細な請求データをS3へ配信し、時間・日・月、製品、リソース、タグなどで分類できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USAGE["Workload Usage"] --> CE["Cost Explorer<br/>Analyze Cost and Usage"]
+    USAGE --> BUDGET["AWS Budgets<br/>Alert on Thresholds"]
+    USAGE --> CUR["Cost and Usage Report<br/>Detailed Records in S3"]
+    CE --> ACTION["Optimization Action<br/>Rightsize / Scale / Purchase"]
+    BUDGET --> ACTION
+    CUR --> ACTION
+    ACTION --> MEASURE["Measure Again"]
+    MEASURE --> USAGE
+`}
+/>
+
+プロジェクト名やシステム名のコスト配分タグを有効にしておくと、共用アカウント内でも費用をワークロード別に分けやすくなります。タグを付けるだけでは請求レポートに自動表示されないため、Billing and Cost Managementで[ユーザー定義のコスト配分タグを有効化](https://docs.aws.amazon.com/ja_jp/awsaccountbilling/latest/aboutv2/activating-tags.html)します。
 
 ---
 
@@ -36,6 +57,52 @@ Savings Plans、Reserved Instances、Spot Instancesは、全部安くする仕�
 
 常時稼働の本番EC2やFargate、Lambda利用がある程度読めるならSavings Plansを検討します。中断されてもよい処理ならSpot Instancesが候補です。
 
+### Savings PlansとReserved Instancesを区別する
+
+Savings Plansは、1年または3年の時間あたりのコンピューティング使用量をコミットする料金モデルです。Compute Savings PlansはEC2に加えてFargateとLambdaにも適用され、EC2のインスタンスファミリー、サイズ、OS、テナンシー、リージョンをまたぐ柔軟性があります。適用範囲と条件はAWS公式の[Savings Plansとは](https://docs.aws.amazon.com/ja_jp/savingsplans/latest/userguide/what-is-savings-plans.html)で確認できます。
+
+EC2 Reserved Instancesは物理的な専有インスタンスではなく、条件が一致するオンデマンド使用量へ適用される請求上の割引です。[EC2 Reserved Instancesの概要](https://docs.aws.amazon.com/ja_jp/AWSEC2/latest/UserGuide/ec2-reserved-instances.html)では、Savings Plansの利用が推奨されており、RIはインスタンスタイプ、リージョン、テナンシー、OSなどの属性との一致が必要だと説明されています。
+
+| 要件 | 起点にする購入方式 |
+|---|---|
+| 使用期間や構成がまだ読めない | On-Demand |
+| EC2・Fargate・Lambdaの継続使用量を柔軟に割引したい | Compute Savings Plans |
+| 一致するEC2構成を長期利用する | EC2 Reserved Instancesも比較 |
+| 中断を許容できる | Spot Instances |
+
+この対応表は公式ドキュメントの適用条件をもとにした、筆者の整理です。コミットメントは実際の使用量が下回っても発生するため、Cost Explorerの推奨事項とAWS Budgetsの使用率・カバレッジを確認してから購入します。
+
+### Spot Instancesを安全に組み込む
+
+Spot InstancesはAWSの未使用EC2キャパシティを低料金で利用する購入方式ですが、AWSがキャパシティを必要とすると中断される可能性があります。バッチ、データ分析、バックグラウンド処理など、中断を許容して再実行できるワークロードが候補です。動作と中断通知はAWS公式の[Spot Instances](https://docs.aws.amazon.com/ja_jp/AWSEC2/latest/UserGuide/using-spot-instances.html)で確認できます。
+
+<Callout type="warning">
+### Spot Instancesだけで最低限の可用性を支えない
+
+中断できない基準容量にはOn-Demandを使い、追加容量にSpotを使う設計が候補です。Auto Scaling Groupでは、On-DemandとSpot、複数のインスタンスタイプを1つのグループで組み合わせられます（[Mixed instances groups](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/ec2-auto-scaling-mixed-instances-groups.html)）。Spot側は処理の再試行、チェックポイント、キューによる再配信も設計します。
+
+</Callout>
+
+---
+
+## インスタンスファミリーとサイズを選ぶ
+
+EC2インスタンスタイプは、CPU、メモリ、ストレージ、ネットワークなどの構成比が異なるファミリーと、その中のサイズで構成されます。[EC2インスタンスタイプ](https://docs.aws.amazon.com/ja_jp/AWSEC2/latest/UserGuide/instance-types.html)は、アプリケーションの要件に基づいてタイプを選び、独自のベンチマークで比較するよう案内しています。
+
+| 負荷の特徴 | ファミリーの起点 | 確認するメトリクス |
+|---|---|---|
+| CPUとメモリの比率が平均的 | 汎用（M、Tなど） | CPU、メモリ、CPUクレジット |
+| CPU処理が支配的 | コンピューティング最適化（Cなど） | CPU、処理時間、キュー滞留 |
+| 大量のメモリを使う | メモリ最適化（R、Xなど） | メモリ、スワップ、キャッシュヒット率 |
+| ローカルI/Oが支配的 | ストレージ最適化（I、Dなど） | IOPS、スループット、待機時間 |
+| GPUや専用アクセラレーターが必要 | 高速コンピューティング（G、P、Inf、Trnなど） | GPU・アクセラレーター使用率、処理時間 |
+
+この表はインスタンスファミリーの特性をコスト判断へ結び付けた、筆者の整理です。ファミリーと実行基盤そのものの詳しい選択は[コンピューティング選択](/books/aws-saa-c03/compute-selection)で扱います。
+
+サイズはピーク時の推測だけで固定せず、CloudWatchのCPU・ネットワーク・ディスクと、OSやエージェントから収集したメモリ、アプリケーションの応答時間を合わせて判断します。AWS Compute Optimizerは、使用率メトリクスとリソース構成を分析し、EC2、Auto Scaling Group、Lambda、Fargate上のECSサービスなどに適正化の推奨事項を生成します（[AWS Compute Optimizer](https://docs.aws.amazon.com/ja_jp/compute-optimizer/latest/ug/what-is-compute-optimizer.html)）。
+
+<Marker>ライツサイジングは、まずファミリーでボトルネックに合うCPU・メモリ・I/Oの比率を選び、次にサイズで必要量へ合わせる順で考えます。</Marker>
+
 ---
 
 ## Auto Scalingで無駄を減らす
@@ -48,6 +115,10 @@ Auto Scalingは可用性だけでなくコスト最適化にも効きます。�
 - スケールアウト条件が遅すぎないか
 - スケールイン条件が厳しすぎないか
 - 予測可能な負荷にはScheduled Scalingを使えるか
+
+ターゲット追跡、ステップ、スケジュール、予測スケーリングの使い分けは[スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha)で扱います。コストだけを優先して最小台数を下げるのではなく、本番と非本番で必要な可用性を分けて決めます。
+
+開発・検証用EC2の利用時間が営業時間に限られるなら、夜間や休日の停止・開始をスケジュールします。停止中もEBSなどの料金は残るため、請求明細で削減効果を確認します。短時間の停止後にメモリ上の状態を復元したい場合は、対応条件を確認して[EC2の休止](https://docs.aws.amazon.com/ja_jp/AWSEC2/latest/UserGuide/Hibernate.html)も比較できます。
 
 ---
 
@@ -63,6 +134,67 @@ LambdaやFargateは、サーバー管理を減らせる一方、使い方によ�
 
 実務では、料金だけでなく運用コストも含めて判断します。
 
+Lambdaはリクエスト数と実行時間などに基づく従量課金であり、メモリ量に応じてCPU能力も増えます。メモリを減らせば常に安くなるとは限らず、処理時間と総コストを測定して決めます。料金の構成はAWS公式の[Lambda料金](https://aws.amazon.com/jp/lambda/pricing/)、メモリとCPUの関係は[Lambda関数のメモリ設定](https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/configuration-memory.html)で確認できます。
+
+Fargateではタスク定義のCPUとメモリを組み合わせて指定します。常時稼働で使用率が低いタスクは、タスクサイズや希望数を見直します。許可される組み合わせはAWS公式の[FargateタスクのCPUとメモリ](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/task-cpu-memory-error.html)で確認できます。
+
+---
+
+## 実務例: APIとバッチを別の購入方式にする
+
+あるECサイトでは、24時間稼働するAPIと、SQSから注文履歴を集計する夜間バッチを同じOn-Demand EC2群で動かしていました。次のようにワークロードを分けると、可用性を保ちながら購入方式を選び分けられます。
+
+1. APIの最低台数はOn-Demandで確保し、継続利用分をSavings Plansの候補にする
+2. APIの追加容量はAuto Scalingで需要に追従させる
+3. 再実行できる夜間バッチはSpot Instancesを含むAuto Scaling Groupへ分離する
+4. Compute OptimizerとCloudWatchの実測値から、APIとバッチのファミリー・サイズを別々に見直す
+5. Cost Explorerで費用を再確認し、AWS Budgetsで予算とSavings Plansの使用率を監視する
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Users"] --> ALB["Application Load Balancer"]
+    ALB --> API["API Auto Scaling Group<br/>On-Demand Baseline"]
+    API --> SCALE["Additional Capacity<br/>Scale with Demand"]
+    QUEUE["SQS Queue"] --> BATCH["Batch Auto Scaling Group<br/>Spot-capable Workers"]
+    BATCH --> RETRY["Checkpoint and Retry"]
+    METRICS["CloudWatch / Compute Optimizer"] --> API
+    METRICS --> BATCH
+    COST["Cost Explorer / AWS Budgets"] --> API
+    COST --> BATCH
+`}
+/>
+
+この構成は要件から選択手順を示すための例であり、筆者の整理です。実際のコミット量は過去の使用状況、将来の変更計画、障害時に必要な容量を踏まえて決めます。
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 選択の起点 | 避けたい判断 |
+|---|---|---|
+| 予測不能な短期利用、コミット不可 | On-Demand | 割引率だけで長期コミットする |
+| EC2・Fargate・Lambdaを継続利用、構成変更の可能性あり | Compute Savings Plans | 現在の最大使用量をそのままコミットする |
+| 中断可能なバッチ、キューから再実行可能 | Spot Instances | 状態をローカルだけに持つ単一Spotへ依存する |
+| CPU使用率が低いEC2が常時稼働 | Compute Optimizerとメトリクスでライツサイジング | CPUだけを見て即座に縮小する |
+| 日中だけ使う開発環境 | 時間外に停止・開始 | 24時間稼働を前提に割引購入だけを検討する |
+| 不定期で短時間のイベント処理 | Lambda | 常駐EC2をピーク容量で維持する |
+| コンテナを動かすがEC2管理を避けたい | Fargate | 運用工数を無視して単価だけで比較する |
+| Webの変動負荷 | ALBとAuto Scaling | ピーク台数を常時固定する |
+
+この表は[SAA-C03試験ガイドのタスク4.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain4.html)と各サービスの公式ドキュメントをもとにした、筆者の整理です。
+
+<Callout type="warning">
+### コスト最適化で混同しやすい点
+
+- Reserved Instancesは起動済みEC2を予約する仕組みではなく、条件が一致する使用量へ適用される請求上の割引です
+- Spot Instancesは単に安いEC2ではなく、中断を前提に設計する購入方式です
+- Compute Optimizerの推奨事項は自動変更ではありません。性能要件と変更リスクを検証して適用します
+- Auto Scalingは負荷に応じて台数を変えますが、Savings Plansは一定の使用量へのコミットメントです
+- サーバーレスはサーバー管理を減らせますが、すべての利用パターンで最安になるとは限りません
+
+</Callout>
+
 ---
 
 ## まとめ
@@ -75,7 +207,7 @@ LambdaやFargateは、サーバー管理を減らせる一方、使い方によ�
 - 短時間イベント処理にはLambda
 - 権限・監視・運用工数もコストとして考える
 
-次の章では、RDS、Aurora、DynamoDB、ElastiCacheのコスト最適化を扱います。
+RDS、Aurora、DynamoDB、ElastiCacheの費用判断は[データベースのコスト最適化](/books/aws-saa-c03/cost-optimized-database)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

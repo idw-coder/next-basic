@@ -1,20 +1,8 @@
 ---
 title: 'データ保護 — KMS・暗号化・バックアップ・レプリケーション'
-description: 'AWS KMS、S3暗号化、EBS暗号化、RDS暗号化、DynamoDB暗号化、AWS Backup、S3 Replication、CloudTrailを整理します。'
+description: 'AWS KMS、ACM、データ分類、暗号化、保持、バックアップ、レプリケーション、コンプライアンス対応をSAA-C03の判断軸で整理します。'
 order: 6
 ---
-
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- データの分類と保持期間の設計
-- KMSキーのローテーションとACM証明書の更新
-- コンプライアンス要件への対応
-- 構成図と試験問題での判断パターン
-
-</Callout>
 
 <Figure src="/images/deta_man_color.png" alt="データを確認する人のイラスト" maxWidth="320px" />
 
@@ -22,7 +10,40 @@ order: 6
 暗号化を有効にしていれば、データ保護はもう十分と言えますか？
 </SpeechBubble>
 
-データセキュリティでは、保存時の暗号化、転送時の暗号化、鍵管理、バックアップ、削除防止、監査を組み合わせます。SAA-C03では、KMS、S3、EBS、RDS、DynamoDB、AWS Backupの選択がよく問われます。
+データセキュリティでは、保存時の暗号化、転送時の暗号化、鍵管理、バックアップ、削除防止、監査を組み合わせます。SAA-C03では、KMS、S3、EBS、RDS、DynamoDB、AWS Backupを要件に合わせて選びます。
+
+[SAA-C03試験ガイドのタスク1.3](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)では、データアクセスとガバナンス、復旧、保持と分類、暗号化と鍵管理を要件に合わせて選ぶ力が対象です。
+
+<Marker>暗号化はデータ保護の一部です。データの分類、アクセス制御、保持、復旧、削除、監査までを一連のライフサイクルとして設計します。</Marker>
+
+---
+
+## データの分類から保護方法を決める
+
+すべてのデータへ同じ管理を適用すると、保護が足りないデータと、費用や運用負荷をかけすぎるデータが混在します。最初にデータの所有者、機密度、利用者、保存場所、保持期間、削除条件を整理します。
+
+| 分類例 | データ例 | 主な保護方針 |
+|---|---|---|
+| 公開 | 製品カタログ、公開画像 | 改ざん防止、可用性、配信元の制御 |
+| 社内限定 | 社内文書、運用ログ | 認証、最小権限、保持期間の設定 |
+| 機密 | 顧客情報、契約情報 | 暗号化、厳格なアクセス制御、操作監査 |
+| 規制対象 | 決済情報、法令で保持が必要な記録 | 要件に合う暗号化、保存場所、改ざん防止、証跡 |
+
+分類名そのものは組織ごとに異なります。この表は、保護レベルを考えるための筆者の整理です。実務では法務、セキュリティ、データ所有者と分類基準を合意します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["データを棚卸し"] --> B["機密度と所有者を分類"]
+    B --> C["アクセスと暗号化を決定"]
+    C --> D["保持・バックアップを決定"]
+    D --> E["監査・復元・削除を検証"]
+`}
+/>
+
+保持期間は「長いほど安全」ではありません。必要な期間より長く保持すれば、漏えい時の影響範囲と保管費用が増えます。一方、監査や契約で必要なデータを早く削除すると要件を満たせません。S3 LifecycleやAWS Backupのライフサイクルを使い、移行と削除を自動化します。
+
+分類とライフサイクルの考え方は、AWS公式の[データを保護するためのセキュリティコントロール](https://docs.aws.amazon.com/ja_jp/prescriptive-guidance/latest/security-controls-by-caf-capability/data-controls.html)と[スケーラブルなデータのライフサイクル管理](https://docs.aws.amazon.com/ja_jp/wellarchitected/latest/framework/sec_data_classification_lifecycle_management.html)で確認できます。
 
 ---
 
@@ -37,26 +58,94 @@ order: 6
 
 多くのAWSサービスはデフォルト暗号化に対応していますが、実務では「どのKMSキーで暗号化するか」「誰が復号できるか」まで設計します。
 
+### 保存時暗号化をサービスごとに選ぶ
+
+| サービス | 保存時暗号化の判断 |
+|---|---|
+| Amazon S3 | 新規オブジェクトはサーバー側暗号化が適用される。鍵の利用監査やアクセス制御が必要ならSSE-KMSを検討する |
+| Amazon EBS | アカウントとリージョン単位でEBS暗号化をデフォルトにできる |
+| Amazon RDS | DB作成時に暗号化を有効化し、ストレージ、ログ、自動バックアップ、スナップショット、リードレプリカを保護する |
+| Amazon DynamoDB | 保管時暗号化が常に有効。AWS所有キー、AWSマネージドキー、カスタマーマネージドキーから要件に合う鍵を選ぶ |
+
+暗号化の挙動と選択肢は、AWS公式の[S3のデフォルト暗号化](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/default-bucket-encryption.html)、[EBS暗号化をデフォルトにする](https://docs.aws.amazon.com/ja_jp/ebs/latest/userguide/encryption-by-default.html)、[RDSリソースの暗号化](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/Overview.Encryption.html)、[DynamoDBの保管時の暗号化](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/EncryptionAtRest.html)で確認できます。
+
+<Callout type="note">
+### デフォルト暗号化とカスタマーマネージドキーは目的が違う
+
+デフォルト暗号化は、暗号化し忘れを減らします。カスタマーマネージドKMSキーは、キーポリシー、無効化、ローテーション、利用監査などを自分で制御したい要件に向きます。監査要件がなければ、鍵の運用負荷も含めて選びます。
+
+</Callout>
+
 ---
 
 ## KMSの判断軸
 
-**AWS KMS（Key Management Service）** は、暗号鍵を管理するマネージドサービスです。
+**AWS KMS**（Key Management Service）は、暗号鍵を管理するマネージドサービスです。
 
 | 要件 | 選択肢 |
 |---|---|
 | AWSサービスの暗号鍵を管理したい | KMS |
 | 鍵の利用権限をIAMやKey Policyで制御したい | KMS |
-| 専用HSMを使いたい、厳格なコンプライアンス要件がある | CloudHSM |
+| 自分専用のHSMクラスターで鍵を管理したい | CloudHSM |
 
 KMSでは、IAMポリシーだけでなくKey Policyも重要です。特にクロスアカウントで暗号化データを扱う場合、データ本体への権限とKMSキーへの権限の両方が必要になります。
+
+KMSはAWSがHSM基盤を運用するマネージドな鍵管理に向きます。AWS CloudHSMは、利用者専用のHSMクラスターと標準的な暗号APIを必要とする場合の候補です。役割はAWS公式の[AWS CloudHSMとは](https://docs.aws.amazon.com/ja_jp/cloudhsm/latest/userguide/introduction.html)で確認できます。
+
+### KMSキーへのアクセスを制御する
+
+KMSキーへ誰がアクセスできるかは、主にキーポリシー、IAMポリシー、KMS Grantの組み合わせで決まります。キーポリシーはKMSキーに付くリソースベースポリシーです。IAMポリシーによる許可を有効にする記述がキーポリシーにない場合、IAM側の許可だけではKMSキーを使えません。
+
+| 制御 | 主な役割 |
+|---|---|
+| Key Policy | キーの管理者と利用者、IAMポリシーを許可判断に使うかを定義する |
+| IAM Policy | IAMユーザーやIAMロールにKMS操作を許可する |
+| KMS Grant | AWSサービスや一時的な利用者へ限定したKMS操作を委任する |
+
+クロスアカウント利用では、KMSキーを所有するアカウントのキーポリシーで外部アカウントを許可し、利用側アカウントのIAMポリシーでも対象キーの操作を許可します。詳細はAWS公式の[KMSのキーポリシー](https://docs.aws.amazon.com/ja_jp/kms/latest/developerguide/key-policies.html)で確認できます。
 
 <Callout type="warning">
 ### 暗号化データはKMS権限がないと読めない
 
-S3オブジェクトへの `s3:GetObject` があっても、SSE-KMSで暗号化されていてKMSキーの復号権限がなければ読めません。試験でも実務でもよくある落とし穴です。
+S3オブジェクトへの `s3:GetObject` があっても、SSE-KMSで暗号化されていてKMSキーの復号権限がなければ読めません。データと鍵の両方を確認する必要があります。
 
 </Callout>
+
+### KMSキーをローテーションする
+
+カスタマーマネージドKMSキーでは、対応する対称暗号化キーの自動ローテーションを有効化できます。自動ローテーションではKMSキーのIDとARNが変わらず、過去のキーマテリアルも保持されるため、既存の暗号文を復号できます。
+
+非対称KMSキー、HMAC KMSキー、カスタムキーストア内のKMSキーなど、自動ローテーションに対応しないキーは、新しいKMSキーを作ってエイリアスやアプリケーションの参照先を切り替える手動ローテーションを検討します。ローテーション方式と対象はAWS公式の[KMSキーのローテーション](https://docs.aws.amazon.com/ja_jp/kms/latest/developerguide/rotate-keys.html)で確認します。
+
+<Callout type="warning">
+### KMSキーのローテーションはデータを再暗号化しない
+
+KMSキーの自動ローテーションは、KMSキーに関連付くキーマテリアルを更新します。既存データやデータキーを自動的に再暗号化する機能ではありません。
+
+</Callout>
+
+---
+
+## 転送中の暗号化とACM証明書の更新
+
+転送中のデータはTLSで暗号化します。**AWS Certificate Manager**（ACM）は、Elastic Load Balancing、Amazon CloudFront、Amazon API Gatewayなどの統合サービスで使うTLS証明書を発行・管理するサービスです。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    C["利用者"] -->|"HTTPS / TLS"| ALB["Application Load Balancer<br/>ACM証明書"]
+    ALB -->|"HTTPS"| APP["アプリケーション"]
+    APP -->|"TLS"| DB["データベース"]
+`}
+/>
+
+DNS検証で発行したACM証明書は、証明書がAWSサービスで使用され、ACMが指定したDNS CNAMEレコードが公開DNSに残っていれば、ACMが管理された更新を行います。CNAMEレコードを削除すると更新できないため、証明書の発行後も残します。更新時の検証に失敗すると、ACMはAWS HealthとAmazon EventBridgeへイベントを送ります。
+
+ACMの更新条件はAWS公式の[DNSで検証されたドメインの更新](https://docs.aws.amazon.com/ja_jp/acm/latest/userguide/dns-renewal-validation.html)で確認できます。
+
+<SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
+保存時はKMSキー、転送時はTLS証明書が中心です。「暗号化」という言葉だけで判断せず、データが保存中なのか通信中なのかを先に確認しましょう。
+</SpeechBubble>
 
 ---
 
@@ -74,6 +163,156 @@ S3オブジェクトへの `s3:GetObject` があっても、SSE-KMSで暗号化�
 
 実務では、バックアップを取るだけでなく、復旧手順と復旧時間を確認します。バックアップは復元できて初めて価値があります。
 
+### AWS Backupで複数サービスを一元管理する
+
+AWS Backupのバックアッププランでは、バックアップ頻度、バックアップウィンドウ、保存先ボールト、保持期間、コールドストレージへの移行、別リージョンや別アカウントへのコピーを定義します。タグやリソースIDで保護するリソースを割り当てると、複数サービスのバックアップポリシーをまとめて運用できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    PLAN["AWS Backup<br/>バックアッププラン"] --> EBS["EBS"]
+    PLAN --> RDS["RDS"]
+    PLAN --> EFS["EFS"]
+    PLAN --> DDB["DynamoDB"]
+    EBS --> VAULT["Backup Vault"]
+    RDS --> VAULT
+    EFS --> VAULT
+    DDB --> VAULT
+    VAULT --> COPY["別リージョン / 別アカウント"]
+`}
+/>
+
+AWS Backupの設定要素は、AWS公式の[バックアッププラン](https://docs.aws.amazon.com/ja_jp/aws-backup/latest/devguide/about-backup-plans.html)で確認できます。サービスやリージョンによって対応機能が異なるため、採用前に[機能の可用性](https://docs.aws.amazon.com/ja_jp/aws-backup/latest/devguide/backup-feature-availability.html)も確認します。
+
+### レプリケーションとバックアップを分けて考える
+
+S3 Replicationは、オブジェクトを同一リージョンまたは別リージョンのバケットへ自動的に複製します。別リージョンへの配置、所有権の異なるアカウントへの複製、集約バケットへのコピーなどに使えます。
+
+ただし、レプリケーションとバックアップは目的が異なります。レプリケーションは可用性や別拠点へのコピーに向き、誤操作や意図しない変更まで複製される可能性を考慮します。世代管理、保持期間、削除防止、復元テストを含むバックアップを別に設計します。S3 Replicationの要件はAWS公式の[オブジェクトのレプリケーション](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/replication.html)で確認できます。
+
+### WORM要件には変更不能な保持を使う
+
+**WORM**（Write Once Read Many）は、一度書いたデータを保持期間中に変更・削除できないようにする考え方です。
+
+| 対象 | 機能 | 主な用途 |
+|---|---|---|
+| S3オブジェクト | S3 Object Lock | オブジェクトバージョンへ保持期間やリーガルホールドを適用する |
+| AWS Backupの復旧ポイント | AWS Backup Vault Lock | バックアップボールトの保持条件を強制する |
+
+S3 Object LockとAWS Backup Vault Lockには、権限を持つ利用者が保護を解除できるガバナンスモードと、保持期間中の変更をより厳格に防ぐコンプライアンスモードがあります。コンプライアンスモードは確定後に解除できない条件があるため、本番適用前に保持期間と費用を検証します。
+
+詳細はAWS公式の[S3 Object Lock](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/object-lock.html)と[AWS Backup Vault Lock](https://docs.aws.amazon.com/ja_jp/aws-backup/latest/devguide/vault-lock.html)で確認できます。
+
+<Callout type="warning">
+### バックアップ成功だけでは復旧できると証明できない
+
+復元先、必要なIAM権限、KMSキー、ネットワーク、依存サービスまで含めて復元テストを行います。[災害復旧](/books/aws-saa-c03/disaster-recovery)で扱うRPOとRTOを満たすか、実測して確認します。
+
+</Callout>
+
+---
+
+## コンプライアンス要件をAWSの制御へ対応付ける
+
+コンプライアンス対応では、規格名だけでAWSサービスを選びません。「どのデータを」「誰から」「どれだけの期間」「どの証跡を残して」保護するかを具体的な制御へ分解します。
+
+| 要件の例 | AWSでの実装候補 |
+|---|---|
+| 保存データを暗号化し、鍵の利用者を限定する | KMS、Key Policy、IAM Policy、CloudTrail |
+| 通信を暗号化し、証明書を更新する | TLS、ACM、DNS検証、EventBridge通知 |
+| 記録を一定期間変更不能にする | S3 Object Lock、AWS Backup Vault Lock |
+| 指定期間を過ぎたデータを削除する | S3 Lifecycle、AWS Backupのライフサイクル |
+| 操作と構成変更の証跡を残す | CloudTrail、AWS Config |
+| AWSの監査報告書を監査人へ提示する | AWS Artifact |
+
+AWS Artifactでは、ISO、PCI、SOCなどに関するAWSのセキュリティ・コンプライアンス文書をオンデマンドで取得できます。ただし、AWSの報告書が利用者側のアプリケーションや運用の準拠を自動的に証明するわけではありません。AWSと利用者の担当範囲を分け、自社が実装するアクセス制御、暗号化、ログ、保持、復旧の証跡を残します。
+
+AWS Artifactの役割は[AWS Artifactとは](https://docs.aws.amazon.com/ja_jp/artifact/latest/ug/what-is-aws-artifact.html)、責任範囲はAWS公式の[責任共有モデル](https://docs.aws.amazon.com/ja_jp/wellarchitected/latest/security-pillar/shared-responsibility.html)で確認できます。
+
+<Figure src="/images/meeting_color.png" alt="データ保護と監査要件を関係者で確認しているイラスト" maxWidth="320px" />
+
+---
+
+## 実務での構成例 — 顧客書類を保護する
+
+顧客がアップロードした契約書をS3へ保存し、業務アプリだけが参照する構成を考えます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USER["利用者"] -->|"HTTPS / ACM"| ALB["Application Load Balancer"]
+    ALB --> APP["業務アプリ<br/>IAM Role"]
+    APP -->|"PutObject / GetObject"| S3["S3<br/>Versioning + SSE-KMS"]
+    S3 --> KMS["Customer managed KMS key"]
+    S3 --> REPLICA["別リージョンのS3"]
+    AUDIT["CloudTrail"] --> LOG["監査ログ用S3<br/>Object Lock"]
+`}
+/>
+
+設計では次を確認します。
+
+1. S3 Block Public Accessとバケットポリシーで公開アクセスを防ぐ
+2. 業務アプリのIAM Roleへ必要なS3操作だけを許可する
+3. KMSのキーポリシーとIAMポリシーの両方で復号主体を限定する
+4. S3 Lifecycleで契約上の保持期間を実装する
+5. リージョン障害への要件があればS3 Cross-Region Replicationを使う
+6. CloudTrailのデータイベントでオブジェクト操作を記録し、監査ログを変更不能に保護する
+7. 定期的に復元手順とKMSキーへのアクセスをテストする
+
+S3の公開防止はAWS公式の[S3 Block Public Access](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/access-control-block-public-access.html)、オブジェクト操作の記録は[CloudTrailのデータイベント](https://docs.aws.amazon.com/ja_jp/awscloudtrail/latest/userguide/logging-data-events-with-cloudtrail.html)で確認できます。
+
+<Marker>データ本体へのアクセス許可と、暗号化に使うKMSキーの利用許可は別々に確認します。</Marker>
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| 複数サービスのバックアップを同じポリシーで管理したい | AWS Backup | スケジュール、保持、コピーを一元管理できる |
+| S3オブジェクトを保持期間中は削除不能にしたい | S3 Object Lockのコンプライアンスモード | WORMの保持を強制できる |
+| 特権利用者によるバックアップ削除も防ぎたい | AWS Backup Vault Lockのコンプライアンスモード | 復旧ポイントの保持条件を変更不能にできる |
+| S3のデータを別リージョンへ継続的に複製したい | S3 Cross-Region Replication | 別リージョンのバケットへオブジェクトを複製できる |
+| 鍵の管理者とデータの利用者を分離したい | カスタマーマネージドKMSキーとKey Policy | キー管理と暗号化操作の権限を分けられる |
+| ALBでHTTPSを終端し、証明書更新の運用を減らしたい | DNS検証のACM証明書 | 統合サービスで証明書の管理された更新を利用できる |
+| AWSのSOCやPCI関連文書を取得したい | AWS Artifact | AWSの監査・コンプライアンス文書を取得できる |
+| 古いS3オブジェクトを自動で移行・削除したい | S3 Lifecycle | 経過日数などに基づく移行と期限切れを自動化できる |
+
+この表は、問題文の要件から第一候補を絞るための筆者の整理です。実際の設計では、対象サービス、リージョン、復旧目標、法令、費用を確認します。
+
+---
+
+## よくあるハマりどころ
+
+### 暗号化を有効にすれば誰も読めないと思う
+
+暗号化は、許可された主体による復号を前提にしています。データへのアクセス許可とKMSキーの利用許可が広ければ、暗号化済みでも閲覧できます。IAM、リソースポリシー、キーポリシーを一緒に確認します。
+
+### KMSキーをローテーションすると既存データも再暗号化されると思う
+
+自動ローテーションはキーマテリアルを更新しますが、既存データを再暗号化しません。再暗号化が要件なら、データ移行やアプリケーション側の処理を別に設計します。
+
+### ACM証明書を発行した後にDNS検証用CNAMEを削除する
+
+DNS検証用CNAMEは継続的な自動更新にも使われます。証明書の発行後も残し、更新失敗のイベントを監視します。
+
+### レプリケーションだけで誤削除にも備えたと思う
+
+複製先にも変更や削除の影響が及ぶ条件を確認し、Versioning、Object Lock、AWS Backup、保持ポリシーを要件に応じて組み合わせます。
+
+### 保持期間を決めずにコンプライアンスモードでロックする
+
+変更不能になったデータは、誤った保持期間でも途中で削除できない場合があります。ガバナンスモードで設定と運用を検証し、法務・監査部門の承認後にコンプライアンスモードを適用します。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク1.3](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)
+- [データを保護するためのセキュリティコントロール](https://docs.aws.amazon.com/ja_jp/prescriptive-guidance/latest/security-controls-by-caf-capability/data-controls.html)
+- [KMSキーのローテーション](https://docs.aws.amazon.com/ja_jp/kms/latest/developerguide/rotate-keys.html)
+- [DNSで検証されたACM証明書の更新](https://docs.aws.amazon.com/ja_jp/acm/latest/userguide/dns-renewal-validation.html)
+
 ---
 
 ## まとめ
@@ -82,8 +321,12 @@ S3オブジェクトへの `s3:GetObject` があっても、SSE-KMSで暗号化�
 
 - <Marker>保存時暗号化はKMS連携で鍵管理まで含めて設計する</Marker>
 - 転送時暗号化にはTLSとACMを使う
+- データを分類し、アクセス、保持、削除の方針を決める
+- KMSキーとACM証明書のローテーション・更新条件を確認する
 - S3、EBS、RDS、DynamoDBの暗号化方式を理解する
 - AWS Backupやサービス固有のバックアップを使う
+- Object LockやVault Lockで変更不能な保持要件に対応する
+- AWS Artifactと責任共有モデルを使って担当範囲と証跡を整理する
 - CloudTrailとConfigで変更を追跡する
 
 CloudWatchとEventBridgeを使った監視と運用は、[監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch)の章で扱います。

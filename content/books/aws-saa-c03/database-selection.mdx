@@ -1,20 +1,8 @@
 ---
 title: 'データベース選択 — RDS・Aurora・DynamoDB・ElastiCache・Redshift'
-description: 'RDS、Aurora、DynamoDB、ElastiCache、Redshift、DocumentDB、Neptuneを高パフォーマンスなデータベース設計として比較します。'
+description: 'RDS、Aurora、DynamoDB、ElastiCache、Redshift、RDS Proxy、Aurora Global Database、AWS DMSを要件別に比較します。'
 order: 13
 ---
-
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- RDS Proxy
-- Aurora Global Database
-- AWS DMSを使ったデータベース移行
-- 構成図と試験問題での判断パターン
-
-</Callout>
 
 <Figure src="/images/deta_man_color.png" alt="データベースの選択を考える人のイラスト" maxWidth="320px" />
 
@@ -22,7 +10,20 @@ order: 13
 RDSとDynamoDBはどちらもデータベースですが、試験ではどういう条件で分かれますか？
 </SpeechBubble>
 
-データベース選択では、リレーショナルかNoSQLか、読み書きパターン、可用性、スケーリング、運用負荷を見ます。SAA-C03ではRDS、Aurora、DynamoDB、ElastiCache、Redshiftの使い分けが頻出です。
+データベース選択では、表の関係とSQLを使うリレーショナルデータベースか、キーバリューなどのNoSQLか、読み書きパターン、可用性、スケーリング、運用負荷を見ます。
+
+[SAA-C03試験ガイドのタスク3.3](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)では、データアクセスパターン、スケーリング、可用性、キャッシュ、移行、データベースの種類を要件に合わせて選ぶ力が対象です。
+
+<Marker>最初にデータモデルではなく、アプリケーションが必要とする読み書き、検索、整合性、トランザクションを列挙します。そのアクセスパターンを効率よく満たすデータベースを選びます。</Marker>
+
+| 判断軸 | 確認する内容 |
+|---|---|
+| データモデル | リレーショナル、キーバリュー、ドキュメント、グラフ、分析用の列指向 |
+| アクセスパターン | 主キー検索、範囲検索、結合、集計、グラフ探索 |
+| 書き込み特性 | トランザクション、同時更新、整合性、書き込み量 |
+| 性能と拡張 | レイテンシー、読み書き比率、急増、データ量 |
+| 可用性と復旧 | Multi-AZ、レプリカ、バックアップ、マルチリージョン |
+| 運用 | パッチ、容量管理、接続数、移行方式、費用 |
 
 ---
 
@@ -33,16 +34,27 @@ RDSとDynamoDBはどちらもデータベースですが、試験ではどうい
 | RDS | MySQL、PostgreSQLなど一般的なRDB |
 | Aurora | 高性能・高可用なRDB、MySQL/PostgreSQL互換 |
 | DynamoDB | キーバリュー、ドキュメント、超スケーラブルなNoSQL |
-| ElastiCache | Redis/Memcachedによるキャッシュ |
-| Redshift | DWH、分析クエリ |
+| ElastiCache | Valkey、Memcached、Redis OSSによるキャッシュ |
+| Redshift | データウェアハウス（DWH）、分析クエリ |
 | DocumentDB | MongoDB互換が必要な場合 |
 | Neptune | グラフデータベース |
+
+RDSは複数の一般的なリレーショナルDBエンジンをマネージドで提供し、AuroraはMySQL・PostgreSQL互換のエンジンと分散ストレージを提供します。DynamoDBはキーバリューとドキュメント、DocumentDBはJSONドキュメント、Neptuneは関係性をたどるグラフを扱います。
+
+各サービスの役割はAWS公式の[Amazon RDS](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/Welcome.html)、[Amazon Aurora](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/AuroraUserGuide/CHAP_AuroraOverview.html)、[Amazon DocumentDB](https://docs.aws.amazon.com/ja_jp/documentdb/latest/developerguide/what-is.html)、[Amazon Neptune](https://docs.aws.amazon.com/ja_jp/neptune/latest/userguide/intro.html)で確認できます。
+
+<Callout type="note">
+### 1つのデータベースへすべてを集約しない
+
+注文はRDS、セッションはElastiCache、商品イベントはDynamoDB、分析はRedshiftのように、1つのシステムで複数のデータベースを役割別に組み合わせられます。サービス数を増やすと運用も増えるため、明確なアクセス要件がある場合に分けます。
+
+</Callout>
 
 ---
 
 ## RDSとAurora
 
-RDSは一般的なリレーショナルデータベースをマネージドで使うサービスです。AuroraはAWS独自の分散ストレージを持つ高性能なRDBです。
+RDSは一般的なリレーショナルデータベースをマネージドで使うサービスです。AuroraはAWS独自の分散ストレージを持つMySQL・PostgreSQL互換のリレーショナルデータベースです。
 
 | 要件 | 選択肢 |
 |---|---|
@@ -51,7 +63,40 @@ RDSは一般的なリレーショナルデータベースをマネージドで�
 | フェイルオーバーを速くしたい | Aurora |
 | コストを抑えた小規模RDB | RDS |
 
-RDS Multi-AZは可用性、Read Replicaは読み取りスケールです。この違いは試験でよく問われます。
+RDS Multi-AZは可用性、Read Replicaは読み取りスケールです。単一スタンバイ型のRDS Multi-AZでは、スタンバイを読み取り負荷の分散に使いません。動作はAWS公式の[RDS Multi-AZ DBインスタンス](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html)、RDS Multi-AZ、Read Replica、Aurora Replicaの構成は[スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha)で詳しく扱います。
+
+### RDS Proxyで接続を共有する
+
+Lambdaやコンテナが短時間に増えると、アプリケーションごとにDB接続を作り、RDSやAuroraの接続数とCPU・メモリを圧迫する場合があります。**Amazon RDS Proxy**はアプリケーションとDBの間で接続をプールして共有します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    CLIENTS["Lambda / Containers"] --> PROXY["RDS Proxy<br/>Connection Pool"]
+    PROXY --> WRITER["RDS / Aurora Writer"]
+    SECRET["Secrets Manager / IAM認証"] --> PROXY
+    MONITOR["CloudWatch"] --> PROXY
+`}
+/>
+
+RDS Proxyは接続管理とフェイルオーバー時の影響軽減に使います。SQLの実行計画やDBインスタンスの演算性能を直接改善するサービスではありません。対応するエンジンと接続要件はAWS公式の[Amazon RDS Proxy](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/rds-proxy.html)で確認できます。
+
+### Aurora Global Databaseで別リージョンへ複製する
+
+Aurora Global Databaseは、プライマリリージョンのAuroraクラスターからセカンダリリージョンへデータを複製します。通常の書き込み先はプライマリで、セカンダリは読み取りと災害復旧に利用できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    APP_A["Application<br/>Primary Region"] --> WRITER["Aurora Writer"]
+    WRITER --> PRIMARY["Primary Aurora Cluster"]
+    PRIMARY -->|"Cross-Region Replication"| SECONDARY["Secondary Aurora Cluster"]
+    APP_B["Application<br/>DR Region"] --> SECONDARY
+    CONTROL["Switchover / Failover"] --> SECONDARY
+`}
+/>
+
+計画的なスイッチオーバーと障害時のフェイルオーバーでは手順と前提が異なります。Aurora Global Databaseの構成はAWS公式の[Amazon Aurora Global Database](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html)、DR戦略との組み合わせは[災害復旧](/books/aws-saa-c03/disaster-recovery)で確認できます。
 
 ---
 
@@ -72,13 +117,30 @@ DynamoDBは、フルマネージドなNoSQLデータベースです。高スル�
 - Provisioned capacity
 - DAX
 - Global Tables
-- TTL
+- TTL（有効期限）
 - Streams
+
+DynamoDBでは、テーブルの各項目を一意に識別するプライマリキーを設計します。パーティションキーだけの単純プライマリキー、またはパーティションキーとソートキーを組み合わせた複合プライマリキーを使います。GSI（グローバルセカンダリインデックス）は、テーブルの主キーとは異なるキーで検索するアクセスパターンに使います。
+
+| キャパシティモード | 向く要件 |
+|---|---|
+| オンデマンド | 新規ワークロード、予測しにくいトラフィック、容量計画を減らしたい |
+| プロビジョンド | 読み書き量を見積もれ、予約した容量をAuto Scalingと組み合わせたい |
+
+キーとインデックスの仕組みはAWS公式の[DynamoDBのコアコンポーネント](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html)、オンデマンドモードの動作は[オンデマンドキャパシティモード](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/on-demand-capacity-mode.html)で確認できます。
+
+### Global Tablesで複数リージョンへ配置する
+
+DynamoDB Global Tablesは、選択したリージョンにテーブルのレプリカを作成するマルチリージョン機能です。複数リージョンのアプリケーションが近いレプリカを利用する構成や、リージョン障害時に別リージョンで処理を継続する構成に使えます。
+
+利用できる整合性モードとリージョン、同じ項目への同時書き込み、再試行を設計します。機能と構成条件はAWS公式の[DynamoDB Global Tables](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/GlobalTables.html)、Aurora Global Databaseとの違いは[災害復旧](/books/aws-saa-c03/disaster-recovery)で扱います。
 
 <Callout type="warning">
 ### DynamoDBはアクセスパターンから設計する
 
 RDBのように後から自由に検索条件を増やす設計には向きません。パーティションキー、ソートキー、GSIを、必要なクエリから逆算して設計します。
+
+アクセスが一部のパーティションキーへ集中すると、テーブル全体に容量があってもボトルネックになる可能性があります。利用者ID、注文ID、時系列などの候補が、書き込みと読み取りを十分に分散できるか確認します。パーティションキー設計はAWS公式の[パーティションキーを効率的に設計する](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/bp-partition-key-design.html)で確認できます。
 
 </Callout>
 
@@ -90,10 +152,133 @@ RDBのように後から自由に検索条件を増やす設計には向きま�
 
 | 要件 | 選択肢 |
 |---|---|
-| RDSの読み取り負荷を下げたい | ElastiCache for Redis |
+| RDSの読み取り負荷を下げたい | ElastiCache for Valkey / Redis OSS |
 | DynamoDBの読み取りを高速化したい | DAX |
 | 大量データを分析したい | Redshift |
 | S3上のデータをSQLで分析したい | Athena |
+
+ElastiCacheはインメモリキャッシュを使い、頻繁に参照するデータやセッションをデータベースの前段に置きます。DAXはDynamoDBと互換性のあるマネージドキャッシュで、DynamoDBの読み取りを高速化する要件に向きます。機能はAWS公式の[Amazon ElastiCache](https://docs.aws.amazon.com/ja_jp/AmazonElastiCache/latest/dg/WhatIs.html)と[Amazon DynamoDB Accelerator](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/DAX.html)で確認できます。
+
+キャッシュは元データではありません。TTL、更新時の無効化、キャッシュミス時のDB負荷、障害時に古い値を許容できるかを設計します。
+
+Redshiftはデータウェアハウスへ継続的にロードした大規模データを分析する場合、AthenaはS3上のデータをサーバーレスなSQLで直接分析する場合に使います。役割はAWS公式の[Amazon Redshift](https://docs.aws.amazon.com/ja_jp/redshift/latest/mgmt/welcome.html)と[Amazon Athena](https://docs.aws.amazon.com/ja_jp/athena/latest/ug/what-is.html)で確認できます。
+
+---
+
+## AWS DMSでデータベースを移行する
+
+**AWS Database Migration Service**（AWS DMS）は、ソースデータベースからターゲットデータベースへデータを移行するサービスです。移行中もソースを稼働させ、初回の全データロードと、その後の変更データキャプチャを組み合わせて停止時間を短くできます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    SOURCE["Source Database"] -->|"Full Load"| DMS["AWS DMS<br/>Replication Instance / Serverless"]
+    SOURCE -->|"Change Data Capture"| DMS
+    DMS --> TARGET["Target Database"]
+    SCHEMA["DMS Schema Conversion"] --> TARGET
+    DMS --> MONITOR["CloudWatch / Validation"]
+`}
+/>
+
+| 移行方式 | 主な作業 |
+|---|---|
+| 同種エンジン | 接続先、テーブル選択、全ロード、変更データ、切り替えを設計する |
+| 異種エンジン | データ移行に加えて、スキーマ、SQL、ストアドプロシージャ、アプリケーション互換性を変換・検証する |
+
+AWS DMSの基本構成はAWS公式の[AWS Database Migration Serviceとは](https://docs.aws.amazon.com/ja_jp/dms/latest/userguide/Welcome.html)、全ロードと変更データキャプチャを含むタスクは[移行タスクの作成](https://docs.aws.amazon.com/ja_jp/dms/latest/userguide/CHAP_Tasks.Creating.html)で確認できます。異種エンジン間の変換は[DMS Schema Conversion](https://docs.aws.amazon.com/ja_jp/dms/latest/userguide/CHAP_SchemaConversion.html)で評価します。
+
+### 停止時間を抑える移行手順
+
+1. ソースとターゲットの互換性、拡張機能、文字コード、データ型を確認する
+2. 異種エンジンならスキーマを変換し、変換できないSQLを修正する
+3. 全ロードを実行しながら変更データキャプチャを開始する
+4. 検証で件数、エラー、レプリケーション遅延を確認する
+5. 切り替え時に書き込みを制御し、未反映の変更がないことを確認する
+6. アプリケーションの接続先をターゲットへ変更し、ロールバック条件を監視する
+
+<Callout type="warning">
+### AWS DMSはアプリケーション互換性を自動保証しない
+
+異種エンジンでは、データを転送できてもSQL方言、関数、トランザクション、照合順序が異なる場合があります。性能試験とアプリケーション試験を実施してから切り替えます。
+
+</Callout>
+
+---
+
+## 実務での構成例 — ECサイトのデータストアを分ける
+
+注文、商品、セッション、アクセス分析を1つのデータベースへ集約せず、アクセスパターンごとに分けます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Users"] --> APP["Application"]
+    APP --> ORDERS["Aurora<br/>Orders / Transactions"]
+    APP --> CATALOG["DynamoDB<br/>Product Access"]
+    APP --> CACHE["ElastiCache<br/>Sessions / Hot Data"]
+    APP -->|"Event / Batch Data"| S3["S3 Data Lake"]
+    S3 --> ATHENA["Athena"]
+    S3 --> REDSHIFT["Redshift"]
+`}
+/>
+
+設計では次を確認します。
+
+1. 注文はトランザクションとSQLが必要なためAuroraを選ぶ
+2. 商品参照は既知のキーによる大規模アクセスとしてDynamoDBを検討する
+3. セッションと頻繁に読む値はElastiCacheへ置き、TTLと無効化を決める
+4. 分析クエリを本番DBへ直接流さず、S3、Athena、Redshiftへ分離する
+5. LambdaやコンテナからAuroraへの接続が急増するならRDS Proxyを使う
+6. Multi-AZ、バックアップ、別リージョンへの復旧方式をデータストアごとに決める
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| SQL、結合、トランザクション、既存商用DBエンジンが必要 | Amazon RDS | 一般的なリレーショナルDBエンジンをマネージドで使える |
+| MySQL・PostgreSQL互換で高可用なクラウドネイティブRDBが必要 | Amazon Aurora | 分散ストレージとAurora Replicaを使える |
+| Lambda急増時のRDS接続数を抑えたい | RDS Proxy | 接続をプールして共有できる |
+| 主キー中心のアクセスで急増するNoSQLワークロード | DynamoDB | キーバリュー・ドキュメントをサーバーレスで扱える |
+| DynamoDBの読み取りをマイクロ秒単位へ高速化したい | DAX | DynamoDB互換のインメモリキャッシュを使える |
+| RDSの頻繁な読み取りやセッションをキャッシュしたい | ElastiCache | 汎用インメモリデータストアを使える |
+| 接続関係を多段にたどる不正検知や推薦 | Neptune | グラフの頂点と辺を効率よく探索できる |
+| MongoDB互換のドキュメントワークロード | DocumentDB | JSONドキュメントをMongoDB互換APIで扱える |
+| S3上のログを一時的にSQL分析したい | Athena | データをロードせずS3へ直接クエリできる |
+| データウェアハウスへ集約して反復分析したい | Redshift | 分析用ストレージとクエリエンジンを使える |
+| ソースを稼働させたままDB移行の停止時間を抑えたい | AWS DMS | 全ロードと変更データキャプチャを組み合わせられる |
+
+この表は、要件から第一候補を絞るための筆者の整理です。実際にはデータ量、整合性、クエリ、対応エンジン、運用、費用を確認します。
+
+---
+
+## よくあるハマりどころ
+
+### RDS Multi-AZを読み取りスケールに使う
+
+単一スタンバイ型のRDS Multi-AZでは、スタンバイを読み取りに使いません。可用性はMulti-AZ、読み取り負荷の分散はRead ReplicaまたはAurora Replicaで考えます。
+
+### DynamoDBで後から任意の検索条件を増やす
+
+必要なクエリを先に列挙し、パーティションキー、ソートキー、GSIへ落とし込みます。キーで絞れないScanへ依存すると、読み取り量と応答時間が増えます。
+
+### キャッシュを唯一の保存先にする
+
+キャッシュの削除や障害後に元データから再生成できるようにします。重要データは要件に合う永続データストアへ保存します。
+
+### AWS DMSだけで異種DB移行が完了すると思う
+
+スキーマ変換、SQL互換性、性能、アプリケーション接続、切り替えとロールバックを別に検証します。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク3.3](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)
+- [Amazon RDS](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/Welcome.html)
+- [Amazon DynamoDB](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html)
+- [AWS Database Migration Service](https://docs.aws.amazon.com/ja_jp/dms/latest/userguide/Welcome.html)
 
 ---
 
@@ -106,8 +291,10 @@ DB選択では、データモデルとアクセスパターンを先に見ます
 - キャッシュならElastiCacheやDAX
 - DWHならRedshift
 - S3上の分析ならAthena
+- 接続急増にはRDS Proxy、マルチリージョンにはAurora Global DatabaseやDynamoDB Global Tablesを検討する
+- 停止時間を抑えたデータベース移行にはAWS DMSを検討する
 
-次の章では、CloudFront、Route 53、Global Accelerator、VPC Endpointなどのネットワーク性能を扱います。
+CloudFront、Route 53、Global Accelerator、VPC Endpointなどの選択は、[ネットワークパフォーマンス](/books/aws-saa-c03/network-performance)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

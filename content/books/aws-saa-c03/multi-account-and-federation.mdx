@@ -4,26 +4,15 @@ description: 'AWS Organizations、SCP、Control Tower、IAM Identity Center、ST
 order: 3
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- AWS Control Towerによるマルチアカウント環境の構築
-- AWS Directory Serviceを使ったフェデレーション
-- 組織構成の図と試験問題での判断パターン
-
-</Callout>
-
 <Figure src="/images/meeting_color.png" alt="複数チームでアカウント管理を相談するイラスト" maxWidth="340px" />
 
 <SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
 AWSアカウントは1つだけでも使えるのに、なぜわざわざ複数アカウントに分けるんですか？
 </SpeechBubble>
 
-実務のAWS環境では、1つのAWSアカウントにすべてを詰め込むより、用途ごとにアカウントを分けることが多いです。開発、本番、監査、ログ保管、セキュリティ管理を分離することで、権限と影響範囲を制御しやすくなります。
+実務のAWS環境では、1つのAWSアカウントにすべてを詰め込むのではなく、用途ごとにアカウントを分離できます。開発、本番、監査、ログ保管、セキュリティ管理を分離することで、権限と影響範囲を制御しやすくなります。AWS Organizationsも、複数アカウントの作成と一元管理を主要機能として説明しています（[AWS Organizationsとは](https://docs.aws.amazon.com/ja_jp/organizations/latest/userguide/orgs_introduction.html)）。
 
-SAA-C03では、複数アカウント管理、クロスアカウントアクセス、AWS Organizations、SCP、AWS IAM Identity Centerが問われます。
+SAA-C03の[試験ガイドのタスク1.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)では、複数アカウントのアクセス制御、フェデレーション、IAM Identity Center、STS、ロールスイッチング、SCP、Control Towerなどが対象です。IAMユーザー、IAMロール、ポリシー評価、アクセス許可の境界の基本は、[IAMと最小権限](/books/aws-saa-c03/iam-and-least-privilege)で扱います。
 
 ---
 
@@ -38,16 +27,52 @@ SAA-C03では、複数アカウント管理、クロスアカウントアクセ�
 
 本番アカウントと開発アカウントを分けると、開発者が誤って本番RDSや本番S3を削除するリスクを下げられます。
 
+### 組織構成の例
+
+OU（Organizational Unit）は、複数のAWSアカウントをまとめてポリシーを適用するための組織単位です。次の図は、役割とワークロードの性質でOUを分けた例です。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    ROOT["Organization Root"] --> SEC["Security OU"]
+    ROOT --> INFRA["Infrastructure OU"]
+    ROOT --> WORK["Workloads OU"]
+    SEC --> LOG["Log Archive<br/>アカウント"]
+    SEC --> AUDIT["Audit<br/>アカウント"]
+    INFRA --> NET["Network<br/>アカウント"]
+    WORK --> PROD["Production<br/>アカウント"]
+    WORK --> DEV["Development<br/>アカウント"]
+`}
+/>
+
+これはAWS Organizationsの機能を使った、筆者による構成例です。OUは会社の部署名だけで分けるのではなく、適用したいSCPや運用責任が同じアカウントをまとめると管理しやすくなります。
+
+<Callout type="note">
+### 管理アカウントにワークロードを置かない
+
+Organizationsの管理アカウントは、組織のポリシーやメンバーアカウントを管理できる強い権限を持ちます。AWSは、管理アカウントのリソースとアクセスを組織管理に必要なものへ限定することを推奨しています（[管理アカウントのベストプラクティス](https://docs.aws.amazon.com/ja_jp/organizations/latest/userguide/orgs_best-practices_mgmt-acct.html)）。通常のアプリケーションはメンバーアカウントへ配置します。
+
+</Callout>
+
 ---
 
 ## OrganizationsとSCP
 
-**AWS Organizations** は、複数のAWSアカウントを組織として管理するサービスです。OU（Organizational Unit）でアカウントをグルーピングし、**SCP（Service Control Policy）** で組織全体の上限権限を決めます。
+**AWS Organizations** は、複数のAWSアカウントを組織として管理するサービスです。OU（Organizational Unit）でアカウントをグルーピングし、**SCP**（Service Control Policy）で組織全体の上限権限を決めます。
+
+| 要素 | 役割 |
+|---|---|
+| 管理アカウント | 組織の作成、アカウント招待・作成、組織ポリシーの管理を行う |
+| 組織ルート | 組織内のOUとアカウントを含む最上位のコンテナ |
+| OU | アカウントや子OUをまとめ、共通のポリシーを適用する |
+| メンバーアカウント | ワークロードや共通機能を置く、組織配下のAWSアカウント |
+
+Organizationsの機能と用語は、AWS公式の[AWS Organizationsとは](https://docs.aws.amazon.com/ja_jp/organizations/latest/userguide/orgs_introduction.html)で確認できます。
 
 <Callout type="note">
 ### SCPは許可を追加しない
 
-SCPは「このアカウントで最大どこまで許すか」を決めるガードレールです。SCPで許可しても、IAMポリシーで許可されていなければ操作はできません。SCPとIAMの両方で許可されて初めて実行できます。
+SCPは「このアカウントで最大どこまで許すか」を決めるガードレールです。SCPで許可しても、IAMポリシーで許可されていなければ操作はできません。SCPとIAMの両方で許可されて初めて実行できます。IAMポリシーとの評価関係は、[IAMと最小権限](/books/aws-saa-c03/iam-and-least-privilege)の「ポリシー評価の基本順序」も参照してください。
 
 </Callout>
 
@@ -57,6 +82,75 @@ SCPは「このアカウントで最大どこまで許すか」を決めるガ�
 - CloudTrailの停止を禁止する
 - ルートユーザーでの操作を制限する
 - 本番OUでは危険な削除操作を禁止する
+
+### SCPの継承と評価
+
+SCPを組織ルートやOUへアタッチすると、その配下のOUとメンバーアカウントへ継承されます。許可リスト方式では、プリンシパルが操作を実行するために、組織ルートから対象アカウントまでの各階層でその操作が許可されている必要があります。いずれかの階層に該当する明示的な `Deny` があれば、下位のSCPやIAMポリシーで許可しても実行できません。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    ROOT["組織ルートのSCP"] --> OU["OUのSCP"]
+    OU --> ACC["アカウントのSCP"]
+    ACC --> IAM["IAMポリシー"]
+    IAM --> EFFECT["有効なアクセス許可"]
+`}
+/>
+
+AWS公式の[SCP評価](https://docs.aws.amazon.com/ja_jp/organizations/latest/userguide/orgs_manage_policies_scps_evaluation.html)は、継承と許可リスト・拒否リストの評価例を説明しています。
+
+<Callout type="warning">
+### SCPの適用外を確認する
+
+SCPはメンバーアカウントのIAMユーザー、IAMロール、ルートユーザーの権限を制限しますが、Organizationsの管理アカウントのユーザーやロールには影響しません。また、サービスリンクロールにも影響しません。AWSは、組織ルートへSCPを付ける前に、テスト用OUなどで影響を確認するよう勧めています（[サービスコントロールポリシー](https://docs.aws.amazon.com/ja_jp/organizations/latest/userguide/orgs_manage_policies_scps.html)）。
+
+</Callout>
+
+---
+
+## AWS Control Towerでマルチアカウント環境を構築する
+
+AWS Organizationsは複数アカウント管理の基盤です。**AWS Control Tower** はOrganizations、IAM Identity Center、AWS Service Catalogなどを組み合わせ、ベストプラクティスに沿ったマルチアカウント環境の初期構築と継続的なガバナンスを自動化します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    CT["AWS Control Tower"] --> LZ["ランディングゾーン"]
+    CT --> CTRL["コントロール"]
+    CT --> AF["Account Factory"]
+    CT --> DASH["ダッシュボード"]
+    LZ --> ORG["AWS Organizations"]
+    CTRL --> GOV["予防・検出・<br/>プロアクティブ"]
+    AF --> NEW["標準化した<br/>新規アカウント"]
+`}
+/>
+
+| 機能 | 役割 | 要件の読み取り方 |
+|---|---|---|
+| ランディングゾーン | OU、アカウント、ID、ログなどを含むマルチアカウント基盤 | ベストプラクティスに沿った基盤を短期間で構築したい |
+| コントロール | 組織全体へガバナンスルールを適用する | 禁止、設定違反の検出、デプロイ前の検査が必要 |
+| Account Factory | 承認済みテンプレートでアカウント作成を標準化する | チームが同じ初期設定でアカウントを払い出したい |
+| ダッシュボード | アカウント、コントロール、非準拠リソースを集約表示する | 組織全体の準拠状況を一元確認したい |
+
+AWS Control Towerのコントロールには次の3種類があります。
+
+| 種類 | 動作 |
+|---|---|
+| 予防コントロール | 禁止した操作を実行できないようにする |
+| 検出コントロール | デプロイ済みリソースの非準拠を検出する |
+| プロアクティブコントロール | リソースをデプロイする前に準拠を確認する |
+
+これらの機能は、AWS公式の[AWS Control Towerとは](https://docs.aws.amazon.com/ja_jp/controltower/latest/userguide/what-is-control-tower.html)に基づいています。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+「OrganizationsでアカウントとSCPを自分で管理する」のか、「Control Towerで標準のランディングゾーンと継続的な統制まで整える」のかを、問題文の運用要件で見分けます。これは筆者の整理です。
+</SpeechBubble>
+
+### Account Factoryの利用例
+
+新しいプロジェクトへAWSアカウントを渡すたびに、管理者がOU、アクセス権、ネットワーク設定を手作業でそろえると差異が生まれます。Account Factoryでは、承認済みのアカウント設定をテンプレート化し、ランディングゾーンへ新しいメンバーアカウントをプロビジョニングします（[Account Factoryでのアカウント管理](https://docs.aws.amazon.com/ja_jp/controltower/latest/userguide/account-factory.html)）。
+
+<Marker>標準化された新規アカウントを継続的に払い出す要件では、Control TowerのAccount Factoryが候補です。</Marker>
 
 ---
 
@@ -72,6 +166,175 @@ SCPは「このアカウントで最大どこまで許すか」を決めるガ�
 | 既存IdPの認証をAWSに連携したい | フェデレーション |
 | 一時的に別アカウントの権限を使いたい | STS AssumeRole |
 
+AWS公式の[IAM Identity Centerとは](https://docs.aws.amazon.com/ja_jp/singlesignon/latest/userguide/what-is.html)は、既存のIDプロバイダーとの接続、Identity Center内でのユーザー管理、AWSアカウントとアプリケーションへのアクセス管理を主要機能として説明しています。
+
+### アクセス許可セット
+
+**アクセス許可セット**は、IAM Identity Centerでユーザーやグループへ割り当てる、1つ以上のIAMポリシーをまとめたテンプレートです。たとえば「開発者」「データベース管理者」「読み取り専用監査」のような職務ごとの権限を定義し、対象のAWSアカウントへ割り当てます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    IDP["IDソース"] --> IDC["IAM Identity Center"]
+    IDC --> USER["ユーザー・グループ"]
+    IDC --> PS["アクセス許可セット"]
+    USER --> ASSIGN["アカウント割り当て"]
+    PS --> ASSIGN
+    ASSIGN --> ROLE["対象アカウントの<br/>IAMロール"]
+    ROLE --> SESSION["一時認証情報"]
+`}
+/>
+
+アクセス許可セットを割り当てると、IAM Identity Centerは対象アカウントに対応するIAMロールを作成・管理し、許可されたユーザーがそのロールを引き受けられるようにします。詳しい仕組みは、AWS公式の[アクセス許可セットを使用してAWSアカウントを管理する](https://docs.aws.amazon.com/ja_jp/singlesignon/latest/userguide/permissionsetsconcept.html)で確認できます。
+
+<Marker>人が複数のAWSアカウントへ同じIDでアクセスし、職務別の権限を一元管理する要件ではIAM Identity Centerが候補です。</Marker>
+
+---
+
+## AWS Directory Serviceを使ったフェデレーション
+
+**フェデレーション**は、外部のIDプロバイダーで認証した利用者へ、AWSの一時認証情報を使ったアクセスを提供する仕組みです。社員のIDを既存のMicrosoft Active Directoryで管理している場合、AWS Directory Serviceを介してIAM Identity Centerへ接続できます。
+
+| 選択肢 | 役割 | 適する要件 |
+|---|---|---|
+| AWS Managed Microsoft AD | AWS上でMicrosoft Active Directoryをマネージドサービスとして運用する | AWS上に実際のMicrosoft ADが必要。既存ADとの信頼関係も使いたい |
+| AD Connector | 既存のセルフマネージドADへ認証要求を中継する | 既存ADをそのままIDソースとして使い、別のディレクトリへ情報を複製したくない |
+| Simple AD | Samba 4ベースのAD互換ディレクトリを提供する | 基本的なAD互換機能が必要。ただしIAM Identity CenterのIDソースには使えない |
+
+IAM Identity Centerは、AWS Managed Microsoft ADまたはAD Connectorが提供する接続を使ってActive DirectoryをIDソースにできます。Simple ADはIAM Identity Centerの接続先ディレクトリとしてサポートされません（[Microsoft ADディレクトリ](https://docs.aws.amazon.com/ja_jp/singlesignon/latest/userguide/manage-your-identity-source-ad.html)）。各Directory Serviceオプションの用途は、AWS公式の[AWS Directory Serviceとは](https://docs.aws.amazon.com/ja_jp/directoryservice/latest/admin-guide/what_is.html)で確認できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USER["社員"] --> AD["既存Active Directory"]
+    AD --> CONN["AD Connector<br/>または信頼関係"]
+    CONN --> IDC["IAM Identity Center"]
+    IDC --> PORTAL["AWSアクセスポータル"]
+    PORTAL --> ROLE["各アカウントの<br/>IAMロール"]
+`}
+/>
+
+<Callout type="warning">
+### CognitoとIAM Identity Centerを混同しない
+
+社員や管理者がAWSアカウントへアクセスするならIAM Identity Center、一般利用者がWebアプリケーションやモバイルアプリへログインするならAmazon Cognitoが候補です。Cognitoの使い分けは[アプリケーションセキュリティ](/books/aws-saa-c03/application-security)で扱います。
+
+</Callout>
+
+---
+
+## クロスアカウントIAMロール
+
+別のAWSアカウントのリソースを操作するときは、アクセス先アカウントにIAMロールを作り、アクセス元のプリンシパルがそのロールを引き受ける設計が基本です。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    SRC["アクセス元<br/>アカウントA"] -->|"sts:AssumeRole"| ROLE["アクセス先<br/>アカウントBのロール"]
+    TRUST["信頼ポリシー"] -->|"誰が引き受けるか"| ROLE
+    PERM["アクセス許可ポリシー"] -->|"何を操作できるか"| ROLE
+    ROLE -->|"一時認証情報"| RES["アカウントBの<br/>AWSリソース"]
+`}
+/>
+
+必要な許可は両側にあります。
+
+1. **アクセス先:** IAMロールの信頼ポリシーで、アクセス元のアカウントやロールを信頼する
+2. **アクセス先:** IAMロールのアクセス許可ポリシーで、対象リソースへの操作を許可する
+3. **アクセス元:** プリンシパルのIAMポリシーで、対象ロールへの `sts:AssumeRole` を許可する
+
+この構成は、AWS公式の[IAMロールを使用したAWSアカウント間のアクセス委任](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/tutorial_cross-account-with-roles.html)に基づいています。
+
+### AWS CLIでロールを引き受ける
+
+**構文**：`aws sts assume-role --role-arn <ロールARN> --role-session-name <セッション名> [--external-id <外部ID>]`
+
+```bash
+aws sts assume-role \
+  --role-arn arn:aws:iam::222222222222:role/ReadReports \
+  --role-session-name report-session
+```
+
+| パラメーター | 説明 |
+|---|---|
+| `--role-arn` | 引き受けるIAMロールのARN |
+| `--role-session-name` | CloudTrailなどでセッションを識別する名前 |
+| `--external-id` | 第三者へロール引き受けを許可するときに、信頼ポリシーの条件と照合する外部ID。必要な場合だけ指定 |
+
+**戻り値**：`AccessKeyId`、`SecretAccessKey`、`SessionToken`、`Expiration` を含む一時認証情報と、引き受けたロールの情報
+
+構文と戻り値の詳細は、AWS CLI公式の[`sts assume-role`](https://docs.aws.amazon.com/cli/latest/reference/sts/assume-role.html)で確認できます。自社と無関係な第三者へクロスアカウントロールを提供する場合は、混乱した代理問題への対策として外部IDを使います（[第三者にアクセス権を付与する際の外部ID](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/id_roles_common-scenarios_third-party.html)）。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+クロスアカウント用に、アクセス先のアカウントへ同じIAMユーザーを作る必要はないんですね。
+</SpeechBubble>
+
+IAMロールを使えば、アクセス元のIDを維持したまま、アクセス先で許可された権限を一時的に使えます。長期アクセスキーをアカウントごとに発行する必要はありません。
+
+---
+
+## 実務での構成例 — 開発チームへ標準アカウントを渡す
+
+複数の開発チームが新しいサービスを立ち上げる企業を考えます。
+
+1. Control TowerでSecurity OU、Infrastructure OU、Workloads OUを含むランディングゾーンを構築する
+2. Security OUにログ保管用と監査用のアカウントを分離する
+3. Account Factoryで、ネットワークや監査設定をそろえた開発・本番アカウントを払い出す
+4. IAM Identity Centerで「開発者」「本番閲覧」「監査」などのアクセス許可セットを作る
+5. Workloads OUへSCPを適用し、許可していないリージョンの利用や監査機能の無効化を防ぐ
+6. Control Towerのダッシュボードで非準拠リソースを確認する
+
+この構成は、Control Tower、Organizations、IAM Identity Centerの役割を組み合わせた筆者の設計例です。アカウントを分けるだけでなく、作成方法、ログ、アクセス、ガードレールを標準化することが目的です。
+
+---
+
+## 試験問題での判断パターン
+
+次の対応は、AWS公式ドキュメントの各機能を要件別に整理した、筆者の整理です。
+
+| 問題文の要件 | 選ぶ候補 | 判断の理由 |
+|---|---|---|
+| 複数のAWSアカウントをOUにまとめ、ポリシーを一元適用したい | AWS Organizations | アカウント階層と組織ポリシーを管理する基盤 |
+| メンバーアカウントで特定サービスやリージョンの利用上限を定めたい | SCP | IAM権限を付与せず、組織階層で最大権限を制限する |
+| ベストプラクティスに沿ったマルチアカウント基盤を自動構築したい | AWS Control Tower | ランディングゾーンとコントロールをまとめて用意する |
+| 承認済み構成の新規アカウントを繰り返し払い出したい | Account Factory | アカウントのプロビジョニングを標準化する |
+| 社員へ複数アカウントのSSOと職務別権限を提供したい | IAM Identity Centerとアクセス許可セット | 人のアクセスを一元管理する |
+| 既存のActive Directoryをそのまま使いたい | AD ConnectorとIAM Identity Center | 既存ADへ認証要求を中継する |
+| AWS上でマネージドなMicrosoft ADが必要 | AWS Managed Microsoft AD | 実際のMicrosoft ADをAWS上で運用する |
+| 別アカウントのリソースを一時的に操作したい | クロスアカウントIAMロールとSTS | ロールの一時認証情報を使う |
+| 外部企業へクロスアカウントロールを提供したい | IAMロールと外部ID | 第三者を識別する条件を信頼ポリシーへ追加する |
+
+<Marker>Organizationsはアカウント管理の基盤、Control Towerはその上で標準環境の構築と継続的なガバナンスを自動化します。</Marker>
+
+---
+
+## よくあるハマりどころ
+
+### SCPで権限を付与しようとする
+
+SCPは最大権限を制限するだけです。メンバーアカウント内のIAMポリシーやリソースベースポリシーによる許可が別に必要です。
+
+### 管理アカウントもSCPで制限できると思う
+
+SCPはOrganizationsの管理アカウントには影響しません。管理アカウントは組織管理専用に近づけ、アクセスできる人と処理を限定します。
+
+### IAM Identity CenterとIAMユーザーをアカウントごとに併用する
+
+人の通常アクセスをIAM Identity Centerへ集約しても、各アカウントに日常利用のIAMユーザーを残すと、退職・異動時の停止漏れや長期認証情報の管理が残ります。緊急アクセスなど必要な例外を明確にします。
+
+### クロスアカウントロールの片側だけを許可する
+
+アクセス先ロールの信頼ポリシーだけでなく、アクセス元にも `sts:AssumeRole` の許可が必要です。ロールを引き受けた後の操作は、アクセス先ロールのアクセス許可ポリシーで絞ります。
+
+---
+
+## 参考リンク
+
+- [SAA-C03 試験ガイド — タスク1.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)
+- [AWS Organizationsとは](https://docs.aws.amazon.com/ja_jp/organizations/latest/userguide/orgs_introduction.html)
+- [AWS Control Towerとは](https://docs.aws.amazon.com/ja_jp/controltower/latest/userguide/what-is-control-tower.html)
+- [IAM Identity Centerとは](https://docs.aws.amazon.com/ja_jp/singlesignon/latest/userguide/what-is.html)
+
 ---
 
 ## まとめ
@@ -80,11 +343,13 @@ SCPは「このアカウントで最大どこまで許すか」を決めるガ�
 
 - <Marker>AWS Organizationsでアカウントをまとめる</Marker>
 - SCPで許可範囲の上限を制御する
+- Control Towerでランディングゾーン、コントロール、Account Factoryを管理する
 - IAM Identity Centerで人のアクセスを集中管理する
+- Directory Serviceを介して既存のActive DirectoryをIAM Identity Centerへ接続する
 - クロスアカウントアクセスにはIAM RoleとSTSを使う
 - ログ保管やセキュリティ監査用アカウントを分ける
 
-次の章では、VPC、サブネット、Security Group、NACLを使ったネットワークセキュリティを扱います。
+VPC、サブネット、Security Group、NACLを使ったネットワークセキュリティは、[VPCネットワークセキュリティ](/books/aws-saa-c03/vpc-network-security)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

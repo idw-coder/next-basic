@@ -4,36 +4,31 @@ description: 'Amazon S3、EBS、EFS、FSx、S3 Storage Class、S3 Lifecycle、St
 order: 11
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- EBSのボリュームタイプの選び方
-- EFSとFSxの使い分け
-- Storage GatewayやDataSyncを使ったオンプレミス連携
-
-</Callout>
-
 <Figure src="/images/boomerang_woman_color.png" alt="保存先の選択に迷う人のイラスト" maxWidth="320px" />
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 S3、EBS、EFSは全部データを保存するサービスですよね。問題文ではどう見分ければいいですか？
 </SpeechBubble>
 
-AWSのストレージ選択では、オブジェクト、ブロック、ファイルの違いを理解することが重要です。SAA-C03では、S3、EBS、EFS、FSx、Storage Gatewayの使い分けが頻出です。
+AWSのストレージ選択では、オブジェクト、ブロック、ファイルの違いを理解することが重要です。
+
+[SAA-C03試験ガイドのタスク3.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)では、アクセスパターン、共有範囲、性能、可用性、ハイブリッド接続を要件に合わせて選ぶ力が対象です。
+
+<Marker>ストレージは、接続方式、共有するサーバー数、必要なIOPS・スループット・レイテンシー、データ保持期間から選びます。容量だけで選びません。</Marker>
+
+**IOPS**（Input/Output Operations Per Second）は1秒あたりの入出力回数、**スループット**は単位時間あたりに転送できるデータ量、**レイテンシー**は1回の入出力にかかる時間です。小さなランダムI/OはIOPS、大きな連続I/Oはスループットが重要になります。
 
 ---
 
 ## Amazon S3とは
 
-Amazon S3（Simple Storage Service）は、AWSが提供するオブジェクトストレージサービスです。ファイルを「オブジェクト」として保存し、容量の上限なく、高い耐久性（99.999999999% = イレブンナイン）でデータを保管できます。
+Amazon S3（Simple Storage Service）は、AWSが提供するオブジェクトストレージサービスです。ファイルを「オブジェクト」として保存し、容量を事前にプロビジョニングせず、高い耐久性を持つストレージとして利用できます。S3 Standardなどの耐久性目標はAWS公式の[Amazon S3](https://aws.amazon.com/jp/s3/)で確認できます。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 オブジェクトストレージって、普通のファイルシステムと何が違うんですか？
 </SpeechBubble>
 
-通常のファイルシステム（EBSやEFS）はディレクトリ構造でファイルを管理します。一方、オブジェクトストレージはフラットな構造で、各オブジェクトに一意のキーとメタデータを付けて管理します。フォルダのように見える `/images/photo.jpg` も、実際にはフォルダが存在するのではなく、`images/photo.jpg` という1つのキーです。
+EBS上に構成したファイルシステムやEFSは、ディレクトリ構造でファイルを管理します。一方、オブジェクトストレージはフラットな構造で、各オブジェクトに一意のキーとメタデータを付けて管理します。フォルダのように見える `/images/photo.jpg` も、実際にはフォルダが存在するのではなく、`images/photo.jpg` という1つのキーです。
 
 <Figure src="/images/deta_man_color.png" alt="データの管理方法を考える人のイラスト" maxWidth="320px" />
 
@@ -41,14 +36,14 @@ Amazon S3（Simple Storage Service）は、AWSが提供するオブジェクト�
 
 | 用語 | 説明 |
 |---|---|
-| バケット（Bucket） | オブジェクトを入れる器。グローバルで一意な名前が必要。リージョンを指定して作成する |
+| バケット（Bucket） | オブジェクトを入れる器。汎用バケット名はAWSパーティション内で一意にし、リージョンを指定して作成する |
 | オブジェクト（Object） | S3に保存されるデータの単位。ファイル本体 + メタデータで構成される |
 | オブジェクトキー（Key） | バケット内でオブジェクトを一意に識別する名前。`logs/2024/access.log` のようにスラッシュで階層を表現できる |
 | バージョンID | バージョニング有効時に付与される識別子。同じキーに上書きしても過去のバージョンを保持・復元できる |
 | メタデータ | オブジェクトに付随する情報。Content-Type、暗号化方式、カスタムヘッダーなど |
 | ライフサイクルルール | 一定期間後にストレージクラスを変更したり、オブジェクトを自動削除するルール |
 | バケットポリシー | バケット単位のアクセス制御。JSON形式のIAMポリシーで、誰がどの操作を許可・拒否されるかを定義する |
-| ACL（アクセス制御リスト） | オブジェクトやバケット単位の旧式なアクセス制御。現在はバケットポリシーの使用が推奨されている |
+| ACL（アクセス制御リスト） | オブジェクトやバケット単位のアクセス許可。S3 Object Ownershipで無効化できる |
 
 ### S3の構造を図で見る
 
@@ -71,7 +66,7 @@ flowchart TB
 
 ### バケットポリシーの実務と試験
 
-バケットポリシーはS3のアクセス制御の中核で、試験でも頻出です。JSON形式でPrincipal（誰が）、Action（何を）、Resource（どのバケット/オブジェクトに）、Effect（許可/拒否）を指定します。
+バケットポリシーはS3バケットに付けるリソースベースポリシーです。JSON形式でPrincipal（誰が）、Action（何を）、Resource（どのバケットまたはオブジェクトに）、Effect（許可または拒否）を指定します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 IAMポリシーでもS3のアクセス制御はできますよね。バケットポリシーとどう使い分けるんですか？
@@ -84,25 +79,25 @@ IAMポリシーは「ユーザーやロールに対して何を許可するか�
 | IAMポリシー | ユーザー/ロール側 | 自アカウント内のユーザーにS3の操作権限を付与 |
 | バケットポリシー | リソース（バケット）側 | クロスアカウントアクセス、パブリックアクセス制御、特定IPからの制限 |
 
-#### 試験でよく問われるバケットポリシーのパターン
+#### 代表的なバケットポリシーのパターン
 
 | パターン | ポリシーの要点 |
 |---|---|
-| 特定アカウントにのみ読み取りを許可 | PrincipalにクロスアカウントのARNを指定し `s3:GetObject` を許可 |
+| 特定アカウントにのみ読み取りを許可 | PrincipalにクロスアカウントのARN（Amazon Resource Name）を指定し `s3:GetObject` を許可 |
 | HTTPS通信のみを許可 | Conditionで `aws:SecureTransport: false` のリクエストを `Deny` |
 | 特定のVPCエンドポイントからのみアクセス | Conditionで `aws:sourceVpce` を指定して `Deny` |
-| CloudFrontからのみアクセス（OAC） | Principalに `cloudfront.amazonaws.com` を指定 |
-| Data Firehoseからの書き込みを許可 | Principalに `firehose.amazonaws.com` を指定し `s3:PutObject` を許可 |
+| CloudFrontからのみアクセス | Origin Access Control（OAC）とバケットポリシーでCloudFrontディストリビューションを許可 |
+| Data Firehoseからの書き込みを許可 | 配信ストリームが使うIAMロールに `s3:PutObject` を許可 |
 
 <Callout type="warning">
 ### ACLではなくバケットポリシーを使う
 
-S3のアクセス制御にはACLもありますが、AWSは**バケットポリシーの使用を推奨**しています。新規バケットはデフォルトでACL無効（BucketOwnerEnforced）です。試験でもバケットポリシーが正解になるケースが多いです。
+S3 Object OwnershipのBucket owner enforcedではACLが無効になり、バケットポリシーなどのポリシーでアクセスを制御します。新しい汎用バケットではBucket owner enforcedがデフォルトです。動作はAWS公式の[S3 Object Ownership](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/about-object-ownership.html)で確認できます。
 
 </Callout>
 
 <SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
-バケットポリシーの具体的な書き方は [S3 バケットポリシーの例（公式）](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/example-bucket-policies.html) を参照してください。試験では書き方の暗記よりも「どのパターンでバケットポリシーを使うか」の判断が問われます。
+バケットポリシーの具体的な書き方は [S3 バケットポリシーの例（公式）](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/example-bucket-policies.html) を参照してください。構文の暗記よりも「どの主体へ、どの操作を、どの条件で許可するか」を判断できるようにしましょう。
 </SpeechBubble>
 
 ### 参考リンク
@@ -142,9 +137,11 @@ S3は可用性、耐久性、スケーラビリティに優れたマネージド
 <Callout type="note">
 ### 低頻度アクセスはストレージクラスで最適化
 
-アクセス頻度が低いデータは、S3 Standardに置き続けるより、LifecycleでIAやGlacier系へ移すとコストを下げられます。ただし取り出し料金や復元時間も考慮します。
+アクセス頻度、取り出し速度、保持期間に合うストレージクラスを選びます。S3 Lifecycleでは、オブジェクトを別のストレージクラスへ移行し、期限切れ後に削除できます。ただし、最小保存期間、取り出し料金、復元時間をストレージクラスごとに確認します。ライフサイクルの動作はAWS公式の[オブジェクトのライフサイクル管理](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)で確認できます。
 
 </Callout>
+
+S3 Replicationは別バケットへオブジェクトを複製し、S3 Object Lockはオブジェクトバージョンを一定期間変更・削除できないように保護します。レプリケーションとバックアップの違い、Object Lockの保持モードは[データ保護](/books/aws-saa-c03/data-security)で扱います。仕様はAWS公式の[オブジェクトのレプリケーション](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/replication.html)と[S3 Object Lock](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/object-lock.html)で確認できます。
 
 ---
 
@@ -157,20 +154,180 @@ S3は可用性、耐久性、スケーラビリティに優れたマネージド
 | FSx for Windows File Server | Windowsファイル共有 |
 | FSx for Lustre | HPCや機械学習など高性能ファイルシステム |
 | FSx for NetApp ONTAP | ONTAP互換機能が必要な場合 |
+| FSx for OpenZFS | ZFS互換の機能と低レイテンシーなNFS共有が必要な場合 |
 
 複数EC2から同じファイルを共有したい要件では、EBSではなくEFSやFSxが候補になります。
+
+### EBSのボリュームタイプを選ぶ
+
+Amazon EBSは、EC2インスタンスへブロックデバイスとしてアタッチするストレージです。ボリュームはAvailability Zone（AZ）単位で作成し、同じAZのEC2から利用します。別AZへ移す場合はスナップショットなどから新しいボリュームを作成します。
+
+| ボリュームタイプ | 媒体 | 向くワークロード |
+|---|---|---|
+| gp3 | SSD | 起動ボリューム、仮想デスクトップ、開発、一般的なアプリケーション |
+| io2 Block Express | SSD | 一貫した高IOPSと低レイテンシーを求める重要なデータベース |
+| st1 | HDD | 大きな連続I/Oを行うログ処理、ETL（抽出・変換・ロード）、ビッグデータ |
+| sc1 | HDD | アクセス頻度が低く、大きな連続I/Oを行うデータ |
+
+gp3では容量とは別にIOPSとスループットを調整できます。小さなランダムI/Oが多いデータベースはSSD、大きな連続読み書きが中心ならスループット最適化HDDを検討します。起動ボリュームにはSSDタイプを使います。
+
+EBSボリュームのAZ特性はAWS公式の[EBSボリューム](https://docs.aws.amazon.com/ja_jp/ebs/latest/userguide/ebs-volumes.html)、各タイプの性能特性と利用条件は[EBSボリュームタイプ](https://docs.aws.amazon.com/ja_jp/ebs/latest/userguide/ebs-volume-types.html)で確認できます。
+
+<Callout type="warning">
+### EBSのサイズだけ増やしても要件を満たすとは限らない
+
+アプリケーションが必要とするIOPS、スループット、レイテンシー、I/Oサイズ、キュー長を測ります。EC2インスタンスタイプ側のEBS帯域幅も上限になるため、ボリュームとインスタンスの両方を確認します。
+
+</Callout>
+
+### EFSとFSxを使い分ける
+
+Amazon EFSはNFS（Network File System）でアクセスするLinux向けの共有ファイルシステムです。リージョナルファイルシステムでは複数AZにマウントターゲットを作成し、複数のEC2、ECS、Lambdaなどから共有できます。
+
+Amazon FSxは、特定のファイルシステムやワークロードとの互換性が必要な場合に選びます。
+
+| 要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| Linuxサーバー間でNFSファイルを共有したい | EFS | 複数AZから利用できるマネージドNFS |
+| WindowsのSMB共有、Active Directory連携が必要 | FSx for Windows File Server | Windowsネイティブのファイル共有機能を使える |
+| HPC（高性能計算）、機械学習、メディア処理で高スループットが必要 | FSx for Lustre | 並列ファイルシステムとS3連携を使える |
+| ONTAPのSMB（Server Message Block）・NFS・iSCSI（IPネットワーク上のブロックストレージ接続）、スナップショットなどが必要 | FSx for NetApp ONTAP | ONTAP互換の管理機能を使える |
+| ZFSのスナップショット、クローン、NFSが必要 | FSx for OpenZFS | OpenZFS互換のファイルシステムを使える |
+
+EFSでは、汎用と最大I/Oのパフォーマンスモード、Elastic・Provisioned・Burstingのスループットモードをワークロードに合わせて選びます。利用可能なモードと制約はAWS公式の[EFSのパフォーマンス](https://docs.aws.amazon.com/ja_jp/efs/latest/ug/performance.html)で確認します。
+
+各サービスの役割はAWS公式の[Amazon EFSとは](https://docs.aws.amazon.com/ja_jp/efs/latest/ug/whatisefs.html)、[FSx for Windows File Server](https://docs.aws.amazon.com/ja_jp/fsx/latest/WindowsGuide/what-is.html)、[FSx for Lustre](https://docs.aws.amazon.com/ja_jp/fsx/latest/LustreGuide/what-is.html)、[FSx for NetApp ONTAP](https://docs.aws.amazon.com/ja_jp/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html)、[FSx for OpenZFS](https://docs.aws.amazon.com/ja_jp/fsx/latest/OpenZFSGuide/what-is-fsx.html)で確認できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    APP_A["Linux Application<br/>AZ-a"] --> EFS["Amazon EFS<br/>Regional NFS"]
+    APP_C["Linux Application<br/>AZ-c"] --> EFS
+    WINDOWS["Windows Servers"] --> FSX_WIN["FSx for Windows<br/>SMB"]
+    HPC["HPC / ML Workers"] --> FSX_LUSTRE["FSx for Lustre"]
+    FSX_LUSTRE --> S3["Amazon S3"]
+`}
+/>
 
 ---
 
 ## オンプレミス連携
 
-オンプレミスからAWSストレージを使う要件では、**AWS Storage Gateway** や **AWS DataSync** が出ます。
+オンプレミスからAWSストレージを使う要件では、**AWS Storage Gateway**や**AWS DataSync**を検討します。
 
 | 要件 | 選択肢 |
 |---|---|
 | オンプレミスからS3をファイル共有のように使いたい | File Gateway |
 | オンプレミスデータをAWSへ高速移行したい | DataSync |
 | 大量データを物理的に移行したい | Snow Family |
+
+Storage Gatewayは、オンプレミスのアプリケーションへ既存のファイル、ブロック、テープインターフェイスを提供し、AWSストレージと統合します。
+
+| Gateway | 提供するインターフェイス | 主な保存先・用途 |
+|---|---|---|
+| Amazon S3 File Gateway | NFS、SMB | ファイルをS3オブジェクトとして保存する |
+| Volume Gateway | iSCSIブロック | オンプレミスアプリケーションのボリュームとクラウドバックアップ |
+| Tape Gateway | 仮想テープライブラリ | 既存バックアップソフトウェアのテープをAWSへ置き換える |
+
+S3 File Gatewayのファイルとオブジェクトの対応はAWS公式の[Amazon S3 File Gatewayとは](https://docs.aws.amazon.com/ja_jp/filegateway/latest/files3/what-is-file-s3.html)、Volume GatewayとTape Gatewayの役割は[Volume Gateway](https://docs.aws.amazon.com/ja_jp/storagegateway/latest/vgw/WhatIsStorageGateway.html)と[Tape Gateway](https://docs.aws.amazon.com/ja_jp/storagegateway/latest/tgw/WhatIsStorageGateway.html)で確認できます。
+
+DataSyncは、オンプレミスのストレージ、AWSストレージサービス、他クラウドとの間でデータをオンライン転送するサービスです。移行だけでなく、定期転送やレプリケーションにも使えます。転送元・転送先、ネットワーク帯域、フィルター、スケジュール、検証、メタデータの扱いを決めます。対応するロケーションはAWS公式の[AWS DataSyncとは](https://docs.aws.amazon.com/ja_jp/datasync/latest/userguide/what-is-datasync.html)で確認できます。
+
+Snow Familyはネットワーク転送に時間がかかる大容量データを物理デバイスで移動する場合の候補です。利用できるデバイスとリージョンはAWS公式の[AWS Snowball Edgeとは](https://docs.aws.amazon.com/ja_jp/snowball/latest/developer-guide/whatissnowball.html)で確認します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    ONPREM["On-Premises Storage"] -->|"NFS / SMB / iSCSI"| GATEWAY["Storage Gateway"]
+    GATEWAY --> S3["Amazon S3"]
+    GATEWAY --> BACKUP["Snapshots / Virtual Tapes"]
+    ONPREM -->|"Online Transfer"| DATASYNC["AWS DataSync"]
+    DATASYNC --> EFS["EFS / FSx / S3"]
+    DEVICE["Snow Family Device"] -->|"Offline Transfer"| S3
+`}
+/>
+
+<Marker>継続的に既存アプリケーションへストレージインターフェイスを提供するならStorage Gateway、データをオンラインで転送するならDataSync、回線では現実的でない大容量移行ならSnow Familyを検討します。</Marker>
+
+---
+
+## 実務での構成例 — Webアプリケーションと共有ファイル
+
+画像配信、アプリケーションの一時ディスク、複数サーバーの共有ファイル、分析処理を役割別のストレージへ分けます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Users"] --> CF["CloudFront"]
+    CF --> S3["S3<br/>Images / Static Files"]
+    USERS --> ALB["Application Load Balancer"]
+    ALB --> EC2_A["EC2<br/>AZ-a"]
+    ALB --> EC2_C["EC2<br/>AZ-c"]
+    EC2_A --> EBS_A["gp3 EBS<br/>AZ-a"]
+    EC2_C --> EBS_C["gp3 EBS<br/>AZ-c"]
+    EC2_A --> EFS["EFS<br/>Shared Files"]
+    EC2_C --> EFS
+    ANALYTICS["HPC / ML"] --> LUSTRE["FSx for Lustre"]
+    LUSTRE --> S3
+`}
+/>
+
+設計では次を確認します。
+
+1. 画像や静的ファイルはS3へ保存し、CloudFrontから配信する
+2. EC2の起動・作業用ブロックストレージはgp3 EBSを基準に測定する
+3. 複数AZのアプリケーションで共有するLinuxファイルはEFSへ置く
+4. 並列処理の高スループットな作業領域はFSx for Lustreを検討する
+5. バックアップ、暗号化、保持期間、復元試験をストレージごとに決める
+6. CloudWatchでIOPS、スループット、キュー、容量、バースト状態を監視する
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| 画像、ログ、バックアップをAPIで保存したい | S3 | オブジェクトとして保存できる |
+| EC2の起動ディスクやデータベース用ブロックストレージ | EBS | EC2へブロックデバイスとしてアタッチできる |
+| 一般的なSSDワークロードでIOPSとスループットを調整したい | gp3 | 容量と性能を別に調整できる |
+| 一貫した高IOPSと低レイテンシーが必要な重要DB | io2 Block Express | プロビジョンドIOPS SSDを使える |
+| Linuxの複数EC2から同じファイルをNFS共有したい | EFS | 複数AZで共有できるマネージドNFS |
+| WindowsのSMB共有とActive Directory連携が必要 | FSx for Windows File Server | Windowsネイティブのファイル共有を使える |
+| S3データをHPCで高スループット処理したい | FSx for Lustre | 並列ファイルシステムとS3連携を使える |
+| オンプレミスアプリケーションからS3をNFS・SMBで使いたい | S3 File Gateway | ファイルインターフェイスをS3へ接続できる |
+| オンプレミスの大量ファイルをオンライン転送したい | DataSync | 転送、スケジュール、検証を管理できる |
+| ネットワーク転送が現実的でない大容量データを移行したい | Snow Family | 物理デバイスで移動できる |
+
+この表は、要件から第一候補を絞るための筆者の整理です。実際にはアクセス頻度、共有範囲、性能、可用性、保持、転送時間、料金を確認します。
+
+---
+
+## よくあるハマりどころ
+
+### S3を通常のファイルシステムと同じように扱う
+
+S3はオブジェクトをキーで操作します。POSIX（Unix系OSの標準的なファイル操作仕様）に沿う更新やロックが必要なら、EFSや要件に合うFSxを検討します。
+
+### 複数AZのEC2から1つのEBSを共有する
+
+EBSはAZ単位のブロックストレージです。複数AZのサーバーで同じファイルを共有するならEFSなどを検討します。EBS Multi-Attachには対応ボリューム、同一AZ、ファイルシステムなどの条件があります。
+
+### HDDを小さなランダムI/Oへ使う
+
+st1とsc1は大きな連続I/O向けです。起動ボリュームや小さなランダムI/OにはSSDタイプを選びます。
+
+### DataSyncを常設ファイル共有として使う
+
+DataSyncはデータ転送を実行するサービスです。オンプレミスのアプリケーションへ継続的にNFS、SMB、iSCSIを提供する要件ではStorage Gatewayを検討します。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク3.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)
+- [EBSボリュームタイプ](https://docs.aws.amazon.com/ja_jp/ebs/latest/userguide/ebs-volume-types.html)
+- [Amazon EFSとは](https://docs.aws.amazon.com/ja_jp/efs/latest/ug/whatisefs.html)
+- [AWS DataSyncとは](https://docs.aws.amazon.com/ja_jp/datasync/latest/userguide/what-is-datasync.html)
 
 ---
 
@@ -183,8 +340,9 @@ S3は可用性、耐久性、スケーラビリティに優れたマネージド
 - 複数サーバー共有ならEFSやFSx
 - アーカイブはS3 Glacier系
 - オンプレ連携はStorage GatewayやDataSync
+- IOPS、スループット、レイテンシーを測り、EBSタイプとファイルシステムを選ぶ
 
-次の章では、EC2、Lambda、ECS、Fargateなどのコンピューティング選択を扱います。
+EC2、Lambda、ECS、Fargateなどの実行基盤は、[コンピューティング選択](/books/aws-saa-c03/compute-selection)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

@@ -4,17 +4,6 @@ description: 'RDS Reserved Instances、Aurora Serverless、DynamoDB On-Demand/Pr
 order: 18
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- Cost ExplorerとAWS Budgetsによるコストの把握
-- バックアップと保持ポリシーの設計
-- AWS DMSを使ったデータベース移行
-
-</Callout>
-
 <Figure src="/images/deskwork_check_woman_color.png" alt="データベースコストを確認する人のイラスト" maxWidth="320px" />
 
 <SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
@@ -22,6 +11,26 @@ order: 18
 </SpeechBubble>
 
 データベースは性能と可用性を重視する一方で、過剰なスペックや読み取り設計の不足でコストが膨らみやすい領域です。
+
+[SAA-C03試験ガイドのタスク4.3](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain4.html)では、キャパシティ計画、接続、キャッシュ、保持ポリシー、レプリケーション、データベースの種類を要件に合わせて選ぶ力が対象です。
+
+<Marker>データベースのコストは、エンジン、計算容量、ストレージ、I/O、バックアップ、データ転送を分けて測り、可用性と復旧要件を満たす範囲で最適化します。</Marker>
+
+データモデルとアクセスパターンからRDS、Aurora、DynamoDBなどを選ぶ手順は[データベース選択](/books/aws-saa-c03/database-selection)で扱います。本章では、選んだデータベースの容量と利用方法を費用面から見直します。
+
+---
+
+## Cost ExplorerとAWS Budgetsでデータベース費用を把握する
+
+| ツール | データベースでの使い方 |
+|---|---|
+| AWS Cost Explorer | RDS、Aurora、DynamoDB、ElastiCacheなどの費用推移をサービス・アカウント・タグで分析する |
+| AWS Budgets | 実績または予測コストがしきい値へ近づいたときに通知する |
+| コスト配分タグ | システム、所有チーム、本番・開発などの単位で費用を分ける |
+
+[Cost Explorer](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/ce-what-is.html)はコストと使用状況の表示・分析に使い、[AWS Budgets](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/budgets-managing-costs.html)はコストや使用量の予算と通知を設定できます。リソースへタグを付けたうえで、Billing and Cost Managementの[ユーザー定義のコスト配分タグ](https://docs.aws.amazon.com/ja_jp/awsaccountbilling/latest/aboutv2/activating-tags.html)を有効にすると、タグ別の費用を分析できます。
+
+コストの増加を見つけたら、CloudWatchのCPU、接続数、読み書きレイテンシー、空きストレージ、DynamoDBの消費キャパシティなどと同じ期間で比較します。費用だけを見て縮小すると、ピーク時の遅延やスロットリングを見落とします。
 
 ---
 
@@ -37,6 +46,30 @@ order: 18
 
 本番ではMulti-AZが必要でも、開発環境では停止スケジュールや小さいインスタンスタイプで十分なことがあります。
 
+### DBインスタンスを適正化する
+
+1. CPU、メモリ、接続数、I/O、レイテンシーを負荷のピークを含む期間で測る
+2. CPUとメモリのどちらが制約かを確認し、DBインスタンスクラスとサイズを選ぶ
+3. [Performance Insights](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/USER_PerfInsights.html)や実行計画から、サイズ変更前に遅いクエリとインデックスを見直す
+4. 変更後に同じ指標とアプリケーション応答時間を比較する
+
+AWS Compute OptimizerはAmazon RDSとAuroraのDBインスタンスについて、使用率メトリクスに基づく推奨事項を生成できます。対応リソースと利用条件は[AWS Compute Optimizer](https://docs.aws.amazon.com/ja_jp/compute-optimizer/latest/ug/what-is-compute-optimizer.html)で確認できます。
+
+長期に安定して使うRDS DBインスタンスでは、リザーブドDBインスタンスを検討します。これは物理インスタンスの予約ではなく、リージョン、DBエンジン、インスタンスクラスなどの条件が一致する使用量へ適用される請求上の割引です（[Amazon RDS向けリザーブドDBインスタンス](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/USER_WorkingWithReservedDBInstances.html)）。将来のサイズ変更や廃止計画を確認してから購入します。
+
+### 可用性、読み取り性能、接続数を分ける
+
+| 要件 | 選択肢 | コスト判断 |
+|---|---|---|
+| AZ障害時の可用性を高める | RDS Multi-AZ | スタンバイを単なる読み取り台数として数えない |
+| 読み取りクエリを分散する | Read Replica / Aurora Replica | レプリカの台数と遅延を監視する |
+| 頻繁に読む値を再利用する | ElastiCache / DAX | DBの読み取り削減とキャッシュ自体の費用を比較する |
+| Lambdaやコンテナから接続が急増する | RDS Proxy | 接続を共有し、DB側の接続負荷とProxyの費用を比較する |
+
+RDS Multi-AZとRead Replicaの役割は異なります。[RDS Read Replica](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/USER_ReadRepl.html)は読み取り専用トラフィックを分散する仕組みです。[RDS Proxy](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/rds-proxy.html)はアプリケーションとDBの接続をプールして共有します。
+
+RDSストレージの増加を予測しにくい場合はストレージ自動スケーリングを使えますが、一度増えた割り当て済みストレージは縮小できません。上限値とアラームを設定し、ログや一時データの増加原因も確認します（[RDSストレージの自動スケーリング](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/USER_PIOPS.Autoscaling.html)）。
+
 ---
 
 ## Aurora Serverless
@@ -51,6 +84,8 @@ Aurora Serverlessは、負荷変動が大きいワークロードで有効な場
 
 ただし、常時高負荷ならプロビジョンド構成の方が読みやすく、安くなることもあります。
 
+Aurora Serverlessは需要に応じて容量を調整するAuroraの構成です。最小容量と最大容量を設定し、実際にスケールした範囲を測定して見直します。変動が大きい開発・テストや予測しにくいアプリケーションが候補であり、常時安定した高負荷ではプロビジョンドDBインスタンスも比較します（[Aurora Serverless](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2.html)）。
+
 ---
 
 ## DynamoDBの課金モード
@@ -61,12 +96,116 @@ Aurora Serverlessは、負荷変動が大きいワークロードで有効な場
 | Provisioned | 安定したアクセス、キャパシティを読める |
 | Provisioned + Auto Scaling | ある程度予測可能な変動 |
 
-DynamoDBでは、テーブル設計が悪いと不要なGSI、ホットパーティション、過剰な読み書きでコストが増えます。
+DynamoDBでは、テーブル設計が悪いと不要なGSI（グローバルセカンダリインデックス）、ホットパーティション、過剰な読み書きでコストが増えます。
+
+オンデマンドモードは読み書きリクエストに応じた料金で容量管理を減らせます。プロビジョンドモードは読み込みキャパシティユニットと書き込みキャパシティユニットを指定し、Auto Scalingで使用率に追従できます。アクセスが予測しにくい新規ワークロードはオンデマンドから始め、安定した利用量と費用実績が得られたらプロビジョンドと比較します。判断材料はAWS公式の[DynamoDBテーブルのキャパシティモードの評価](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/CostOptimization_TableCapacityMode.html)で確認できます。
+
+GSIは独自のキーとキャパシティを持つため、実際に必要なアクセスパターンに限って作ります。Projectionへ不要な属性を含めず、テーブルと各GSIの消費キャパシティ、スロットリング、保存量を別々に確認します。キャパシティモードとデータベース選択軸の詳細は[データベース選択](/books/aws-saa-c03/database-selection)で扱います。
 
 <Callout type="note">
 ### キャッシュはDBコスト削減にも効く
 
 ElastiCacheやDAXを使うと、DBへの読み取り負荷を下げられます。ただしキャッシュ自体のコストと、キャッシュ整合性の設計も必要です。
+
+</Callout>
+
+キャッシュは元データの保存先ではありません。TTL、更新時の無効化、キャッシュミス、障害時に古い値を許容できるかを決めます。ElastiCacheのノードまたはサーバーレス利用料、DAXクラスターの費用と、削減できるDB読み取り・DBサイズを同じ期間で比較します。サービスの役割は[Amazon ElastiCache](https://docs.aws.amazon.com/ja_jp/AmazonElastiCache/latest/dg/WhatIs.html)と[Amazon DynamoDB Accelerator](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/DAX.html)で確認できます。
+
+---
+
+## バックアップと保持ポリシーを設計する
+
+バックアップを減らせば保存費用は下がりますが、必要な時点へ復元できなくなる可能性があります。先にRPO（許容できるデータ損失時間）、RTO（許容できる復旧時間）、法令・監査上の保持期間を決めます。
+
+| 要件 | 選択肢 | 費用を左右する点 |
+|---|---|---|
+| RDSを保持期間内の時点へ復元したい | 自動バックアップとポイントインタイムリカバリ | 保持期間、DB削除後の保持、リージョン間コピー |
+| リリース前や長期保管用の復元点が必要 | 手動DBスナップショット | 不要になったスナップショットの削除 |
+| DynamoDBを継続的に保護したい | PITR | テーブルサイズと設定した復旧期間 |
+| 複数サービスのバックアップを統合管理したい | AWS Backup | 保持、コールドストレージへの移行、コピー先 |
+
+RDSの自動バックアップは指定した保持期間に従って保存され、保持期間内の時点へ復元できます。手動DBスナップショットはDBインスタンス削除とは独立して残るため、不要なものを定期的に確認します。動作と保存範囲は[RDSバックアップの概要](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html)で確認できます。
+
+DynamoDBではPITRによる継続的バックアップと、長期保存向けのオンデマンドバックアップを使い分けられます。復元では新しいテーブルが作られるため、復旧手順とアプリケーションの接続先切り替えもテストします（[DynamoDBのバックアップと復元](https://docs.aws.amazon.com/ja_jp/amazondynamodb/latest/developerguide/Backup-and-Restore.html)）。
+
+複数サービスのバックアップを一元管理する場合は、[AWS Backupのバックアッププラン](https://docs.aws.amazon.com/ja_jp/aws-backup/latest/devguide/about-backup-plans.html)でスケジュール、保持期間、ライフサイクル、コピー先を定義します。
+
+<Callout type="warning">
+### 保持期間は費用だけで短くしない
+
+バックアップ保持期間は、RPO・RTO、誤削除に気付くまでの時間、監査要件から決めます。保持期間を短縮する前に復元テストを行い、バックアップの削除後も要件を満たせることを確認します。
+
+</Callout>
+
+---
+
+## AWS DMSで停止時間を抑えて移行する
+
+AWS Database Migration Service（AWS DMS）は、ソースとターゲットのエンドポイントを接続し、既存データのフルロードと変更データキャプチャ（CDC）を組み合わせてデータを移行できます。移行を機に、商用エンジンから互換性のあるオープンソースエンジンやAWSマネージドサービスへ変更し、ライセンスと運用の費用を見直す場合にも使えます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    SOURCE["Source Database"] -->|"Full Load"| DMS["AWS DMS<br/>Replication"]
+    SOURCE -->|"Change Data Capture"| DMS
+    DMS --> TARGET["Target Database<br/>RDS / Aurora / Other"]
+    SCHEMA["Schema Conversion<br/>Heterogeneous Migration"] --> TARGET
+    DMS --> VALIDATE["Validation and Lag Monitoring"]
+    VALIDATE --> CUTOVER["Application Cutover"]
+`}
+/>
+
+| 移行方式 | 向く要件 |
+|---|---|
+| フルロード | 移行中にソース更新を止められる、または差分を別途反映できる |
+| フルロード + CDC | ソースを稼働させながら既存データと継続的な変更を移す |
+| CDC | 初期データが既にあり、以後の変更を継続的に複製する |
+
+AWS DMSタスクのフェーズと構成要素は[AWS DMSタスク](https://docs.aws.amazon.com/ja_jp/dms/latest/userguide/CHAP_Tasks.html)で確認できます。異種エンジンへの移行では、データ転送だけでなく、スキーマ、SQL方言、ストアドプロシージャ、アプリケーション互換性を変換・検証します。
+
+<Marker>移行の費用比較には、移行中のDMSリソースだけでなく、移行前後のライセンス、DB容量、I/O、バックアップ、運用工数を含めます。</Marker>
+
+---
+
+## 実務例: ECサイトのデータベース費用を段階的に見直す
+
+本番Aurora、開発用RDS、商品カタログ用DynamoDBを使うECサイトでは、次の順で見直します。
+
+1. Cost Explorerとコスト配分タグで、本番・開発・商品カタログの費用を分ける
+2. 本番Auroraは負荷ピークと接続数を測り、レプリカ数、RDS Proxy、ElastiCacheを比較する
+3. 開発用RDSは利用時間外に停止し、バックアップ保持期間を本番とは別に決める
+4. DynamoDBはテーブルとGSIの消費キャパシティを確認し、オンデマンドとプロビジョンドを比較する
+5. 旧DBからの移行はAWS DMSのフルロードとCDCで検証し、切り替え前に件数と遅延を確認する
+6. AWS Budgetsで予測コストを監視し、変更後の性能と費用を再測定する
+
+この手順は公式ドキュメントの機能を組み合わせた、筆者の整理です。可用性や復旧目標を満たす構成を先に決め、その範囲で不要な容量を減らします。
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 選択の起点 | 理由 |
+|---|---|---|
+| 安定して長期間使うRDS | リザーブドDBインスタンス | 条件が一致するオンデマンド使用量へ割引を適用できる |
+| 予測しにくく変動するAurora負荷 | Aurora Serverless | 需要に合わせて容量を調整できる |
+| 新規で予測不能なDynamoDBトラフィック | オンデマンドモード | 容量計画を減らし、リクエスト量に応じて利用できる |
+| 安定したDynamoDBトラフィック | プロビジョンド + Auto Scaling | キャパシティと目標使用率を管理できる |
+| RDSの読み取りが多い | Read ReplicaまたはElastiCache | クエリ分散とキャッシュを要件で選べる |
+| LambdaからRDSへの接続が急増する | RDS Proxy | 接続をプールして共有できる |
+| RDSを指定した保持期間内の時点へ戻したい | 自動バックアップとPITR | 継続的な復旧点を利用できる |
+| ソースDBを稼働させながら移行したい | AWS DMSのフルロード + CDC | 既存データと継続変更を移行できる |
+
+この表は[SAA-C03試験ガイドのタスク4.3](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain4.html)と各サービスの公式ドキュメントをもとにした、筆者の整理です。
+
+<Callout type="note">
+### コスト最適化で混同しやすい点
+
+- Multi-AZは可用性、Read Replicaは読み取りスケールが主目的です
+- RDSのリザーブドDBインスタンスはバックアップやデータ転送を含むすべての料金を固定する仕組みではありません
+- Aurora Serverlessでも、最小・最大容量とワークロードの実測が必要です
+- DynamoDBのGSIは追加の保存量と読み書きキャパシティを持ちます
+- キャッシュを追加するとDB負荷は下げられますが、キャッシュ自体の料金と整合性管理が増えます
+- AWS DMSは異種エンジン間のアプリケーション互換性を自動保証しません
 
 </Callout>
 
@@ -82,7 +221,7 @@ DBコストは、性能要件、可用性要件、アクセスパターンに合
 - ElastiCacheやDAXで読み取り負荷を下げる
 - 開発環境と本番環境で同じ構成にしない
 
-次の章では、NAT Gateway、CloudFront、VPC Endpoint、データ転送のコスト最適化を扱います。
+NAT Gateway、CloudFront、VPC Endpoint、データ転送の費用判断は[ネットワークのコスト最適化](/books/aws-saa-c03/cost-optimized-network-and-checklist)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

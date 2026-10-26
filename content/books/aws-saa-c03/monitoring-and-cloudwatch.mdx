@@ -4,17 +4,6 @@ description: 'Amazon CloudWatch Metrics、CloudWatch Logs、Logs Insights、Even
 order: 7
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- CloudWatch Alarmsの設定（しきい値・評価期間・アクション）
-- AWS CloudTrailとAWS Configによる操作と設定変更の記録
-- AWS X-Rayによる分散トレーシング
-
-</Callout>
-
 <Figure src="/images/planning_suit_man_color.png" alt="システムの監視状況を確認する人のイラスト" maxWidth="320px" />
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
@@ -22,6 +11,10 @@ CloudWatchはよく名前を見ますが、Metrics、Logs、Alarmなど機能が
 </SpeechBubble>
 
 Amazon CloudWatchは、AWSリソースの**監視・ログ管理・アラーム・イベント駆動**を担う中心的なサービスです。SAA-C03では、CloudWatchの各機能がどんな要件で使われるかを判断する力が問われます。
+
+[SAA-C03試験ガイドのタスク2.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain2.html)では、ビジネス要件を満たすメトリクスの選択や、AWS X-Rayなどによるワークロードの可視化が対象です。
+
+<Marker>監視では「何が起きたか」をメトリクスとログで検知し、「どのリクエストが遅いか」をトレースで追い、「誰が何を変更したか」をCloudTrailとAWS Configで確認します。</Marker>
 
 ---
 
@@ -60,13 +53,13 @@ CloudWatch Metricsは、AWSリソースの**数値データを時系列で収集
 
 | 種類 | 説明 | 例 |
 |---|---|---|
-| 標準メトリクス | AWSが自動で収集。追加費用なし | EC2: CPUUtilization、NetworkIn |
+| 標準メトリクス | AWSサービスが自動で送信。収集間隔や料金はサービスごとに確認する | EC2: CPUUtilization、NetworkIn |
 | カスタムメトリクス | ユーザーが独自に送信する | メモリ使用率、アプリのキュー長 |
 
 <Callout type="warning">
 ### EC2のメモリ使用率は標準メトリクスに含まれない
 
-EC2の標準メトリクスにはCPU使用率やネットワークは含まれますが、**メモリ使用率やディスク使用率は含まれません**。これらを監視するにはCloudWatch Agentをインストールしてカスタムメトリクスとして送信する必要があります。試験でもよく問われるポイントです。
+EC2の標準メトリクスにはCPU使用率やネットワークは含まれますが、**メモリ使用率やディスク使用率は含まれません**。これらを監視するにはCloudWatch Agentをインストールしてカスタムメトリクスとして送信する必要があります。タスク2.2の「ビジネス要件に基づいてメトリクスを特定する」に対応する判断です。
 
 </Callout>
 
@@ -79,11 +72,63 @@ EC2の標準メトリクスにはCPU使用率やネットワークは含まれ�
 | 5分 | 63日 |
 | 1時間 | 15ヶ月 |
 
+保持期間が過ぎた短い期間のデータポイントは、長い期間へ集約されます。期間ごとの保持仕様はAWS公式の[CloudWatchメトリクスの概念](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html)で確認できます。
+
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 メトリクスを元に自動で何かさせたい場合はどうしますか？
 </SpeechBubble>
 
 それが **CloudWatch Alarms** の役割です。メトリクスがしきい値を超えたら、SNS通知を送ったり、Auto Scalingのスケールアウトをトリガーしたり、EC2インスタンスを停止・再起動したりできます。
+
+---
+
+## CloudWatch Alarmsのしきい値・評価期間・アクション
+
+CloudWatch Alarmは、選んだメトリクスまたは数式を一定間隔で評価し、条件に応じて状態を変更します。
+
+| 設定 | 役割 | 例 |
+|---|---|---|
+| Statistic | 評価する集計値 | 平均、合計、最大値、パーセンタイル |
+| Period | 1つのデータポイントへ集計する時間 | 1分間の平均CPU使用率 |
+| Threshold | 異常とみなす境界 | CPU使用率が80%より大きい |
+| Evaluation periods | 判定に使う直近の期間数（N） | 直近5期間を見る |
+| Datapoints to alarm | N期間中に違反が必要な回数（M） | 5期間中3回でALARM |
+| Missing data | データがない期間の扱い | 欠損、不足、正常、異常として扱う |
+| Action | 状態変化時に実行する操作 | SNS通知、EC2操作、Auto Scaling |
+
+たとえば「1分平均のCPU使用率が、直近5期間のうち3期間で80%を超えたら通知する」と設定すると、単発の短い上昇ではなく継続的な負荷を検知できます。どの程度の変動を許容するかはワークロードごとに決めます。
+
+### 3つの状態
+
+| 状態 | 意味 |
+|---|---|
+| `OK` | しきい値の条件を満たしていない |
+| `ALARM` | しきい値の条件を満たした |
+| `INSUFFICIENT_DATA` | 判定に必要なデータが不足している |
+
+アラームは状態が変化したときにアクションを実行します。メトリクスアラームではSNS、EC2アクション、EC2 Auto Scaling、Systems Managerなどを利用できます。設定要素とアクションはAWS公式の[CloudWatchアラーム](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/monitoring/CloudWatch_Alarms.html)で確認できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    METRIC["Metric<br/>CPU / Queue / Errors"] --> PERIOD["Period and Statistic"]
+    PERIOD --> EVAL["M of N Evaluation"]
+    EVAL --> STATE{"Alarm State"}
+    STATE -->|"OK"| NORMAL["Continue Monitoring"]
+    STATE -->|"ALARM"| SNS["SNS Notification"]
+    STATE -->|"ALARM"| SCALE["Auto Scaling Action"]
+    STATE -->|"INSUFFICIENT_DATA"| REVIEW["Check Missing Data"]
+`}
+/>
+
+複数のメトリクスアラームを条件式で組み合わせる**複合アラーム**は、通知ノイズを減らす用途に使えます。ただし複合アラームからEC2操作やAuto Scalingアクションは実行できないため、通知と自動スケーリングの要件を分けます。
+
+<Callout type="warning">
+### 欠損データを正常と決めつけない
+
+リクエストがないときに値を送らないメトリクスと、常に値を送るはずの死活監視では、欠損の意味が異なります。メトリクスの発行方法を確認し、欠損を「正常」「異常」「状態維持」のどれとして扱うかを決めます。
+
+</Callout>
 
 ---
 
@@ -97,7 +142,7 @@ CloudWatch Logsは、AWSリソースやアプリケーションの**ログを収
 
 <MermaidDiagram
   chart={`
-flowchart LR
+flowchart TB
     LG["Log Group"] --> LS1["Log Stream 1"]
     LG --> LS2["Log Stream 2"]
     LG --> LS3["Log Stream 3"]
@@ -128,6 +173,8 @@ flowchart LR
 ### ログの保持期間はデフォルト「無期限」
 
 CloudWatch Logsのロググループは、デフォルトでログを無期限に保持します。長期運用ではログ量に応じたコストが増えるため、保持期間（1日〜10年）を設定するか、S3へエクスポートすることを検討します。
+
+保持期間の仕様はAWS公式の[Amazon CloudWatch Logsとは](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html)で確認できます。監査、障害調査、個人情報、費用の要件に合わせてロググループごとに保持期間を決めます。
 
 </Callout>
 
@@ -173,10 +220,110 @@ fields @timestamp, @message
 | 自動フィールド検出 | JSON形式のログは自動でフィールドをパースする |
 | 可視化 | クエリ結果を棒グラフや折れ線グラフで表示できる |
 
+Logs Insightsの検索・分析機能と現在の制限はAWS公式の[CloudWatch Logs Insightsでログを分析する](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/AnalyzingLogData.html)で確認できます。
+
 <Callout type="note">
 ### Logs InsightsとOpenSearchの使い分け
 
 Logs Insightsはクエリごとのアドホック分析に向いています。常時稼働のダッシュボードや大規模な全文検索が必要な場合は、[OpenSearch Service](/books/aws-saa-c03/data-ingestion-and-analytics#amazon-opensearch-service) の方が適しています。
+
+</Callout>
+
+---
+
+## ワークロードごとに監視指標を選ぶ
+
+監視対象を「CPUだけ」に固定せず、利用者への影響とボトルネックに近い指標を選びます。
+
+| ワークロード | 指標・ログの例 | 関連する設計 |
+|---|---|---|
+| EC2 | CPU、ネットワーク、ステータスチェック、Agentで収集するメモリ・ディスク | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| ECS / Fargate | CPU・メモリ使用率、実行タスク数、コンテナログ | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| Lambda | Errors、Throttles、Duration、ConcurrentExecutions、関数ログ | [コンピューティング選択](/books/aws-saa-c03/compute-selection) |
+| Auto Scaling | CPU、ALBリクエスト数、SQSのキュー長など | [スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha) |
+| RDS / Aurora | CPU、接続数、空きストレージ、読み書きレイテンシー、レプリカ遅延 | [データベースのコスト最適化](/books/aws-saa-c03/cost-optimized-database) |
+| DynamoDB | 消費キャパシティ、スロットリング、エラー、レイテンシー | [データベース選択](/books/aws-saa-c03/database-selection) |
+| AWS DMS | ソース・ターゲット側のCDC遅延、タスク状態、検証、ログ | [データベース選択](/books/aws-saa-c03/database-selection) |
+| VPC / NAT / Transit Gateway | Flow Logs、処理バイト、接続数、パケットドロップ | [ネットワークのコスト最適化](/books/aws-saa-c03/cost-optimized-network-and-checklist) |
+
+サービス固有メトリクスはAWS公式の[ECSのCloudWatchメトリクス](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/cloudwatch-metrics.html)、[Lambdaメトリクス](https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/monitoring-metrics-types.html)、[RDSのモニタリング](https://docs.aws.amazon.com/ja_jp/AmazonRDS/latest/UserGuide/MonitoringOverview.html)、[AWS DMSのモニタリング](https://docs.aws.amazon.com/ja_jp/dms/latest/userguide/CHAP_Monitoring.html)、[VPC Flow Logs](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/flow-logs.html)で確認できます。
+
+CloudWatchは性能と可用性の監視が中心です。費用と使用量はCost Explorer・AWS Budgets、S3の利用傾向はS3 Storage Lensで確認します。費用分析は[コンピューティングのコスト最適化](/books/aws-saa-c03/cost-optimized-compute)、Storage Lensは[ストレージのコスト最適化](/books/aws-saa-c03/cost-optimized-storage)で扱います。
+
+---
+
+## CloudTrailとAWS Configで変更を追跡する
+
+CloudWatchが性能と動作を監視するのに対し、CloudTrailはAWS上の操作、AWS Configはリソース設定の状態と変化を記録します。
+
+| 確認したいこと | サービス | 記録する内容 |
+|---|---|---|
+| 誰が、いつ、どのAPIを呼んだか | AWS CloudTrail | ユーザー、ロール、AWSサービスによるコンソール・CLI・SDK・API操作 |
+| リソースがどの設定だったか | AWS Config | 対応リソースの設定、関係、設定履歴 |
+| 設定が組織の基準に準拠しているか | AWS Config Rules | ルールに対する準拠・非準拠 |
+| 操作ログを長期保存・分析したい | CloudTrail Trail / CloudTrail Lake | S3への配信、イベントデータストアへの保存とクエリ |
+
+[AWS CloudTrail](https://docs.aws.amazon.com/ja_jp/awscloudtrail/latest/userguide/cloudtrail-user-guide.html)はアカウント内の操作をイベントとして記録します。イベント履歴では管理イベントを確認でき、証跡を作るとS3へ配信し、必要に応じてCloudWatch LogsやEventBridgeとも連携できます。
+
+[AWS Config](https://docs.aws.amazon.com/ja_jp/config/latest/developerguide/WhatIsConfig.html)はリソースの設定と関係の履歴を提供し、Config Rulesで設定を評価します。たとえばSecurity Groupがいつ変更されたかをConfigで調べ、変更を実行した主体とAPI呼び出しをCloudTrailで調べます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    CHANGE["AWS Resource Change"] --> TRAIL["CloudTrail<br/>Who / When / API"]
+    CHANGE --> CONFIG["AWS Config<br/>State / Relationship / History"]
+    TRAIL --> S3["S3 / CloudTrail Lake"]
+    TRAIL --> EVENT["CloudWatch Logs / EventBridge"]
+    CONFIG --> RULE["Config Rules<br/>Compliance Evaluation"]
+    EVENT --> RESPONSE["Alert / Automated Response"]
+    RULE --> RESPONSE
+`}
+/>
+
+<Callout type="note">
+### CloudTrailとAWS Configは置き換え関係ではない
+
+CloudTrailだけでは、ある時点のリソース設定全体を判断できません。AWS Configだけでは、すべてのAPI呼び出しの詳細を追う用途を代替できません。「操作」と「設定状態」を組み合わせて変更原因を調べます。
+
+</Callout>
+
+---
+
+## AWS X-Rayで分散トレーシングする
+
+分散トレーシングは、1つのリクエストが複数のサービスや依存先を通る経路と処理時間を関連付けて追跡する方法です。メトリクスで「APIが遅い」と分かっても原因サービスを特定できないとき、AWS X-Rayのトレースを使ってリクエスト単位で調べます。
+
+| 用語 | 役割 |
+|---|---|
+| Trace | 1つのリクエスト全体の記録 |
+| Segment | 1つのサービスやリソースが行った処理の記録 |
+| Subsegment / Span | Segment内の処理や下流呼び出しの記録 |
+| Trace Map | サービスと依存先、エラー、レイテンシーを可視化する図 |
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    CLIENT["Client Request"] --> API["API Gateway<br/>Trace Segment"]
+    API --> LAMBDA["Lambda<br/>Trace Segment"]
+    LAMBDA --> DB["DynamoDB<br/>Downstream Span"]
+    LAMBDA --> EXTERNAL["External API<br/>Downstream Span"]
+    API --> MAP["X-Ray Trace Map"]
+    LAMBDA --> MAP
+    DB --> MAP
+    EXTERNAL --> MAP
+`}
+/>
+
+X-Rayは共通のリクエストに属するSegmentをTraceへまとめ、サービス間の経路を可視化します。概念はAWS公式の[X-Rayの概念](https://docs.aws.amazon.com/ja_jp/xray/latest/devguide/xray-concepts.html)で確認できます。
+
+新しくアプリケーションを計測する場合は、AWS Distro for OpenTelemetry（ADOT）とCloudWatch Agent、またはOpenTelemetry SDKとCollectorを使ってメトリクスとトレースを送る構成を検討します。現在の計測方法とX-Ray SDKとの比較は[CloudWatch Application Signalsでサポートされる計測設定](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/monitoring/Getting-Started-App-Signals.html)で確認できます。
+
+<Marker>Metricsは集計された傾向、Logsは個別の記録、Tracesはサービスをまたぐ1リクエストの経路を調べるために使います。</Marker>
+
+<Callout type="warning">
+### トレースはすべて自動でつながるとは限らない
+
+リクエスト経路の各サービスでTrace Contextを伝播し、必要な箇所を計測します。サンプリングで収集量と費用を制御しつつ、エラーや高レイテンシーの調査に必要なトレースを残します。
 
 </Callout>
 
@@ -196,7 +343,7 @@ Amazon EventBridgeは、もともと **CloudWatch Events** という名前でし
 
 <MermaidDiagram
   chart={`
-flowchart LR
+flowchart TB
     SRC["Event Source"] -->|"Event"| BUS["Event Bus"]
     BUS --> R1["Rule 1"]
     BUS --> R2["Rule 2"]
@@ -269,8 +416,8 @@ EventBridgeは[疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-arch
 
 照合の決まりは次の2つです。
 
-1. **値は配列で書き、どれか1つに一致すればよい。** `"state": ["terminated", "stopped"]` なら、終了か停止のどちらでも一致する
-2. **複数のフィールドを書いたら、すべてを満たす必要がある。** 上の例では、`source`・`detail-type`・`detail.state` の3つがすべて一致したときだけルールが動く
+1. **値は配列で書き、どれか1つに一致すればよい**。`"state": ["terminated", "stopped"]` なら、終了か停止のどちらでも一致する
+2. **複数のフィールドを書いたら、すべてを満たす必要がある**。上の例では、`source`・`detail-type`・`detail.state` の3つがすべて一致したときだけルールが動く
 
 完全一致のほかに、次のような条件も書けます（[コンテンツフィルタリング](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-event-patterns-content-based-filtering.html)）。
 
@@ -308,7 +455,7 @@ aws events put-events \
 
 `Source`・`DetailType`・`Detail` の3つがないエントリは失敗します（[PutEventsRequestEntry](https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_PutEventsRequestEntry.html)）。
 
-**戻り値：** エントリごとの結果（成功なら `EventId`、失敗なら `ErrorCode` と `ErrorMessage`）。一部のエントリが失敗しても残りは処理されるので、失敗したエントリだけ送り直す（[PutEvents でのイベントの送信](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-putevents.html)）
+**戻り値**：エントリごとの結果（成功なら `EventId`、失敗なら `ErrorCode` と `ErrorMessage`）。一部のエントリが失敗しても残りは処理されるので、失敗したエントリだけ送り直す（[PutEvents でのイベントの送信](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-putevents.html)）
 
 SaaSのイベントを受け取るには、パートナー側で作られた**パートナーイベントソース**を、自分のアカウントのパートナーイベントバスに関連付けます（[SaaSパートナーからイベントを受信する](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-saas.html)）。
 
@@ -440,7 +587,7 @@ cron式では、日と曜日の両方に `*` は書けません。片方に `*` 
 
 <MermaidDiagram
   chart={`
-flowchart LR
+flowchart TB
     ROLE["実行ロール"] --- SCH["EventBridge Scheduler"]
     SCH -->|"cron / rate / at"| T["ターゲット"]
     SCH -->|"再試行を使い切った"| DLQ["SQS DLQ"]
@@ -492,7 +639,7 @@ aws scheduler create-schedule \
 | `--flexible-time-window` | 柔軟な時間枠。`Mode` は `OFF` か `FLEXIBLE`（`FLEXIBLE` なら `MaximumWindowInMinutes` も指定） |
 | `--target` | 呼び出すターゲットのARNと、Schedulerが引き受ける実行ロールのARN |
 
-**戻り値：** 作成したスケジュールのARN（`ScheduleArn`）
+**戻り値**：作成したスケジュールのARN（`ScheduleArn`）
 
 <SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
 「イベントに反応して動かす」ならEventBridgeのルール、「日時を決めて動かす」ならEventBridge Scheduler、と分けて覚えると整理しやすいです。これは公式がスケジュール用途にSchedulerを勧めていることをもとにした、筆者の整理です。
@@ -528,12 +675,77 @@ SAA-C03では「メモリ使用率を監視したい → カスタムメトリ�
 
 ---
 
+## 実務例: APIの遅延を検知して変更原因まで調べる
+
+ALB、ECS、RDSで動くAPIを監視する場合、通知だけで終わらず、原因をたどれるデータをそろえます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Users"] --> ALB["Application Load Balancer"]
+    ALB --> ECS["ECS Service"]
+    ECS --> RDS["Amazon RDS"]
+    ALB --> METRICS["CloudWatch Metrics"]
+    ECS --> LOGS["CloudWatch Logs"]
+    ECS --> TRACE["X-Ray Traces"]
+    METRICS --> ALARM["CloudWatch Alarm"]
+    ALARM --> SNS["SNS Notification"]
+    CHANGE["CloudTrail + AWS Config"] --> INVESTIGATE["Incident Investigation"]
+    LOGS --> INVESTIGATE
+    TRACE --> INVESTIGATE
+    SNS --> INVESTIGATE
+`}
+/>
+
+1. ALBのエラー率と応答時間、ECSのCPU・メモリ、RDSの接続数とレイテンシーを収集する
+2. 利用者影響に近いALBの指標でAlarmを作り、SNSへ通知する
+3. ECSのアプリケーションログをLogs Insightsで検索する
+4. X-Ray Trace Mapから遅延しているサービスと下流呼び出しを特定する
+5. 発生時刻付近のCloudTrailとAWS Configを確認し、デプロイや設定変更との関連を調べる
+6. 復旧後にアラーム状態、エラー率、トレースのレイテンシーが戻ったことを確認する
+
+この流れは各サービスの機能を障害調査へ対応させた、筆者の整理です。アラームのしきい値と評価期間は、通常時の実測値、サービスレベル目標、許容する検知時間から決めます。
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 選択の起点 | 判断理由 |
+|---|---|---|
+| EC2のメモリやディスク使用率を監視したい | CloudWatch Agent + カスタムメトリクス | EC2の標準メトリクスには含まれない |
+| しきい値超過を通知したい | CloudWatch Alarm + SNS | メトリクスを評価し、状態変化で通知できる |
+| メトリクスを使って台数を増減したい | CloudWatch Alarm / ターゲット追跡 + Auto Scaling | 負荷指標をスケーリングへ使える |
+| 複数ログからエラーを一時的に調査したい | CloudWatch Logs Insights | ログを対話的に検索・集計できる |
+| 誰がSecurity Groupを変更したか調べたい | CloudTrail | APIを呼び出した主体と操作を記録する |
+| Security Groupが過去にどの設定だったか調べたい | AWS Config | リソース設定と関係の履歴を確認できる |
+| 設定が組織の基準に準拠するか評価したい | AWS Config Rules | 設定をルールで評価できる |
+| マイクロサービス間の遅延箇所を追いたい | AWS X-Ray / Application Signals | リクエスト経路と依存先をトレースできる |
+| AWSリソースの状態変化に反応したい | EventBridge Rule | イベントパターンで選び、ターゲットを呼べる |
+| 指定日時やcronで処理を実行したい | EventBridge Scheduler | タイムゾーン、1回限り、rate、cronを扱える |
+
+この表は[SAA-C03試験ガイドのタスク2.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain2.html)と各サービスの公式ドキュメントをもとにした、筆者の整理です。
+
+<Callout type="note">
+### 監視で混同しやすい点
+
+- Alarmはメトリクスの状態を評価し、EventBridge Ruleはイベント内容に一致したときにターゲットを呼び出します
+- CloudTrailは操作、AWS Configはリソース設定、CloudWatch Logsはアプリケーションやサービスのログを扱います
+- Metricsだけでは個別リクエストの経路を追えないため、分散処理の原因調査にはTracesを組み合わせます
+- 通知を増やすだけでは復旧は速くなりません。利用者影響、担当者、対応手順、エスカレーション先をアラームごとに決めます
+
+</Callout>
+
+---
+
 ## 参考リンク
 
 - [Amazon CloudWatch（公式）](https://aws.amazon.com/jp/cloudwatch/)
 - [CloudWatch ユーザーガイド](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html)
 - [CloudWatch Logs ユーザーガイド](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/WhatIsCloudWatchLogs.html)
 - [CloudWatch Logs Insights クエリ構文](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html)
+- [AWS CloudTrail ユーザーガイド](https://docs.aws.amazon.com/ja_jp/awscloudtrail/latest/userguide/cloudtrail-user-guide.html)
+- [AWS Config ユーザーガイド](https://docs.aws.amazon.com/ja_jp/config/latest/developerguide/WhatIsConfig.html)
+- [AWS X-Ray の概念](https://docs.aws.amazon.com/ja_jp/xray/latest/devguide/xray-concepts.html)
 - [Amazon EventBridge ユーザーガイド](https://docs.aws.amazon.com/ja_jp/eventbridge/latest/userguide/eb-what-is.html)
 - [EventBridge Scheduler ユーザーガイド](https://docs.aws.amazon.com/ja_jp/scheduler/latest/UserGuide/what-is-scheduler.html)
 
@@ -546,10 +758,13 @@ CloudWatchとEventBridgeは、AWSの運用・監視の土台です。
 - <Marker>**Metrics** — AWSリソースの数値を収集・可視化。メモリ監視にはカスタムメトリクスが必要</Marker>
 - **Logs** — ログの収集・保存。サブスクリプションフィルターで他サービスへ転送可能
 - **Logs Insights** — ログに対するSQLライクなクエリ分析。アドホックな調査に最適
+- **Alarms** — しきい値と評価期間でメトリクスを判定し、通知や自動対応を実行
+- **CloudTrail / AWS Config** — AWSの操作とリソース設定の変化を追跡
+- **AWS X-Ray** — 分散したサービスを通るリクエストをトレース
 - **EventBridge** — AWSリソースの状態変化に反応して自動アクションを実行
 - **EventBridge Scheduler** — 日時を決めてターゲットを呼び出す。タイムゾーン指定・1回限り・再試行とDLQに対応し、スケジュール用途では公式の推奨
 
-次の章では、疎結合アーキテクチャとしてSQS、SNS、EventBridge、Step Functionsの使い分けを扱います。
+SQS、SNS、EventBridge、Step Functionsの使い分けは[疎結合アーキテクチャ](/books/aws-saa-c03/decoupled-architecture)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

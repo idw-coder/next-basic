@@ -4,24 +4,17 @@ description: 'EC2、Auto Scaling、Lambda、ECS、Fargate、EKS、Elastic Beanst
 order: 12
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- EC2のインスタンスファミリーとサイズの選び方
-- プレイスメントグループ
-- EC2 Auto Scalingの設定
-
-</Callout>
-
 <Figure src="/images/pc-work-woman01.png" alt="アプリケーションの実行基盤を考える人のイラスト" maxWidth="320px" />
 
 <SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
 EC2、Lambda、ECS、Fargateは、どれもアプリを動かせますよね。何を基準に選ぶんですか？
 </SpeechBubble>
 
-コンピューティングサービスは、アプリケーションをどこで動かすかを決める領域です。SAA-C03では、EC2、Lambda、ECS、Fargate、EKS、Elastic Beanstalkの選択が問われます。
+コンピューティングサービスは、アプリケーションをどこで動かすかを決める領域です。
+
+[SAA-C03試験ガイドのタスク3.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)では、インスタンス、コンテナ、サーバーレス、スケーリング、配置、性能を要件に合わせて選ぶ力が対象です。
+
+<Marker>OSまで制御するならEC2、コンテナ単位で配布するならECS・EKS、イベントごとにコードを実行するならLambdaを起点に比較します。実行時間、状態、起動速度、運用責任、スケーリング単位で絞ります。</Marker>
 
 ---
 
@@ -37,7 +30,7 @@ EC2、Lambda、ECS、Fargateは、どれもアプリを動かせますよね。�
 | Elastic Beanstalk | アプリを簡単にデプロイしたい |
 | AWS Batch | 大量のバッチジョブを実行したい |
 
-試験では「運用負荷を下げたい」「イベント発生時だけ処理したい」「コンテナを使いたい」といった要件から候補を絞ります。
+各サービスの役割はAWS公式の[AWS Lambda](https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/welcome.html)、[ECS起動タイプ](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/launch_types.html)、[AWS Fargate](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/AWS_Fargate.html)、[Amazon EKS](https://docs.aws.amazon.com/ja_jp/eks/latest/userguide/what-is-eks.html)、[Elastic Beanstalk](https://docs.aws.amazon.com/ja_jp/elasticbeanstalk/latest/dg/Welcome.html)、[AWS Batch](https://docs.aws.amazon.com/ja_jp/batch/latest/userguide/what-is-batch.html)で確認できます。
 
 ---
 
@@ -53,6 +46,68 @@ EC2が候補になる要件:
 - 既存アプリをそのまま移行したい
 
 Auto ScalingとALBを組み合わせることで、可用性と伸縮性を高めます。
+
+### インスタンスファミリーとサイズを選ぶ
+
+EC2インスタンスタイプは、CPU、メモリ、ストレージ、ネットワークなどの比率が異なるインスタンスファミリーと、各ファミリー内のサイズで構成されます。
+
+| ファミリーの分類 | 代表例 | 向くワークロード |
+|---|---|---|
+| 汎用 | M、T | Webサーバー、開発環境、CPUとメモリを均衡させたい処理 |
+| コンピューティング最適化 | C | 高いCPU比率が必要なバッチ、ゲーム、エンコード |
+| メモリ最適化 | R、X | インメモリDB、大規模キャッシュ、メモリ集約処理 |
+| ストレージ最適化 | I、D、H | ローカルストレージの高IOPS・高スループットが必要な処理 |
+| 高速コンピューティング | P、G、Inf、Trn | GPU、機械学習推論・学習、専用アクセラレーター |
+
+T系はCPUクレジットを使うバースト可能な汎用インスタンスです。持続的にCPUを使う処理をT系だけで判断せず、CPUクレジットと長時間の負荷を確認します。
+
+サイズは想定値だけで固定せず、CPU、メモリ、ネットワーク、EBS帯域幅、アプリケーションレイテンシーを負荷試験とCloudWatchで測ります。利用できるファミリーとプロセッサー、ネットワーク、ストレージ特性はAWS公式の[EC2インスタンスタイプ](https://docs.aws.amazon.com/ja_jp/AWSEC2/latest/UserGuide/instance-types.html)で確認できます。
+
+EC2の永続ブロックストレージにはEBSを使い、複数サーバーで共有するファイルにはEFSやFSxを検討します。EBSタイプと共有ストレージの選択は[ストレージ選択](/books/aws-saa-c03/storage-selection)で扱います。
+
+### プレイスメントグループを選ぶ
+
+プレイスメントグループは、EC2インスタンスを基盤上へどのように配置するかを指定します。
+
+| 戦略 | 配置 | 向く要件 |
+|---|---|---|
+| Cluster | 1つのAZ内でインスタンスを近接配置 | ノード間の低レイテンシーと高スループットが必要 |
+| Partition | 論理パーティションごとに別のハードウェアへ分散 | Hadoop、Cassandra、Kafkaなど大規模分散処理の障害範囲を分けたい |
+| Spread | 少数の重要インスタンスを異なるハードウェアへ分散 | インスタンス障害を相互に分離したい |
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    WORKLOAD["Workload Requirement"] --> CLUSTER["Cluster<br/>Close Placement"]
+    WORKLOAD --> PARTITION["Partition<br/>Separate Failure Domains"]
+    WORKLOAD --> SPREAD["Spread<br/>Distinct Hardware"]
+    CLUSTER --> PERF["Low Latency / High Throughput"]
+    PARTITION --> DISTRIBUTED["Large Distributed System"]
+    SPREAD --> CRITICAL["Small Number of Critical Instances"]
+`}
+/>
+
+Clusterはネットワーク性能を優先する一方、単一AZ内の配置です。高可用性要件と混同せず、複数AZの冗長化が必要なシステムでは障害範囲を別に設計します。各戦略の制約はAWS公式の[プレイスメントグループ](https://docs.aws.amazon.com/ja_jp/AWSEC2/latest/UserGuide/placement-groups.html)で確認できます。
+
+### EC2 Auto Scalingを構成する
+
+起動テンプレートにはAMI、インスタンスタイプ、Security Group、IAM Instance Profile、User Data、ストレージなど、EC2を再作成するための情報を定義します。Auto Scaling Groupでは複数AZのサブネット、最小・希望・最大キャパシティ、ヘルスチェック、スケーリングポリシーを設定します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    TEMPLATE["Launch Template<br/>AMI / Instance Type / IAM"] --> ASG["Auto Scaling Group<br/>min / desired / max"]
+    METRIC["CloudWatch Metric"] --> POLICY["Scaling Policy"]
+    POLICY --> ASG
+    ASG --> EC2_A["EC2<br/>AZ-a"]
+    ASG --> EC2_C["EC2<br/>AZ-c"]
+    ALB["ALB Health Check"] --> ASG
+`}
+/>
+
+Auto Scaling Groupは希望キャパシティを維持し、異常なインスタンスを置き換えます。起動テンプレートの構成はAWS公式の[Auto Scalingの起動テンプレート](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/launch-templates.html)、グループの動作は[Auto Scaling Group](https://docs.aws.amazon.com/ja_jp/autoscaling/ec2/userguide/auto-scaling-groups.html)で確認できます。
+
+ターゲット追跡、ステップ、スケジュール、予測スケーリングと、ウォームアップ・スケールインの設計は[スケーラビリティと高可用性](/books/aws-saa-c03/scalability-and-ha)で扱います。
 
 ---
 
@@ -74,11 +129,13 @@ Lambdaは、サーバー管理なしでコードを実行するサービスで�
 - ステートレスに設計する
 - VPC内接続が必要な場合はネットワーク設計も考える
 
+Lambdaの実行時間、メモリ、同時実行数などの制約とクォータはAWS公式の[Lambdaのクォータ](https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/gettingstarted-limits.html)で確認します。長時間処理、ホスト制御、常駐プロセスが必要ならEC2やコンテナを検討します。
+
 ---
 
 ## コンテナ: ECS/Fargate/EKS
 
-コンテナを使う場合、SAA-C03ではECSとFargateがよく出ます。
+コンテナを使う場合は、コンテナのオーケストレーターと実行基盤を分けて考えます。
 
 | 要件 | 選択肢 |
 |---|---|
@@ -86,7 +143,7 @@ Lambdaは、サーバー管理なしでコードを実行するサービスで�
 | EC2管理なしでコンテナを動かしたい | ECS on Fargate |
 | Kubernetesエコシステムを使いたい | EKS |
 
-実務では、Kubernetesの明確な理由がなければ、ECS on Fargateの方が運用負荷を下げやすいことがあります。
+KubernetesのAPIやエコシステムが要件ならEKS、AWSネイティブなコンテナ管理ならECSを検討します。EC2ホストを管理せずタスク単位で実行したい場合はFargate、ホストのインスタンスタイプやOSを制御したい場合はEC2起動タイプを選びます。
 
 ---
 
@@ -120,7 +177,7 @@ Gitに入っているのは「作り方」、ECRに入っているのは「で�
 
 ### イメージとは — アプリを丸ごとパックしたもの
 
-**Dockerイメージ**は、アプリのコード、ランタイム（Node.jsやPython本体）、ライブラリ、OSレベルの設定までを1つのパッケージに固めたものです。イメージさえあれば、開発者のPCでもFargateでも**同じ環境でアプリが動きます**。「ECRイメージ」と呼ばれたら「ECRに保管されたDockerイメージ」という意味です。
+**Dockerイメージ**は、アプリのコード、ランタイム（Node.jsやPython本体）、ライブラリ、OSレベルの設定までを1つのパッケージに固めたものです。対応するCPUアーキテクチャと実行環境で同じ依存関係を再現しやすくなります。「ECRイメージ」と呼ばれたら「ECRに保管されたDockerイメージ」という意味です。
 
 ### タグとは — 同じリポジトリ内のイメージを区別するラベル
 
@@ -162,22 +219,26 @@ ECSタスクとして起動
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生">
-それが実務では定番のアンチパターンなんです。`latest` は「pushのたびに指す先が変わる」ラベルなので、いつどのバージョンが動いていたのか追跡できず、障害時に前のバージョンへ戻すこともできません。本番では `v1.2.3` やコミットハッシュのような**動かないタグ**を使うのが鉄則です。
+`latest` はpushによって指す先が変わり得るため、実行したイメージの追跡が難しくなります。本番では `v1.2.3` やコミットハッシュのような変更しないタグ、またはイメージダイジェストを使うと、デプロイ対象とロールバック先を特定しやすくなります。
 </SpeechBubble>
 
 <Callout type="note">
 ### 実務でのECR運用ポイント
 
 - **イミュータブルタグ設定**: リポジトリの設定で「タグの上書き禁止」にできます。同じタグへの再pushを防ぎ、「`v1.2.3` なのに中身が変わっていた」という事故をなくせます
-- **ライフサイクルポリシー**: 古いイメージを自動削除するルールを設定できます。イメージは1つ数百MB〜になるため、放置するとストレージ料金が積み上がります
+- **ライフサイクルポリシー**: 古いイメージを自動削除するルールを設定できます。不要なイメージを残し続けるとストレージ料金が積み上がります
 - **イメージスキャン**: push時にOSパッケージの既知の脆弱性を自動スキャンできます
 
 </Callout>
 
+タグの上書き防止はAWS公式の[イメージタグのミュータビリティ](https://docs.aws.amazon.com/ja_jp/AmazonECR/latest/userguide/image-tag-mutability.html)、脆弱性検出は[Amazon ECRのイメージスキャン](https://docs.aws.amazon.com/ja_jp/AmazonECR/latest/userguide/image-scanning.html)、自動削除は[ライフサイクルポリシー](https://docs.aws.amazon.com/ja_jp/AmazonECR/latest/userguide/LifecyclePolicies.html)で確認できます。
+
 <Callout type="warning">
-### 試験でのポイント
+### ECRへプライベート接続する判断ポイント
 
 ECRからのイメージプルに必要な権限は**タスク実行ロール**に付与します（アプリが使うタスクロールではありません）。また、プライベートサブネットのFargateタスクがNATゲートウェイなしでECRからイメージを取得したい場合は、**VPCエンドポイント**（ECR用 + S3ゲートウェイ型）を作成します。イメージの実体はS3に保存されているため、S3のエンドポイントも必要になる点がひっかけどころです。
+
+必要なECRとS3のエンドポイントはAWS公式の[Amazon ECSのVPCエンドポイント](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/vpc-endpoints.html)で確認できます。
 
 </Callout>
 
@@ -203,7 +264,7 @@ ECSの構造は、次の5つの層で整理すると見通しが良くなりま�
 ECSは「何をどう動かすか」を管理するオーケストレーター。Fargateは「どこで動かすか」を担当するコンピュート基盤、という切り分けです。
 </SpeechBubble>
 
-Fargateと対になるのが **EC2起動タイプ** です。EC2起動タイプではEC2インスタンスをクラスターに登録して自分で管理します。Fargateを選ぶとインスタンス管理は不要になりますが、料金がやや高く、GPUアクセスや特定カーネルモジュールなどホストレベルの細かい制御はできません。
+Fargateと対になるのが **EC2起動タイプ** です。EC2起動タイプではEC2インスタンスをクラスターに登録して自分で管理します。Fargateを選ぶとEC2インスタンス管理は不要になります。ホストレベルの制御や必要なハードウェア、タスクの実行条件、料金モデルを比較します。
 
 ---
 
@@ -228,7 +289,7 @@ Fargateと対になるのが **EC2起動タイプ** です。EC2起動タイプ�
 タスク定義を変更したいときはどうするんですか？直接編集できますか？
 </SpeechBubble>
 
-タスク定義は一度登録すると**変更不可（イミュータブル）**です。設定を変えたければ、新しい**リビジョン**として登録します。
+タスク定義は一度登録すると**変更不可**（イミュータブル）です。設定を変えたければ、新しい**リビジョン**として登録します。
 
 ```
 my-app:1  ← 最初の登録
@@ -236,7 +297,9 @@ my-app:2  ← メモリを増やした版
 my-app:3  ← 環境変数を追加した版
 ```
 
-サービスは特定のリビジョンを参照して動くので、デプロイ時に新しいリビジョンを指定してローリングアップデートする流れになります。古いリビジョンは `deregister` できますが、完全削除ではなく **INACTIVE** 状態になるだけです。
+サービスは特定のリビジョンを参照して動くので、デプロイ時に新しいリビジョンを指定してローリングアップデートします。古いリビジョンは登録解除すると **INACTIVE** 状態になり、要件に応じて削除できます。実行中のタスクやサービスが参照するリビジョンへの影響を確認してから整理します。
+
+タスク定義の構成とリビジョンはAWS公式の[Amazon ECSタスク定義](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/task_definitions.html)で確認できます。
 
 <Callout type="note">
 ### ECRのタグと混同しない
@@ -253,12 +316,12 @@ my-app:3  ← 環境変数を追加した版
 タスクロールとタスク実行ロール、名前が似すぎてどっちがどっちかわかりません……
 </SpeechBubble>
 
-この2つは試験でも実務でも混同しやすいですが、明確に別物です。
+この2つは名前が似ていますが、権限を使う主体が異なります。
 
 | | タスク実行ロール（executionRoleArn） | タスクロール（taskRoleArn） |
 |---|---|---|
-| **誰が使う？** | ECSエージェント（インフラ側） | コンテナ内のアプリケーションコード |
-| **いつ使う？** | コンテナを**起動するまで** | コンテナが**動いている間** |
+| **誰が使うか** | ECSエージェント（インフラ側） | コンテナ内のアプリケーションコード |
+| **いつ使うか** | コンテナを**起動するまで** | コンテナが**動いている間** |
 | **代表的な権限** | ECRからのイメージプル、CloudWatch Logsへのログ送信、Secrets Manager / SSM Parameter Storeからの秘密値取得 | S3へのファイル保存、DynamoDBの読み書き、SQSへのメッセージ送信 |
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生">
@@ -266,11 +329,13 @@ my-app:3  ← 環境変数を追加した版
 </SpeechBubble>
 
 <Callout type="warning">
-### 試験でのポイント
+### どの主体が権限を使うかでロールを選ぶ
 
 「ECSタスク内のアプリからS3にアクセスしたい」→ **タスクロール**に権限を付与。「ECRからプライベートイメージをプルしたい」→ **タスク実行ロール**に権限を付与。問題文で「何が」「いつ」権限を使うのかを読み取ることが正答のカギです。
 
 </Callout>
+
+タスク実行ロールの用途はAWS公式の[Amazon ECSタスク実行IAMロール](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/task_execution_IAM_role.html)、アプリケーションへ渡す権限は[Amazon ECSタスクIAMロール](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/task-iam-roles.html)で確認できます。
 
 ---
 
@@ -294,7 +359,7 @@ CloudWatch Logsに直接送る構成で、最もシンプルです。
 
 | ログドライバー | 用途 |
 |---|---|
-| `awslogs` | CloudWatch Logsへ直接送信（定番） |
+| `awslogs` | CloudWatch Logsへ直接送信 |
 | `splunk` | Splunkへ送信 |
 | `awsfirelens` | Fluent Bit / Fluentdで柔軟にルーティング |
 
@@ -304,6 +369,8 @@ FireLensって何が嬉しいんですか？awslogsで十分ではないです�
 
 awslogsはCloudWatch Logsに送るだけですが、**FireLens**を使うとFluent BitやFluentdコンテナを**サイドカー**として同じタスク内に立て、ログをS3、OpenSearch、Datadog等に柔軟にルーティングできます。「ログを複数の宛先に送りたい」「特定条件でフィルタリングしたい」といった要件が出たらFireLensが候補になります。
 
+`awslogs`の設定項目はAWS公式の[awslogsログドライバー](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/using_awslogs.html)、FireLensの構成は[カスタムログルーティング](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/firelens-using-fluentbit.html)で確認できます。
+
 ---
 
 ## Fargateとネットワークモード
@@ -312,7 +379,7 @@ awslogsはCloudWatch Logsに送るだけですが、**FireLens**を使うとFlue
 Fargateを使うと `awsvpc` が必須と聞きました。これは何ですか？
 </SpeechBubble>
 
-Fargateでは、ネットワークモードが **`awsvpc`** に限定されます。`awsvpc` モードでは、各タスクに**ENI（Elastic Network Interface）** が割り当てられ、タスクごとに独自のプライベートIPアドレスを持ちます。
+Fargateでは、ネットワークモードが **`awsvpc`** に限定されます。`awsvpc` モードでは、各タスクに**ENI**（Elastic Network Interface）が割り当てられ、タスクごとに独自のプライベートIPアドレスを持ちます。
 
 これにより:
 
@@ -327,6 +394,86 @@ Fargateでは、ネットワークモードが **`awsvpc`** に限定されま�
 
 </Callout>
 
+FargateタスクのENI、サブネット、Security Group、送信経路の要件はAWS公式の[Fargateタスクネットワーク](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/fargate-task-networking.html)で確認できます。
+
+---
+
+## 実務での構成例 — 処理特性ごとに実行基盤を分ける
+
+Web API、画像変換、長時間バッチを、実行時間と運用責任に合わせて別のコンピューティングサービスへ配置します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    USERS["Users"] --> ALB["Application Load Balancer"]
+    ALB --> ECS["ECS Service on Fargate"]
+    ECS --> TASK_A["Task<br/>AZ-a"]
+    ECS --> TASK_C["Task<br/>AZ-c"]
+    ECR["Amazon ECR"] --> TASK_A
+    ECR --> TASK_C
+    UPLOAD["S3 Upload Event"] --> LAMBDA["Lambda<br/>Image Processing"]
+    QUEUE["Job Queue"] --> BATCH["AWS Batch<br/>Long-Running Jobs"]
+    TASK_A --> LOGS["CloudWatch Logs"]
+    TASK_C --> LOGS
+`}
+/>
+
+設計では次を確認します。
+
+1. 常時受け付けるWeb APIはECSサービスで必要タスク数を維持する
+2. タスクを複数AZへ配置し、ALBのヘルスチェックで正常なタスクへ送る
+3. イベント単位の短時間処理はLambdaへ分離する
+4. 長時間の大量ジョブはAWS Batchへ送り、キューとコンピューティング環境を分ける
+5. ECRイメージを変更しないタグまたはダイジェストで指定する
+6. CPU、メモリ、タスク数、処理時間、エラー、キュー滞留を監視する
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| OS、エージェント、カーネル、特殊ハードウェアを制御したい | EC2 | インスタンスとOSを利用者が管理できる |
+| S3・SQS・EventBridgeのイベントごとに短時間コードを実行したい | Lambda | サーバー管理なしでイベントに応じて実行できる |
+| AWSネイティブにコンテナを管理したい | ECS | タスクとサービスでコンテナを管理できる |
+| EC2ホストを管理せずコンテナを実行したい | ECS on Fargate | タスク単位でコンピューティングを利用できる |
+| Kubernetes APIとエコシステムが必要 | EKS | マネージドKubernetesコントロールプレーンを使える |
+| ソースコードからWebアプリを簡単にデプロイしたい | Elastic Beanstalk | 環境のプロビジョニングとデプロイを管理できる |
+| 大量の依存関係を持つバッチジョブをキューで実行したい | AWS Batch | ジョブキューとコンピューティング環境を管理できる |
+| EC2間の低レイテンシーと高スループットを優先したい | Clusterプレイスメントグループ | インスタンスを1つのAZ内で近接配置できる |
+| 複数AZでEC2台数を負荷に応じて増減したい | EC2 Auto Scaling | 希望台数の維持とスケーリングポリシーを使える |
+
+この表は、要件から第一候補を絞るための筆者の整理です。実際には実行時間、状態、起動速度、ネットワーク、ストレージ、可用性、運用責任、費用を確認します。
+
+---
+
+## よくあるハマりどころ
+
+### ECSとFargateを同じ種類のサービスとして比較する
+
+ECSはコンテナの配置と状態を管理し、FargateはECSタスクを実行するコンピューティング基盤です。ECSではFargateとEC2起動タイプを要件に合わせて選びます。
+
+### Lambdaへ長時間処理やローカル状態を持たせる
+
+Lambdaの実行時間と一時ストレージの制約を確認し、処理を分割できない長時間ジョブはECS、AWS Batch、EC2などを検討します。状態はS3、DynamoDB、RDSなど外部の永続ストアへ保存します。
+
+### Clusterプレイスメントグループを高可用性のために使う
+
+Cluster戦略はネットワーク性能を優先して1つのAZへ近接配置します。AZ障害へ備える目的では、複数AZへの分散と復旧構成を別に設計します。
+
+### Auto Scaling Groupへ手作業で変更したEC2を置く
+
+異常なインスタンスは置き換えられるため、AMI、起動テンプレート、User Data、デプロイ処理から同じ構成を再作成できるようにします。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク3.2](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain3.html)
+- [EC2インスタンスタイプ](https://docs.aws.amazon.com/ja_jp/AWSEC2/latest/UserGuide/instance-types.html)
+- [プレイスメントグループ](https://docs.aws.amazon.com/ja_jp/AWSEC2/latest/UserGuide/placement-groups.html)
+- [AWS Fargate](https://docs.aws.amazon.com/ja_jp/AmazonECS/latest/developerguide/AWS_Fargate.html)
+
 ---
 
 ## まとめ
@@ -338,8 +485,9 @@ Fargateでは、ネットワークモードが **`awsvpc`** に限定されま�
 - コンテナならECS/Fargate
 - Kubernetes要件があるならEKS
 - 簡単なデプロイならElastic Beanstalk
+- EC2は負荷特性に合うインスタンスファミリー、配置、Auto Scalingを選ぶ
 
-次の章では、RDS、Aurora、DynamoDB、ElastiCache、Redshiftなどのデータベース選択を扱います。
+RDS、Aurora、DynamoDB、ElastiCache、Redshiftなどの使い分けは、[データベース選択](/books/aws-saa-c03/database-selection)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

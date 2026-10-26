@@ -4,24 +4,45 @@ description: 'S3 Lifecycle、S3 Intelligent-Tiering、Glacier、EBS gp3、EFS In
 order: 16
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- Cost ExplorerとAWS Budgetsによるコストの把握
-- データ移行の手段ごとの費用（DataSync、Snowballなど）
-- S3ライフサイクルの設定例
-
-</Callout>
-
 <Figure src="/images/plan_selection_man_color.png" alt="コストを見ながら保存先を選ぶ人のイラスト" maxWidth="320px" />
 
 <SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
 S3は安い印象がありますが、ストレージコストの問題でよく出るのはなぜですか？
 </SpeechBubble>
 
-ストレージはデータが増えるほど継続的にコストが積み上がります。SAA-C03では、アクセス頻度、保持期間、復元時間に応じたストレージ選択が問われます。
+ストレージは保存容量だけでなく、リクエスト、取り出し、データ転送、性能、保持期間、バックアップによって費用が変わります。
+
+[SAA-C03試験ガイドのタスク4.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain4.html)では、アクセスパターンと保持要件に合うストレージ、ライフサイクル、バックアップ、データ転送を選ぶ力が対象です。
+
+<Marker>「最も安い保存単価」ではなく、保存、リクエスト、取り出し、転送、復元時間、運用を含む総費用で選びます。</Marker>
+
+---
+
+## Cost ExplorerとAWS Budgetsで費用を把握する
+
+最適化は、どのサービス、アカウント、リージョン、用途で費用が発生しているかを可視化してから始めます。
+
+| 機能 | 主な役割 |
+|---|---|
+| AWS Cost Explorer | 過去の費用と使用量を絞り込み、グラフ化し、予測や傾向を確認する |
+| AWS Budgets | 費用・使用量などのしきい値を定め、実績や予測が超えたときに通知・アクションを実行する |
+| S3 Storage Lens | S3の使用量、アクティビティ、保護、コスト効率に関するメトリクスを集約する |
+
+Cost ExplorerでS3、EBS、EFS、バックアップの増加箇所を絞り、タグ、アカウント、リージョン、使用タイプで原因を分けます。AWS Budgetsは超過を通知する仕組みであり、予算を作るだけでサービス利用を自動停止するものではありません。必要な通知先とBudgets Actionsを明示して運用します。
+
+機能はAWS公式の[AWS Cost Explorerとは](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/ce-what-is.html)、[AWS Budgetsによるコスト管理](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/budgets-managing-costs.html)、[S3 Storage Lens](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/storage_lens.html)で確認できます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    BILLING["Billing Data"] --> EXPLORER["Cost Explorer<br/>Analyze Trend"]
+    STORAGE["S3 / EBS / EFS / Backup"] --> LENS["S3 Storage Lens / Service Metrics"]
+    EXPLORER --> ACTION["Lifecycle / Right-Sizing / Deletion"]
+    LENS --> ACTION
+    BUDGET["AWS Budgets<br/>Threshold + Forecast"] --> NOTIFY["SNS / Email / Action"]
+    ACTION --> VERIFY["Verify Cost and Performance"]
+`}
+/>
 
 ---
 
@@ -37,13 +58,55 @@ S3は安い印象がありますが、ストレージコストの問題でよく
 | Glacier Flexible Retrieval | 数分から数時間でよいアーカイブ |
 | Glacier Deep Archive | 長期保管、復元は遅くてよい |
 
-Lifecycleで古いログをGlacierへ移す構成は、試験でも実務でも定番です。
+S3 Standard-IAやGlacier系には、取り出し料金、最小保存期間、オブジェクトごとの課金条件があります。One Zone-IAは1つのAZに保存するため、再作成できるデータなど可用性要件に合う場合だけ選びます。最新条件はAWS公式の[S3ストレージクラス](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/storage-class-intro.html)と[S3料金](https://aws.amazon.com/jp/s3/pricing/)で確認します。
+
+S3 Intelligent-Tieringはアクセスパターンを監視し、アクセス階層間でオブジェクトを自動移動します。アクセス頻度を予測しにくい長期データに向きますが、モニタリングと自動化の料金、アーカイブ階層の有効化、取り出し要件を確認します。動作はAWS公式の[S3 Intelligent-Tiering](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/intelligent-tiering-overview.html)で確認できます。
+
+### S3 Lifecycleの設定例
+
+次の例は、`logs/` プレフィックスの現行オブジェクトを30日後にStandard-IA、90日後にGlacier Flexible Retrievalへ移し、365日後に期限切れにします。非現行バージョンは90日後に削除します。
+
+```json
+{
+  "Rules": [
+    {
+      "ID": "ArchiveLogs",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "logs/" },
+      "Transitions": [
+        { "Days": 30, "StorageClass": "STANDARD_IA" },
+        { "Days": 90, "StorageClass": "GLACIER" }
+      ],
+      "Expiration": { "Days": 365 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 90 }
+    }
+  ]
+}
+```
+
+| 項目 | 役割 |
+|---|---|
+| `Filter.Prefix` | ルールを適用するキーの接頭辞を絞る |
+| `Transitions` | 現行バージョンを指定日数後に別クラスへ移す |
+| `Expiration` | 現行バージョンを期限切れにする |
+| `NoncurrentVersionExpiration` | バージョニングで非現行になった版を削除する |
+
+日数は例であり、業務上の保持期間、復元時間、最小保存期間、削除要件へ合わせます。設定形式はAWS公式の[S3 Lifecycle設定例](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/lifecycle-configuration-examples.html)で確認できます。
+
+<Callout type="warning">
+### 現行バージョンだけを見て容量を判断しない
+
+S3 Versioningでは、上書きや削除後も非現行バージョンや削除マーカーが残ります。Lifecycleで非現行バージョン、不完全なマルチパートアップロード、削除マーカーの扱いを決めます。
+
+</Callout>
+
+S3 Lifecycleの設計とストレージクラスの性能要件は[ストレージ選択](/books/aws-saa-c03/storage-selection)で扱います。
 
 ---
 
 ## EBSの最適化
 
-EBSでは、古い世代のボリュームを使い続けるより、gp3へ移行することでコストと性能を調整しやすくなります。
+EBSでは、ワークロードのIOPS、スループット、容量、レイテンシーに合うボリュームタイプとサイズを選びます。gp3では容量とIOPS・スループットを分けて指定できるため、一般的なSSDワークロードでgp2からの変更候補になります。
 
 見るポイント:
 
@@ -51,6 +114,22 @@ EBSでは、古い世代のボリュームを使い続けるより、gp3へ移�
 - 過剰な容量を確保していないか
 - スナップショットが不要に残っていないか
 - io2など高性能タイプが本当に必要か
+
+| 確認項目 | 改善候補 |
+|---|---|
+| 長期間アタッチされていないボリューム | 所有者と復旧要件を確認し、スナップショット後の削除を検討する |
+| 使用量より大きい容量 | ファイルシステムと移行手順を確認し、適切なサイズで作り直す |
+| gp2を継続利用 | gp3で必要なIOPS・スループットを満たせるか比較する |
+| 過剰なProvisioned IOPS | 実測値とピーク要件からIOPSを見直す |
+| 古いスナップショット | 保持ポリシー、AMI、増分関係、復旧要件を確認して整理する |
+
+EBS Elastic Volumesでは、対応するボリュームのタイプ、サイズ、IOPS、スループットを変更できます。変更条件はAWS公式の[EBSボリュームの変更](https://docs.aws.amazon.com/ja_jp/ebs/latest/userguide/ebs-modify-volume.html)、タイプごとの性能は[EBSボリュームタイプ](https://docs.aws.amazon.com/ja_jp/ebs/latest/userguide/ebs-volume-types.html)で確認できます。
+
+EBSスナップショットは増分バックアップです。個々のスナップショットが参照するブロックをAWSが管理するため、依存関係を手作業で推測せず、保持要件とAMI利用状況を確認して削除します。仕組みはAWS公式の[Amazon EBSスナップショット](https://docs.aws.amazon.com/ja_jp/ebs/latest/userguide/ebs-snapshots.html)で確認できます。
+
+AWS Compute OptimizerのEBS推奨事項は、ボリュームの設定とメトリクスからタイプ、サイズ、IOPS、スループットの候補を提示します。推奨事項の条件はAWS公式の[EBSボリュームの推奨事項](https://docs.aws.amazon.com/ja_jp/compute-optimizer/latest/ug/view-ebs-recommendations.html)で確認します。
+
+EBSタイプとEFS・FSxの性能要件は[ストレージ選択](/books/aws-saa-c03/storage-selection)で扱います。
 
 ---
 
@@ -64,6 +143,136 @@ EFSは便利ですが、容量が増えるとコストも増えます。低頻�
 | Windowsファイル共有 | FSx for Windows File Server |
 | HPC向け高性能ファイルシステム | FSx for Lustre |
 
+EFS Lifecycle Managementでは、一定期間アクセスされていないファイルをIAまたはArchiveストレージクラスへ移し、再アクセス後にStandardへ戻すポリシーを設定できます。ファイルごとのアクセス頻度、取り出し料金、スループットモードを確認します。動作はAWS公式の[EFS Lifecycle Management](https://docs.aws.amazon.com/ja_jp/efs/latest/ug/lifecycle-management-efs.html)で確認できます。
+
+FSxでは、ファイルシステムの種類だけでなく、SSD・HDD、スループット容量、バックアップ保持、Single-AZ・Multi-AZなど、各サービスが提供する設定を要件に合わせます。性能を下げて業務要件を満たせなくならないよう、CloudWatchメトリクスと負荷試験で検証します。
+
+---
+
+## バックアップ保持を最適化する
+
+バックアップは復旧目標を満たすために必要ですが、保持期間、コピー先、世代数を決めずに増やすと費用が継続して増えます。
+
+AWS Backupのバックアッププランでは、取得頻度、バックアップウィンドウ、保持期間、コールドストレージへの移行、別リージョン・別アカウントへのコピーを定義できます。リソースごとのRPO（許容データ損失時間）、RTO（復旧目標時間）、法令・契約上の保持期間から設定します。
+
+バックアッププランのライフサイクルはAWS公式の[AWS Backupのバックアッププラン](https://docs.aws.amazon.com/ja_jp/aws-backup/latest/devguide/about-backup-plans.html)で確認できます。
+
+<Callout type="warning">
+### 安さだけでバックアップを早く削除しない
+
+費用削減より先に、復旧目標、監査、法令、ランサムウェア対策、復元試験を確認します。復元できないバックアップや、必要期間を満たさない削除は最適化ではありません。
+
+</Callout>
+
+---
+
+## DataSyncとSnow Familyの移行費用を比較する
+
+データ移行は、転送サービスの料金だけでなく、ネットワーク、転送時間、回線の増強、物理デバイス、運用作業、再試行を含めて比較します。
+
+| 手段 | 向く状況 | 主な費用・時間の確認項目 |
+|---|---|---|
+| AWS DataSync | ネットワークでオンライン転送できる | 転送データ量、ネットワーク、エージェント用インフラ、移行期間 |
+| Snow Family | 回線では期間内に転送できない大容量データ | デバイス、ジョブ、配送、オンサイト日数、AWSへの取り込み |
+| 通常のネットワーク転送 | データ量が小さく専用サービスが不要 | 回線帯域、データ転送、ツール運用、再開・検証方法 |
+
+転送可能時間は、概算データ量を実効帯域で割り、再送と業務トラフィックの余裕を加えて見積もります。DataSyncは増分転送と検証を含むオンライン移行、Snow Familyはネットワークだけでは現実的でない場合の物理移行として比較します。
+
+機能はAWS公式の[AWS DataSyncとは](https://docs.aws.amazon.com/ja_jp/datasync/latest/userguide/what-is-datasync.html)、最新の費用項目は[AWS DataSyncの料金](https://aws.amazon.com/jp/datasync/pricing/)と[AWS Snowballの料金](https://aws.amazon.com/jp/snowball/pricing/)で確認します。
+
+---
+
+## 分析データは形式とパーティションも最適化する
+
+S3上のデータをAthenaなどで分析する場合、保存クラスだけでなく、読み取るデータ量も費用に影響します。CSV・JSONをParquetやORCの列指向形式へ変換し、圧縮し、日付やリージョンなどのパーティションで読み取り範囲を絞ります。
+
+列指向形式、圧縮、パーティション、適切なファイルサイズは[データ取り込みと分析](/books/aws-saa-c03/data-ingestion-and-analytics)で扱います。
+
+---
+
+## 実務での構成例 — ログとバックアップの保持を見直す
+
+アクセスログ、EBS、共有ファイル、バックアップが増え続けているシステムを、復旧要件を維持しながら見直します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    LOGS["Application Logs"] --> STANDARD["S3 Standard<br/>Recent Data"]
+    STANDARD -->|"Lifecycle"| IA["S3 Standard-IA"]
+    IA -->|"Lifecycle"| ARCHIVE["S3 Glacier"]
+    ARCHIVE -->|"Retention End"| EXPIRE["Expiration"]
+    EBS["EBS Metrics"] --> OPTIMIZER["Compute Optimizer"]
+    OPTIMIZER --> GP3["Right-Sized gp3"]
+    EFS["EFS Files"] --> EFS_IA["EFS IA / Archive"]
+    BACKUP["AWS Backup"] --> VAULT["Lifecycle + Retention"]
+    COST["Cost Explorer / Storage Lens"] --> REVIEW["Monthly Review"]
+    BUDGET["AWS Budgets"] --> REVIEW
+`}
+/>
+
+実施順序は次のとおりです。
+
+1. Cost ExplorerとStorage Lensで費用・容量の増加箇所を特定する
+2. 所有者、アクセス頻度、保持期限、RTO・RPOをデータごとに確認する
+3. S3 Lifecycleを小さなプレフィックスで試し、取り出しと削除を検証する
+4. EBSのIOPS・スループット・使用容量を測り、gp3と適切なサイズを比較する
+5. EFS Lifecycle ManagementとAWS Backupの保持ルールを設定する
+6. 変更後の性能、復元、費用を確認し、AWS Budgetsで増加を通知する
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 第一候補 | 判断理由 |
+|---|---|---|
+| アクセス頻度を予測できないS3データを自動で階層化したい | S3 Intelligent-Tiering | アクセスパターンに応じて階層を自動移動できる |
+| 古いログを決めた日数後にアーカイブ・削除したい | S3 Lifecycle | 移行と有効期限をルール化できる |
+| 再作成可能で低頻度なデータを低コストで保管したい | S3 One Zone-IA | 単一AZの低頻度アクセスクラスを使える |
+| 長期保管し、復元まで時間を取れる | S3 Glacier Deep Archive | 長期アーカイブ向けのクラスを使える |
+| 一般SSDのEBSで容量とIOPSを別に調整したい | gp3 | 容量とは別に性能を指定できる |
+| EBSの過剰なタイプ・サイズを見直したい | AWS Compute Optimizer | メトリクスに基づく推奨事項を確認できる |
+| EFSの未アクセスファイルを自動で低頻度層へ移したい | EFS Lifecycle Management | アクセス経過期間で移行できる |
+| オンラインで大量ファイルを増分転送・検証したい | DataSync | マネージド転送タスクを使える |
+| 回線では期限内に移せない大容量データを移行したい | Snow Family | 物理デバイスで転送できる |
+| 予算超過の実績・予測を通知したい | AWS Budgets | しきい値と通知を設定できる |
+| 過去のサービス別費用と使用量を分析したい | Cost Explorer | 費用を絞り込み、傾向を可視化できる |
+
+この表は、要件から第一候補を絞るための筆者の整理です。実際には可用性、最小保存期間、取り出し、復元時間、転送、運用を含む総費用を確認します。
+
+---
+
+## よくあるハマりどころ
+
+### 保存単価だけでS3ストレージクラスを選ぶ
+
+取り出し料金、リクエスト、最小保存期間、復元時間を含めます。短期間で削除するデータや頻繁に読むデータをアーカイブすると、総費用と待ち時間が増える場合があります。
+
+### Lifecycleを本番バケット全体へすぐ適用する
+
+プレフィックスやタグで小さく適用し、移行、取り出し、非現行バージョン、削除マーカー、保持機能との相互作用を確認します。
+
+### 未使用EBSを見つけてすぐ削除する
+
+所有者、暗号化キー、スナップショット、AMI、復旧手順を確認します。必要ならスナップショットを作成し、復元を検証してから削除します。
+
+### AWS Budgetsが費用発生を自動停止すると思う
+
+AWS Budgetsは通知と、設定したBudgets Actionsを実行します。意図しない停止を避けるため、通知先、承認、自動アクションの範囲を設計します。
+
+### バックアップを削除して復旧要件を満たせなくする
+
+RTO・RPO、法令、監査、ランサムウェア対策を確認し、保持期間とコピー数を決めます。費用だけを理由に必要な復旧ポイントを削除しません。
+
+---
+
+## 参考リンク
+
+- [SAA-C03試験ガイド — タスク4.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain4.html)
+- [S3ストレージクラス](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/storage-class-intro.html)
+- [S3 Lifecycle設定例](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/lifecycle-configuration-examples.html)
+- [AWS Cost Explorerとは](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/ce-what-is.html)
+- [AWS DataSyncの料金](https://aws.amazon.com/jp/datasync/pricing/)
+
 ---
 
 ## まとめ
@@ -75,8 +284,10 @@ EFSは便利ですが、容量が増えるとコストも増えます。低頻�
 - EBSはgp3、容量、スナップショットを見直す
 - EFSはIAやライフサイクルを使う
 - バックアップの保持期間もコストに含める
+- Cost ExplorerとStorage Lensで増加箇所を把握し、AWS Budgetsで通知する
+- 移行手段はサービス料金、回線、所要時間、運用を含めて比較する
 
-次の章では、EC2、Lambda、Fargate、Savings Plansなどコンピューティングのコスト最適化を扱います。
+EC2、Lambda、Fargate、Savings Plansなどの費用最適化は、[コスト最適化 — コンピューティング](/books/aws-saa-c03/cost-optimized-compute)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

@@ -4,18 +4,6 @@ description: 'NAT Gateway、CloudFront、VPC Endpoint、Direct Connect、デー�
 order: 19
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- Cost ExplorerとAWS Budgetsによるコストの把握
-- NAT Gatewayの種類
-- VPCピアリングとTransit Gatewayの費用の違い
-- スロットリング戦略
-
-</Callout>
-
 <Figure src="/images/toppa_suit_woman_color.png" alt="試験対策をやり切る人のイラスト" maxWidth="320px" />
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
@@ -23,6 +11,31 @@ order: 19
 </SpeechBubble>
 
 ネットワークコストは見落とされがちですが、NAT Gateway、AZ間通信、リージョン間通信、インターネット転送、CloudFrontの有無で大きく変わります。最後に、SAA-C03の問題文を読むためのチェックリストも整理します。
+
+[SAA-C03試験ガイドのタスク4.4](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain4.html)では、NAT、接続方式、VPC間トポロジ、データ転送経路、CDN、スロットリング、帯域幅を費用対効果に合わせて選ぶ力が対象です。
+
+<Marker>ネットワークのコスト最適化では、送信元、送信先、AZ、リージョン、経由サービス、1か月の転送量を通信フローごとに確認します。</Marker>
+
+---
+
+## Cost ExplorerとAWS Budgetsで転送費用を把握する
+
+Cost Explorerでは、サービス、使用タイプ、リージョン、アカウント、コスト配分タグなどで費用を分解します。ネットワークでは、NAT Gatewayのデータ処理、AZ間・リージョン間転送、インターネットへのデータ転送、Transit GatewayやVPC Endpointなどを確認します。[Cost Explorer](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/ce-what-is.html)はコストと使用状況の分析、[AWS Budgets](https://docs.aws.amazon.com/ja_jp/cost-management/latest/userguide/budgets-managing-costs.html)は実績・予測コストと使用量の通知に使えます。
+
+費用が増えたら、VPC Flow Logs、NAT Gateway・Transit Gateway・CloudFrontのCloudWatchメトリクス、アプリケーションログを使い、どの通信フローが増えたかを特定します。コスト分析を継続する流れは[コンピューティングのコスト最適化](/books/aws-saa-c03/cost-optimized-compute)でも扱います。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    BILL["Cost Explorer / AWS Budgets"] --> TYPE["Service / Usage Type / Region"]
+    TYPE --> FLOW["Identify Traffic Flow"]
+    LOGS["VPC Flow Logs / CloudWatch"] --> FLOW
+    FLOW --> ROUTE["Review Route<br/>NAT / Endpoint / Peering / TGW"]
+    ROUTE --> CHANGE["Change Architecture"]
+    CHANGE --> VERIFY["Verify Cost and Performance"]
+    VERIFY --> BILL
+`}
+/>
 
 ---
 
@@ -38,6 +51,74 @@ order: 19
 
 Private SubnetからS3へ大量アクセスする場合、NAT Gateway経由ではなくGateway VPC Endpointを使うと、セキュリティとコストの両面で有利になることがあります。
 
+AWSのデータ転送料金は送信元、送信先、リージョン、サービスによって異なります。変わりやすい単価を暗記せず、設計時に[AWSのデータ転送料金](https://aws.amazon.com/jp/ec2/pricing/on-demand/#Data_Transfer)と各経由サービスの料金ページで確認します。
+
+---
+
+## NAT Gatewayの種類と配置を選ぶ
+
+NAT（Network Address Translation）は、プライベートIPアドレスを別のIPアドレスへ変換し、プライベートサブネットから外部へ接続できるようにする仕組みです。
+
+| NAT Gateway | 接続先 | 主な特徴 |
+|---|---|---|
+| パブリックNAT Gateway | インターネット、他VPC、オンプレミス | パブリックサブネットに配置し、インターネット向けではElastic IPを使う |
+| プライベートNAT Gateway | 他VPC、オンプレミス | Elastic IPを使わず、Transit Gatewayまたは仮想プライベートゲートウェイへルーティングする |
+
+パブリックとプライベートの動作はAWS公式の[NAT Gateway](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/vpc-nat-gateway.html)で確認できます。プライベートNAT GatewayをInternet Gatewayへルーティングしてもインターネット通信には使えません。
+
+### 1つを共有するか、AZごとに置くか
+
+| 配置 | 費用と可用性の考え方 |
+|---|---|
+| 1つのNAT Gatewayを複数AZで共有 | Gatewayの時間料金は抑えやすいが、別AZからの通信にAZ間転送と障害依存が生じる |
+| AZごとにNAT Gatewayを配置 | Gateway数の時間料金は増えるが、同じAZへルーティングしてAZ間転送と単一AZ依存を避ける |
+
+各NAT GatewayはAZ単位で冗長化されます。AWS公式の[NAT Gatewayの基本](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/nat-gateway-basics.html)は、耐障害性を高めるため、AZごとにNAT Gatewayを作り、同じAZのGatewayへルーティングする構成を案内しています。非本番など可用性要件が低く通信量も少ない場合は共有構成も比較し、時間料金、データ処理料金、AZ間転送、障害影響を合計して判断します。最新の課金項目は[Amazon VPCの料金](https://aws.amazon.com/jp/vpc/pricing/)で確認します。
+
+### NAT GatewayとNAT Instanceを比較する
+
+| 項目 | NAT Gateway | NAT Instance |
+|---|---|---|
+| 運用 | AWSが管理 | OS、パッチ、サイズ、障害復旧を利用者が管理 |
+| 可用性 | AZ内で冗長化 | 複数インスタンスとフェイルオーバーを自分で設計 |
+| 性能 | 自動的にスケール | EC2インスタンスタイプに依存 |
+| 料金の主な要素 | Gatewayの時間とデータ処理量 | EC2の時間、サイズ、データ転送など |
+
+AWSは可用性、帯域幅、管理負担の面からNAT Gatewayを推奨しています。特殊なネットワーク機能や小規模構成でNAT Instanceを検討する場合も、運用工数と冗長化を含めて比較します（[NAT GatewayとNAT Instanceの比較](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/vpc-nat-comparison.html)）。
+
+---
+
+## VPC EndpointでNATを通る通信を減らす
+
+| 宛先 | Endpoint | 料金判断 |
+|---|---|---|
+| S3、DynamoDB | Gateway VPC Endpoint | 追加料金なし。ルートテーブルで対象サービスへ送る |
+| PrivateLink対応AWSサービス | Interface VPC Endpoint | AZごとのEndpoint時間とデータ処理量をNAT経由と比較する |
+
+[Gateway VPC Endpoint](https://docs.aws.amazon.com/ja_jp/vpc/latest/privatelink/gateway-endpoints.html)はS3とDynamoDBへの接続を提供し、追加料金なしで利用できます。Interface VPC EndpointはサブネットにENI（Elastic Network Interface、仮想ネットワークインターフェイス）を作り、PrivateLink対応サービスへプライベートIPで接続します。仕様と課金の考え方は[AWS PrivateLinkの概念](https://docs.aws.amazon.com/ja_jp/vpc/latest/privatelink/concepts.html)と[Amazon VPCの料金](https://aws.amazon.com/jp/vpc/pricing/)で確認します。
+
+<Callout type="warning">
+### Endpointを作れば常に安くなるわけではない
+
+Interface VPC Endpointは配置するAZごとに時間料金が発生し、データ処理量でも課金されます。対象サービス、通信量、必要なAZ数を確認し、NAT Gatewayの時間・データ処理料金とAZ間転送を含めて比較します。
+
+</Callout>
+
+---
+
+## VPC PeeringとTransit Gatewayの費用を比較する
+
+| 観点 | VPC Peering | Transit Gateway |
+|---|---|---|
+| 接続形態 | 2つのVPCを直接接続 | 複数VPC・VPN・Direct Connectをハブへ集約 |
+| 推移的ルーティング | できない | ルートテーブルでハブ経由の通信を制御できる |
+| 主な課金 | AZ・リージョンをまたぐデータ転送 | アタッチメント時間、データ処理、構成に応じた転送 |
+| 運用 | 接続数が少なければ単純 | 多数ネットワークの接続と分離を集中管理しやすい |
+
+VPC Peeringは接続の作成自体に料金がなく、同じAZ内に留まるピアリング通信は無料ですが、AZやリージョンをまたぐデータ転送には料金が発生します（[VPC Peeringの料金](https://docs.aws.amazon.com/ja_jp/vpc/latest/peering/)）。Transit Gatewayはハブ型の運用を簡素化できますが、アタッチメントとデータ処理などの料金を含めて比較します（[AWS Transit Gatewayの料金](https://aws.amazon.com/jp/transit-gateway/pricing/)）。
+
+<Marker>少数VPCならPeering、多数VPCならTransit Gatewayと機械的に決めず、接続本数、転送経路、通信量、ルート管理、分離要件を合計して比較します。</Marker>
+
 ---
 
 ## CloudFrontによる配信最適化
@@ -50,6 +131,87 @@ CloudFrontは性能改善だけでなく、オリジンへの負荷削減とデ�
 - S3やALBへのアクセスをキャッシュしたい
 - オリジンの負荷を下げたい
 - WAFと組み合わせて入口を保護したい
+
+キャッシュヒット時はCloudFrontがエッジから応答し、オリジンへのリクエストと転送量を減らせます。[Amazon CloudFrontとは](https://docs.aws.amazon.com/ja_jp/AmazonCloudFront/latest/DeveloperGuide/Introduction.html)で配信動作を確認し、[CloudFront料金](https://aws.amazon.com/jp/cloudfront/pricing/)でリクエスト、データ転送、追加機能を比較します。
+
+コスト最適化では、TTL（Time To Live、キャッシュ保持時間）、キャッシュキー、圧縮、オリジンへの転送項目を確認します。不要なCookie、ヘッダー、クエリ文字列をキャッシュキーへ含めるとキャッシュが細分化されるため、アプリケーション要件に必要な値だけを使います。
+
+---
+
+## スロットリングで過負荷と予期しない費用を抑える
+
+スロットリングは、一定時間に受け付けるリクエスト数を制御する仕組みです。API Gatewayではレートとバーストを設定し、過剰なリクエストからバックエンドを保護できます。制限を超えたクライアントは`429 Too Many Requests`を受け取る可能性があります（[API Gatewayのスロットリング](https://docs.aws.amazon.com/ja_jp/apigateway/latest/developerguide/api-gateway-request-throttling.html)）。
+
+| 要件 | 戦略 |
+|---|---|
+| API全体の処理能力を守る | ステージ・メソッド単位のレートとバーストを設定する |
+| クライアントごとに利用量を分ける | APIキーと使用量プランを使う |
+| 急増を平準化する | SQSなどのキューへ受け、ワーカーの処理量を制御する |
+| 同じ読み取りを繰り返す | API GatewayやCloudFrontのキャッシュを検討する |
+| 再試行でさらに負荷を増やさない | 指数バックオフとジッターを使う |
+
+スロットリング値を低くしすぎると正常な利用者を拒否し、高くしすぎるとLambda、データベース、外部APIへ負荷が集中します。通常時とピーク時のリクエスト数、バックエンドの処理能力、許容する待ち時間から設定します。この表は公式機能を要件に対応させた、筆者の整理です。
+
+---
+
+## Direct Connect、VPN、インターネットを比較する
+
+| 接続 | 向く要件 | 費用比較の項目 |
+|---|---|---|
+| インターネット | すぐに接続したい、専用経路が不要 | データ転送、インターネット回線、暗号化 |
+| Site-to-Site VPN | インターネット上に暗号化トンネルが必要 | VPN接続時間、データ転送、冗長トンネル |
+| Direct Connect | 継続的な大容量転送、一貫した専用経路が必要 | ポート時間、回線事業者費用、データ転送、冗長接続 |
+
+Direct Connectは専用ネットワーク接続を提供し、Site-to-Site VPNはIPsec（Internet Protocol Security）トンネルをインターネット上に作ります。機能は[AWS Direct Connectとは](https://docs.aws.amazon.com/ja_jp/directconnect/latest/UserGuide/Welcome.html)と[AWS Site-to-Site VPNとは](https://docs.aws.amazon.com/ja_jp/vpn/latest/s2svpn/VPC_VPN.html)で確認できます。帯域幅だけでなく、必要な開通期間、暗号化、可用性、通信量、拠点数を比較します。
+
+---
+
+## 実務例: プライベートサブネットの転送経路を分ける
+
+複数AZのアプリケーションが、S3、Secrets Manager、外部決済APIへ接続する構成を考えます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    APP_A["Application<br/>Private Subnet AZ-a"] --> S3_EP["Gateway Endpoint<br/>S3"]
+    APP_C["Application<br/>Private Subnet AZ-c"] --> S3_EP
+    APP_A --> IF_A["Interface Endpoint<br/>AZ-a"]
+    APP_C --> IF_C["Interface Endpoint<br/>AZ-c"]
+    APP_A --> NAT_A["NAT Gateway<br/>AZ-a"]
+    APP_C --> NAT_C["NAT Gateway<br/>AZ-c"]
+    NAT_A --> EXTERNAL["External Payment API"]
+    NAT_C --> EXTERNAL
+    USERS["Users"] --> CF["CloudFront"]
+    CF --> ORIGIN["ALB / S3 Origin"]
+`}
+/>
+
+1. S3通信はGateway VPC Endpointへルーティングする
+2. Secrets Managerは通信量と必要AZ数を見積もり、Interface VPC EndpointとNAT経由を比較する
+3. 外部決済APIはNAT Gatewayを通し、各アプリケーションは同じAZのGatewayを使う
+4. 利用者向けコンテンツはCloudFrontでキャッシュし、オリジンへの通信を減らす
+5. API Gatewayでレートとバーストを設定し、バックエンド容量に合わせる
+6. Cost Explorer、AWS Budgets、Flow Logs、CloudWatchで変更後の費用と通信量を再確認する
+
+この構成は公式サービスの機能を組み合わせた、筆者の整理です。Interface VPC EndpointとNAT Gatewayは通信量とAZ数によって費用関係が変わるため、実測値で比較します。
+
+---
+
+## 試験問題での判断パターン
+
+| 問題文の要件 | 選択の起点 | 判断理由 |
+|---|---|---|
+| Private SubnetからS3へ大量にアクセスする | Gateway VPC Endpoint | NATを通さず、追加料金なしのEndpointを使える |
+| Private SubnetからPrivateLink対応サービスへ接続する | Interface VPC Endpoint | プライベートIPでサービスへ到達できる |
+| 複数AZで高可用なインターネット送信が必要 | AZごとのNAT Gateway | 各AZから同じAZのGatewayへルーティングできる |
+| 可用性要件が低い少量通信で固定費を抑えたい | 共有NAT構成も比較 | 時間料金とAZ間転送・障害影響を比較できる |
+| 2つのVPCを直接接続する | VPC Peering | ハブサービスを追加せず直接接続できる |
+| 多数のVPC・VPNを集中管理する | Transit Gateway | ハブとルートテーブルへ集約できる |
+| HTTPコンテンツを世界へ配信しオリジン負荷を下げる | CloudFront | CDNとエッジキャッシュを使える |
+| APIの急増からバックエンドと費用を守る | API Gatewayのスロットリング | レートとバーストを制御できる |
+| オンプレミスから継続的に大容量転送する | Direct Connect | 専用接続と帯域幅を選べる |
+
+この表は[SAA-C03試験ガイドのタスク4.4](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain4.html)と各サービスの公式ドキュメントをもとにした、筆者の整理です。
 
 ---
 
@@ -99,7 +261,7 @@ SAA-C03の出題範囲は、実務のAWS設計にそのままつながります�
 - IAM、VPC、S3、EC2、RDS、DynamoDB、CloudFront、SQS、SNS、KMSは特に重要
 - 問題文の制約に対して、過剰でも不足でもない構成を選ぶ
 
-次の章では、AWS構成をコードで再現可能にする[**Infrastructure as Codeと運用自動化**](/books/aws-saa-c03/infrastructure-as-code-and-operations)を扱います。
+AWS構成をコードで再現可能にする方法は[Infrastructure as Codeと運用自動化](/books/aws-saa-c03/infrastructure-as-code-and-operations)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"

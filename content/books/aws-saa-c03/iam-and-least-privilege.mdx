@@ -4,27 +4,15 @@ description: 'IAM、IAM Role、IAM Policy、MFA、root user、STS、最小権限
 order: 2
 ---
 
-<Callout type="info">
-### コンテンツ追加予定
-
-この章には、今後次の内容を追加する予定です。
-
-- IDベースポリシーとリソースベースポリシーの違い
-- アクセス許可の境界（Permissions Boundary）
-- AWS責任共有モデル
-- 試験問題での判断パターン
-
-</Callout>
-
 <Figure src="/images/deskwork_check_woman_color.png" alt="権限設定を確認する人のイラスト" maxWidth="320px" />
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 IAMユーザー、ロール、ポリシーが全部「権限」っぽく見えて、何をどう使い分けるのか混乱します。
 </SpeechBubble>
 
-AWSのセキュリティ設計は、ほぼ必ず **IAM（Identity and Access Management）** から始まります。誰が、どのAWSリソースに、どの操作をできるのかを決める仕組みです。
+AWSのセキュリティ設計は、ほぼ必ず **IAM**（Identity and Access Management）から始まります。誰が、どのAWSリソースに、どの操作をできるのかを決める仕組みです。
 
-SAA-C03では、IAMユーザー、IAMグループ、IAMロール、IAMポリシー、MFA、ルートユーザーの扱いが頻出です。
+SAA-C03の[試験ガイドのタスク1.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)では、IAMユーザー、グループ、ロール、ポリシーを含む認可モデル、最小権限、MFA、AWS責任共有モデルなどが対象です。この章では1つのAWSアカウント内で使うIAMの部品と判断基準を中心に扱い、IAM Identity Center、Organizations、SCP、クロスアカウントアクセスの詳細は[マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation)で扱います。
 
 ---
 
@@ -39,10 +27,62 @@ SAA-C03では、IAMユーザー、IAMグループ、IAMロール、IAMポリシ�
 
 実務では、長期的なアクセスキーを持つIAMユーザーより、IAMロールと一時認証情報を優先します。EC2からS3へアクセスするなら、アクセスキーをサーバーに置くのではなく、EC2インスタンスプロファイルでIAMロールを付与します。
 
+AWSの[IAMセキュリティのベストプラクティス](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/best-practices.html)は、人にはIDプロバイダーとのフェデレーション、ワークロードにはIAMロールを使い、どちらも一時的な認証情報を使うことを推奨しています。IAMユーザーは、フェデレーションやIAMロールでは対応できない用途に絞ります。
+
 <Callout type="warning">
 ### ルートユーザーは日常利用しない
 
-AWSアカウントのルートユーザーは、請求設定やアカウント解約など強力な操作ができます。MFAを必ず有効化し、普段の作業には使いません。試験でも実務でも「ルートユーザーを日常運用に使う」は基本的に誤答です。
+AWSアカウントのルートユーザーは、IAMで制限できず、ルートユーザーでしか実行できない操作もあります。ルートユーザーにはMFAを設定し、日常の管理作業には使いません。AWSも[ルートユーザーの認証情報を保護する](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/root-user-best-practices.html)よう案内しています。
+
+</Callout>
+
+---
+
+## 認証と認可を分けて考える
+
+IAMの問題では、最初に**認証**と**認可**を分けると整理しやすくなります。
+
+| 用語 | 答える問い | IAMでの例 |
+|---|---|---|
+| 認証（Authentication） | 誰がリクエストしているか | パスワード、アクセスキー、MFA、フェデレーション |
+| 認可（Authorization） | その主体は何を実行できるか | IAMポリシー、S3バケットポリシー、アクセス許可の境界 |
+
+AWSへサインインできても、すべてのリソースを操作できるとは限りません。認証後のリクエストに対して、AWSは関係するポリシーを評価し、操作を許可するか拒否するかを決めます。
+
+<Marker>IAMポリシーは、認証済みのプリンシパルに対する認可ルールです。</Marker>
+
+ここでいう**プリンシパル**とは、AWSへリクエストを送る主体です。ルートユーザー、IAMユーザー、IAMロールのセッション、AWSサービスなどが該当します。プリンシパルとロールの用語は、AWS公式の[IAMロール](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/id_roles.html)でも確認できます。
+
+---
+
+## IAMロールの仕組み — 信頼する相手と許可する操作
+
+IAMロールには、特定の人に固定されたパスワードやアクセスキーがありません。人、アプリケーション、AWSサービスがロールを引き受けると、AWS STS（AWS Security Token Service）が期限付きの一時認証情報を発行します。
+
+ロールを設計するときは、次の2種類のポリシーを分けます。
+
+| ポリシー | 決める内容 | 代表的な要素 |
+|---|---|---|
+| 信頼ポリシー | 誰がそのロールを引き受けられるか | `Principal`、`sts:AssumeRole` |
+| アクセス許可ポリシー | ロールを引き受けた後に何ができるか | `Action`、`Resource`、`Condition` |
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    P["プリンシパル"] -->|"信頼ポリシーで許可"| R["IAMロール"]
+    R -->|"STSが発行"| C["一時認証情報"]
+    C -->|"アクセス許可ポリシーの範囲"| S["AWSリソース"]
+`}
+/>
+
+たとえばLambda関数からDynamoDBへ書き込む場合は、ロールの信頼ポリシーでLambdaサービスを信頼し、アクセス許可ポリシーで対象テーブルへの必要な操作だけを許可します。信頼ポリシーだけではDynamoDBを操作できず、アクセス許可ポリシーだけではLambdaがロールを引き受けられません。
+
+AWS公式の[IAMロール](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/id_roles.html)は、ロールの信頼ポリシーを必須のリソースベースポリシー、ロールのアクセス許可ポリシーをアイデンティティベースポリシーと説明しています。
+
+<Callout type="warning">
+### 実行ロールとサービスリンクロールを混同しない
+
+Lambda実行ロールやECSタスクロールは、ワークロードのコードがAWSサービスを呼び出すための権限です。[サービスリンクロール](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/id_roles_create-service-linked-role.html)は、AWSサービスがユーザーに代わって別のAWSリソースを管理するために、そのサービスへリンクされたロールです。問題文で「アプリケーションがS3を読む」のか、「AWSサービスが利用者のリソースを管理する」のかを確認します。
 
 </Callout>
 
@@ -74,11 +114,163 @@ AWSアカウントのルートユーザーは、請求設定やアカウント�
 
 実務では最初から完璧な最小権限を書くのは難しいため、AWS IAM Access AnalyzerやCloudTrailの履歴を使って権限を絞り込むことがあります。
 
+ポリシーでは、操作を表す `Action` と対象を表す `Resource` に加え、必要なら `Condition` で利用条件を絞ります。たとえば送信元VPCエンドポイント、リクエストのタグ、MFAの有無などを条件にできます。すべてのAWSサービスや操作がリソース単位の指定に対応するわけではないため、利用する操作の[サービス別の認可リファレンス](https://docs.aws.amazon.com/ja_jp/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html)で、指定できるリソースタイプと条件キーを確認します。
+
+### 最小権限へ絞る流れ
+
+1. 必要なユースケースを明確にし、動作する権限を用意する
+2. CloudTrailに記録された実際のアクセスアクティビティを集める
+3. IAM Access Analyzerで利用したサービスとアクションからポリシーを生成する
+4. 生成したポリシーをテストし、対象リソースと条件をさらに絞る
+5. 未使用の権限と認証情報を定期的に見直す
+
+この流れは、AWS公式の[IAMセキュリティのベストプラクティス](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/best-practices.html)を実務向けの手順として並べたものです。
+
+---
+
+## アイデンティティベースポリシーとリソースベースポリシー
+
+IAMのアクセス許可ポリシーは、「誰に付けるか」と「何に付けるか」で大きく2種類に分かれます。
+
+| 比較 | アイデンティティベースポリシー | リソースベースポリシー |
+|---|---|---|
+| アタッチ先 | IAMユーザー、IAMグループ、IAMロール | S3バケット、SQSキュー、KMSキーなど対応リソース |
+| 主な問い | このアイデンティティは何をできるか | このリソースへ誰が何をできるか |
+| `Principal` | 通常は書かない。アタッチ先が主体 | アクセスを許可・拒否する主体を書く |
+| 管理方法 | 管理ポリシーまたはインラインポリシー | リソースに埋め込むインラインポリシー |
+| 代表例 | EC2ロールにS3読み取りを許可 | S3バケットが別アカウントのロールを許可 |
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    I["IAMロール"] -->|"IDベース<br/>何をできるか"| B["S3バケット"]
+    P["バケットポリシー"] -->|"リソースベース<br/>誰を許すか"| B
+    B --> O["オブジェクト"]
+`}
+/>
+
+同じAWSアカウント内で、アイデンティティベースポリシーとリソースベースポリシーだけが関係する場合、どちらかが許可すればアクセスできます。ただし、どこかに明示的な `Deny` があれば `Allow` より優先されます。
+
+別のAWSアカウントへアクセスする場合は、原則としてリクエスト元のアイデンティティベースポリシーと、アクセス先のリソースベースポリシーの両方で許可が必要です。クロスアカウントIAMロールを使う場合は、アクセス先アカウントのロールを引き受け、そのロールのアクセス許可で操作します。
+
+この評価方法と例外の詳細は、AWS公式の[アイデンティティベースおよびリソースベースのポリシー](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/access_policies_identity-vs-resource.html)で確認できます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+EC2のロールとS3のバケットポリシーは、いつも両方にAllowを書かなければいけませんか？
+</SpeechBubble>
+
+同じアカウント内なら、常に両方へ同じ `Allow` を書く必要はありません。EC2ロールのアイデンティティベースポリシーで許可する設計が基本です。バケット側で複数アカウントからのアクセスを受け付ける場合や、特定の通信条件を強制する場合には、バケットポリシーも使います。これは上記の評価ルールをもとにした、筆者の整理です。
+
+### ポリシー評価の基本順序
+
+AWSはリクエストを受けると、そのプリンシパルに関係するポリシーを集めて評価します。試験問題では、次の順序で考えると整理できます。
+
+1. 明示的な `Deny` があれば拒否する
+2. 組織のSCP、アクセス許可の境界、セッションポリシーなどの上限を確認する
+3. アイデンティティベースポリシーやリソースベースポリシーに該当する `Allow` があるか確認する
+4. 必要な `Allow` がなければ、暗黙的な拒否として拒否する
+
+これはAWS公式のポリシー評価論理を、試験問題を読む順序として単純化した筆者の整理です。
+
+<Marker>明示的なDenyはAllowより優先され、Allowが見つからないリクエストも拒否されます。</Marker>
+
+実際の評価には、プリンシパルの種類や同一アカウントかクロスアカウントかによる違いがあります。詳細な判定が必要な場合は、AWS公式の[ポリシーの評価論理](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/reference_policies_evaluation-logic.html)で確認します。
+
+---
+
+## アクセス許可の境界 — 委任できる権限の上限
+
+**アクセス許可の境界**（Permissions Boundary）は、IAMユーザーまたはIAMロールへ設定する権限の上限です。AWS管理ポリシーまたはカスタマー管理ポリシーを境界として使います。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    ID["IDベースポリシー<br/>S3・EC2を許可"] --> E["有効なアクセス許可"]
+    PB["アクセス許可の境界<br/>S3だけ許可"] --> E
+    E --> R["共通部分のS3だけ"]
+    D["明示的なDeny"] -->|"常に優先"| X["拒否"]
+`}
+/>
+
+重要なのは、<Marker>アクセス許可の境界だけでは権限を付与しない</Marker>ことです。アイデンティティベースポリシーと境界の両方が許可する共通部分が、そのIAMユーザーまたはIAMロールの有効なアクセス許可になります。
+
+たとえば、開発者にアプリケーション用ロールの作成を委任しつつ、作成するロールをS3とCloudWatchの範囲に制限したいとします。管理者は次のように設計できます。
+
+1. 開発者に、指定した境界を必ず付ける条件でIAMロールの作成を許可する
+2. 境界では、作成されるロールが利用できるAWSサービスの上限を定める
+3. 開発者は、境界を越えない範囲で各ロールのアクセス許可ポリシーを作る
+
+| 制御 | 適用範囲 | 権限を付与するか | 主な用途 |
+|---|---|---|---|
+| アイデンティティベースポリシー | ユーザー、グループ、ロール | 付与する | 日常の操作権限を定義する |
+| アクセス許可の境界 | ユーザー、ロール | 付与しない | アカウント内で権限管理を安全に委任する |
+| SCP | Organizationsの組織、OU、アカウント | 付与しない | 複数アカウントへ共通のガードレールを置く |
+| セッションポリシー | 一時認証情報のセッション | 付与しない | そのセッションだけ権限をさらに絞る |
+
+境界の詳しい評価とリソースベースポリシーが関係する例外は、AWS公式の[IAMエンティティのアクセス許可境界](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/access_policies_boundaries.html)で確認できます。SCPとの使い分けは[マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation)で扱います。
+
+<Callout type="warning">
+### 境界にAdministratorAccessを設定しても権限は増えない
+
+境界は上限なので、広い境界を設定してもアイデンティティベースポリシーに `Allow` がなければ操作できません。反対に、アイデンティティベースポリシーが `AdministratorAccess` でも、境界がS3だけを許可していれば、境界の範囲外の操作はできません。
+
+</Callout>
+
+---
+
+## AWS責任共有モデル
+
+**AWS責任共有モデル**は、クラウドのセキュリティをAWSと利用者で分担する考え方です。AWSは**クラウド自体のセキュリティ**を担当し、利用者は**クラウド内のセキュリティ**を担当します。
+
+| 担当 | 主な責任 |
+|---|---|
+| AWS | データセンターの物理セキュリティ、物理ホスト、ネットワーク、仮想化レイヤーなど、クラウド基盤の運用と保護 |
+| 利用者 | データ、IDとアクセス許可、利用サービスの設定、暗号化、ゲストOSとアプリケーションなど、利用方法に応じた保護 |
+
+利用者の責任範囲は、選ぶサービスによって変わります。
+
+| 利用例 | AWSが管理する範囲の例 | 利用者が管理する範囲の例 |
+|---|---|---|
+| Amazon EC2 | 物理設備、ホストOS、ハイパーバイザー | ゲストOSの更新、アプリ、セキュリティグループ、データ |
+| Amazon S3 | 物理設備、OS、S3サービスを動かす基盤 | バケットポリシー、公開設定、暗号化設定、保存データ |
+| IAM | IAMサービスを動かす基盤 | 誰にどの権限を与えるか、MFAや認証情報をどう管理するか |
+
+EC2とS3の比較は、AWS公式の[責任共有モデル](https://docs.aws.amazon.com/ja_jp/whitepapers/latest/aws-risk-and-compliance/shared-responsibility-model.html)が示す「利用するサービスによって利用者の責任が変わる」という原則を、この章の学習用に整理したものです。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+AWSを使えばセキュリティ作業がなくなるのではなく、AWSが守る範囲と利用者が設定する範囲が分かれます。IAMポリシーの設計は利用者側の責任です。
+</SpeechBubble>
+
+---
+
+## 実務での構成例 — EC2から特定のS3プレフィックスを読む
+
+EC2上の集計アプリケーションが、S3バケットの `reports/` 以下だけを読む要件を考えます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    EC2["EC2アプリ"] -->|"インスタンスプロファイル"| ROLE["IAMロール"]
+    ROLE -->|"一時認証情報"| SDK["AWS SDK"]
+    SDK -->|"s3:GetObject"| S3["S3 reports/配下"]
+`}
+/>
+
+設計の要点は次のとおりです。
+
+- EC2へIAMロールを渡すインスタンスプロファイルを使い、アクセスキーをEC2内へ保存しない
+- ロールの信頼ポリシーでは、EC2サービスがロールを引き受けることを許可する
+- ロールのアクセス許可ポリシーでは、`s3:GetObject` と `arn:aws:s3:::example-bucket/reports/*` に絞る
+- 書き込みが不要なら `s3:PutObject` を許可しない
+- 別アカウントのバケットなら、アクセス先のバケットポリシーでも必要なプリンシパルを許可する
+
+この構成は、ワークロードにIAMロールと一時認証情報を使うという[AWS公式のベストプラクティス](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/best-practices.html)と、クロスアカウントでは両方のアカウントで許可が必要になる[ポリシー評価のルール](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/access_policies_identity-vs-resource.html)に基づいています。
+
 ---
 
 ## IAMロールが正解になりやすい場面
 
-SAA-C03では、次のような要件が出たらIAMロールを疑います。
+IAMロールを選ぶ要件は次のように整理できます。これは[試験ガイドのタスク1.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)とIAMロールの用途をもとにした、筆者の整理です。
 
 | 要件 | 代表的な設計 |
 |---|---|
@@ -88,6 +280,61 @@ SAA-C03では、次のような要件が出たらIAMロールを疑います。
 | 一時的な認証情報を発行したい | AWS STSを使う |
 
 アクセスキーをアプリケーションに埋め込む構成は避けます。漏洩時の影響が大きく、ローテーションも難しくなるためです。
+
+AWS公式の[IAMの一時的な認証情報](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/id_credentials_temp.html)は、一時認証情報が有効期限付きで、IDフェデレーション、委任、クロスアカウントアクセス、IAMロールで使われることを説明しています。
+
+---
+
+## 試験問題での判断パターン
+
+次の対応は、AWS公式ドキュメントの各機能を要件別に整理した、筆者の整理です。
+
+| 問題文の要件 | 選ぶ候補 | 避ける構成 |
+|---|---|---|
+| EC2やLambdaからAWSサービスへアクセスする | ワークロード用IAMロール | アクセスキーをコードやEC2へ保存する |
+| 社員が複数のAWSアカウントへアクセスする | IAM Identity Centerと一時認証情報 | アカウントごとにIAMユーザーを量産する |
+| 外部のIDプロバイダーで認証済みの利用者にAWSアクセスを与える | SAMLまたはOIDCフェデレーションとIAMロール | 長期アクセスキーを配布する |
+| 別アカウントからS3バケットへ直接アクセスさせる | 呼び出し元の許可とS3バケットポリシー | 片方のアカウントだけで許可する |
+| 開発者にIAMロール作成を委任しつつ権限の上限を決める | アクセス許可の境界 | 境界だけで操作権限を付与しようとする |
+| 複数アカウントで禁止操作を一律に制限する | AWS OrganizationsのSCP | 各アカウントへ境界を手作業で設定する |
+| パスワード漏えい時の不正サインインを抑える | MFA | パスワードだけを長くする |
+| 実際の利用履歴から権限を絞る | CloudTrailとIAM Access Analyzer | `Action: "*"` を放置する |
+
+<Callout type="note">
+### 「最も運用負荷が低い」に注目する
+
+人のアクセスを一元管理する要件ではIAM Identity Center、AWS上のワークロードにはIAMロールが候補です。個別IAMユーザーと長期アクセスキーを増やす案は、認証情報の発行・失効・ローテーションが増えます。詳細は[マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation)で確認します。
+
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### IAMロールを付けただけで操作できると思う
+
+ロールの信頼ポリシーは「誰が引き受けられるか」、アクセス許可ポリシーは「引き受けた後に何ができるか」を決めます。両方を確認します。
+
+### Resourceを絞らず、Actionだけを絞る
+
+`s3:GetObject` だけに絞っても、`Resource: "*"` なら読み取り対象が広すぎる場合があります。対象バケットやプレフィックスをARNで指定し、必要なら `Condition` も使います。
+
+### 明示的なDenyを見落とす
+
+アイデンティティベースポリシーに `Allow` があっても、SCP、リソースベースポリシー、アクセス許可の境界などに該当する明示的な `Deny` があれば拒否されます。問題文に「明示的に拒否」「SCPで禁止」とあれば、Allowを増やすだけでは解決しません。
+
+### アクセス許可の境界を権限付与ポリシーとして使う
+
+境界は上限を設定するだけです。実際の操作には、アイデンティティベースポリシーなどによる `Allow` も必要です。
+
+---
+
+## 参考リンク
+
+- [SAA-C03 試験ガイド — タスク1.1](https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03-domain1.html)
+- [IAMでのセキュリティのベストプラクティス](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/best-practices.html)
+- [IAMポリシーの評価論理](https://docs.aws.amazon.com/ja_jp/IAM/latest/UserGuide/reference_policies_evaluation-logic.html)
+- [AWS責任共有モデル](https://docs.aws.amazon.com/ja_jp/whitepapers/latest/aws-risk-and-compliance/shared-responsibility-model.html)
 
 ---
 
@@ -99,9 +346,12 @@ IAMはAWS設計の土台です。
 - 人のアクセスはIAM Identity Centerやフェデレーションを検討する
 - AWSサービス間のアクセスはIAMロールを使う
 - ポリシーは最小権限で設計する
+- アイデンティティベースポリシーは主体に、リソースベースポリシーは対応リソースにアタッチする
+- アクセス許可の境界は権限を付与せず、IAMユーザーまたはIAMロールの権限の上限を定める
+- AWSはクラウド基盤を保護し、利用者はIAMポリシーやデータなど利用方法に応じた範囲を保護する
 - 長期アクセスキーより一時認証情報を優先する
 
-次の章では、複数アカウント、IAM Identity Center、Organizations、SCPを使った組織単位のアクセス管理を扱います。
+複数アカウント、IAM Identity Center、Organizations、SCPを使った組織単位のアクセス管理は、[マルチアカウントとフェデレーション](/books/aws-saa-c03/multi-account-and-federation)で扱います。
 
 <QuizLink
   href="/quiz/aws-basic"
