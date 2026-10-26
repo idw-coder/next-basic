@@ -53,6 +53,101 @@ docs/books/guide.md / 対象ファイル / content/books/javascript/07-arrays.md
 
 ---
 
+## P1-c: AWS SAA-C03本の章の拡充（1章ずつ委任）
+
+**モデル**: 高性能必須（AWS公式ドキュメントとの照合が必要） / **効果**: SEO大＋教材の完成度 / **工数**: 1章あたり数時間
+
+対象は `grep -l "コンテンツ追加予定" content/books/aws-saa-c03/*.mdx` で最新を確認。2026-10-26 時点で17章。
+各章の冒頭の注記（`<Callout type="info">` の「コンテンツ追加予定」）に、その章に足りない内容が箇条書きで書いてある。注記の項目は、公式試験ガイドの対象知識・対象スキルと照らして決めたもの。
+
+**同じ本なので、並行で複数セッションに投げない。** 1章終わってから次の章を投げる。
+
+委任する順番（試験の配点が高い分野から、薄い章を優先。順番は筆者の判断）:
+
+| 順 | ファイル | 試験ガイドのタスク | 状態 |
+|---|---|---|---|
+| 1 | `iam-and-least-privilege.mdx` | 1.1 | 骨組み |
+| 2 | `multi-account-and-federation.mdx` | 1.1 | 骨組み |
+| 3 | `vpc-network-security.mdx` | 1.2 | 骨組み |
+| 4 | `data-security.mdx` | 1.3 | 骨組み |
+| 5 | `decoupled-architecture.mdx` | 2.1 | 骨組み |
+| 6 | `scalability-and-ha.mdx` | 2.1 / 2.2 | 骨組み |
+| 7 | `disaster-recovery.mdx` | 2.2 | 骨組み |
+| 8 | `database-selection.mdx` | 3.3 | 骨組み |
+| 9 | `network-performance.mdx` | 3.4 | 骨組み |
+| 10 | `storage-selection.mdx` | 3.1 | S3以外が薄い |
+| 11 | `compute-selection.mdx` | 3.2 | EC2・Auto Scalingが薄い |
+| 12 | `data-ingestion-and-analytics.mdx` | 3.5 | 半分程度 |
+| 13 | `cost-optimized-storage.mdx` | 4.1 | 骨組み |
+| 14 | `cost-optimized-compute.mdx` | 4.2 | 骨組み |
+| 15 | `cost-optimized-database.mdx` | 4.3 | 骨組み |
+| 16 | `cost-optimized-network-and-checklist.mdx` | 4.4 | 骨組み |
+| 17 | `monitoring-and-cloudwatch.mdx` | 2.2 | 残り3項目 |
+
+```
+docs/books/guide.md 仕様の教科書、AWS SAA-C03本の1章を拡充してほしい。
+
+# 対象
+ファイル: content/books/aws-saa-c03/[ここに指定。例: iam-and-least-privilege.mdx]
+対応する試験ガイドのタスク: [ここに指定。例: 1.1]
+冒頭の「コンテンツ追加予定」の注記に、この章に足りない内容が箇条書きで書いてある。これを書き足すのが主な作業。
+加えて、注記の項目に限らず次の3つが薄ければ補う:
+- 実務での使用例
+- 構成図（MermaidDiagram）
+- 試験問題での判断パターン（「この要件ならこのサービス」の対応）
+
+# 最初に読むもの
+- AGENTS.md（作業ルール。devサーバーと Velite のルールは必ず守る）
+- docs/books/guide.md（執筆ルール）
+- 公式試験ガイドの該当タスク:
+  https://docs.aws.amazon.com/ja_jp/aws-certification/latest/solutions-architect-associate-03/solutions-architect-associate-03.html
+  （分野ごとのページ: solutions-architect-associate-03-domain1.html 〜 domain4.html）
+- 書き方の見本（この本で完成している章）:
+  content/books/aws-saa-c03/application-security.mdx
+  content/books/aws-saa-c03/infrastructure-as-code-and-operations.mdx
+  content/books/aws-saa-c03/monitoring-and-cloudwatch.mdx の「Amazon EventBridge」「EventBridge Scheduler」の節
+
+# 守ること
+- 既存の本文は削らない。書き足す・直すだけ
+- 事実（数値・上限・仕様・推奨）は AWS 公式ドキュメント（docs.aws.amazon.com/ja_jp を優先）で確かめ、
+  本文中に出典リンクを置く。出典のない断定は書かない。筆者の整理として書くときは
+  「これは筆者の整理です」と明記する
+- 外部URLは全件 curl -s -o /dev/null -w "%{http_code}" -L <url> で200を確認する。推測でURLを書かない
+- 料金・クォータなど変わりやすい値は、出典を添えるか、公式で確認する導線を残す
+- 試験に「よく出る」と書くときも根拠を示すか、筆者の判断と明記する
+- 吹き出し・イラストは章の既存のものに合わせる
+  （学習者=/images/usingcomputer_suit_woman_color.png、先生=章内で使われている画像に揃える）
+  冒頭に固定せず本文中に分散。1章の中で同じイラストを繰り返さない
+- 重要な定義・判断基準に <Marker>、補足や注意は <Callout>（type を使い分け）
+- APIやCLIを解説するときは、構文・引数（パラメーター）の表・戻り値を示す
+- 「次の章では」「前章で」など章の並び順に頼る書き方をしない。章へのリンクで書く
+  （例: [データベース選択](/books/aws-saa-c03/database-selection)）
+- 日本語で **強調** を閉じるとき、** の直前に全角括弧や句読点を置かない
+  （誤: **文（statement）**と / 正: **文**（statement）と）
+- Mermaid の改行は <br/> を使う（\n は文字のまま表示される）。
+  ノードが4つ以上の図は flowchart TB（縦向き）にする（横向きはスマホで読めない）
+- ページ内リンクに日本語の見出しidを使わない（guide.md「ページ内リンクのフラグメントに日本語を使わない」）
+- 書き終えたら、注記の箇条書きから書き足した項目を消す。全部書けたら注記ごと消す
+- 対象ファイル以外は編集しない。他の章にリンクを足したほうがよい箇所があれば、報告に書く
+
+# 確認
+- npx tsc --noEmit
+- 追加した外部URLが全件200
+- 内部リンク（/books/aws-saa-c03/...）の参照先ファイルが実在する
+- devサーバーが既に立っていれば curl で対象ページが200か確認（立っていなければ起動せずスキップ）
+
+# 報告
+- 書き足した節の一覧
+- 使った公式ドキュメントのURL一覧
+- 注記に残した項目（書けなかったもの）と理由
+- 他の章に足したほうがよいリンク
+
+# 添付
+AGENTS.md / docs/books/guide.md / 対象ファイル / content/books/aws-saa-c03/application-security.mdx（トーン参考）
+```
+
+---
+
 ## P4: 公式ドキュメントリンクの横展開（本ごとに1セッション）
 
 **モデル**: 中位以上（URL実在確認が必須） / **効果**: SEO中（E-E-A-T）+ UX / **工数**: 本あたり中
