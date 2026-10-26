@@ -379,6 +379,6 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'fetch',
     'cache',
     'revalidate',
-    'dynamic routes',
+    '環境変数',
   ],
 };
