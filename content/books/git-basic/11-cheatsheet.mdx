@@ -12,7 +12,7 @@ order: 11
 
 <Figure src="/images/plan_selection_man_color.png" alt="目的からコマンドを逆引きするイメージ" maxWidth="130px" />
 
-表のなかで<Pick />が付いている行は、日常の作業でとくに出番が多いものです。迷ったらここから覚えてください。
+表のなかで<Pick />が付いている行は、日常の作業でとくに出番が多いものです。迷ったらここから覚えてください。右端の「オプション・補足」列には、`-p` や `--staged` などのオプションが何の略で、何をするのかを書いています。
 
 ---
 
@@ -22,22 +22,22 @@ order: 11
 
 毎日いちばん使う、変更を記録して共有するまでの流れです。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| 変更をステージに上げる | `git add ファイル名` |
-| すべての変更をステージに上げる | `git add .` |
-| 削除・リネームも含めて全部上げる | `git add -A` |
-| <Pick />変更を一部分ずつ選んで上げる | `git add -p` |
-| ステージした内容を確認する | `git status` / `git diff --staged` |
-| コミットする | `git commit -m "メッセージ"` |
-| add と commit をまとめて（追跡中ファイルのみ） | `git commit -am "メッセージ"` |
-| 直前のコミットにメッセージ込みで修正 | `git commit --amend` |
-| <Pick />直前のコミットにメッセージを変えず追加 | `git commit --amend --no-edit` |
-| 空コミットを作る（CI起動用など） | `git commit --allow-empty -m "メッセージ"` |
-| リモートへ送る | `git push` |
-| 初回プッシュ（上流ブランチを設定） | `git push -u origin ブランチ名` |
-| 特定のブランチへ送る | `git push origin ブランチ名` |
-| <Pick />履歴を書き換えた後に安全に送る | `git push --force-with-lease` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| 変更をステージに上げる | `git add ファイル名` | 複数のファイル名を並べてもよい |
+| すべての変更をステージに上げる | `git add .` | `.` は今いるディレクトリ以下のすべて |
+| 削除・リネームも含めて全部上げる | `git add -A` | `-A` = `--all`。リポジトリ全体が対象 |
+| <Pick />変更を一部分ずつ選んで上げる | `git add -p` | `-p` = `--patch`。変更のかたまりごとに `y`/`n` で選ぶ |
+| ステージした内容を確認する | `git status` / `git diff --staged` | `--staged` はステージ済みの差分を表示（`--cached` も同じ意味） |
+| コミットする | `git commit -m "メッセージ"` | `-m` = `--message`。省略するとエディタが開く |
+| add と commit をまとめて（追跡中ファイルのみ） | `git commit -am "メッセージ"` | `-a`（追跡中ファイルの変更を自動でステージ）と `-m` をまとめた形。新規ファイルは対象外 |
+| 直前のコミットにメッセージ込みで修正 | `git commit --amend` | `--amend` は直前のコミットを作り直す |
+| <Pick />直前のコミットにメッセージを変えず追加 | `git commit --amend --no-edit` | `--no-edit` はメッセージ編集を省略する |
+| 空コミットを作る（CI起動用など） | `git commit --allow-empty -m "メッセージ"` | `--allow-empty` は変更がなくてもコミットを許可する |
+| リモートへ送る | `git push` | 上流ブランチが設定済みなら引数は不要 |
+| 初回プッシュ（上流ブランチを設定） | `git push -u origin ブランチ名` | `-u` = `--set-upstream`。次回から `git push` だけで送れる |
+| 特定のブランチへ送る | `git push origin ブランチ名` | `origin` は登録したリモートの名前 |
+| <Pick />履歴を書き換えた後に安全に送る | `git push --force-with-lease` | リモートが自分の知っている状態のときだけ上書きする。他人のpushを消さない |
 
 > 詳しくは[第3章 add・commit・pushの基本フロー](/books/git-basic/03-basic-flow)へ。
 
@@ -47,21 +47,21 @@ order: 11
 
 「今どうなっているか」「過去に何があったか」を確認するコマンド。操作の前後に挟むとミスを防げます。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| 変更状況を見る | `git status` |
-| 変更状況を簡潔に見る | `git status -s` |
-| 履歴を見る | `git log` |
-| 履歴を1行ずつ簡潔に見る | `git log --oneline` |
-| <Pick />履歴を図（グラフ）で見る | `git log --oneline --graph --all` |
-| 直近 n 件だけ見る | `git log -n 5` |
-| 特定ファイルの履歴を見る | `git log ファイル名` |
-| 特定の作者の履歴を見る | `git log --author="名前"` |
-| 変更内容（未ステージ）を見る | `git diff` |
-| <Pick />ステージ済みの変更を見る | `git diff --staged` |
-| 2つのブランチの差分を見る | `git diff main..feature` |
-| あるコミットの内容を見る | `git show コミットID` |
-| 行ごとに最後に変更した人を見る | `git blame ファイル名` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| 変更状況を見る | `git status` | |
+| 変更状況を簡潔に見る | `git status -s` | `-s` = `--short`。1ファイル1行で表示 |
+| 履歴を見る | `git log` | `q` キーで終了 |
+| 履歴を1行ずつ簡潔に見る | `git log --oneline` | `--oneline` は1コミットを1行（短いID＋メッセージ）で表示 |
+| <Pick />履歴を図（グラフ）で見る | `git log --oneline --graph --all` | `--graph` は分岐を線で描く。`--all` は全ブランチを対象にする |
+| 直近 n 件だけ見る | `git log -n 5` | `-n` で表示件数を指定 |
+| 特定ファイルの履歴を見る | `git log ファイル名` | |
+| 特定の作者の履歴を見る | `git log --author="名前"` | `--author` は作者名で絞り込む |
+| 変更内容（未ステージ）を見る | `git diff` | 引数なしは、ステージと作業中ファイルの差分 |
+| <Pick />ステージ済みの変更を見る | `git diff --staged` | `--staged` は直前のコミットとステージの差分 |
+| 2つのブランチの差分を見る | `git diff main..feature` | 2つのブランチの先端どうしを比べる（`git diff main feature` と同じ） |
+| あるコミットの内容を見る | `git show コミットID` | IDを省略すると最新のコミット（HEAD） |
+| 行ごとに最後に変更した人を見る | `git blame ファイル名` | |
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
 迷ったらまず `git status`。今ステージに何が乗っていて、どのブランチにいるかを教えてくれる“現在地マップ”だよ。
@@ -73,21 +73,21 @@ order: 11
 
 作業を枝分かれさせ、行き来し、統合するためのコマンドです。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| ブランチ一覧を見る | `git branch` |
-| リモート追跡も含めて一覧を見る | `git branch -a` |
-| 今いるブランチ名を確認する | `git branch --show-current` |
-| ブランチを作る | `git branch ブランチ名` |
-| ブランチを切り替える | `git switch ブランチ名` |
-| <Pick />作って切り替えを同時に | `git switch -c ブランチ名` |
-| <Pick />直前にいたブランチに戻る | `git switch -` |
-| ブランチ名を変更する | `git branch -m 新しい名前` |
-| ブランチを削除する（マージ済み） | `git branch -d ブランチ名` |
-| ブランチを強制削除する（未マージ） | `git branch -D ブランチ名` |
-| マージ済みのブランチ一覧を見る | `git branch --merged` |
-| ブランチを統合する | `git merge 取り込みたいブランチ名` |
-| ブランチの根元を付け替える | `git rebase ブランチ名` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| ブランチ一覧を見る | `git branch` | `*` が付いているのが今いるブランチ |
+| リモート追跡も含めて一覧を見る | `git branch -a` | `-a` = `--all`。`remotes/origin/...` も表示する |
+| 今いるブランチ名を確認する | `git branch --show-current` | ブランチ名だけを出力する |
+| ブランチを作る | `git branch ブランチ名` | 作るだけで、切り替えはしない |
+| ブランチを切り替える | `git switch ブランチ名` | |
+| <Pick />作って切り替えを同時に | `git switch -c ブランチ名` | `-c` = `--create` |
+| <Pick />直前にいたブランチに戻る | `git switch -` | `-` は「直前にいたブランチ」の意味 |
+| ブランチ名を変更する | `git branch -m 新しい名前` | `-m` = `--move`。今いるブランチの名前を変える |
+| ブランチを削除する（マージ済み） | `git branch -d ブランチ名` | `-d` = `--delete`。未マージなら拒否されるので安全 |
+| ブランチを強制削除する（未マージ） | `git branch -D ブランチ名` | `-D` = `--delete --force`。未マージでも消す |
+| マージ済みのブランチ一覧を見る | `git branch --merged` | 今いるブランチに取り込み済みのものだけ表示 |
+| ブランチを統合する | `git merge 取り込みたいブランチ名` | |
+| ブランチの根元を付け替える | `git rebase ブランチ名` | |
 
 `git merge` では、**現在いるブランチが統合先**です。コマンドに指定したブランチの変更を、現在のブランチへ取り込みます。
 
@@ -110,19 +110,19 @@ git merge feature/login
 
 Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で使うコマンドが変わります。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| 作業中の変更を捨てる（ファイル単位） | `git restore ファイル名` |
-| 作業中の変更を全部捨てる | `git restore .` |
-| <Pick />ステージから下ろす（変更は残す） | `git restore --staged ファイル名` |
-| 特定コミットの内容でファイルを復元 | `git restore --source=コミットID ファイル名` |
-| <Pick />直前のコミットを取り消す（変更は残す） | `git reset --soft HEAD^` |
-| 直近 3 件のコミットを取り消す（変更は残す） | `git reset --soft HEAD~3` |
-| 直前のコミットを取り消す（変更も捨てる） | `git reset --hard HEAD^` |
-| コミットを打ち消す新コミットを作る | `git revert コミットID` |
-| マージを中止して元に戻す | `git merge --abort` |
-| リベースを中止して元に戻す | `git rebase --abort` |
-| 未追跡ファイルを削除する | `git clean -fd` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| 作業中の変更を捨てる（ファイル単位） | `git restore ファイル名` | |
+| 作業中の変更を全部捨てる | `git restore .` | `.` は今いるディレクトリ以下のすべて |
+| <Pick />ステージから下ろす（変更は残す） | `git restore --staged ファイル名` | `--staged` はステージだけを戻す。作業中のファイルはそのまま |
+| 特定コミットの内容でファイルを復元 | `git restore --source=コミットID ファイル名` | `--source` は復元元を指定する |
+| <Pick />直前のコミットを取り消す（変更は残す） | `git reset --soft HEAD^` | `--soft` はコミットだけ取り消し、変更はステージに残す。`HEAD^` は1つ前のコミット |
+| 直近 3 件のコミットを取り消す（変更は残す） | `git reset --soft HEAD~3` | `HEAD~3` は3つ前のコミット |
+| 直前のコミットを取り消す（変更も捨てる） | `git reset --hard HEAD^` | `--hard` はステージと作業中のファイルも戻す |
+| コミットを打ち消す新コミットを作る | `git revert コミットID` | 履歴を書き換えないので、push済みでも安全 |
+| マージを中止して元に戻す | `git merge --abort` | `--abort` は途中の操作をやめて開始前に戻す |
+| リベースを中止して元に戻す | `git rebase --abort` | 同上 |
+| 未追跡ファイルを削除する | `git clean -fd` | `-f` = `--force`（必須）、`-d` はディレクトリも対象。先に `-n` で消える対象を確認できる |
 
 <Callout type="warning" title="reset --hard と push 済みコミットに注意">
 `git reset --hard` や `git clean -fd` は変更を**完全に破棄**します。戻したい変更まで消えるので、実行前に `git status` で確認を。また、**すでに push したコミットの履歴を書き換える**（`reset` で消すなど）と他人の環境と食い違います。共有済みの履歴を取り消すときは、履歴を書き換えない `git revert` を使うのが安全です。
@@ -136,19 +136,19 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 チームの変更を取り込み、自分の変更を送るコマンドです。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| リモートを登録する | `git remote add origin URL` |
-| 登録済みリモートを確認する | `git remote -v` |
-| リモートのURLを変更する | `git remote set-url origin URL` |
-| リモートの最新を取得（マージしない） | `git fetch` |
-| <Pick />リモートで消えたブランチを掃除する | `git fetch --prune` |
-| リモートの最新を取得してマージ | `git pull` |
-| <Pick />リベース型で取り込む | `git pull --rebase` |
-| 自分の変更を送る | `git push` |
-| リモートのブランチ一覧を見る | `git branch -r` |
-| リモートのブランチを取得して切り替える | `git switch ブランチ名`（自動追跡） |
-| リモートのブランチを削除する | `git push origin --delete ブランチ名` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| リモートを登録する | `git remote add origin URL` | `origin` はリモートに付ける名前（慣習） |
+| 登録済みリモートを確認する | `git remote -v` | `-v` = `--verbose`。URLも表示する |
+| リモートのURLを変更する | `git remote set-url origin URL` | |
+| リモートの最新を取得（マージしない） | `git fetch` | |
+| <Pick />リモートで消えたブランチを掃除する | `git fetch --prune` | `--prune` はリモートで消えたブランチの追跡情報を削除する |
+| リモートの最新を取得してマージ | `git pull` | `git fetch` ＋ `git merge` |
+| <Pick />リベース型で取り込む | `git pull --rebase` | `--rebase` はマージの代わりにリベースで取り込む |
+| 自分の変更を送る | `git push` | |
+| リモートのブランチ一覧を見る | `git branch -r` | `-r` = `--remotes` |
+| リモートのブランチを取得して切り替える | `git switch ブランチ名`（自動追跡） | 同名のリモートブランチがあれば、追跡ブランチを自動で作る |
+| リモートのブランチを削除する | `git push origin --delete ブランチ名` | `--delete` はリモート側のブランチを消す |
 
 > 詳しくは[第8章 リモートとの同期](/books/git-basic/08-remote-sync)へ。
 
@@ -158,19 +158,28 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 コミットするほどではない作業中の変更を、いったん棚上げするコマンドです。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| 変更を退避する | `git stash` |
-| <Pick />メッセージを付けて退避する | `git stash push -m "メッセージ"` |
-| 未追跡ファイルも含めて退避する | `git stash -u` |
-| 退避の一覧を見る | `git stash list` |
-| 退避の中身を確認する | `git stash show -p` |
-| 最後の退避を戻す（退避は消す） | `git stash pop` |
-| 退避を戻す（退避は残す） | `git stash apply` |
-| 特定の退避を戻す | `git stash apply stash@{1}` |
-| <Pick />退避から特定のファイルだけ復元する | `git restore --source=stash@{0} -- src/...` |
-| 退避を1つ破棄する | `git stash drop` |
-| 退避をすべて破棄する | `git stash clear` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| 変更を退避する | `git stash` | `git stash push` の省略形 |
+| <Pick />メッセージを付けて退避する | `git stash push -m "メッセージ"` | `-m` = `--message`。`list` で見分けやすくなる |
+| 未追跡ファイルも含めて退避する | `git stash -u` | `-u` = `--include-untracked` |
+| 退避の一覧を見る | `git stash list` | `stash@{0}` が最新。古いほど番号が大きい |
+| 退避の中身をざっと見る（ファイルと行数） | `git stash show` | 退避を指定しないと最新の `stash@{0}` が対象 |
+| <Pick />退避に含まれるファイル名だけ見る | `git stash show --name-only` | `--name-only` はファイル名だけを表示。`--name-status` なら変更の種類（M/A/D）も付く |
+| 退避の差分を中身まで見る | `git stash show -p` | `-p` = `--patch`。diff形式で表示 |
+| 特定の退避の中身を見る | `git stash show -p stash@{1}` | `stash@{1}` は `1` と省略してもよい |
+| 最後の退避を戻す（退避は消す） | `git stash pop` | 退避を指定しないと最新の `stash@{0}` が対象 |
+| 退避を戻す（退避は残す） | `git stash apply` | 同上 |
+| 特定の退避を戻す | `git stash apply stash@{1}` | `pop` でも同じように指定できる |
+| <Pick />退避から特定のファイルだけ復元する | `git restore --source=stash@{0} -- ファイル名` | `--source` は復元元。`--` のあとがファイル名であることを示す区切り |
+| 退避を1つ破棄する | `git stash drop` | 指定しないと最新が対象。`git stash drop stash@{1}` のように選べる |
+| 退避をすべて破棄する | `git stash clear` | 元に戻せないので注意 |
+
+`git stash show` や `pop` `apply` `drop` は、退避を指定しなければ**最新の退避**（`stash@{0}`）を対象にします。最新の退避を扱うだけなら、`stash@{0}` は付けなくてかまいません。2つ目以降を扱うときだけ、`git stash list` で番号を確かめてから `stash@{1}` のように指定します。
+
+<Callout type="info" title="-u で退避したファイルは show に出ない">
+`git stash -u` で退避した未追跡ファイルは、`git stash show` の一覧には出てきません。見たいときは `git stash show --name-only -u` のように `-u`（`--include-untracked`）を付けます（Git 2.32以降）。
+</Callout>
 
 > 詳しくは[第9章 stashで作業を一時退避する](/books/git-basic/09-stash)へ。
 
@@ -180,15 +189,15 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 特定のコミットに「v1.0.0」などの目印を付けるコマンドです。リリース管理でよく使います。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| タグの一覧を見る | `git tag` |
-| 軽量タグを付ける | `git tag v1.0.0` |
-| 注釈付きタグを付ける | `git tag -a v1.0.0 -m "リリース"` |
-| 特定コミットにタグを付ける | `git tag v1.0.0 コミットID` |
-| タグをリモートへ送る | `git push origin v1.0.0` |
-| タグをまとめて送る | `git push origin --tags` |
-| タグを削除する | `git tag -d v1.0.0` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| タグの一覧を見る | `git tag` | |
+| 軽量タグを付ける | `git tag v1.0.0` | 名前だけの目印。今いるコミットに付く |
+| 注釈付きタグを付ける | `git tag -a v1.0.0 -m "リリース"` | `-a` = `--annotate`。作成者・日付・メッセージも記録する |
+| 特定コミットにタグを付ける | `git tag v1.0.0 コミットID` | |
+| タグをリモートへ送る | `git push origin v1.0.0` | `git push` だけではタグは送られない |
+| タグをまとめて送る | `git push origin --tags` | `--tags` はローカルのタグをすべて送る |
+| タグを削除する | `git tag -d v1.0.0` | `-d` = `--delete`。消えるのはローカルだけ |
 
 <a id="section-8"></a>
 
@@ -196,13 +205,13 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 ファイルの削除・移動や「追跡から外す」操作です。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| ファイルを削除して記録する | `git rm ファイル名` |
-| 追跡から外す（ファイルは残す） | `git rm --cached ファイル名` |
-| ファイルを移動・リネームする | `git mv 旧名 新名` |
-| あとから `.gitignore` を効かせ直す | `git rm -r --cached . && git add .` |
-| 無視されているか確認する | `git check-ignore -v ファイル名` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| ファイルを削除して記録する | `git rm ファイル名` | ファイル自体も消える |
+| 追跡から外す（ファイルは残す） | `git rm --cached ファイル名` | `--cached` はGitの管理からだけ外し、手元のファイルは残す |
+| ファイルを移動・リネームする | `git mv 旧名 新名` | |
+| あとから `.gitignore` を効かせ直す | `git rm -r --cached . && git add .` | `-r` はディレクトリの中まで対象にする |
+| 無視されているか確認する | `git check-ignore -v ファイル名` | `-v` = `--verbose`。どの `.gitignore` の何行目が効いているかを表示 |
 
 <Callout type="info" title=".gitignore に書いても消えないとき">
 すでにコミット済みのファイルは、`.gitignore` に追記しても追跡され続けます。`git rm --cached` で一度追跡を外す必要があります。「`.env` を間違えてコミットしてしまった」ときの定番対処です。
@@ -214,13 +223,13 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 コミットをつまみ食いしたり、消したはずの作業を救出したりするコマンドです。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| 特定のコミットだけ取り込む | `git cherry-pick コミットID` |
-| <Pick />HEADが動いた全履歴を見る | `git reflog` |
-| reflog で見つけた状態へ戻す | `git reset --hard コミットID` |
-| 直近のコミットを対話的に編集する | `git rebase -i HEAD~3` |
-| 過去の状態を見るだけ（切替なし） | `git switch --detach コミットID` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| 特定のコミットだけ取り込む | `git cherry-pick コミットID` | |
+| <Pick />HEADが動いた全履歴を見る | `git reflog` | |
+| reflog で見つけた状態へ戻す | `git reset --hard コミットID` | `--hard` は作業中の変更も捨てるので注意 |
+| 直近のコミットを対話的に編集する | `git rebase -i HEAD~3` | `-i` = `--interactive`。`HEAD~3` で直近3件が対象 |
+| 過去の状態を見るだけ（切替なし） | `git switch --detach コミットID` | `--detach` はブランチに乗らず、そのコミットを直接開く |
 
 <a id="section-10"></a>
 
@@ -228,14 +237,14 @@ Gitで最も緊張する操作。**「何を」「どこまで」戻すか**で�
 
 最初に一度だけ、または環境ごとに行う設定です。
 
-| やりたいこと | コマンド |
-| ------------ | -------- |
-| 名前を設定 | `git config --global user.name "名前"` |
-| メールを設定 | `git config --global user.email "メール"` |
-| デフォルトブランチ名を main に | `git config --global init.defaultBranch main` |
-| 既定のエディタを設定 | `git config --global core.editor "code --wait"` |
-| エイリアスを登録する | `git config --global alias.co checkout` |
-| 設定を一覧で確認 | `git config --list` |
+| やりたいこと | コマンド | オプション・補足 |
+| ------------ | -------- | ---------------- |
+| 名前を設定 | `git config --global user.name "名前"` | `--global` はこのPCのすべてのリポジトリに効く。外すとそのリポジトリだけ |
+| メールを設定 | `git config --global user.email "メール"` | |
+| デフォルトブランチ名を main に | `git config --global init.defaultBranch main` | |
+| 既定のエディタを設定 | `git config --global core.editor "code --wait"` | `--wait` はVS Codeのオプション。閉じるまでGitを待たせる |
+| エイリアスを登録する | `git config --global alias.co checkout` | 以後 `git co` で `git checkout` が動く |
+| 設定を一覧で確認 | `git config --list` | `--list` は設定をすべて表示する |
 
 > 詳しくは[第2章 Gitの初期設定](/books/git-basic/02-setup)へ。
 
