@@ -310,6 +310,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; link?: string; images?: string[] }[] = [
   {
+    date: '2026/11/01',
+    text: '教科書「AWS SAA-C03 合格と実務のためのAWS設計入門」に、実務補足「CodeBuildとは？」を追加しました。buildspec.ymlの読み方、CodePipeline・CodeDeployとの役割分担、GitHub Actionsとの連携、エラーの切り分けを解説しています',
+    link: '/books/aws-saa-c03/ci-cd-and-codebuild',
+    images: ['/images/surprise_pc_woman_color.png'],
+  },
+  {
     date: '2026/10/24',
     text: '教科書の解説にショート動画が入りました。バブルソートの動き（94秒）は「コーディングテスト突破ドリル」のソートと二分探索の章と「コンピュータサイエンスの基礎」のアルゴリズムの章に、Cookieが生まれた理由（85秒）は「HTTP & Web API入門」のヘッダーとCookieの章に載せています',
     link: '/books/coding-test/08-sort-and-binary-search',
