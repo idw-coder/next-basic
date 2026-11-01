@@ -177,6 +177,8 @@ IaC（Infrastructure as Code）は、AWS構成をコードで定義し、同じ�
 | AWS CloudFormation | テンプレートからAWSリソースをスタックとして管理 | [CloudFormationとは](/books/aws-saa-c03/infrastructure-as-code-and-operations#cloudformationとは) |
 | AWS Cloud Development Kit（CDK） | プログラミング言語からCloudFormationテンプレートを生成 | [AWS CDKとの違い](/books/aws-saa-c03/infrastructure-as-code-and-operations#aws-cdkとの違い) |
 | CloudFormation StackSets | 複数アカウント・複数リージョンへスタックを展開 | [StackSetsで複数アカウント・複数リージョンに展開する](/books/aws-saa-c03/infrastructure-as-code-and-operations#stacksetsで複数アカウント複数リージョンに展開する) |
+| AWS CodeBuild（試験範囲外） | `buildspec.yml` のコマンドでビルド・テストを実行 | [CodeBuildとは](/books/aws-saa-c03/ci-cd-and-codebuild#codebuildとは) |
+| AWS CodePipeline / AWS CodeDeploy（試験範囲外） | ビルド・デプロイの手順をつなぐ / EC2・ECS・Lambdaへデプロイ | [CodePipeline・CodeDeployとの役割分担](/books/aws-saa-c03/ci-cd-and-codebuild#codepipelinecodedeployとの役割分担) |
 
 <SpeechBubble character="/images/fork_suit_man_color.png" name="先生" side="right">
 CloudWatchは状態を監視し、CloudTrailは操作を記録し、AWS Configは設定の変化と準拠状態を追跡します。EventBridgeは、それらのイベントを受けて別の処理を起動するときに使います。

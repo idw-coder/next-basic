@@ -1,0 +1,462 @@
+---
+title: 'CodeBuildとは？buildspec.ymlの読み方とGitHub Actions連携・エラーの切り分け'
+description: 'AWS CodeBuildの仕組み、buildspec.ymlのフェーズ、CodePipeline・CodeDeployとの役割分担、GitHub ActionsからCodeBuildを呼ぶ構成とOIDCの信頼ポリシー、失敗したときにどこを見るかを実務目線で整理します。SAA-C03の試験範囲外の補足章です。'
+order: 20.5
+chapterLabel: '実務補足'
+---
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="CIのエラー画面を見て驚いている人のイラスト" maxWidth="300px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+GitHub Actionsを動かしたら、CodeBuildと書かれたステップでエラーになりました。そもそもCodeBuildが何をしているのか分からないので、どこを直せばいいのかも分かりません。
+</SpeechBubble>
+
+この章では、AWS CodeBuildが何をするサービスなのか、GitHub Actionsとどうつながっているのか、エラーになったときにどこを見ればよいのかを順に説明します。
+
+<Callout type="info" title="この章の位置づけ">
+
+CodeBuild・CodePipeline・CodeDeployは、**SAA-C03の試験範囲外**です。AWS公式の[試験範囲のサービス一覧](https://docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03/saa-03-in-scope-services.html)では、「Developer Tools」の分類に載っているのはAWS X-Rayだけです。
+
+それでもこの本で扱うのは、本のテーマが「合格と**実務**」だからです。GitHub ActionsからAWSへデプロイする構成ではCodeBuildが登場することがあり、IAMロールやCloudWatch Logsなど、この本で学んだ知識がそのまま切り分けに使えます。試験対策だけが目的なら、この章は読み飛ばしてかまいません。
+
+</Callout>
+
+CI/CDという考え方そのもの（なぜ自動化するのか）は、[CI/CDとは何か](/books/github-actions/01-what-is-cicd)で扱っています。この章では、**AWS側で何が起きているか**に絞ります。
+
+---
+
+## CodeBuildとは
+
+AWS公式ドキュメントでは、CodeBuildを次のように説明しています。
+
+> AWS CodeBuild is a fully managed build service in the cloud. CodeBuild compiles your source code, runs unit tests, and produces artifacts that are ready to deploy.
+>
+> （CodeBuildはクラウド上のフルマネージドなビルドサービスです。ソースコードをコンパイルし、ユニットテストを実行し、デプロイできる成果物を作ります）
+>
+> — [What is AWS CodeBuild?](https://docs.aws.amazon.com/codebuild/latest/userguide/welcome.html)
+
+ここでいう「ビルド」は、コンパイルだけを指すわけではありません。`npm ci` で依存パッケージを入れる、`npm test` でテストを走らせる、`npm run build` で本番用のファイルを作る、Dockerイメージを作ってECRへpushする、といった**ソースコードからデプロイできる形を作るまでの作業全般**を指します。
+
+<Marker>CodeBuildは、ビルド用の実行環境をAWSが用意し、指定したコマンドを実行して、終わったら環境を片付けるサービスです。</Marker>
+
+### 1回のビルドで起きること
+
+CodeBuildでビルドを1回実行すると、次の順に処理が進みます。この名前はCodeBuildのコンソールやログにそのまま表示されるので、エラーの場所を特定するときに使います。
+
+| フェーズ | 何をしているか |
+|---|---|
+| `SUBMITTED` | ビルドの依頼を受け付けた |
+| `QUEUED` | ほかのビルドの順番待ち |
+| `PROVISIONING` | ビルド用の実行環境（コンテナ）を準備している |
+| `DOWNLOAD_SOURCE` | ソースコードを取得している |
+| `INSTALL` | 必要なツールや言語ランタイムを入れる |
+| `PRE_BUILD` | ビルドの前準備（依存パッケージの取得、ECRへのログインなど） |
+| `BUILD` | ビルド本体（テスト、コンパイルなど） |
+| `POST_BUILD` | ビルド後の処理（Dockerイメージのpush、通知など） |
+| `UPLOAD_ARTIFACTS` | 成果物を出力先（S3など）へアップロードする |
+| `FINALIZING` | 後片付け |
+| `COMPLETED` | 完了 |
+
+フェーズ名と説明は[BuildPhase（APIリファレンス）](https://docs.aws.amazon.com/codebuild/latest/APIReference/API_BuildPhase.html)と[buildspecリファレンス](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html)に基づいています。`INSTALL` から `POST_BUILD` までの4つが、自分で書いたコマンドが動くフェーズです。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["PROVISIONING"] --> B["DOWNLOAD_SOURCE"]
+    B --> C["INSTALL"]
+    C --> D["PRE_BUILD"]
+    D --> E["BUILD"]
+    E --> F["POST_BUILD"]
+    F --> G["UPLOAD_ARTIFACTS"]
+`}
+/>
+
+### 自分でビルドサーバーを持つ場合との違い
+
+CodeBuildを使わずにビルドする場合、ビルド専用のEC2を立てて、そこに言語ランタイムやツールを入れ、OSの更新も自分で続けることになります。公式ドキュメントは、CodeBuildを使うとこの作業が不要になると説明しています。
+
+- ビルドサーバーの構築・パッチ適用・更新が不要（フルマネージド）
+- 同時にたくさんのビルドが来ても自動でスケールする
+- 料金はビルドにかかった分数に対して発生する
+
+料金の細かい単価は変わる可能性があるので、使う前に[CodeBuildの料金ページ](https://aws.amazon.com/codebuild/pricing/)で確認してください。
+
+---
+
+## buildspec.ymlの読み方
+
+CodeBuildに「何を実行するか」を伝えるのが `buildspec.yml` です。ソースコードに含める場合、**ファイル名は `buildspec.yml`、置き場所はリポジトリのルート**が既定です。名前や場所は、ビルドプロジェクトの設定で変更できます（[buildspecリファレンス](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html)）。
+
+Node.jsのアプリをテストしてビルドする場合の例です。
+
+```yaml
+version: 0.2
+
+env:
+  variables:
+    NODE_ENV: 'production'
+  parameter-store:
+    API_BASE_URL: /myapp/prod/api-base-url
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+  pre_build:
+    commands:
+      - npm ci
+  build:
+    commands:
+      - npm test
+      - npm run build
+  post_build:
+    commands:
+      - echo "Build completed on $(date)"
+
+artifacts:
+  base-directory: dist
+  files:
+    - '**/*'
+```
+
+上から順に読むと、次のことをしています。
+
+1. `version: 0.2` — buildspecの書式のバージョン。公式は `0.2` を推奨している
+2. `env` — 環境変数を定義する。`variables` は平文、`parameter-store` はSystems Manager Parameter Storeから値を取ってくる
+3. `phases.install` — `runtime-versions` で使うNode.jsのバージョンを指定する
+4. `phases.pre_build` — 依存パッケージを入れる
+5. `phases.build` — テストとビルドを実行する
+6. `phases.post_build` — ビルド後の処理を書く
+7. `artifacts` — 成果物として出力するファイルを指定する。この例では `dist` ディレクトリの中身すべて
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+GitHub Actionsのワークフローファイルとよく似ていますね。`steps` に `run:` を並べるのと同じに見えます。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+やっていることはほぼ同じです。違いは、どのマシンでコマンドが動くかです。ワークフローのコマンドはGitHubのランナーで動き、buildspecのコマンドはCodeBuildがAWSアカウント内に用意したコンテナで動きます。
+</SpeechBubble>
+
+### 押さえておきたい動きのルール
+
+buildspecリファレンスとトラブルシューティングのページから、エラーの原因になりやすいルールを抜き出しておきます。
+
+| ルール | 意味 |
+|---|---|
+| コマンドは上から1つずつ順番に実行される | 途中のコマンドが失敗すると、そのフェーズの残りのコマンドは実行されない |
+| `version: 0.2` では、全コマンドが同じシェルで動く | `cd` や `export` の結果が後のコマンドに引き継がれる（`0.1` では引き継がれない） |
+| `finally` に書いたコマンドは、失敗しても実行される | 後片付けや通知に使う |
+| `UPLOAD_ARTIFACTS` は `BUILD` が失敗しても試みられる | 失敗したビルドでも成果物の出力処理は動く |
+| 既定ではコマンドがrootユーザーで動く | Dockerfileで `USER` を指定していても変わらない |
+
+<Callout type="warning">
+
+### シークレットを `variables` に書かない
+
+`env.variables` に書いた値は、CodeBuildのコンソールやAWS CLIで平文のまま見えます。公式も、機密情報には `parameter-store` か `secrets-manager` を使うよう強く推奨しています。この2つから取得した値はビルドログ上でマスクされます。Secrets Managerそのものは[アプリケーションセキュリティ](/books/aws-saa-c03/application-security#secrets-manager)で扱っています。
+
+</Callout>
+
+---
+
+## CodePipeline・CodeDeployとの役割分担
+
+AWSにはCodeBuildのほかにも、名前が「Code」で始まるサービスがあります。役割は次のように分かれています。
+
+| サービス | 役割 | 公式ドキュメントでの説明（要約） |
+|---|---|---|
+| CodeBuild | ビルドとテストを実行する | ソースをコンパイルし、テストを実行し、デプロイ可能な成果物を作る |
+| CodeDeploy | 成果物をサーバーなどへ配置する | EC2、オンプレミスのサーバー、Lambda、ECSへのデプロイを自動化する |
+| CodePipeline | 上の作業を順番につなぐ | ソフトウェアをリリースするまでの手順を定義し、自動で流す |
+
+出典: [CodeBuild](https://docs.aws.amazon.com/codebuild/latest/userguide/welcome.html)、[CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html)、[CodePipeline](https://docs.aws.amazon.com/codepipeline/latest/userguide/welcome.html)
+
+3つを組み合わせると、たとえば次のような流れを作れます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["GitHubにpush"] --> B["CodePipeline"]
+    B -->|Build| C["CodeBuild"]
+    C -->|成果物| D["S3"]
+    B -->|Deploy| E["CodeDeploy"]
+    D --> E
+    E --> F["EC2 / ECS / Lambda"]
+`}
+/>
+
+1. GitHubへのpushをCodePipelineが検知する
+2. CodePipelineがCodeBuildを呼び、テストとビルドを実行させる
+3. CodeBuildが成果物をS3へ出力する
+4. CodePipelineがCodeDeployを呼び、成果物をEC2やECSへ配置させる
+
+CodeDeployには、CodeBuildの `buildspec.yml` にあたる設定ファイルとして `appspec.yml`（AppSpecファイル）があります。デプロイ時にどのファイルをどこへ置き、どのスクリプトを実行するかを書きます。
+
+<Figure src="/images/idea_drawing_woman.png" alt="サービスの役割分担を図に描いて整理している人のイラスト" maxWidth="300px" />
+
+3つは必ずセットで使うものではありません。CodeBuildだけを単体で使うこともでき、その代表的な使い方が、次に説明するGitHub Actionsとの組み合わせです。
+
+---
+
+## GitHub ActionsとCodeBuildの関係
+
+GitHub ActionsもCodeBuildも、コマンドを実行してテストやビルドをするという点では同じことができます。そのため、組み合わせ方はいくつかあります。
+
+| パターン | CodeBuildの使い方 | ログが出る場所 |
+|---|---|---|
+| A. GitHub Actionsだけで完結 | 使わない | GitHub Actions |
+| B. GitHub ActionsからCodeBuildを呼ぶ | ビルドの一部をCodeBuildに任せる | GitHub Actions（CodeBuildのログが転送される）とCloudWatch Logs |
+| C. CodeBuildをGitHub Actionsのランナーにする | ジョブ全体をCodeBuild上で動かす | GitHub Actions |
+
+ワークフローに `aws-actions/aws-codebuild-run-build` が出てくるならパターンB、`runs-on: codebuild-...` と書いてあるならパターンCです。自分のリポジトリがどちらかを先に確認すると、エラーの読み方が決まります。
+
+### パターンB: GitHub ActionsからCodeBuildを呼ぶ
+
+GitHub Actionsのジョブの途中で、AWS公式のアクション [aws-actions/aws-codebuild-run-build](https://github.com/aws-actions/aws-codebuild-run-build) を使ってCodeBuildのビルドを開始します。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["GitHub Actions"] -->|OIDC| B["IAMロール"]
+    B -->|StartBuild| C["CodeBuild"]
+    C -->|ログ| D["CloudWatch Logs"]
+    D -->|ログを転送| A
+`}
+/>
+
+このアクションは、ビルドを開始したあと完了まで待ち、CodeBuildのログをGitHub Actionsのログに流します。**CodeBuildのビルドが成功しなかった場合は、このステップが失敗になります**。GitHub Actions上では「CodeBuildのステップで落ちた」としか見えませんが、実際にはCodeBuildの中のどこかのコマンドが失敗している、ということです。
+
+どんなときにこの構成を選ぶかについては、公式に決まった基準はありません。筆者の考えとしては、たとえば次のような理由が挙げられます。
+
+- CodeBuildはVPC内で実行する設定ができる（[VPC support](https://docs.aws.amazon.com/codebuild/latest/userguide/vpc-support.html)）ので、プライベートサブネットのRDSにつなぐテストを動かしたい
+- ビルドの実行環境やログをAWSアカウント側で管理したい
+- すでにCodeBuildプロジェクトがあり、トリガーだけGitHub Actionsに寄せたい
+
+### パターンC: CodeBuildをGitHub Actionsのランナーにする
+
+GitHub Actionsのジョブは、通常GitHubが用意したランナー（`ubuntu-latest` など）で動きます。パターンCでは、ジョブを動かすマシン自体をCodeBuildにします。ランナーの基本は[ランナーとジョブの実行モデル](/books/github-actions/05-runners-and-jobs)で扱っています。
+
+```yaml
+jobs:
+  test:
+    runs-on: codebuild-myProject-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm test
+```
+
+`runs-on` の `myProject` の部分は、CodeBuild側のプロジェクト名と一致させます。CodeBuildはGitHubのWebhook（`WORKFLOW_JOB_QUEUED` イベント）を受け取り、ジョブごとにビルドを起動して、その中で使い捨てのランナーを動かします（[CodeBuild-hosted GitHub Actions runner](https://docs.aws.amazon.com/codebuild/latest/userguide/action-runner.html)）。
+
+<Callout type="note">
+
+### パターンCではbuildspec.ymlが使われない
+
+パターンCでは、CodeBuildはbuildspecの内容を無視し、ランナーを起動するためのコマンドに置き換えます。buildspecのコマンドも動かしたい場合は、ラベルに `buildspec-override:true` を追加する必要があります。「buildspec.ymlを直したのに何も変わらない」ときは、この点を確認してください。
+
+</Callout>
+
+---
+
+## OIDCでGitHub ActionsからAWSに入る
+
+パターンBでもパターンAでも、GitHub ActionsからAWSを操作するには認証が必要です。アクセスキーをSecretsに保存しない方法として、[GitHubの公式ドキュメント](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws)は**OIDC**でIAMロールを引き受ける方法を案内しています。OIDCの考え方とGitHub側の書き方は[GitHub Actionsのセキュリティ](/books/github-actions/10-security)で扱っているので、ここでは**AWS側の設定**を中心に見ます。
+
+### 認証の流れ
+
+1. GitHub Actionsが、「このリポジトリのこのブランチのワークフローです」という情報を含むIDトークンを発行する
+2. ワークフローが、そのトークンをAWS STSに渡して「このIAMロールを使わせてほしい」と依頼する
+3. AWSは、IAMロールの**信頼ポリシー**に書かれた条件とトークンの中身を照合する
+4. 条件に合えば、期限付きの一時的な認証情報が発行される
+
+IAMロールの「信頼する相手」と「許可する操作」の区別は、[IAMロールの仕組み](/books/aws-saa-c03/iam-and-least-privilege#iamロールの仕組み--信頼する相手と許可する操作)で説明した内容そのものです。
+
+### ワークフロー側
+
+```yaml
+permissions:
+  id-token: write   # IDトークンの発行に必要
+  contents: read    # actions/checkoutに必要
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-codebuild
+          aws-region: ap-northeast-1
+      - uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: my-app-build
+```
+
+`configure-aws-credentials` でIAMロールを引き受け、その認証情報で `aws-codebuild-run-build` がCodeBuildを呼びます。
+
+### AWS側: IAMロールの信頼ポリシー
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:my-org/my-app:ref:refs/heads/main"
+        }
+      }
+    }
+  ]
+}
+```
+
+| 項目 | 意味 |
+|---|---|
+| `Principal.Federated` | IAMに登録したGitHubのOIDCプロバイダー（`https://token.actions.githubusercontent.com`） |
+| `Action` | IDトークンを使ってロールを引き受ける操作 |
+| `aud` | トークンの宛先。公式アクションを使う場合は `sts.amazonaws.com` |
+| `sub` | どのリポジトリの、どのブランチ（またはenvironment）からの実行かを表す文字列 |
+
+値の形式は[GitHub公式のAWS向けOIDC設定ガイド](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws)に基づいています。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`sub` に `main` と書いてあると、別のブランチから実行したときはどうなるんですか？
+</SpeechBubble>
+
+条件に合わないので、ロールを引き受けられずに失敗します。これは意図どおりの動きで、「mainブランチのワークフローだけがAWSを操作できる」という制限になっています。逆にいうと、**作業ブランチやプルリクエストから動かしたら認証エラーになった**ときは、まず `sub` の条件を疑います。
+
+### IAMロールは2つある
+
+GitHub ActionsとCodeBuildを組み合わせると、IAMロールが2つ登場します。エラーの原因を探すときに取り違えやすいので、分けて覚えてください。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["GitHub Actions"] -->|ロール1で| B["CodeBuildを開始"]
+    B --> C["ビルド実行"]
+    C -->|ロール2で| D["S3 / ECR / SSMなど"]
+`}
+/>
+
+| ロール | 誰が使うか | 必要な権限の例 |
+|---|---|---|
+| ロール1: GitHub Actions用ロール | GitHub Actionsのワークフロー | `codebuild:StartBuild`、`codebuild:BatchGetBuilds`、`logs:GetLogEvents` |
+| ロール2: CodeBuildのサービスロール | ビルド中のコマンド | 成果物を置くS3への書き込み、ECRへのpush、Parameter Storeの読み取りなど |
+
+ロール1に必要な3つの権限は、[aws-codebuild-run-buildのREADME](https://github.com/aws-actions/aws-codebuild-run-build)に記載されています。
+
+<Marker>「ビルドを開始できない」ならGitHub Actions用ロール、「ビルドは始まったが中のコマンドがAccessDenied」ならCodeBuildのサービスロールを見ます。</Marker>
+
+---
+
+## エラーが出たらどこを見るか
+
+<Figure src="/images/readingbook_woman_color.png" alt="ログを順に確認して原因を探している人のイラスト" maxWidth="280px" />
+
+エラーの切り分けは、次の順で進めると迷いにくくなります。
+
+### ステップ1: GitHub Actionsのどのステップで落ちたかを見る
+
+| 落ちたステップ | 起きていること | 見る場所 |
+|---|---|---|
+| `configure-aws-credentials` | AWSへの認証に失敗している | ワークフローの `permissions`、IAMロールの信頼ポリシー |
+| `aws-codebuild-run-build`（ビルドが始まる前） | ビルドを開始する権限がない、またはプロジェクト名が違う | GitHub Actions用ロールの権限、`project-name` |
+| `aws-codebuild-run-build`（ビルドが始まった後） | CodeBuildの中のコマンドが失敗している | CodeBuildのビルド詳細とログ（ステップ2へ） |
+| ジョブが始まらず待ち続ける（パターンC） | CodeBuildがジョブを受け取れていない | `runs-on` のプロジェクト名、GitHubのWebhook設定 |
+
+パターンCでプロジェクト名が一致しない場合、CodeBuildはWebhookを処理せず、ワークフローが止まったままになることがあると公式に書かれています。
+
+### ステップ2: CodeBuildのどのフェーズで落ちたかを見る
+
+ビルドが始まっていれば、CodeBuildコンソールの「ビルド履歴」から該当ビルドを開くと、フェーズごとの成否が表示されます。ログはCloudWatch Logsにも保存されます（CloudWatch Logsへの出力は既定で有効です。[LogsConfig](https://docs.aws.amazon.com/codebuild/latest/APIReference/API_LogsConfig.html)）。CloudWatch Logsそのものは[監視と運用](/books/aws-saa-c03/monitoring-and-cloudwatch)で扱っています。
+
+失敗したフェーズから、原因をある程度絞り込めます。次の表は、[CodeBuildのトラブルシューティング](https://docs.aws.amazon.com/codebuild/latest/userguide/troubleshooting.html)に載っている事例を、フェーズ別に整理したものです。
+
+| 失敗したフェーズ | エラーの例 | 主な原因 |
+|---|---|---|
+| ビルド開始前 | `Build failed to start` | 同時に実行できるビルド数の上限に達している |
+| `PROVISIONING` | `BUILD_CONTAINER_UNABLE_TO_PULL_IMAGE` | カスタムイメージを取得できない（ECRの権限、リージョン違い、Docker Hubのpull制限など） |
+| `DOWNLOAD_SOURCE` | `YAML_FILE_ERROR: This build image requires selecting at least one runtime version` | `runtime-versions` を指定していない |
+| `DOWNLOAD_SOURCE` | `Parameter does not exist` | サービスロールに `ssm:GetParameters` の権限がない |
+| `INSTALL`〜`POST_BUILD` | コマンドのエラー出力 | 書いたコマンド自体の失敗。ローカルで同じコマンドを実行して再現する |
+| `INSTALL`〜`POST_BUILD` | `Cannot connect to the Docker daemon` | Dockerイメージを作るのに特権モードが有効になっていない |
+| `UPLOAD_ARTIFACTS` | `Failed to upload artifacts: Invalid arn` | 成果物の出力先S3バケットが、ビルドプロジェクトと別リージョンにある |
+
+`INSTALL` から `POST_BUILD` で落ちている場合は、AWSの設定より先に、`buildspec.yml` に書いたコマンド（テストやビルド）の失敗を疑います。ログの最後のほうにある、失敗したコマンドの出力を読みます。
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+最初の質問の「CodeBuildのあたりでエラー」は、まずこの2段階で場所を絞り込みます。GitHub Actionsのステップ名でAWSへ入れたかどうかを判断し、入れていればCodeBuildのフェーズ名を見る。この順番で読めば大丈夫です。
+</SpeechBubble>
+
+---
+
+## 試験での扱い
+
+冒頭で書いたとおり、CodeBuild・CodePipeline・CodeDeployはSAA-C03の試験範囲外です。深く覚える必要はありませんが、選択肢に名前が出てきたときに「何をするサービスか」を見分けられると、消去法に使えます。
+
+| 選択肢に出てきたサービス | 何をするサービスか |
+|---|---|
+| CodeBuild | ビルドとテストの実行 |
+| CodeDeploy | EC2・ECS・Lambdaなどへのデプロイ |
+| CodePipeline | ビルドやデプロイの手順をつなぐ |
+| CloudFormation | AWSリソースの作成・更新（[Infrastructure as Codeと運用自動化](/books/aws-saa-c03/infrastructure-as-code-and-operations)） |
+
+たとえば問題文が「AWSリソースを同じ構成で複数環境に作りたい」なら、求められているのはリソースの定義なので、CodeBuildやCodeDeployではなくCloudFormationの領域です。
+
+---
+
+## よくあるハマりどころ
+
+### 2つのIAMロールを取り違える
+
+GitHub Actions用ロールに `s3:PutObject` を足しても、ビルド中のコマンドがS3へ書き込むときに使われるのはCodeBuildのサービスロールです。エラーメッセージに出ているロール名を確認してから権限を足します。
+
+### buildspec.ymlの置き場所や名前が違う
+
+既定ではリポジトリのルートにある `buildspec.yml` が読まれます。`.yaml` にしていたり、サブディレクトリに置いていたりする場合は、ビルドプロジェクトの設定でパスを指定する必要があります。
+
+### ランタイムのバージョンを指定していない
+
+`runtime-versions` を省略すると、CodeBuildはイメージの既定バージョンを使います。公式ドキュメントによると、この既定バージョンは古いバージョンのサポート終了に合わせて変わることがあるため、バージョンを明示するよう推奨されています。「何も変えていないのに急にビルドが壊れた」ときは、ここを確認します。
+
+### 作業ブランチからだけ認証に失敗する
+
+信頼ポリシーの `sub` を `ref:refs/heads/main` に限定していると、ほかのブランチやプルリクエストからの実行は認証に失敗します。制限を外すのではなく、どのブランチやenvironmentから実行を許すかを決めて、`sub` の条件を書き直します。
+
+<Figure src="/images/walking_woman_color.png" alt="一歩ずつ原因を確かめながら進む人のイラスト" maxWidth="280px" />
+
+---
+
+## 参考リンク
+
+- [What is AWS CodeBuild?](https://docs.aws.amazon.com/codebuild/latest/userguide/welcome.html)
+- [Build specification reference for CodeBuild](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html)
+- [Troubleshooting AWS CodeBuild](https://docs.aws.amazon.com/codebuild/latest/userguide/troubleshooting.html)
+- [Configuring OpenID Connect in Amazon Web Services（GitHub Docs）](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws)
+
+---
+
+## まとめ
+
+- <Marker>CodeBuildは、AWSが用意したコンテナで `buildspec.yml` のコマンドを実行し、テストやビルドをするサービス</Marker>
+- ビルドは `PROVISIONING` → `DOWNLOAD_SOURCE` → `INSTALL` → `PRE_BUILD` → `BUILD` → `POST_BUILD` → `UPLOAD_ARTIFACTS` の順に進み、失敗したフェーズ名が原因を絞る手がかりになる
+- CodeBuildはビルド、CodeDeployはデプロイ、CodePipelineはそれらをつなぐ役割
+- GitHub Actionsとの組み合わせには、CodeBuildを呼ぶ構成（`aws-codebuild-run-build`）と、CodeBuildをランナーにする構成（`runs-on: codebuild-...`）がある
+- GitHub ActionsからAWSへはOIDCで入り、IAMロールの信頼ポリシーの `sub` で実行元のリポジトリやブランチを制限する
+- IAMロールは「ビルドを開始するロール」と「ビルド中に使うサービスロール」の2つがある
+- SAA-C03では試験範囲外。選択肢に出たときに役割を見分けられれば十分
+
+サービス名から解説箇所を探して復習するときは、[AWSサービス別リンク集](/books/aws-saa-c03/aws-service-link-cheatsheet)を使えます。
+
+<QuizLink
+  href="/quiz/aws-basic"
+  title="AWSクイズに挑戦する"
+  description="この章で学んだAWSの知識を、4択クイズでアウトプットして定着させよう"
+/>
