@@ -359,7 +359,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'dd',
     'ciw',
     ':%s',
-    ':sp',
+    'vim --version',
     'VSCodeVim',
     'vimrc',
     'lazyvim',
