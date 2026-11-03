@@ -1,0 +1,112 @@
+---
+title: 'Vimの検索・置換 — /・n・:%s・gcの使い方'
+description: 'Vimで文字列を前後検索し、現在行またはファイル全体を:%sで置換する方法を、各記号の意味とともに説明します。'
+order: 7
+---
+
+Vimでは`/`で検索し、`:s`で置換します。置換前に検索で対象を確認すると、意図しない一括変更を防げます。
+
+## /で前方検索する
+
+```text
+/error
+Enter
+```
+
+`/`はカーソル位置からファイル末尾方向へ`error`を検索します。
+
+| コマンド | 動作 |
+| --- | --- |
+| `/pattern` | 前方検索 |
+| `?pattern` | 後方検索 |
+| `n` | 同じ方向の次の一致 |
+| `N` | 逆方向の一致 |
+| `*` | カーソル上の単語を前方検索 |
+
+`n`はnext、`N`は逆方向のnextとして覚えます。検索がファイル末尾を越えて先頭へ戻るのは、既定で`wrapscan`が有効なためです。
+
+<Callout type="note" title="検索ハイライトを消す">
+一致箇所の色が残る場合は`:nohlsearch`を実行します。`noh`まで省略できます。検索履歴そのものは消えません。
+</Callout>
+
+## :sで現在行を置換する
+
+**構文**：`:[範囲]s/{検索}/{置換}/{フラグ}`
+
+| 部品 | 元の語 | 役割 |
+| --- | --- | --- |
+| `s` | substitute | 置換する |
+| `%` | バッファ全体の範囲 | すべての行を対象にする |
+| `g` | global | 各行の一致をすべて置換する |
+| `c` | confirm | 一致ごとに確認する |
+
+```text
+:s/old/new/
+:s/old/new/g
+:%s/old/new/g
+:%s/old/new/gc
+```
+
+<Marker>`:%s`の`%`は「ファイル全体」、末尾の`g`は「各行にある一致をすべて」という別の役割です。</Marker>
+
+## :%sを操作前後で確認する
+
+```text
+置換前:
+const oldName = "A";
+console.log(oldName, oldName);
+
+:%s/oldName/newName/g
+
+置換後:
+const newName = "A";
+console.log(newName, newName);
+```
+
+末尾の`g`を外すと、2行目は最初の`oldName`だけが置換されます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+いきなりファイル全体を置換するのが怖いです。
+</SpeechBubble>
+
+末尾へ`c`を足した`:%s/old/new/gc`を使います。各一致で`y`はyes、`n`はno、`a`はall、`q`はquitです。実行後に誤りへ気づいた場合は`u`で置換全体を取り消せます。
+
+## /を含むパスを置換する
+
+区切り文字は`/`以外も使えます。URLやパスでは`#`に変えると読みやすくなります。
+
+```vim
+:%s#/api/v1#/api/v2#g
+```
+
+検索部分はVimのパターンとして解釈されます。`.`や`*`などを文字そのものとして探したい場合はエスケープが必要です。大量置換では`gc`で結果を確認します。
+
+<Figure
+  src="/images/deskwork_check_woman_color.png"
+  alt="置換結果を一件ずつ確認する人のイラスト"
+  caption="検索で対象を確認し、gcで置換を承認すると誤変更を減らせる"
+  maxWidth="350px"
+/>
+
+## よくあるハマりどころ
+
+- `:%s/old/new/`だけでは各行の最初の1件しか置換しない
+- 検索文字列の`.`や`*`は特別な意味を持つ
+- 大文字小文字の扱いは`ignorecase`などの設定で変わる
+- 置換後の確認をせず保存すると誤変更を残す
+
+## ちゃんと使うためのポイント
+
+- `/`は前方、`?`は後方検索
+- `n`は次、`N`は逆方向の一致
+- `:s`は現在行、`:%s`は全行
+- 末尾の`g`は各行の全件、`c`は確認
+- URLでは`#`など別の区切り文字を使える
+
+[バッファと分割](/books/vim/buffers-and-splits)では、複数ファイルを開いて`:bn`で切り替え、`:sp`で並べます。
+
+## 参考リンク
+
+- [Vim Reference Manual — Patterns and search commands](https://vimhelp.org/pattern.txt.html)
+- [Vim User Manual — Clever tricks](https://vimhelp.org/usr_12.txt.html)
+- [Vim Reference Manual — Delete and change text](https://vimhelp.org/change.txt.html)

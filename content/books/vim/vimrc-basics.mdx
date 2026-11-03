@@ -1,0 +1,106 @@
+---
+title: '.vimrcの基本 — 行番号と検索を最小限の設定で使いやすくする'
+description: 'Vimの起動時に読み込まれる.vimrcの役割、set number・ignorecase・smartcase・incsearchの意味と確認方法を説明します。'
+order: 11
+---
+
+`.vimrc`は、Vimが起動時に読み込む利用者用の設定ファイルです。毎回`:set number`と入力する代わりに、使いたいオプションを保存できます。
+
+## .vimrcの場所を確認する
+
+Unix系OSでは`~/.vimrc`が代表的な場所です。環境ごとの候補は`:version`に表示されます。
+
+```vim
+:version
+:edit $MYVIMRC
+```
+
+`$MYVIMRC`は、Vimが使用した設定ファイルを表す変数です。まだ設定ファイルがない場合は値が空のことがあります。
+
+<Callout type="note" title="vim --cleanは.vimrcを読み込まない">
+この本の検証で使う`vim --clean`は個人設定の影響を避ける起動方法です。`.vimrc`の動作を確認するときは通常の`vim`で起動します。
+</Callout>
+
+## setでオプションを切り替える
+
+`set`はVimのオプションを変更するコマンドです。
+
+| 入力 | 動作 |
+| --- | --- |
+| `:set number` | 行番号を表示 |
+| `:set nonumber` | 行番号を非表示 |
+| `:set number?` | 現在値を表示 |
+| `:set number!` | 現在値を反転 |
+
+`no`を前へ付けると無効化、`?`を付けると確認です。`.vimrc`では先頭の`:`を書きません。
+
+## 最小限の設定例
+
+```vim
+" Vim向けの既定値を読み込む
+source $VIMRUNTIME/defaults.vim
+
+" 行番号を表示する
+set number
+
+" 小文字の検索では大文字小文字を区別しない
+set ignorecase
+
+" 検索語に大文字があれば区別する
+set smartcase
+
+" 入力中から検索結果へ移動する
+set incsearch
+
+" 一致箇所を強調する
+set hlsearch
+```
+
+初めて`.vimrc`を作る場合、Vim公式ユーザーマニュアルは`defaults.vim`を最初に読み込む方法を案内しています。`"`から行末まではコメントです。`ignorecase`だけでは常に大文字小文字を無視しますが、`smartcase`を組み合わせると`/User`のように大文字を含む検索だけ区別します。
+
+<Marker>設定を足す前に`:set {名前}?`で現在値を確認し、必要な理由を1行ずつ説明できる状態にします。</Marker>
+
+## 変更を読み直す
+
+保存後にVimを再起動するか、現在のVimで次を実行します。
+
+```vim
+:source $MYVIMRC
+```
+
+`source`は、指定ファイルをVimのコマンドとして読み込む操作です。エラーが出た場合は行番号とメッセージを確認し、直前に追加した行から見直します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+便利そうな設定を検索して、まとめて貼ってもよいですか？
+</SpeechBubble>
+
+大量に貼ると、どの設定がキー操作を変えたか分からなくなります。1つ追加し、`:source $MYVIMRC`で確認してから次へ進みます。
+
+<Figure
+  src="/images/planning_suit_man_color.png"
+  alt="必要な設定を一つずつ選ぶ人のイラスト"
+  caption="設定を少量ずつ追加すると、標準動作との差を説明できる"
+  maxWidth="350px"
+/>
+
+## よくあるハマりどころ
+
+- `.vimrc`内でも`:set`と書いてしまう。先頭の`:`は不要
+- `smartcase`だけを有効にし、土台になる`ignorecase`を忘れる
+- 設定ファイルを保存しただけで、起動中のVimへ反映されたと思う
+- ネット上のリマップを大量に入れ、標準コマンドとの違いを見失う
+
+## ちゃんと使うためのポイント
+
+- `.vimrc`はVim起動時の利用者設定
+- `:version`で読み込み候補を確認できる
+- `set option`で有効、`set nooption`で無効
+- `set option?`で現在値を確認する
+- `:source $MYVIMRC`で保存した設定を読み直す
+
+[Neovimを導入する](/books/vim/install-neovim)では、個別設定を自作せず、公式の配布方法でNeovim本体を準備します。
+
+## 参考リンク
+
+- [Vim User Manual — Set your settings](https://vimhelp.org/usr_05.txt.html)
+- [Vim Reference Manual — Starting Vim](https://vimhelp.org/starting.txt.html)

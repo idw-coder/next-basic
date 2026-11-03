@@ -1,0 +1,109 @@
+---
+title: 'Vimで複数ファイルを開く — バッファ・:bn・:sp・画面分割'
+description: 'Vimのバッファとウィンドウの違いを整理し、:e、:ls、:bn、:sp、:vs、Ctrl+wで複数ファイルを操作します。'
+order: 8
+---
+
+Vimで複数ファイルを扱うには、**バッファ**と**ウィンドウ**を区別します。
+
+- バッファは、ファイル内容を読み込んだメモリ上の編集領域
+- ウィンドウは、バッファを見るための表示枠
+- 1つのバッファを複数ウィンドウへ表示することもできる
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    B1["buffer: app.js"] --> W1["左ウィンドウ"]
+    B2["buffer: test.js"] --> W2["右ウィンドウ"]
+    B1 --> W3["別ウィンドウにも表示可能"]
+`}
+/>
+
+VS Codeのタブはファイルと表示枠が一体に見えますが、Vimでは別の概念です。
+
+## バッファを開いて切り替える
+
+| コマンド | 元の語 | 動作 |
+| --- | --- | --- |
+| `:e file` | edit | ファイルをバッファで開く |
+| `:ls` | list | バッファ一覧を表示 |
+| `:bn` | buffer next | 次のバッファ |
+| `:bp` | buffer previous | 前のバッファ |
+| `:b 3` | buffer | 3番のバッファへ移動 |
+| `:bd` | buffer delete | 現在のバッファを一覧から外す |
+
+```vim
+:e src/app.js
+:e src/test.js
+:ls
+:bp
+:bn
+```
+
+`:bd`は通常、ファイルそのものをディスクから削除しません。Vimのバッファ一覧から外すコマンドです。
+
+<Marker>`:q`はウィンドウを閉じ、`:bd`はバッファを一覧から外します。</Marker>
+
+## :spと:vsで画面を分割する
+
+| コマンド | 元の語 | 動作 |
+| --- | --- | --- |
+| `:sp file` | split | 上下分割でファイルを開く |
+| `:vs file` | vertical split | 左右分割で開く |
+| `:close` | close | 現在のウィンドウを閉じる |
+| `:only` | only | 現在以外のウィンドウを閉じる |
+
+引数なしの`:sp`は、同じバッファを別ウィンドウにも表示します。離れた行を見比べるときに使えます。
+
+## Ctrl+wでウィンドウ間を移動する
+
+`Ctrl+w`を押して離し、方向キーを続けます。`w`はwindowです。
+
+| コマンド | 移動先 |
+| --- | --- |
+| `Ctrl+w h` | 左 |
+| `Ctrl+w j` | 下 |
+| `Ctrl+w k` | 上 |
+| `Ctrl+w l` | 右 |
+| `Ctrl+w w` | 次のウィンドウ |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`:bn`と`Ctrl+w l`は、どちらもファイルを切り替える操作ですか？
+</SpeechBubble>
+
+`:bn`は現在のウィンドウに別バッファを表示します。`Ctrl+w l`は右のウィンドウへ視点を移します。切り替える対象が違います。
+
+<Figure
+  src="/images/meeting_color.png"
+  alt="複数の資料を並べて確認するイラスト"
+  caption="バッファは資料、ウィンドウは資料を見る枠と考えると区別しやすい"
+  maxWidth="390px"
+/>
+
+## 未保存の変更がある場合
+
+変更したバッファから`:bn`で離れようとすると、設定によっては`E37`で止まります。保存するなら`:w`、捨てるなら`:e!`などを選びます。
+
+`:set hidden`が有効なら、未保存のバッファを保持したまま別バッファへ移動できます。ただし変更が保存されたわけではありません。終了前に`:wa`で全バッファを保存するか、`:qa`で警告を確認します。
+
+## よくあるハマりどころ
+
+- `:q`でファイルを閉じたつもりでも、別ウィンドウにバッファが残ることがある
+- `:bd!`は未保存変更を捨てるため、`!`の意味を確認する
+- Vimのタブページはバッファ一覧ではなく、ウィンドウ配置のまとまり
+- 分割を増やしすぎると表示幅が狭くなる
+
+## ちゃんと使うためのポイント
+
+- バッファは編集内容、ウィンドウは表示枠
+- `:ls`で一覧、`:bn`と`:bp`で前後へ移動
+- `:sp`は上下、`:vs`は左右分割
+- `Ctrl+w`と`hjkl`でウィンドウ間を移動
+- `:q`と`:bd`は閉じる対象が違う
+
+[実務で遭遇するVim](/books/vim/vim-in-real-work)では、Gitのコミット編集とSSH接続先で必要になる操作へ当てはめます。
+
+## 参考リンク
+
+- [Vim Reference Manual — Editing with multiple windows and buffers](https://vimhelp.org/windows.txt.html)
+- [Vim Reference Manual — Editing files](https://vimhelp.org/editing.txt.html)

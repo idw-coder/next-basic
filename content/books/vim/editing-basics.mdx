@@ -1,0 +1,117 @@
+---
+title: 'Vim編集の基本 — dd・yy・p・uで削除、コピー、貼り付け、Undo'
+description: 'Vimのdd、yy、p、u、Ctrl+rを使い、行の削除・コピー・貼り付け・取り消しを操作前後の例で確認します。'
+order: 5
+---
+
+Vimの基本編集は、ノーマルモードで短いコマンドを組み合わせます。まず1行単位で操作します。
+
+## 1文字を直す
+
+| コマンド | 元の語 | 動作 |
+| --- | --- | --- |
+| `x` | 消す印のイメージ | カーソル上の1文字を削除 |
+| `r{文字}` | replace | 1文字を置換 |
+| `i` | insert | カーソルの前から入力 |
+| `a` | append | カーソルの後ろから入力 |
+
+```text
+操作前: const na|em = "Taro";
+xの後:  const na|m = "Taro";
+reの後: const name| = "Taro";
+```
+
+## ddで1行削除する
+
+`d`はdeleteを表す**オペレーター**です。オペレーターは、後ろに続く範囲へ削除や変更を適用します。`dd`は現在行全体を削除し、`3dd`は3行削除します。
+
+```text
+操作前:
+const host = "localhost";
+const debug = true;       ← dd
+const port = 3000;
+
+操作後:
+const host = "localhost";
+const port = 3000;
+```
+
+<Callout type="note" title="削除した内容はすぐ消滅しない">
+削除した内容は**レジスタ**という一時保存領域にも入ります。`dd`の直後に`p`を押すと、削除した行を置き直せます。
+</Callout>
+
+## yyでコピーし、pで貼り付ける
+
+`y`はyank（引き抜く）を表し、Vimではコピーの意味です。`yy`は現在行、`2yy`は2行をコピーします。
+
+`p`はput（置く）の頭文字です。行単位の内容なら`p`は現在行の下、`P`は上へ置きます。
+
+```text
+server {
+  listen 80;    ← yy
+}
+
+下の行でp:
+server {
+  listen 80;
+  listen 80;
+}
+```
+
+`dd`してから`p`なら行の移動、`yy`してから`p`なら複製です。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["ddで削除"] --> R["レジスタ"]
+    B["yyでコピー"] --> R
+    R -->|p / P| C["本文へ置く"]
+`}
+/>
+
+## uで取り消し、Ctrl+rでやり直す
+
+`u`はundo、`Ctrl+r`はredo（やり直す）です。
+
+```text
+dd       行を削除
+u        削除前へ戻す
+Ctrl+r   もう一度削除する
+```
+
+大文字の`U`は別コマンドです。最初は小文字の`u`だけを使います。
+
+<Marker>間違えたら手入力で直す前に、`u`で1つ戻します。</Marker>
+
+## .で直前の変更を繰り返す
+
+ピリオドの`.`は直前の変更を別の位置で繰り返します。`dw`で単語を削除し、次の単語で`.`を押すと同じ削除を再実行します。
+
+<Figure
+  src="/images/boomerang_woman_color.png"
+  alt="操作を元へ戻すイメージのイラスト"
+  caption="`u`で戻し、`Ctrl+r`で進め直せるため、試しながら編集できる"
+  maxWidth="340px"
+/>
+
+## よくあるハマりどころ
+
+- `yy`のあとに`dd`すると通常のレジスタは削除行で上書きされる
+- 行単位の`p`は現在行の下、`P`は上
+- 挿入モードの`u`は文字入力になる
+- `.`は移動ではなく直前の変更を繰り返す
+
+## ちゃんと使うためのポイント
+
+- `dd`は削除、`yy`はコピー
+- `p`は後ろまたは下、`P`は前または上
+- `u`はUndo、`Ctrl+r`はRedo
+- `.`は直前の変更を繰り返す
+- `3dd`や`2yy`で複数行を扱える
+
+[オペレーターとテキストオブジェクト](/books/vim/operators-and-text-objects)では、`d`、`y`、`c`へ範囲を続けます。
+
+## 参考リンク
+
+- [Vim Reference Manual — Delete and change text](https://vimhelp.org/change.txt.html)
+- [Vim Reference Manual — Undo and redo](https://vimhelp.org/undo.txt.html)

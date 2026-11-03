@@ -191,6 +191,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-rose-700',
     iconName: 'GitBranch',
   },
+  vim: {
+    cardBg: 'bg-fuchsia-50',
+    iconBg: 'bg-fuchsia-100',
+    iconText: 'text-fuchsia-700',
+    accent: 'text-fuchsia-700',
+    accentHover: 'group-hover:text-fuchsia-800',
+    accentBg: 'bg-fuchsia-600',
+    badgeBg: 'bg-fuchsia-50',
+    badgeText: 'text-fuchsia-700',
+    iconName: 'FileCode2',
+  },
   'unit-testing': {
     cardBg: 'bg-slate-50',
     iconBg: 'bg-slate-100',

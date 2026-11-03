@@ -1,0 +1,103 @@
+---
+title: 'Neovimをインストールする — macOS・Windows・Ubuntuの公式手順'
+description: 'Neovim公式の配布方法からmacOS、Windows、Ubuntu向けの導入コマンドを選び、nvim --versionと:checkhealthで確認します。'
+order: 12
+---
+
+NeovimはVimをフォークして開発されているテキストエディタです。この章ではNeovim本体だけを導入し、個別の`init.lua`やプラグイン、LSPの手動設定は扱いません。
+
+<Callout type="info" title="前提条件は公式ページで確認する">
+対応OSや必要なバージョンは更新されます。[Neovim公式インストールページ](https://neovim.io/doc/install/)と、次に使う[LazyVim公式インストールページ](https://www.lazyvim.org/installation)を実行時に確認してください。
+</Callout>
+
+## OSに合う公式手順を選ぶ
+
+Neovim公式ページは、ダウンロード済みバイナリとパッケージマネージャーの両方を案内しています。ここでは公式ページに掲載されている短い方法を使います。
+
+### macOS
+
+Homebrewを導入済みなら次を実行します。
+
+```bash
+brew install neovim
+```
+
+`brew`はHomebrew、`install`はパッケージを追加するサブコマンド、`neovim`はパッケージ名です。
+
+### Windows
+
+PowerShellまたはWindows TerminalでWingetを使います。
+
+```powershell
+winget install Neovim.Neovim
+```
+
+`winget`はWindows Package Manager、`install`は追加、`Neovim.Neovim`はパッケージ識別子です。
+
+### Ubuntu
+
+APTのパッケージを使う場合は次です。
+
+```bash
+sudo apt install neovim
+```
+
+`sudo`は管理者権限で実行、`apt`はパッケージ管理、`install`は追加を表します。配布される版はOSのリポジトリによって異なるため、LazyVimの要件を満たすか公式ページで照合します。
+
+<Marker>インストール記事の固定されたバージョン番号ではなく、実行時の公式要件と`nvim --version`の結果を照合します。</Marker>
+
+## インストールを確認する
+
+```bash
+nvim --version
+```
+
+Neovimの起動コマンドは`neovim`ではなく`nvim`です。バージョン情報が表示されて終了すれば、ターミナルから実行できます。
+
+次に個人設定を読まない状態で起動します。
+
+```bash
+nvim --clean
+```
+
+`--clean`は利用者の設定やデータの影響を避け、新規導入に近い状態で起動するオプションです。終了は`:q`です。
+
+## :checkhealthで状態を確認する
+
+Neovimを起動して次を実行します。
+
+```vim
+:checkhealth
+```
+
+`checkhealth`は、Neovim本体や外部ツールとの連携状態を診断するコマンドです。警告がすべて即時対応を必要とするわけではありません。使う機能に関係する項目から確認します。
+
+<Figure
+  src="/images/deta_man_color.png"
+  alt="インストール結果を確認する人のイラスト"
+  caption="インストール、バージョン表示、clean起動、health確認を別々に確かめる"
+  maxWidth="350px"
+/>
+
+## よくあるハマりどころ
+
+- `neovim`と入力する。実行コマンドは`nvim`
+- 古いターミナルを開いたままでPATHの変更が反映されない
+- OSのパッケージ版が、利用したい構成の要件を満たすか確認しない
+- Vimの`.vimrc`がNeovimへ自動で同じように読み込まれると思う
+
+## ちゃんと使うためのポイント
+
+- インストール方法はNeovim公式ページからOSに合うものを選ぶ
+- 必要なバージョン番号は本文へ固定せず公式要件で確認する
+- `nvim --version`で実行できることを確認する
+- `nvim --clean`で個人設定を避けて起動できる
+- 個別の`init.lua`やLSP設定は作らない
+
+[LazyVim](/books/vim/lazyvim)では、公式スターターを使って構成済みのNeovim環境を用意します。
+
+## 参考リンク
+
+- [Neovim公式 — Install](https://neovim.io/doc/install/)
+- [Neovim公式ドキュメント](https://neovim.io/doc/user/)
+- [LazyVim公式 — Installation](https://www.lazyvim.org/installation)

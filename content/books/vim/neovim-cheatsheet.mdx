@@ -1,0 +1,126 @@
+---
+title: 'Neovim・LazyVimチートシート — LSP・ファイル検索・コメント操作'
+description: 'Neovim標準機能とLazyVim固有キーを分け、コメント切り替え、LSP、ファイル検索、Explorer、ウィンドウ操作を目的別にまとめます。'
+order: 15
+chapterLabel: '付録B'
+---
+
+NeovimはVimの基本操作を引き継ぎます。終了、移動、削除、コピー、検索は[Vimコマンドチートシート](/books/vim/vim-cheatsheet)を使い、この付録ではNeovim標準機能とLazyVim固有キーだけを確認します。
+
+<Callout type="info" title="SpaceはLazyVimのleaderキー">
+このページの`Space → e`は、`Space`を押して離し、続けて`e`を押す操作です。`Space`を押し続けながら同時押しする操作ではありません。
+</Callout>
+
+## Neovim標準のコメント操作
+
+| やりたいこと | キー | 動作 |
+| --- | --- | --- |
+| 現在行をコメント化・解除 | `gcc` | 同じキーで切り替える |
+| 範囲をコメント化・解除 | `gc{移動}` | 例: `gcip`で段落を対象にする |
+| 選択行をコメント化・解除 | 選択して`gc` | `V`などで選択して実行 |
+
+`gcc`は現在のNeovimの標準マッピングです。Vim標準には同じコメント切り替えがないため、SSH先のVimでも必ず使える操作としては扱いません。
+
+## Neovim標準LSP
+
+LSPは、エディタとプログラミング言語の解析機能を接続する仕組みです。次の操作は、対象言語のLSPが接続され、機能を提供している場合に動きます。
+
+| やりたいこと | キー | 動作 |
+| --- | --- | --- |
+| 型や説明を表示 | `K` | hover情報を表示 |
+| シンボル名を一括変更 | `grn` | rename |
+| 参照一覧 | `grr` | references |
+| 実装へ移動 | `gri` | implementation |
+| 型定義へ移動 | `grt` | type definition |
+| コードアクション | `gra` | 修正候補を表示 |
+| ファイル内シンボル | `gO` | document symbols |
+
+Neovim標準LSPとLazyVimでは、同じ機能に別のキーが割り当てられる場合があります。画面の構成に合う表を使います。
+
+## LazyVimの基本操作
+
+| やりたいこと | キー | 動作 |
+| --- | --- | --- |
+| 続きのキー候補を表示 | `Space` | which-keyを表示 |
+| キーマップを検索 | `Space → s → k` | 操作名からキーを探す |
+| ファイルを検索 | `Space → Space` | プロジェクトルートから検索 |
+| ファイルを検索 | `Space → f → f` | 上と同じ用途 |
+| ファイル内を横断検索 | `Space → /` | プロジェクトルートをgrep |
+| ファイル一覧を開く | `Space → e` | Explorerを開閉 |
+| ファイルを保存 | `Ctrl-s` | save file |
+| すべて終了 | `Space → q → q` | quit all |
+
+`ripgrep`は`Space → /`などの検索で使われる外部コマンドです。必要な外部コマンドと対応バージョンは、実行時に[LazyVim公式インストールページ](https://www.lazyvim.org/installation)で確認します。
+
+## LazyVimのLSP操作
+
+| やりたいこと | キー | 動作 |
+| --- | --- | --- |
+| 定義へ移動 | `gd` | goto definition |
+| 参照一覧 | `gr` | references |
+| 実装へ移動 | `gI` | goto implementation |
+| 型定義へ移動 | `gy` | goto type definition |
+| 宣言へ移動 | `gD` | goto declaration |
+| 型や説明を表示 | `K` | hover |
+| シグネチャを表示 | `gK` | signature help |
+| コードアクション | `Space → c → a` | code action |
+| シンボル名を一括変更 | `Space → c → r` | rename |
+| ファイル内シンボル | `Space → s → s` | LSP symbols |
+| インレイヒントを切り替える | `Space → u → h` | toggle inlay hints |
+
+`gd`や`K`の結果は、接続中のLSPと対象言語が提供する情報によって変わります。「定義をその場でプレビューする」とは固定せず、定義へ移動する操作として掲載します。
+
+## バッファとウィンドウ
+
+| やりたいこと | キー | 動作 |
+| --- | --- | --- |
+| 前・次のバッファ | `Shift-h`・`Shift-l` | 開いているファイルを移動 |
+| バッファ一覧 | `Space → ,` | buffers |
+| 現在のバッファを閉じる | `Space → b → d` | delete buffer |
+| ほかのバッファを閉じる | `Space → b → o` | delete other buffers |
+| 下に分割 | `Space → -` | split window below |
+| 右に分割 | `Space → Shift+Backslash` | `|`を入力してsplit window right |
+| 左・下・上・右のウィンドウへ移動 | `Ctrl-h`・`Ctrl-j`・`Ctrl-k`・`Ctrl-l` | window間を移動 |
+| 現在のウィンドウを閉じる | `Space → w → d` | delete window |
+| 現在のウィンドウを最大化・復元 | `Space → w → m` | zoom切り替え |
+
+バッファは読み込んだファイル、ウィンドウはバッファを表示する画面枠です。バッファを閉じる操作と、分割ウィンドウを閉じる操作を区別します。
+
+## Explorer
+
+LazyVim公式スターターの現在のExplorerでは、次のキーを使います。
+
+| やりたいこと | キー | 動作 |
+| --- | --- | --- |
+| Explorerを開閉 | `Space → e` | プロジェクトルートを表示 |
+| ファイルを開く・フォルダを展開 | `Enter`または`l` | 選択項目を開く |
+| フォルダを閉じる | `h` | 現在のフォルダを閉じる |
+| 1つ上のフォルダへ移動 | `Backspace` | 親フォルダへ移動 |
+| 隠しファイルを表示・非表示 | `H` | hidden filesを切り替える |
+| Gitで無視されたファイルを表示・非表示 | `I` | ignored filesを切り替える |
+| すべてのフォルダを閉じる | `Z` | close all directories |
+
+`:Lexplore`はVimのnetrwを開くコマンドです。LazyVimのExplorerとはキーが異なるため、このチートシートでは混ぜません。
+
+## 補完候補を閉じるときの注意
+
+Neovim標準の補完メニューが表示されている間は、`Ctrl-e`で補完を中止し、入力前の文字列へ戻せます。
+
+<Callout type="warning" title="Ctrl-eは常に候補を閉じるキーではない">
+補完中でないインサートモードの`Ctrl-e`は、下の行にある文字を挿入します。補完プラグインがキーを上書きする場合もあるため、候補が出ている場面に限定して使います。
+</Callout>
+
+## この本で扱わない構成
+
+`vim-plug`、`vim-prettier`、自作`init.lua`、個別プラグイン、LSPの手動設定は、この本では扱いません。[LazyVim公式スターターを導入する章](/books/vim/lazyvim)と公式キーマップを基準にします。
+
+[tmuxチートシート](/books/vim/tmux-cheatsheet)では、Neovimを開いたままターミナルの作業を保持し、画面を分割する操作を確認します。
+
+## 参考リンク
+
+- [Neovim公式 — Default mappings](https://neovim.io/doc/user/vim_diff.html#default-mappings)
+- [Neovim公式 — LSP](https://neovim.io/doc/user/lsp)
+- [Neovim公式 — Insert mode completion](https://neovim.io/doc/user/insert.html#ins-completion-menu)
+- [LazyVim公式 — Keymaps](https://www.lazyvim.org/keymaps)
+- [LazyVim公式 — Installation](https://www.lazyvim.org/installation)
+- [Snacks Explorer公式ドキュメント](https://github.com/folke/snacks.nvim/blob/main/docs/explorer.md)

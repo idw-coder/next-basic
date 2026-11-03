@@ -349,6 +349,24 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'スカッシュマージ',
   ],
 
+  vim: [
+    'Vimの終了',
+    ':wq',
+    ':q!',
+    '挿入モード',
+    'hjkl',
+    'dd',
+    'ciw',
+    ':%s',
+    ':sp',
+    'VSCodeVim',
+    'vimrc',
+    'lazyvim',
+    'Neovim',
+    'tmux',
+    'チートシート',
+  ],
+
   'cs-basics': [
     'CPU',
     'メモリ',

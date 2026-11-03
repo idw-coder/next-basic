@@ -1,0 +1,127 @@
+---
+title: 'LazyVimの使い方 — 公式スターターでNeovim環境を整える'
+description: 'LazyVim公式スターターを使い、既存設定のバックアップ、clone、初回起動、LazyHealth、主要キーの確認までを安全に進めます。'
+order: 13
+---
+
+LazyVimは、Neovimへ実用的な既定値と機能をまとめて用意する構成です。別のエディタではなく、Neovimの設定一式として動きます。
+
+この章は[LazyVim公式スターター](https://github.com/LazyVim/starter)を使う手順だけを扱います。`init.lua`の自作、個別プラグイン追加、LSPの手動設定は扱いません。
+
+## 実行前に公式要件を確認する
+
+[LazyVim公式インストールページ](https://www.lazyvim.org/installation)で、NeovimやGitなどの要件を確認します。要件は更新されるため、本文にはバージョン番号を固定しません。
+
+```bash
+nvim --version
+git --version
+```
+
+どちらもバージョン情報を表示して終了します。
+
+## 既存のNeovim設定をバックアップする
+
+すでに`~/.config/nvim`がある場合、公式手順どおり別名へ移します。
+
+```bash
+mv ~/.config/nvim ~/.config/nvim.bak
+mv ~/.local/share/nvim ~/.local/share/nvim.bak
+mv ~/.local/state/nvim ~/.local/state/nvim.bak
+mv ~/.cache/nvim ~/.cache/nvim.bak
+```
+
+`mv`はmoveの略で、ここでは削除せず`.bak`という名前へ移します。存在しないディレクトリの`mv`はエラーになりますが、新規環境なら次へ進めます。
+
+<Callout type="warning" title="同名の.bakを上書きしない">
+過去のバックアップがすでにある場合は、日付を付けるなど別の名前を選びます。中身を確認せず削除しません。
+</Callout>
+
+## 公式スターターをcloneする
+
+```bash
+git clone https://github.com/LazyVim/starter ~/.config/nvim
+```
+
+`git clone`はリポジトリを複製するコマンドです。第1引数が公式スターターのURL、第2引数がNeovimの設定先です。
+
+公式手順は、スターター自身のGit履歴を外すため次も案内しています。
+
+```bash
+rm -rf ~/.config/nvim/.git
+```
+
+<Callout type="warning" title="rm -rfの対象を必ず確認する">
+このコマンドが削除するのは`~/.config/nvim/.git`だけです。`~/.config/nvim`全体やホームディレクトリを指定しないでください。実行前に`ls -la ~/.config/nvim`で`.git`の存在を確認します。
+</Callout>
+
+## 初回起動と診断
+
+```bash
+nvim
+```
+
+初回起動では必要なファイルの取得が進みます。完了後、公式が推奨する診断を実行します。
+
+```vim
+:LazyHealth
+```
+
+`LazyHealth`はLazyVim関連の機能を読み込み、動作状態を確認します。エラーがある場合は、表示された項目と公式要件を照らし合わせます。
+
+## 最初に使うキー
+
+LazyVimでは`Space`が既定の**leaderキー**です。leaderキーとは、複数の機能を分類して呼び出す起点キーです。`Space`を押すとwhich-keyの候補が表示されます。
+
+| キー | 動作 |
+| --- | --- |
+| `Space` | 続けられるキー候補を表示 |
+| `Space Space` | ファイル検索 |
+| `Space e` | ファイルエクスプローラー |
+| `Space /` | プロジェクト内検索 |
+| `Space l` | Lazy画面 |
+| `Space qq` | すべて終了 |
+
+キー割り当ては更新される可能性があるため、画面の候補と[LazyVim公式キーマップ](https://www.lazyvim.org/keymaps)を正とします。
+
+<Figure
+  src="/images/toppa_suit_woman_color.png"
+  alt="基本操作を身につけて次へ進む人のイラスト"
+  caption="Vim共通操作を土台にし、LazyVim固有のキーは画面の候補から少しずつ覚える"
+  maxWidth="350px"
+/>
+
+## 元の設定へ戻す
+
+問題が起きた場合は、現在の`~/.config/nvim`を別名へ移し、バックアップを元の名前へ戻します。現在の設定を消さずに退避してから復元します。
+
+```bash
+mv ~/.config/nvim ~/.config/nvim.lazyvim
+mv ~/.config/nvim.bak ~/.config/nvim
+```
+
+## よくあるハマりどころ
+
+- 既存設定をバックアップせずスターターをcloneする
+- 要件を古いブログの固定バージョンだけで判断する
+- 初回取得中にNeovimを閉じ、構成が途中になる
+- LazyVim固有キーとVim標準キーを混同する
+
+## ちゃんと使うためのポイント
+
+- 公式スターターだけを`~/.config/nvim`へcloneする
+- 既存設定とデータは削除せず`.bak`へ移す
+- `rm -rf`は`~/.config/nvim/.git`だけを正確に対象にする
+- 初回起動後に`:LazyHealth`を実行する
+- `Space`で画面上のキー候補を確認する
+- 要件とキーマップは実行時の公式ページで確認する
+
+これで、GitやSSH先でVimが開いたときの終了・編集から、手元でLazyVimを試すところまで進めました。普段はVS Codeを使い続けながら、必要な場面だけVimの共通操作を使う形でも十分です。
+
+次の[付録A Vimコマンドチートシート](/books/vim/vim-cheatsheet)からは、必要な操作を目的別に引けます。
+
+## 参考リンク
+
+- [LazyVim公式 — Installation](https://www.lazyvim.org/installation)
+- [LazyVim公式スターター](https://github.com/LazyVim/starter)
+- [LazyVim公式 — Keymaps](https://www.lazyvim.org/keymaps)
+- [LazyVim公式 — Configuration](https://www.lazyvim.org/configuration)

@@ -1,0 +1,105 @@
+---
+title: 'Git commitでVimが開いたときの抜け方とSSH先での安全な編集'
+description: 'Gitのコミットメッセージ編集とSSH接続先でVimが開く理由を説明し、保存終了・中止・権限エラーへの対処を整理します。'
+order: 9
+---
+
+Gitのコミット編集やSSH接続先では、使い慣れたVS Codeとは別のエディタが起動します。この章では、覚えたVim操作を実務の場面へ当てはめます。
+
+## git commitでVimが開いたら
+
+`git commit`をメッセージ指定なしで実行すると、Gitは設定や環境変数に従って外部エディタを起動します。Git公式ドキュメントでは、`GIT_EDITOR`、`core.editor`、`VISUAL`、`EDITOR`の順に選ぶと説明しています。
+
+```bash
+git commit
+```
+
+Vimが開いた場合は次の順です。
+
+1. `i`で挿入モードへ入り、先頭行にコミットメッセージを書く
+2. `Esc`でノーマルモードへ戻る
+3. `:wq`、`Enter`で保存して終了する
+
+```text
+ログイン画面の入力チェックを追加
+
+# Please enter the commit message...
+```
+
+`#`から始まる案内行は通常コミットメッセージに含まれません。
+
+<Callout type="warning" title="コミットを中止したい場合">
+メッセージを書かずに終了すればGitは空のコミットメッセージとして中止します。書きかけを捨てるなら`:q!`で終了します。確実に失敗扱いで閉じる`:cq`もありますが、最初は空のまま閉じる方法で十分です。
+</Callout>
+
+## VS CodeをGitのエディタにする
+
+普段の端末では、[Gitの初期設定](/books/git-basic/02-setup)にある次の指定を使えます。
+
+```bash
+git config --global core.editor "code --wait"
+```
+
+`core.editor`はGitが使うエディタ、`code`はVS Codeのコマンド、`--wait`はVS Codeで編集が終わるまでGitを待たせる指定です。
+
+<Marker>VS Codeを指定しても、別の端末、コンテナ、SSH接続先には同じGit設定がない場合があります。</Marker>
+
+## SSH接続先で安全に編集する
+
+SSHは、別のコンピュータを暗号化された通信で遠隔操作する仕組みです。接続先ではVS Codeの画面を使えず、ターミナル内のVimで設定ファイルを直すことがあります。
+
+```bash
+vim app.conf
+```
+
+安全な順番は次のとおりです。
+
+1. `/検索語`で変更箇所を探す
+2. `i`、`a`、`ciw`などで最小限だけ直す
+3. `Esc`、`:w`で保存する
+4. アプリケーションの確認コマンドを別途実行する
+5. 問題なければ`:q`で終了する
+
+設定ファイルは保存できても内容が正しいとは限りません。Vimの保存成功と、サービス設定の妥当性確認を分けます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+権限が足りないので、最初から全部`sudo vim`で開けばよいですか？
+</SpeechBubble>
+
+管理者権限で起動すると、Vimから実行する操作も強い権限を持ちます。必要なファイルだけを対象にし、組織の手順がある場合は`sudoedit`など指定された方法を使います。
+
+<Figure
+  src="/images/calling_suit_man_color.png"
+  alt="変更内容を確認しながら作業する人のイラスト"
+  caption="SSH先では変更範囲を小さくし、保存と動作確認を別々に行う"
+  maxWidth="350px"
+/>
+
+## 読み取り専用と権限エラー
+
+画面下部に`[readonly]`がある場合、`:w`で保存できない可能性があります。`:w!`はVim側の確認を上書きしますが、OSの権限不足は解決しません。
+
+保存できないと分かった時点で、変更内容を失わないよう`:q!`を急がず、別名保存`:w /tmp/app.conf`などが許されるかを確認します。
+
+## よくあるハマりどころ
+
+- `git commit -m "..."`は外部エディタを開かないため、練習時の挙動が違う
+- SSH切断とVim終了を混同する
+- `:wq`できたことをサービス設定の検証成功だと思う
+- Gitの`core.editor`は設定したスコープによって適用範囲が変わる
+
+## ちゃんと使うためのポイント
+
+- コミットを書くなら`i`、編集後に`Esc`、`:wq`
+- Gitは設定と環境変数からエディタを選ぶ
+- 手元でVS Codeを指定してもSSH先へ自動では引き継がれない
+- SSH先では検索し、最小限を直し、保存後に別の確認を行う
+- 権限エラーに`!`だけで対処しない
+
+[VS CodeのVim拡張](/books/vim/vscode-vim)では、普段のエディタを変えずにVim操作を練習します。SSH先で接続を離れても作業を保持したい場合は、[付録C tmuxチートシート](/books/vim/tmux-cheatsheet)でデタッチと再接続を確認できます。
+
+## 参考リンク
+
+- [Git公式ドキュメント — git commit](https://git-scm.com/docs/git-commit.html)
+- [Git公式書籍 — Git Configuration](https://git-scm.com/book/en/v2/Customizing-Git-Git-Configuration.html)
+- [Vim Reference Manual — Editing files](https://vimhelp.org/editing.txt.html)

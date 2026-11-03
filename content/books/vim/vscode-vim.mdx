@@ -1,0 +1,93 @@
+---
+title: 'VS CodeのVim拡張で練習する — VSCodeVimの始め方'
+description: 'VS Codeを使い続けながらVSCodeVimでモード、移動、編集を練習する方法と、本物のVimとの違い・キー競合への対処を説明します。'
+order: 10
+---
+
+VSCodeVimは、VS Code上でVimのモードとキー操作を再現する拡張機能です。VS Codeを日常のエディタとして使いながら、`hjkl`、`ciw`、`dd`などを練習できます。
+
+<Marker>VSCodeVimはVimそのものではなく、VS Code内でVim操作を再現するエミュレーターです。</Marker>
+
+## VSCodeVimをインストールする
+
+1. VS Codeの拡張機能ビューを開く
+2. `Vim`を検索する
+3. 拡張機能名`Vim`、発行元`vscodevim`を確認する
+4. `Install`を押す
+
+インストール後、エディタ下部に`NORMAL`などのモード表示が出ます。新しいファイルを開き、`i`で挿入、`Esc`でノーマルへ戻れることを確認します。
+
+<Callout type="warning" title="似た名前の拡張機能を区別する">
+Marketplaceには複数のVim関連拡張があります。この章は識別子`vscodevim.vim`のVSCodeVimを対象にします。
+</Callout>
+
+## 5分の練習メニュー
+
+次のテキストを練習用ファイルへ貼り付けます。
+
+```text
+const userName = "Taro";
+const userRole = "viewer";
+console.log(userName);
+```
+
+| 操作 | 練習内容 |
+| --- | --- |
+| `jjkk` | 上下移動 |
+| `w`、`b` | 単語移動 |
+| `ciwadmin<Esc>` | 単語を書き直す |
+| `yy`、`p` | 行を複製する |
+| `dd`、`u` | 行を削除して戻す |
+| `/user`、`n` | 検索結果を移動する |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+普段のショートカットが効かなくなりました。
+</SpeechBubble>
+
+VSCodeVimは一部の`Ctrl`キーをVim操作として受け取ります。VS Code側へ戻したいキーは設定`vim.handleKeys`で委譲できますが、最初から大量に変更すると本物のVimとの差が分かりにくくなります。困ったキーだけ調整します。
+
+## VS Codeの機能と組み合わせる
+
+ファイル検索、サイドバー、デバッガー、Git画面などはVS Codeの機能をそのまま使えます。本文編集だけをVim操作にしても構いません。
+
+| やりたいこと | 操作 |
+| --- | --- |
+| 一時的にVim操作を止める | コマンドパレットで`Vim: Toggle Vim Mode` |
+| 拡張機能をプロジェクトだけ無効化 | 拡張機能画面の`Disable (Workspace)` |
+| モードを確認する | ステータスバーの`NORMAL`、`INSERT`を見る |
+
+<Figure
+  src="/images/stepup_suit_man_color-1.png"
+  alt="慣れた道具を使いながら段階的に練習する人のイラスト"
+  caption="普段のVS CodeへVim操作だけを足すと、短時間から練習できる"
+  maxWidth="350px"
+/>
+
+## 本物のVimとの違い
+
+VSCodeVimは多くの基本操作を再現しますが、すべてのVim機能・設定・プラグインが同じように動くわけではありません。`.vimrc`対応も公式READMEでは実験的とされ、主にリマップが対象です。
+
+GitやSSHで本物のVimが開く状況へ備えるなら、ときどきターミナルの`vim --clean`でも`:q!`、`:wq`、`ciw`などを確認します。
+
+## よくあるハマりどころ
+
+- 挿入モードでVS Codeの単一キーショートカットが文字として入る
+- `Ctrl`キーをVSCodeVimとVS Codeのどちらが受け取るか競合する
+- 日本語入力のまま`Esc`を押し、ノーマルコマンドを入力できない
+- VSCodeVimで動いた拡張機能固有操作がVimでも動くと思う
+
+## ちゃんと使うためのポイント
+
+- 発行元`vscodevim`、識別子`vscodevim.vim`を確認する
+- 最初は移動、モード、`ciw`、`dd`、`u`に絞る
+- 困ったキーだけ`vim.handleKeys`でVS Codeへ返す
+- VSCodeVimは練習場所であり、本物のVimと完全には同じでない
+- 日常のエディタをVS Codeから変える必要はない
+
+[.vimrcの基本](/books/vim/vimrc-basics)では、ターミナル版Vimの行番号や検索動作を少ない設定で整えます。
+
+## 参考リンク
+
+- [Visual Studio Marketplace — VSCodeVim](https://marketplace.visualstudio.com/items?itemName=vscodevim.vim)
+- [VSCodeVim公式リポジトリ](https://github.com/VSCodeVim/Vim)
+- [VS Code公式 — Default keyboard shortcuts](https://code.visualstudio.com/docs/reference/default-keybindings)

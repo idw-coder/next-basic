@@ -310,6 +310,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; link?: string; images?: string[] }[] = [
   {
+    date: '2026/11/03',
+    text: '教科書「Vim入門 — VS Codeユーザーがターミナルで困らないための基本操作」を公開しました。終了、モード、カーソル移動、編集、Git・SSHでの対処、Neovim・LazyVimの導入を扱う全13章と、Vim・Neovim・tmuxのチートシート3付録です',
+    link: '/books/vim',
+    images: ['/images/books/devicon_vim.png'],
+  },
+  {
     date: '2026/11/01',
     text: '教科書「AWS SAA-C03 合格と実務のためのAWS設計入門」に、実務補足「CodeBuildとは？」を追加しました。buildspec.ymlの読み方、CodePipeline・CodeDeployとの役割分担、GitHub Actionsとの連携、エラーの切り分けを解説しています',
     link: '/books/aws-saa-c03/ci-cd-and-codebuild',

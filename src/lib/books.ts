@@ -51,6 +51,7 @@ export const BOOK_ORDER = [
   'tailwind-css',
   'unit-testing',
   'git-basic',
+  'vim',
   'github-actions',
   'cs-basics',
   'coding-test',
