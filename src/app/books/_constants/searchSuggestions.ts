@@ -77,6 +77,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'CloudWatch',
     'CloudFormation',
     'CDK',
+    'CodeConnections',
     'バケットポリシー',
   ],
 
