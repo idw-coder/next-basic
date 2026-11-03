@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="430" viewBox="0 0 800 430" role="img" aria-labelledby="title desc">
+  <title id="title">GitHub側でリポジトリを選ぶ画面</title>
+  <desc id="desc">Only select repositoriesを選び、AWSからアクセスさせるリポジトリを1件だけ指定して、Install and Authorizeを押す画面の簡略図。</desc>
+  <rect width="800" height="430" rx="16" fill="#f1f5f9"/>
+  <rect x="20" y="20" width="760" height="390" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="48" y="64" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="700" fill="#0f172a">Install &amp; Authorize AWS Connector for GitHub</text>
+  <circle cx="64" cy="110" r="9" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="86" y="116" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18" fill="#334155">All repositories</text>
+  <rect x="44" y="140" width="712" height="150" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+  <circle cx="64" cy="170" r="9" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <circle cx="64" cy="170" r="5" fill="#2563eb"/>
+  <text x="86" y="176" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#1d4ed8">Only select repositories</text>
+  <rect x="86" y="194" width="190" height="36" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="181" y="218" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" fill="#334155">Select repositories ▾</text>
+  <text x="86" y="266" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" fill="#334155">my-org/my-app</text>
+  <text x="48" y="330" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="16" fill="#475569">アクセスさせるリポジトリだけを選ぶ</text>
+  <rect x="48" y="350" width="190" height="42" rx="6" fill="#15803d"/>
+  <text x="143" y="377" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#ffffff">Install &amp; Authorize</text>
+</svg>

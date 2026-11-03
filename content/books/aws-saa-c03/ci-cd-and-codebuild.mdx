@@ -1,6 +1,6 @@
 ---
 title: 'CodeBuildとは？buildspec.ymlの読み方とGitHub Actions連携・エラーの切り分け'
-description: 'AWS CodeBuildの仕組み、buildspec.ymlのフェーズ、CodePipeline・CodeDeployとの役割分担、GitHub ActionsからCodeBuildを呼ぶ構成とOIDCの信頼ポリシー、失敗したときにどこを見るかを実務目線で整理します。SAA-C03の試験範囲外の補足章です。'
+description: 'AWS CodeBuildの仕組み、buildspec.ymlのフェーズ、CodePipeline・CodeDeployとの役割分担、GitHub ActionsからCodeBuildを呼ぶ構成とOIDCの信頼ポリシー、CodeConnectionsでのGitHub連携、失敗したときにどこを見るかを実務目線で整理します。SAA-C03の試験範囲外の補足章です。'
 order: 20.5
 chapterLabel: '実務補足'
 ---
@@ -356,6 +356,155 @@ flowchart LR
 
 ---
 
+## CodeConnectionsでGitHubとつなぐ
+
+ここまでのOIDCは、GitHub ActionsからAWSを操作するための設定でした。逆に、CodeBuildがGitHubのリポジトリにアクセスするときに使う設定が**AWS CodeConnections**です。
+
+| 設定 | アクセスの向き | 使う場面の例 |
+|---|---|---|
+| OIDC | GitHub ActionsからAWSへ | ワークフローからCodeBuildのビルドを開始する |
+| CodeConnections | AWSからGitHubへ | CodeBuildのソースプロバイダーにGitHubを指定する |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+接続というリソースを作るだけで、CodeBuildからGitHubにアクセスできるようになるんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+いいえ、接続を作るだけでは足りません。接続を作り、サービスロールに権限を付け、ビルドプロジェクトで接続を指定する、という3つの設定が必要です。順番に見ていきましょう。
+</SpeechBubble>
+
+### CodeConnectionsとは
+
+**接続**は、AWSのサービスとGitHubなどの外部リポジトリを連携するためのAWSリソースです。接続ごとに名前とARNが付き、CodeBuildやCodePipelineではこの接続を指定して使います（[接続とは](https://docs.aws.amazon.com/ja_jp/dtconsole/latest/userguide/welcome-connections.html)）。
+
+以前の名前は**AWS CodeStar Connections**です。古い記事に出てくる `codestar-connections` は改名前の名前で、この名前で作られたリソースも引き続きサポートされています。2024年7月1日以降、コンソールで作る接続のARNには `codeconnections` が使われます。
+
+### 接続を作成する
+
+コンソールで作成する流れは次のとおりです。画面は説明用に簡略化したもので、実際の表示は変わることがあります。
+
+1. デベロッパーツールの「設定」→「接続」を開き、「接続を作成」を押す
+2. プロバイダーにGitHubを選び、接続名を入力して「GitHub に接続する」を押す
+
+<Figure
+  src="/images/aws-codeconnections-step1-create.svg"
+  alt="プロバイダーにGitHubを選び、接続名を入力して、GitHubに接続するボタンを押す画面の簡略図"
+  maxWidth="680px"
+  maxHeight="none"
+  caption="プロバイダーと接続名を指定する"
+/>
+
+3. GitHubの画面で「AWS Connector for GitHub」を承認する
+4. AWSの画面に戻り、「新しいアプリをインストールする」を押す。インストール済みなら、候補から既存のアプリを選ぶ
+5. GitHubの画面で、AWSからアクセスさせるリポジトリを選び、「Install & Authorize」を押す
+
+<Figure
+  src="/images/aws-codeconnections-step2-repositories.svg"
+  alt="Only select repositoriesを選び、リポジトリを1件指定して、Install and Authorizeを押す画面の簡略図"
+  maxWidth="680px"
+  maxHeight="none"
+  caption="「Only select repositories」でアクセス先のリポジトリを絞る"
+/>
+
+6. AWSの画面に戻り、「接続」を押す
+7. ステータスが「利用可能」になっていることを確認する
+
+<Figure
+  src="/images/aws-codeconnections-step3-available.svg"
+  alt="接続のステータスが利用可能と表示され、ARNに作成したリージョン名が含まれている画面の簡略図"
+  maxWidth="680px"
+  maxHeight="none"
+  caption="ステータスが「利用可能」なら作成完了"
+/>
+
+手順は[GitHub への接続を作成する](https://docs.aws.amazon.com/ja_jp/dtconsole/latest/userguide/connections-create-github.html)に基づいています。AWS CLIやCloudFormationで作った接続は `PENDING` の状態で作られるので、コンソールで接続の設定を完了し、`AVAILABLE` にする必要があります。
+
+<Callout type="warning">
+
+### 手順5では「Only select repositories」を選ぶ
+
+執筆時点では、この画面に表示されるGitHubアプリの権限に、コードやadministrationの読み書きが含まれています。`All repositories` を選ぶと、現在と今後のすべてのリポジトリが対象になります。必要なリポジトリだけを選ぶことをおすすめします。
+
+</Callout>
+
+### ARNのリージョンと使えるリージョン
+
+上の図のARNには `ap-northeast-1`（東京リージョン）が含まれています。公式ドキュメントには次のように書かれています。
+
+> 接続ARNの形式は作成元のリージョン名を反映していますが、リソース自体は特定のリージョンに限定されません。
+>
+> — [AWS CodeConnections のグローバル リソース](https://docs.aws.amazon.com/ja_jp/dtconsole/latest/userguide/welcome-connections-how-it-works-global.html)
+
+つまり、東京リージョンで作成した接続のARNには東京リージョンの名前が入りますが、接続はほかのリージョンでも使えます。接続の削除など、接続のデータを更新する操作は、作成元のリージョンで制御されます。
+
+### サービスロールにポリシーを付ける
+
+CodeBuildが接続を使うには、CodeBuildのサービスロールに許可が必要です。許可する操作をIAMポリシーに書き、そのポリシーをサービスロールに付けます。
+
+| 操作 | 内容 |
+|---|---|
+| `codeconnections:GetConnection` | 接続の情報を取得する |
+| `codeconnections:GetConnectionToken` | 接続が提供するGitHubのトークンを取得する |
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codeconnections:GetConnectionToken",
+        "codeconnections:GetConnection"
+      ],
+      "Resource": "arn:aws:codeconnections:ap-northeast-1:123456789012:connection/a1b2c3d4-5678-90ab-cdef-EXAMPLE11111"
+    }
+  ]
+}
+```
+
+権限が足りないと、`Access denied to connection <connection-arn>` や `Failed to get access token from <connection-arn>` というエラーになります。
+
+<Callout type="note">
+
+### `Resource` の指定について
+
+[CodeBuildの公式手順](https://docs.aws.amazon.com/ja_jp/codebuild/latest/userguide/connections-github-app.html)のポリシー例では、`Resource` が `arn:aws:iam::*:role/Service*` になっています。一方、[接続のIAMの説明](https://docs.aws.amazon.com/ja_jp/dtconsole/latest/userguide/security-iam.html)には、接続リソースのARN形式として `arn:aws:codeconnections:region:account-id:connection/connection-id` が載っています。
+
+上の例で `Resource` に接続のARNを指定しているのは、許可の対象を1つの接続に絞るための筆者の判断です。
+
+</Callout>
+
+### ビルドプロジェクトで接続を指定する
+
+CodeBuildのビルドプロジェクトでは、次のように設定します（[CodeBuild の GitHub アプリ接続](https://docs.aws.amazon.com/ja_jp/codebuild/latest/userguide/connections-github-app.html)）。
+
+1. 「ソースプロバイダー」で「GitHub」を選ぶ
+2. 「認証情報」で、アカウント全体の設定を使う「デフォルトソース認証情報」か、このプロジェクトだけの「カスタムソース認証情報」を選ぶ
+3. 「認証情報タイプ」で「GitHub アプリ」を選ぶ
+4. 「接続」で、作成した接続を選ぶ
+
+ここまでの設定は、次のようにつながります。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["IAMポリシー"] -->|付ける| B["サービスロール"]
+    B -->|指定する| C["ビルドプロジェクト"]
+    D["接続"] -->|指定する| C
+    C -->|接続のトークンでアクセス| E["GitHubリポジトリ"]
+`}
+/>
+
+<Marker>接続はGitHubとの連携を担うリソースで、接続を使う許可はサービスロールのポリシーで与えます。</Marker>
+
+<Callout type="info" title="料金について">
+
+接続を作るだけなら、ビルドは実行されません。[CodeBuildの料金ページ](https://aws.amazon.com/jp/codebuild/pricing/)では、オンデマンドのビルドは実行時間に応じて課金されると説明されています。接続そのものの料金は、確認した公式の料金ページには記載がありませんでした。費用が気になる場合は、不要になった接続を削除し、請求画面で確認してください。
+
+</Callout>
+
+---
+
 ## エラーが出たらどこを見るか
 
 <Figure src="/images/readingbook_woman_color.png" alt="ログを順に確認して原因を探している人のイラスト" maxWidth="280px" />
@@ -440,6 +589,8 @@ GitHub Actions用ロールに `s3:PutObject` を足しても、ビルド中の�
 - [Build specification reference for CodeBuild](https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html)
 - [Troubleshooting AWS CodeBuild](https://docs.aws.amazon.com/codebuild/latest/userguide/troubleshooting.html)
 - [Configuring OpenID Connect in Amazon Web Services（GitHub Docs）](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws)
+- [接続とは](https://docs.aws.amazon.com/ja_jp/dtconsole/latest/userguide/welcome-connections.html)
+- [CodeBuild の GitHub アプリ接続](https://docs.aws.amazon.com/ja_jp/codebuild/latest/userguide/connections-github-app.html)
 
 ---
 
@@ -451,6 +602,7 @@ GitHub Actions用ロールに `s3:PutObject` を足しても、ビルド中の�
 - GitHub Actionsとの組み合わせには、CodeBuildを呼ぶ構成（`aws-codebuild-run-build`）と、CodeBuildをランナーにする構成（`runs-on: codebuild-...`）がある
 - GitHub ActionsからAWSへはOIDCで入り、IAMロールの信頼ポリシーの `sub` で実行元のリポジトリやブランチを制限する
 - IAMロールは「ビルドを開始するロール」と「ビルド中に使うサービスロール」の2つがある
+- CodeBuildからGitHubへのアクセスにはCodeConnectionsの接続を使い、サービスロールのポリシーで `GetConnection` と `GetConnectionToken` を許可する
 - SAA-C03では試験範囲外。選択肢に出たときに役割を見分けられれば十分
 
 サービス名から解説箇所を探して復習するときは、[AWSサービス別リンク集](/books/aws-saa-c03/aws-service-link-cheatsheet)を使えます。

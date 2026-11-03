@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400" role="img" aria-labelledby="title desc">
+  <title id="title">接続を作成する画面</title>
+  <desc id="desc">プロバイダーにGitHubを選び、接続名を入力して、GitHubに接続するボタンを押す画面の簡略図。</desc>
+  <rect width="800" height="400" rx="16" fill="#f1f5f9"/>
+  <rect x="20" y="20" width="760" height="360" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="48" y="64" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="700" fill="#0f172a">接続を作成する</text>
+  <text x="48" y="108" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#334155">プロバイダーを選択する</text>
+  <rect x="48" y="124" width="216" height="52" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="74" cy="150" r="8" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="94" y="156" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" fill="#334155">Bitbucket</text>
+  <rect x="292" y="124" width="216" height="52" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="3"/>
+  <circle cx="318" cy="150" r="8" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+  <circle cx="318" cy="150" r="4" fill="#2563eb"/>
+  <text x="338" y="156" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">GitHub</text>
+  <rect x="536" y="124" width="216" height="52" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="562" cy="150" r="8" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="582" y="156" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" fill="#334155">GitLab</text>
+  <text x="48" y="222" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#334155">接続名</text>
+  <rect x="48" y="236" width="704" height="48" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="64" y="267" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" fill="#334155">my-github-connection</text>
+  <rect x="552" y="316" width="200" height="44" rx="6" fill="#f59e0b"/>
+  <text x="652" y="344" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#0f172a">GitHub に接続する</text>
+</svg>
