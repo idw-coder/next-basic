@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" role="img" aria-labelledby="title desc">
+  <title id="title">再検証のきっかけと処理の流れ</title>
+  <desc id="desc">マウント、フォーカス、再接続、refreshIntervalによる再検証は重複排除の判定を通る。mutateは判定を通らず必ずfetcherを実行する。レスポンスは前回の値と比較され、変わっているときだけ再レンダーする。</desc>
+  <defs><marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker></defs>
+  <rect width="800" height="560" rx="20" fill="#ffffff"/>
+  <text x="400.0" y="44" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">再検証のきっかけと、その後の流れ</text>
+  <rect x="24" y="82" width="210" height="52" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="129.0" y="113.95" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">マウント・key変更</text>
+  <line x1="234" y1="108" x2="268" y2="108" stroke="#475569" stroke-width="2.5"/>
+  <rect x="24" y="150" width="210" height="52" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="129.0" y="181.95" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">フォーカス</text>
+  <line x1="234" y1="176" x2="268" y2="176" stroke="#475569" stroke-width="2.5"/>
+  <rect x="24" y="218" width="210" height="52" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="129.0" y="249.95" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">再接続</text>
+  <line x1="234" y1="244" x2="268" y2="244" stroke="#475569" stroke-width="2.5"/>
+  <rect x="24" y="286" width="210" height="52" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="129.0" y="317.95" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">refreshInterval</text>
+  <line x1="234" y1="312" x2="268" y2="312" stroke="#475569" stroke-width="2.5"/>
+  <rect x="24" y="380" width="210" height="56" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="129.0" y="414.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#6d28d9">mutate()</text>
+  <line x1="268" y1="108" x2="268" y2="312" stroke="#475569" stroke-width="2.5"/>
+  <line x1="268" y1="182" x2="302" y2="182" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <rect x="304" y="128" width="250" height="108" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="429.0" y="165.6" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#b45309">同じkeyの取得を</text>
+  <text x="429.0" y="187.6" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="500" fill="#0f172a">直近2秒以内（既定）に</text>
+  <text x="429.0" y="209.6" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="500" fill="#0f172a">開始している？</text>
+  <line x1="554" y1="182" x2="610" y2="182" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <text x="582" y="168" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#0f172a">はい</text>
+  <rect x="614" y="142" width="162" height="80" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+  <text x="695.0" y="176.75" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#475569">新規に送らず</text>
+  <text x="695.0" y="197.75" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="500" fill="#0f172a">その結果を使う</text>
+  <line x1="429" y1="236" x2="429" y2="300" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <text x="460" y="272" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#0f172a">いいえ</text>
+  <rect x="324" y="302" width="210" height="60" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="429.0" y="338.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#047857">fetcherを実行</text>
+  <path d="M234 408L300 408L300 332L320 332" fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <line x1="429" y1="362" x2="429" y2="412" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <rect x="324" y="414" width="210" height="56" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="429.0" y="448.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#6d28d9">前回の値と比較</text>
+  <line x1="534" y1="442" x2="610" y2="442" stroke="#2563eb" stroke-width="2.5" marker-end="url(#ab)"/>
+  <text x="572" y="428" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#1d4ed8">違う</text>
+  <rect x="614" y="410" width="162" height="64" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="695.0" y="448.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#1d4ed8">再レンダー</text>
+  <line x1="429" y1="470" x2="429" y2="500" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <text x="456" y="492" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#0f172a">同じ</text>
+  <rect x="324" y="502" width="210" height="44" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+  <text x="429.0" y="529.6" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#475569">再レンダーしない</text>
+</svg>

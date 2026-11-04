@@ -1,0 +1,772 @@
+---
+title: 'useSWRの使い方 — キャッシュ・再検証・mutateの仕組みを図解'
+description: 'useSWRの引数と戻り値、keyとキャッシュの関係、isLoadingとisValidatingの違い、再検証のタイミング、mutateとuseSWRMutationによる更新、楽観的更新までを図で解説します。'
+order: 10.5
+chapterLabel: 'useSWR'
+---
+
+`useSWR` は、クライアントコンポーネントでAPIのデータを取得するためのフックです。Reactの標準機能ではなく、Vercelが開発している `swr` というライブラリが提供します。
+
+取得そのものは1行で書けますが、内部では「キャッシュから返す」「取り直す」「重複したリクエストをまとめる」「失敗したら再試行する」といった処理が自動で動きます。自動で動く範囲が広いので、仕組みを知らないと「なぜ今リクエストが飛んだのか」「なぜ `isLoading` が `false` なのに通信しているのか」で迷います。
+
+この章では、その動きを図で分解して説明します。`useEffect` 自体の仕組みは[useEffect — 副作用と外部同期](/books/react-learning/06-use-effect)、Server Componentでの取得は[データ取得とキャッシュ](/books/next-js/07-data-fetching)で扱っているので、ここでは `useSWR` 固有のことに絞ります。
+
+<Callout type="note" title="この章が対象にするバージョン">
+  この章のコードと挙動は、SWR 2.5.1（2026年11月時点の最新版）を実際に動かして確認しています。オプションの既定値は変わる可能性があるので、最新の値は章末の公式ドキュメントで確認してください。
+</Callout>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  データ取得なら `useEffect` と `fetch` で書けるのに、どうして専用のフックが必要なの？
+</SpeechBubble>
+
+---
+
+## useEffectでデータ取得すると何を自分で書くことになるか
+
+まず `useEffect` だけで、ユーザー情報を取得するコンポーネントを書きます。
+
+```tsx
+function Profile({ userId }: { userId: number }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetch(`/api/users/${userId}`)
+      .then((res) => res.json())
+      .then(setUser)
+      .catch(setError)
+      .finally(() => setIsLoading(false));
+  }, [userId]);
+
+  if (error) return <p>エラーが発生しました</p>;
+  if (isLoading) return <p>読み込み中...</p>;
+  return <p>{user?.name}</p>;
+}
+```
+
+動きますが、このコードには次の問題が残っています。
+
+| 問題 | 起きること |
+| --- | --- |
+| 競合状態 | `userId` を素早く切り替えると、後から届いた古いレスポンスで画面が上書きされる |
+| 重複リクエスト | 同じデータを使うコンポーネントが2つあると、リクエストも2回飛ぶ |
+| キャッシュがない | 画面を離れて戻るたびに、読み込み表示からやり直しになる |
+| 鮮度の維持 | 別タブで更新したデータは、再読み込みするまで古いまま |
+| 再試行がない | 一時的な通信エラーでも、失敗したまま止まる |
+
+競合状態は、`useEffect` のクリーンアップで古いレスポンスを無視すれば防げます。ただ、残りの問題まで解決しようとすると、キャッシュの置き場所や共有の仕組みまで自分で作ることになります。`useSWR` は、これらをまとめて引き受けるライブラリです。
+
+```tsx
+function Profile({ userId }: { userId: number }) {
+  const { data: user, error, isLoading } = useSWR<User>(`/api/users/${userId}`, fetcher);
+
+  if (error) return <p>エラーが発生しました</p>;
+  if (isLoading) return <p>読み込み中...</p>;
+  return <p>{user?.name}</p>;
+}
+```
+
+`useState` が3つと `useEffect` が消えました。それだけでなく、上の表の問題もすべて解消されています。
+
+<Callout type="column" title="手元で比べた結果">
+  SWR 2.5.1で、遅いリクエストAのあとに速いリクエストBを出す実験をしました。クリーンアップなしの `useEffect` は最後にAを表示し、`useSWR` はBを表示しました。また、開発時のStrict Modeでは `useEffect` 内のリクエストは2回実行されましたが、`useSWR` のリクエストは1回でした。
+</Callout>
+
+---
+
+## SWRはstale-while-revalidateの略
+
+SWRという名前は、HTTPのキャッシュ戦略である[stale-while-revalidate（RFC 5861）](https://www.rfc-editor.org/rfc/rfc5861)に由来します（[SWRのREADME](https://github.com/vercel/swr)に記載があります）。
+
+- **stale**：キャッシュに残っている、古い可能性のあるデータ
+- **revalidate**：サーバーへ取りに行き、最新かどうかを確認し直すこと
+
+<Marker>`useSWR` は、キャッシュのデータを先に返して画面に表示し、同時にサーバーから取り直して、内容が変わっていたら画面を更新します。</Marker>
+
+<Figure
+  src="/images/react-swr-stale-while-revalidate.svg"
+  alt="コンポーネント、SWRキャッシュ、サーバーの3者のやり取りを示したシーケンス図。キャッシュの古いデータをすぐ表示し、バックグラウンドで再検証して、値が変わっていれば再レンダーする"
+  caption="図1: キャッシュがある状態で useSWR を呼んだときの流れ"
+  maxHeight="none"
+  maxWidth="720px"
+/>
+
+順番に見ていきます。
+
+1. コンポーネントが `useSWR('/api/user')` を呼ぶ
+2. キャッシュにデータがあれば、それをすぐ返す。**ここではまだ通信を待たない**
+3. 同時に、バックグラウンドでサーバーへリクエストを送る
+4. レスポンスが届いたら、前回の値と比較する
+5. 内容が変わっていればキャッシュを更新し、再レンダーする。同じなら再レンダーしない
+
+キャッシュが無い初回は、手順2で返すものがないので `data` は `undefined` です。そのため初回だけは読み込み表示が必要になります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  古いデータを見せてしまうのは、問題にならないの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  古い表示が残るのは、再検証のレスポンスが届くまでの間だけだよ。ただ、残高や在庫のように古い値を一瞬でも見せたくない画面もある。そういう画面では、この方式が合うかを先に考えよう。
+</SpeechBubble>
+
+---
+
+## インストールと最小のコード
+
+```bash
+npm i swr
+```
+
+最小のコードは次のとおりです。先に `fetcher` という取得用の関数を用意します。
+
+```tsx
+'use client';
+
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+export function Profile() {
+  const { data, error, isLoading } = useSWR('/api/user', fetcher);
+
+  if (error) return <p>読み込みに失敗しました</p>;
+  if (isLoading) return <p>読み込み中...</p>;
+  return <p>こんにちは、{data.name}さん</p>;
+}
+```
+
+SWR自身は通信処理を持っていません。`fetcher` は `key` を受け取ってPromiseを返す普通の関数なので、`fetch` でもaxiosでも、GraphQLのクライアントでも使えます。
+
+<Callout type="warning" title="このfetcherは説明用の最小形です">
+  上の `fetcher` は500エラーでも例外を投げないので、実際のコードでは使えません。理由と正しい書き方は[fetcherではHTTPエラーをthrowする](#fetcher-error)で説明します。
+</Callout>
+
+---
+
+## useSWRの構文・引数・戻り値
+
+**構文：** `useSWR(key, fetcher?, options?)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `key` | 文字列 / 配列 / オブジェクト / 関数 / `null` | キャッシュの識別子。`fetcher` にも渡される |
+| `fetcher`（省略可） | Promiseを返す関数 | データの取得方法。`SWRConfig` で共通設定できる |
+| `options`（省略可） | オブジェクト | このフックだけのオプション |
+
+**戻り値：** 次のプロパティを持つオブジェクト
+
+| プロパティ | 説明 |
+| --- | --- |
+| `data` | `fetcher` が解決した値。未取得なら `undefined` |
+| `error` | `fetcher` が投げたエラー。無ければ `undefined` |
+| `isLoading` | リクエスト中で、かつ読み込み済みのデータが無いとき `true` |
+| `isValidating` | リクエスト中なら `true`（データの有無を問わない） |
+| `mutate` | このkeyのキャッシュを更新・再検証する関数 |
+
+TypeScriptでは、ジェネリクスでデータとエラーの型を指定できます。
+
+```tsx
+const { data, error } = useSWR<User, FetchError>('/api/user', fetcher);
+// data の型は User | undefined、error の型は FetchError | undefined
+```
+
+---
+
+## keyはキャッシュの識別子
+
+`useSWR` で最初に理解するべきなのが `key` です。`key` には2つの役割があります。
+
+1. `fetcher` の第1引数として渡される
+2. キャッシュの識別子になる
+
+既定のキャッシュは、アプリ全体で共有される1つの `Map` です（[キャッシュ — SWR公式](https://swr.vercel.app/ja/docs/advanced/cache)）。メモリ上にあるので、ページを再読み込みすると消えます。
+
+<Marker>同じkeyを使うコンポーネントは、同じキャッシュを読みます。</Marker>つまり、どこで何回 `useSWR` を呼んでも、keyが同じならデータとリクエストは共有されます。
+
+<Figure
+  src="/images/react-swr-key-cache.svg"
+  alt="HeaderとProfileが同じkeyで1件のキャッシュと1回のリクエストを共有し、Projectsは別のkeyで別のキャッシュとリクエストを持つことを示す図"
+  caption="図2: keyごとにキャッシュが1件作られる"
+  maxHeight="none"
+  maxWidth="720px"
+/>
+
+このおかげで、propsでデータを受け渡す必要がなくなります。ユーザー情報が必要なコンポーネントは、それぞれ `useSWR` を呼ぶだけで済みます。
+
+```tsx
+function useUser() {
+  return useSWR<User>('/api/user', fetcher);
+}
+
+function Header() {
+  const { data } = useUser();
+  return <span>{data?.name}</span>;
+}
+
+function Profile() {
+  const { data } = useUser();
+  return <h1>{data?.name}</h1>;
+}
+// 同時に描画しても、/api/user へのリクエストは1回
+```
+
+このようにカスタムフックにまとめると、keyの書き間違いも防げます。
+
+<a id="array-key"></a>
+
+### 複数の値が必要なら配列をkeyにする
+
+URL以外の値も `fetcher` で使うなら、配列をkeyにします。配列はそのまま `fetcher` の第1引数として渡されます。
+
+```tsx
+const { data } = useSWR(
+  ['/api/orders', token],
+  ([url, token]) => fetchWithToken(url, token),
+);
+```
+
+<Callout type="warning" title="fetcherで使う値はすべてkeyに入れる">
+  `useSWR('/api/orders', () => fetchWithToken('/api/orders', token))` と書くと、`token` が変わってもkeyは同じなので、前のユーザーのキャッシュが返ります。[公式ドキュメント](https://swr.vercel.app/ja/docs/arguments)も同じ注意をしています。
+</Callout>
+
+配列やオブジェクトをkeyにしても、毎回のレンダーで再取得が走ることはありません。SWRは参照ではなくシリアライズした内容でkeyを比較するからです。ここは `useEffect` の依存配列と違う点で、`useSWR(['/api/orders', { page: 1 }], fetcher)` のようにその場で作ったオブジェクトを渡しても、内容が同じなら同じkeyとして扱われます。
+
+### nullで取得を止める・関数で依存させる
+
+keyに `null` を渡すと、リクエストは送られません。ログイン済みのときだけ取得する、といった条件分岐に使います。フックは条件分岐の中で呼べないので、keyの側で分岐します。
+
+```tsx
+// ❌ フックを条件付きで呼ぶことはできない
+if (isLoggedIn) {
+  const { data } = useSWR('/api/me', fetcher);
+}
+
+// ✅ keyをnullにして取得だけを止める
+const { data } = useSWR(isLoggedIn ? '/api/me' : null, fetcher);
+```
+
+keyには関数も渡せます。関数が例外を投げるか、falsyな値を返すと、SWRはリクエストを送りません。これを利用すると、「ユーザーを取得してから、そのIDでプロジェクトを取得する」という依存関係を書けます。
+
+```tsx
+const { data: user } = useSWR<User>('/api/user', fetcher);
+
+// user が未取得の間は user.id で例外が発生し、リクエストは送られない
+const { data: projects } = useSWR<Project[]>(
+  () => `/api/projects?uid=${user!.id}`,
+  fetcher,
+);
+```
+
+`user` の取得が終わって再レンダーされると、keyの関数が正常に文字列を返すようになり、プロジェクトの取得が始まります。
+
+---
+
+<a id="fetcher-error"></a>
+
+## fetcherではHTTPエラーをthrowする
+
+`fetch` は、ステータスコードが404や500でもPromiseをrejectしません。そのため最小形の `fetcher` だと、500エラーのレスポンスのJSONが `data` に入り、`error` は `undefined` のままになります。
+
+<Marker>SWRは `fetcher` が例外を投げたときだけエラーとして扱うので、`res.ok` を確認して自分でthrowします。</Marker>
+
+```tsx
+class FetchError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public info: unknown,
+  ) {
+    super(message);
+  }
+}
+
+export const fetcher = async <T,>(url: string): Promise<T> => {
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    const info = await res.json().catch(() => null);
+    throw new FetchError('APIリクエストに失敗しました', res.status, info);
+  }
+
+  return res.json() as Promise<T>;
+};
+```
+
+こうしておけば、コンポーネントで `error.status` を見て表示を分けられます。
+
+```tsx
+const { data, error } = useSWR<User, FetchError>('/api/user', fetcher);
+
+if (error?.status === 401) return <p>ログインしてください</p>;
+```
+
+---
+
+## isLoadingとisValidatingの違い
+
+`useSWR` の中で特に混同しやすいのが、この2つです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  どっちも「読み込み中」に見えるけど、何が違うの？
+</SpeechBubble>
+
+違いは、**読み込み済みのデータがあるかどうか**です。
+
+- `isValidating`：リクエスト中なら `true`
+- `isLoading`：リクエスト中で、かつ読み込み済みのデータが無いときだけ `true`
+
+<Figure
+  src="/images/react-swr-flags-timeline.svg"
+  alt="初回読み込み、表示中、再検証中、更新後の4段階で、data、isLoading、isValidatingの値を並べた表形式の図。isLoadingは初回だけtrue、isValidatingは初回と再検証中にtrueになる"
+  caption="図3: data・isLoading・isValidating の値の変化"
+  maxHeight="none"
+  maxWidth="720px"
+/>
+
+再検証中は `isValidating` だけが `true` で、`data` には古い値が入ったままです。ここが `useSWR` の見た目を決めるポイントです。
+
+| `isLoading` | `isValidating` | 状態 | 画面の例 |
+| --- | --- | --- | --- |
+| `true` | `true` | 初回の取得中 | スケルトンを表示 |
+| `false` | `true` | データ表示中の再検証 | データを表示したまま、小さなインジケータを出す |
+| `false` | `false` | 取得完了、またはkeyが `null` | データを表示 |
+
+`isLoading` が `true` で `isValidating` が `false` になる組み合わせはありません。`isLoading` が成り立つにはリクエスト中である必要があるからです。
+
+```tsx
+function Profile() {
+  const { data, isLoading, isValidating } = useSWR<User>('/api/user', fetcher);
+
+  if (isLoading) return <Skeleton />;
+
+  return (
+    <div>
+      <h1>{data?.name}</h1>
+      {isValidating && <small>更新を確認中...</small>}
+    </div>
+  );
+}
+```
+
+<Callout type="warning" title="isValidatingでスケルトンに切り替えない">
+  `if (isValidating) return <Skeleton />` と書くと、タブに戻るたびに画面全体がスケルトンへ戻ります。せっかくキャッシュを先に表示できるのに、その効果がなくなります。全体を差し替える判定には `isLoading` を使います。
+</Callout>
+
+---
+
+## 再検証はいつ起きるのか
+
+「何もしていないのにリクエストが飛んだ」と感じたら、次のどれかが原因です。
+
+<Figure
+  src="/images/react-swr-revalidate-triggers.svg"
+  alt="マウント、フォーカス、再接続、refreshIntervalは重複判定を通ってfetcherを実行し、mutateは判定を通らずfetcherを実行する。結果は前回の値と比較され、違うときだけ再レンダーする流れを示した図"
+  caption="図4: 再検証のきっかけと、その後の処理"
+  maxHeight="none"
+  maxWidth="720px"
+/>
+
+| きっかけ | 既定 | 制御するオプション |
+| --- | --- | --- |
+| マウント・keyの変更 | 有効 | `revalidateIfStale`（キャッシュがあるとき）、`revalidateOnMount`（初回マウント） |
+| ウィンドウのフォーカス | 有効 | `revalidateOnFocus` |
+| ネットワークの再接続 | 有効 | `revalidateOnReconnect` |
+| 一定間隔のポーリング | 無効 | `refreshInterval`（ミリ秒） |
+| `mutate()` の呼び出し | — | 自分で呼ぶ |
+
+### 重複排除（dedupingInterval）
+
+同じkeyの取得を開始してから `dedupingInterval`（既定2000ミリ秒）の間は、再検証を求められても新しいリクエストを送りません。先に開始したリクエストの結果を使います。同じkeyのコンポーネントが一度に複数描画されてもリクエストが1回で済むのは、この仕組みによるものです。
+
+一方、`mutate()` はこの判定を通らず、必ず `fetcher` を実行します。データを更新した直後に、確実に取り直すためです。
+
+### 主なオプション
+
+| オプション | 既定値 | 説明 |
+| --- | --- | --- |
+| `revalidateIfStale` | `true` | マウント時にキャッシュがあっても再検証する |
+| `revalidateOnMount` | 未設定 | 設定すると、マウント時の再検証を強制的に有効・無効にする |
+| `revalidateOnFocus` | `true` | フォーカス時に再検証する |
+| `revalidateOnReconnect` | `true` | 再接続時に再検証する |
+| `refreshInterval` | `0` | ポーリングの間隔。`0` は無効 |
+| `refreshWhenHidden` | `false` | ウィンドウが非表示でもポーリングする |
+| `refreshWhenOffline` | `false` | オフラインでもポーリングする |
+| `dedupingInterval` | `2000` | 重複排除の期間（ミリ秒） |
+| `focusThrottleInterval` | `5000` | フォーカスによる再検証の最小間隔（ミリ秒） |
+| `keepPreviousData` | `false` | keyの変更後、取得が終わるまで前のデータを返す |
+| `fallbackData` | なし | キャッシュが無いときに返す初期データ |
+| `shouldRetryOnError` | `true` | エラー時に再試行する |
+| `errorRetryInterval` | `5000` | 再試行の基準間隔（ミリ秒） |
+| `errorRetryCount` | なし | 再試行の上限回数。未設定なら上限なし |
+
+### 変更されないデータはuseSWRImmutable
+
+国や都道府県の一覧のように変わらないデータなら、自動の再検証は不要です。`swr/immutable` の `useSWRImmutable` は、`revalidateIfStale`・`revalidateOnFocus`・`revalidateOnReconnect` をすべて `false` にした `useSWR` と同じです。
+
+```tsx
+import useSWRImmutable from 'swr/immutable';
+
+const { data } = useSWRImmutable<Country[]>('/api/countries', fetcher);
+```
+
+### 値が同じなら再レンダーしない
+
+再検証のたびに再レンダーされるわけではありません。SWRはレスポンスを前回の値と深く比較し（`compare` オプションで変更可能）、同じならそのままにします。
+
+さらに、コンポーネントが実際に読んだプロパティだけを追跡します。`const { data } = useSWR(...)` のように `data` しか読んでいなければ、`isValidating` が変わっても再レンダーされません。公式の説明では、`data` だけを読むコンポーネントのレンダーは2回で済みます（[パフォーマンス — SWR公式](https://swr.vercel.app/ja/docs/advanced/performance)）。手元の確認でも初回と取得完了の2回でした。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  つまり、再検証そのものはよく起きるけど、値が変わらなければ画面の処理はほとんど増えないんだ。
+</SpeechBubble>
+
+---
+
+## keyが変わったときのdataとkeepPreviousData
+
+検索やページネーションでは、入力に応じてkeyが変わります。keyが変わると、それは別のキャッシュなので、新しいkeyにデータがなければ `data` は `undefined` に戻ります。すると一覧が一瞬消えて、画面がガタつきます。
+
+`keepPreviousData: true` を指定すると、新しいデータが届くまで前のkeyのデータを返します。
+
+<Figure
+  src="/images/react-swr-keep-previous-data.svg"
+  alt="keepPreviousDataがfalseのときはkey変更直後にdataがundefinedになって一覧が消え、trueのときは前のkeyのdataが残り、取得完了で新しい一覧に切り替わることを比較した図"
+  caption="図5: keepPreviousData の有無による表示の違い"
+  maxHeight="none"
+  maxWidth="720px"
+/>
+
+```tsx
+function SearchResults({ query }: { query: string }) {
+  const { data, isLoading } = useSWR<Book[]>(
+    query ? `/api/search?q=${encodeURIComponent(query)}` : null,
+    fetcher,
+    { keepPreviousData: true },
+  );
+
+  return (
+    <ul style={{ opacity: isLoading ? 0.5 : 1 }}>
+      {data?.map((book) => <li key={book.id}>{book.title}</li>)}
+    </ul>
+  );
+}
+```
+
+前のデータは「読み込み済みのデータ」に数えられないので、表示している間も `isLoading` は `true` です。上のコードはこれを利用して、取得中の一覧を半透明にしています。
+
+---
+
+## mutateでキャッシュを更新する
+
+データを変更したら、キャッシュも更新する必要があります。`mutate` には2種類あります。
+
+| 種類 | 取得方法 | 呼び方 | keyの指定 |
+| --- | --- | --- | --- |
+| バウンドmutate | `useSWR` の戻り値 | `mutate(data?, options?)` | 不要（そのフックのkey） |
+| グローバルmutate | `useSWRConfig()` の戻り値 | `mutate(key, data?, options?)` | 必要 |
+
+引数なしで呼ぶと「このキャッシュは古いので取り直す」という意味になります。
+
+```tsx
+const { data, mutate } = useSWR<User>('/api/user', fetcher);
+
+// 取り直すだけ
+await mutate();
+
+// 値を指定してキャッシュを書き換え、再検証はしない
+await mutate({ ...data!, name: '新しい名前' }, { revalidate: false });
+```
+
+別のコンポーネントのデータを取り直したいときは、グローバルmutateを使います。
+
+```tsx
+const { mutate } = useSWRConfig();
+
+// 1つのkeyを指定
+await mutate('/api/user');
+
+// 関数でkeyを絞り込む（keyは文字列とは限らないので型を確認する）
+await mutate((key) => typeof key === 'string' && key.startsWith('/api/posts'));
+```
+
+### 書き込みにはuseSWRMutationを使う
+
+`useSWR` はマウントすると自動で `fetcher` を実行するので、POSTのような書き込みには使えません。書き込みには、`swr/mutation` の `useSWRMutation` を使います。
+
+**構文：** `useSWRMutation(key, fetcher, options?)`
+
+| 引数 | 渡せるもの | 説明 |
+| --- | --- | --- |
+| `key` | `useSWR` と同じ | 更新対象のキャッシュのkey |
+| `fetcher` | `(key, { arg }) => Promise` | 書き込み処理。`arg` は `trigger` に渡した値 |
+| `options`（省略可） | オブジェクト | `mutate` と同様のオプションと `onSuccess` / `onError` |
+
+**戻り値：** `trigger`（実行する関数）、`isMutating`（実行中なら `true`）、`data`、`error`、`reset`
+
+```tsx
+import useSWR from 'swr';
+import useSWRMutation from 'swr/mutation';
+
+async function addTodo(url: string, { arg }: { arg: NewTodo }): Promise<Todo> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(arg),
+  });
+  if (!res.ok) throw new Error('追加に失敗しました');
+  return res.json();
+}
+
+function Todos() {
+  const { data: todos } = useSWR<Todo[]>('/api/todos', fetcher);
+  const { trigger, isMutating } = useSWRMutation('/api/todos', addTodo);
+
+  return (
+    <>
+      <ul>{todos?.map((todo) => <li key={todo.id}>{todo.title}</li>)}</ul>
+      <button disabled={isMutating} onClick={() => trigger({ title: '買い物' })}>
+        追加
+      </button>
+    </>
+  );
+}
+```
+
+`useSWRMutation` と `useSWR` が同じkeyを使っている点が重要です。`trigger` が成功すると、既定で同じkeyの再検証が走り、一覧が最新になります。`trigger` を呼ぶまでは何も実行されません。
+
+### 楽観的更新
+
+上のコードでは、再検証が終わるまで新しいTodoは一覧に出ません。サーバーの応答を待たずに、成功する前提で先に画面を更新する手法が**楽観的更新**（optimistic update）です。
+
+<Figure
+  src="/images/react-swr-optimistic-update.svg"
+  alt="クリックするとoptimisticDataをすぐ表示してPOSTを送り、成功ならサーバーの値で確定して再検証し、失敗なら元の値へ戻してエラーを投げる流れの図"
+  caption="図6: 楽観的更新は、成功なら確定、失敗なら元に戻す"
+  maxHeight="none"
+  maxWidth="720px"
+/>
+
+```tsx
+const handleAdd = async (title: string) => {
+  try {
+    await trigger(
+      { title },
+      {
+        // 応答を待たずに表示する値
+        optimisticData: (current: Todo[] = []) => [
+          ...current,
+          { id: 'temp', title },
+        ],
+        // 成功時、レスポンスをどうキャッシュへ入れるか
+        populateCache: (created: Todo, current: Todo[] = []) => [
+          ...current,
+          created,
+        ],
+        // 失敗したら元の値へ戻す
+        rollbackOnError: true,
+        // レスポンスで確定できるので再検証は省く
+        revalidate: false,
+      },
+    );
+  } catch {
+    showToast('追加に失敗しました');
+  }
+};
+```
+
+| オプション | 既定値 | 説明 |
+| --- | --- | --- |
+| `optimisticData` | なし | リクエスト完了前に表示する値、またはそれを返す関数 |
+| `populateCache` | `mutate`：`true` / `useSWRMutation`：`false` | 戻り値でキャッシュを更新するか。関数も渡せる |
+| `rollbackOnError` | `true` | 失敗時に楽観的更新を取り消す |
+| `revalidate` | `true` | 完了後に再検証する |
+| `throwOnError` | `true` | 失敗時に例外を投げる |
+
+`throwOnError` が既定で `true` なので、`trigger` や `mutate` の失敗は例外になります。`try/catch` がないと未処理のPromise rejectionになるので、エラー表示とあわせて必ず受け止めます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  楽観的更新は、全部の更新に入れたほうがいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  そうとは限らないよ。失敗すると表示が巻き戻るから、「いいね」やTodoのように失敗しにくくて巻き戻っても困らない操作に向いているんだ。決済のように結果を確定してから見せるべき操作には使わないほうがいいね。これは筆者の判断だけど、迷ったら「失敗して巻き戻ったときに利用者が混乱するか」で考えてみて。
+</SpeechBubble>
+
+---
+
+## エラーの再試行
+
+`fetcher` が例外を投げると、SWRは既定で自動的に再試行します。待ち時間はソースコードで次のように計算されています。
+
+```ts
+~~((Math.random() + 0.5) * (1 << Math.min(retryCount, 8))) * errorRetryInterval
+```
+
+回数に応じて待ち時間が指数的に伸びる、指数バックオフです。既定の `errorRetryInterval`（5秒）だと、1回目は5秒か10秒後、2回目は10〜25秒後、3回目は20〜55秒後になります。`errorRetryCount` の既定は未設定で、回数の上限はありません。
+
+ただ、404や403は何度試しても結果が変わらないので、再試行を止めるのが一般的です。`onErrorRetry` で制御できます。
+
+```tsx
+<SWRConfig
+  value={{
+    onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
+      // 404では再試行しない
+      if (error.status === 404) return;
+      // 3回までにする
+      if (retryCount >= 3) return;
+      // 5秒後に再試行する
+      setTimeout(() => revalidate({ retryCount }), 5000);
+    },
+  }}
+>
+  {children}
+</SWRConfig>
+```
+
+---
+
+## SWRConfigで共通設定をまとめる
+
+`fetcher` やオプションをコンポーネントごとに書かなくても、`SWRConfig` で配下にまとめて適用できます。`fetcher` を設定すると、`useSWR` の第2引数を省略できます。
+
+```tsx
+'use client';
+
+import { SWRConfig } from 'swr';
+import { fetcher } from '@/lib/fetcher';
+
+export function SWRProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SWRConfig
+      value={{
+        fetcher,
+        // アプリ全体のエラーをまとめて記録する
+        onError: (error, key) => {
+          console.error(key, error);
+        },
+      }}
+    >
+      {children}
+    </SWRConfig>
+  );
+}
+```
+
+```tsx
+// fetcher を省略できる
+const { data } = useSWR<User>('/api/user');
+```
+
+---
+
+## Next.js App Routerで使うとき
+
+`useSWR` はフックなので、Server Componentでは使えません。ファイルの先頭に `'use client'` を書いたクライアントコンポーネントで呼びます。
+
+サーバーで取得したデータを初期値にしたいときは、propsで受け取って `fallbackData` に渡します。
+
+```tsx
+// app/profile/page.tsx（Server Component）
+export default async function Page() {
+  const user = await getUser();
+  return <Profile initialUser={user} />;
+}
+```
+
+```tsx
+// app/profile/Profile.tsx
+'use client';
+
+import useSWR from 'swr';
+
+export function Profile({ initialUser }: { initialUser: User }) {
+  const { data } = useSWR<User>('/api/user', fetcher, { fallbackData: initialUser });
+  return <h1>{data?.name}</h1>;
+}
+```
+
+最初のHTMLには `initialUser` の内容が入り、ブラウザに読み込まれたあとは `useSWR` が再検証します。
+
+### Server Componentのfetchとどちらを使うか
+
+次の表は公式の規定ではなく、筆者の使い分けです。根拠は「そのデータがいつ変わり、誰が見るか」です。
+
+| データの性質 | 向いている方法 | 理由 |
+| --- | --- | --- |
+| 公開記事など、全員に同じでSEOも必要 | Server Componentの `fetch` | HTMLに最初から含まれ、ブラウザへ送るJSも増えない |
+| ログイン後のダッシュボードなど、操作中に変わる | `useSWR` | フォーカス時の再検証やポーリングで最新に保てる |
+| 入力に応じて変わる検索結果 | `useSWR` | keyの変更で再取得でき、`keepPreviousData` も使える |
+| 両方必要 | Server Componentで初期値を取得し `fallbackData` | 初期表示と鮮度を両立できる |
+
+<Callout type="note" title="TanStack Queryとの関係">
+  [TanStack Query](https://tanstack.com/query/latest)も、サーバーのデータの取得とキャッシュを管理するライブラリで、`useSWR` と役割が重なります。React全般の中での位置づけは[Reactとは何か](/books/react-learning/01-introduction)、状態の分類としての位置づけは[システム設計の状態管理](/books/system-design/09-state-management)を参照してください。
+</Callout>
+
+---
+
+## よくあるハマりどころ
+
+### 500エラーなのにerrorが入らない
+
+`fetcher` で `res.ok` を確認していないのが原因です。`fetch` はHTTPエラーでrejectしないので、エラーレスポンスのJSONが `data` に入ります。[fetcherではHTTPエラーをthrowする](#fetcher-error)のとおりに直します。
+
+### 再検証に失敗すると表示が消える
+
+再検証が失敗すると、`data` には前回の値が残ったまま `error` も入ります。先に `if (error)` で返すと、まだ使えるデータまで消えてしまいます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `if (error) return <Error />` って、いつも最初に書いちゃってた…。
+</SpeechBubble>
+
+一時的な通信エラーのたびに画面全体をエラーにしたくないなら、データがないときだけエラー画面にします。
+
+```tsx
+const { data, error } = useSWR<User>('/api/user', fetcher);
+
+if (error && !data) return <p>読み込みに失敗しました</p>;
+if (!data) return <Skeleton />;
+
+return (
+  <div>
+    {error && <p>最新の情報を取得できませんでした</p>}
+    <h1>{data.name}</h1>
+  </div>
+);
+```
+
+### fallbackDataを渡したのにスケルトンが出る
+
+`fallbackData` は「読み込み済みのデータ」に数えられないので、初回のリクエスト中は、`data` に値が入っていても `isLoading` が `true` になります。`if (isLoading) return <Skeleton />` と書くと、せっかくの初期データが表示されません。`keepPreviousData` でも同じです。判定を `if (!data)` に変えます。
+
+### keyがnullのときにdata.nameで落ちる
+
+keyが `null` のときはリクエストが走らないので、`isLoading` は `false` で `data` は `undefined` です。`if (isLoading) return ...` のあとで `data.name` を読むと実行時エラーになります。`data?.name` にするか、`if (!data)` で判定します。
+
+### 別のユーザーのデータが表示される
+
+`fetcher` で使っている値がkeyに入っていません。[複数の値が必要なら配列をkeyにする](#array-key)のとおり、結果を左右する値はすべてkeyに入れます。また、キャッシュはログアウトしても自動では消えません。共有端末を想定するならログアウト時に `mutate(() => true, undefined, { revalidate: false })` で全キャッシュを消してください。
+
+<Figure src="/images/search_woman_color.png" alt="調べものをする女性のイラスト" />
+
+---
+
+## ちゃんと使うためのポイント
+
+- <Marker>`useSWR` はキャッシュを先に返し、バックグラウンドで取り直す</Marker>
+- `key` はキャッシュの識別子。同じkeyならデータもリクエストも共有される
+- `fetcher` で使う値はすべて `key` に入れ、HTTPエラーは `res.ok` を見てthrowする
+- <Marker>全体の読み込み表示は `isLoading`、更新中の小さな表示は `isValidating`</Marker>
+- 再検証はマウント・フォーカス・再接続などで自動的に起きる。値が同じなら再レンダーしない
+- 読み取りは `useSWR`、書き込みは `useSWRMutation`。`trigger` の失敗は `try/catch` で受ける
+- 取得を止めるならkeyを `null` にする。フックを条件分岐の中で呼ばない
+- `useSWR` はクライアントコンポーネント専用。サーバーの初期値は `fallbackData` で渡す
+
+## 参考リンク
+
+- [SWR公式ドキュメント — はじめに](https://swr.vercel.app/ja/docs/getting-started)
+- [APIオプション — SWR公式](https://swr.vercel.app/ja/docs/api)
+- [ミューテーションと再検証 — SWR公式](https://swr.vercel.app/ja/docs/mutation)
+- [SWRを理解する（isLoadingとisValidating）— SWR公式](https://swr.vercel.app/ja/docs/advanced/understanding)
+
+クライアントとサーバーのどちらで取得するかをもう一度整理したいときは、[データ取得とキャッシュ — Next.js](/books/next-js/07-data-fetching)と読み比べてみてください。
