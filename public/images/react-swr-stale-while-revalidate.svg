@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">useSWRのstale-while-revalidateの流れ</title>
+  <desc id="desc">useSWRを呼ぶと、まずキャッシュの古いデータを返して画面に表示する。同時にサーバーへリクエストを送り、レスポンスの内容が変わっていればキャッシュを更新して再レンダーする。</desc>
+  <defs><marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker></defs>
+  <rect width="800" height="600" rx="20" fill="#ffffff"/>
+  <text x="400.0" y="44" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">キャッシュを先に返し、そのあと取り直す</text>
+  <rect x="45" y="72" width="210" height="48" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="150.0" y="102.65" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="19" font-weight="700" fill="#1d4ed8">コンポーネント</text>
+  <line x1="150" y1="120" x2="150" y2="575" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="295" y="72" width="210" height="48" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="400.0" y="102.65" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="19" font-weight="700" fill="#6d28d9">SWRキャッシュ</text>
+  <line x1="400" y1="120" x2="400" y2="575" stroke="#cbd5e1" stroke-width="2"/>
+  <rect x="545" y="72" width="210" height="48" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="650.0" y="102.65" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="19" font-weight="700" fill="#047857">サーバー</text>
+  <line x1="650" y1="120" x2="650" y2="575" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="40" cy="165" r="15" fill="#0f172a"/>
+  <text x="40" y="171" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#ffffff">1</text>
+  <line x1="150" y1="165" x2="396" y2="165" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <text x="275" y="153" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="600" fill="#0f172a">useSWR(&#x27;/api/user&#x27;)</text>
+  <circle cx="40" cy="235" r="15" fill="#0f172a"/>
+  <text x="40" y="241" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#ffffff">2</text>
+  <path d="M400 235L154 235" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#ab)"/>
+  <text x="275" y="223" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">古いデータを返す（stale）</text>
+  <rect x="62" y="245" width="176" height="34" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="150" y="268" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">すぐ画面に表示</text>
+  <circle cx="40" cy="330" r="15" fill="#0f172a"/>
+  <text x="40" y="336" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#ffffff">3</text>
+  <line x1="400" y1="330" x2="646" y2="330" stroke="#d97706" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#aa)"/>
+  <text x="525" y="318" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="600" fill="#b45309">GET /api/user</text>
+  <text x="525" y="355" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="500" fill="#475569">バックグラウンドで再検証</text>
+  <circle cx="40" cy="415" r="15" fill="#0f172a"/>
+  <text x="40" y="421" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#ffffff">4</text>
+  <path d="M650 415L404 415" fill="none" stroke="#059669" stroke-width="2.5" marker-end="url(#ag)"/>
+  <text x="525" y="403" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#047857">最新のレスポンス</text>
+  <rect x="302" y="425" width="196" height="34" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="400" y="448" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#6d28d9">前回の値と比較</text>
+  <circle cx="40" cy="510" r="15" fill="#0f172a"/>
+  <text x="40" y="516" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#ffffff">5</text>
+  <path d="M400 510L154 510" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#ab)"/>
+  <text x="275" y="498" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">変わっていれば再レンダー</text>
+  <rect x="62" y="520" width="176" height="34" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="150" y="543" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#1d4ed8">新しい値に更新</text>
+</svg>

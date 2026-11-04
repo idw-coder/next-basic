@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="470" viewBox="0 0 800 470" role="img" aria-labelledby="title desc">
+  <title id="title">keyごとにキャッシュが1件できる</title>
+  <desc id="desc">HeaderとProfileは同じkeyを使うのでキャッシュを共有し、リクエストは1回になる。Projectsは別のkeyなので別のキャッシュとリクエストになる。</desc>
+  <defs><marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker></defs>
+  <rect width="800" height="470" rx="20" fill="#ffffff"/>
+  <text x="400.0" y="44" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">keyが同じなら、キャッシュもリクエストも1つ</text>
+  <text x="125" y="92" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#475569">コンポーネント</text>
+  <text x="415" y="92" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#475569">キャッシュ（key → 値）</text>
+  <text x="690" y="92" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#475569">サーバー</text>
+  <rect x="30" y="112" width="190" height="80" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="125.0" y="146.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#1d4ed8">Header</text>
+  <text x="125.0" y="170.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="500" fill="#0f172a">&#x27;/api/user&#x27;</text>
+  <rect x="30" y="212" width="190" height="80" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="125.0" y="246.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#1d4ed8">Profile</text>
+  <text x="125.0" y="270.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="500" fill="#0f172a">&#x27;/api/user&#x27;</text>
+  <rect x="30" y="340" width="190" height="80" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="125.0" y="374.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#b45309">Projects</text>
+  <text x="125.0" y="398.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="500" fill="#0f172a">&#x27;/api/projects&#x27;</text>
+  <rect x="290" y="152" width="250" height="90" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="415.0" y="191.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="700" fill="#6d28d9">&#x27;/api/user&#x27;</text>
+  <text x="415.0" y="215.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="500" fill="#0f172a">{ name: &quot;Sato&quot; }</text>
+  <rect x="290" y="335" width="250" height="90" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="415.0" y="374.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="700" fill="#b45309">&#x27;/api/projects&#x27;</text>
+  <text x="415.0" y="398.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="500" fill="#0f172a">[ ... ]</text>
+  <line x1="220" y1="152" x2="288" y2="185" stroke="#2563eb" stroke-width="2.5" marker-end="url(#ab)"/>
+  <line x1="220" y1="252" x2="288" y2="212" stroke="#2563eb" stroke-width="2.5" marker-end="url(#ab)"/>
+  <line x1="220" y1="380" x2="288" y2="380" stroke="#d97706" stroke-width="2.5" marker-end="url(#aa)"/>
+  <line x1="540" y1="197" x2="620" y2="197" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <text x="580" y="180" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#0f172a">1回</text>
+  <line x1="540" y1="380" x2="620" y2="380" stroke="#d97706" stroke-width="2.5" marker-end="url(#aa)"/>
+  <text x="580" y="363" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#b45309">1回</text>
+  <rect x="624" y="152" width="136" height="90" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="692.0" y="191.6" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#047857">GET</text>
+  <text x="692.0" y="213.6" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#0f172a">/api/user</text>
+  <rect x="624" y="335" width="136" height="90" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="692.0" y="374.75" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#047857">GET</text>
+  <text x="692.0" y="395.75" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#0f172a">/api/projects</text>
+</svg>

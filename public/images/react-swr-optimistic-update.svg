@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="470" viewBox="0 0 800 470" role="img" aria-labelledby="title desc">
+  <title id="title">楽観的更新の成功時と失敗時の流れ</title>
+  <desc id="desc">ボタンを押すと、サーバーの応答を待たずにoptimisticDataを画面に表示し、同時にリクエストを送る。成功すればサーバーの値に確定し、失敗すれば元の値へ戻してエラーを投げる。</desc>
+  <defs><marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker></defs>
+  <rect width="800" height="470" rx="20" fill="#ffffff"/>
+  <text x="400.0" y="44" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">楽観的更新：先に表示し、結果で確定か巻き戻し</text>
+  <rect x="24" y="185" width="160" height="100" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+  <text x="104.0" y="229.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#475569">クリック前</text>
+  <text x="104.0" y="253.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="500" fill="#0f172a">[a]</text>
+  <line x1="184" y1="235" x2="232" y2="235" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <rect x="236" y="160" width="200" height="150" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="336.0" y="217.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#b45309">すぐに表示</text>
+  <text x="336.0" y="241.3" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17" font-weight="500" fill="#0f172a">[a, b]</text>
+  <text x="336.0" y="265.3" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="500" fill="#0f172a">POST送信中</text>
+  <text x="336" y="342" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#b45309">optimisticData</text>
+  <path d="M436 205L500 135L546 135" fill="none" stroke="#059669" stroke-width="2.5" marker-end="url(#ag)"/>
+  <text x="478" y="132" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="800" fill="#047857">成功</text>
+  <path d="M436 265L500 335L546 335" fill="none" stroke="#dc2626" stroke-width="2.5" marker-end="url(#ar)"/>
+  <text x="478" y="352" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="800" fill="#b91c1c">失敗</text>
+  <rect x="550" y="80" width="226" height="110" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="663.0" y="117.95" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#047857">サーバーの値で確定</text>
+  <text x="663.0" y="140.95" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#0f172a">[a, b]</text>
+  <text x="663.0" y="163.95" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="500" fill="#0f172a">続けて再検証（既定）</text>
+  <rect x="550" y="280" width="226" height="110" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <text x="663.0" y="317.95" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="700" fill="#b91c1c">元の値へ戻す</text>
+  <text x="663.0" y="340.95" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#0f172a">[a]</text>
+  <text x="663.0" y="363.95" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="500" fill="#0f172a">エラーを投げる</text>
+  <text x="663" y="420" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#b91c1c">rollbackOnError: true</text>
+</svg>

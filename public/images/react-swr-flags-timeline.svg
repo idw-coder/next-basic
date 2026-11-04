@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="430" viewBox="0 0 800 430" role="img" aria-labelledby="title desc">
+  <title id="title">isLoadingとisValidatingの変化</title>
+  <desc id="desc">初回読み込みではisLoadingとisValidatingの両方がtrue。データ取得後は両方false。再検証中はisValidatingだけがtrueになり、dataには古い値が入ったまま。完了後にdataが新しい値に変わる。</desc>
+  <defs><marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker></defs>
+  <rect width="800" height="430" rx="20" fill="#ffffff"/>
+  <text x="400.0" y="44" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">isLoadingは初回だけ、isValidatingは取得のたびに</text>
+  <text x="222.5" y="92" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#0f172a">初回の読み込み</text>
+  <text x="387.5" y="92" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#0f172a">表示中</text>
+  <text x="552.5" y="92" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#0f172a">再検証中</text>
+  <text x="717.5" y="92" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#0f172a">更新後</text>
+  <text x="16" y="151" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0f172a">data</text>
+  <rect x="149" y="115" width="147" height="60" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="222.5" y="152" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#475569">undefined</text>
+  <rect x="314" y="115" width="147" height="60" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="387.5" y="152" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#1d4ed8">v1</text>
+  <rect x="479" y="115" width="147" height="60" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="552.5" y="152" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">v1（古い値）</text>
+  <rect x="644" y="115" width="147" height="60" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="717.5" y="152" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#1d4ed8">v2</text>
+  <text x="16" y="231" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0f172a">isLoading</text>
+  <rect x="149" y="195" width="147" height="60" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+  <text x="222.5" y="232" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#b45309">true</text>
+  <rect x="314" y="195" width="147" height="60" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="387.5" y="232" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#475569">false</text>
+  <rect x="479" y="195" width="147" height="60" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="552.5" y="232" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#475569">false</text>
+  <rect x="644" y="195" width="147" height="60" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="717.5" y="232" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#475569">false</text>
+  <text x="16" y="311" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#0f172a">isValidating</text>
+  <rect x="149" y="275" width="147" height="60" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+  <text x="222.5" y="312" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#b45309">true</text>
+  <rect x="314" y="275" width="147" height="60" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="387.5" y="312" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#475569">false</text>
+  <rect x="479" y="275" width="147" height="60" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1.5"/>
+  <text x="552.5" y="312" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#b45309">true</text>
+  <rect x="644" y="275" width="147" height="60" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="717.5" y="312" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" font-weight="700" fill="#475569">false</text>
+  <line x1="149" y1="368" x2="780" y2="368" stroke="#475569" stroke-width="2.5" marker-end="url(#ak)"/>
+  <text x="465" y="398" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="600" fill="#475569">時間の流れ</text>
+</svg>
