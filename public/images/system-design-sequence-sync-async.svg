@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" role="img" aria-labelledby="title desc">
+  <title id="title">同期メッセージと非同期メッセージ</title>
+  <desc id="desc">左は同期メッセージ。APIはメールサーバーの応答を待ってからブラウザへ201を返す。右は非同期メッセージ。APIはメール処理へ依頼を送ったら待たずに201を返し、メール処理はそのあとも動き続ける。</desc>
+  <defs><marker id="fk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#475569" stroke-width="1.6"/></marker><marker id="fb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="ob" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#2563eb" stroke-width="1.6"/></marker><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="oa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#d97706" stroke-width="1.6"/></marker><marker id="fg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="og" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#059669" stroke-width="1.6"/></marker><marker id="fr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker><marker id="or" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#dc2626" stroke-width="1.6"/></marker><marker id="fv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7c3aed"/></marker><marker id="ov" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#7c3aed" stroke-width="1.6"/></marker></defs>
+  <rect width="800" height="560" rx="20" fill="#ffffff"/>
+  <text x="400" y="42" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">送信側が応答を待つか、待たないか</text>
+  <rect x="20" y="66" width="370" height="474" rx="14" fill="#ffffff" stroke="#475569" stroke-width="1"/>
+  <rect x="410" y="66" width="370" height="474" rx="14" fill="#ffffff" stroke="#475569" stroke-width="1"/>
+  <text x="205" y="96" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="19" font-weight="800" fill="#1d4ed8">同期: -&gt;&gt;</text>
+  <text x="595" y="96" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="19" font-weight="800" fill="#b45309">非同期: -)</text>
+  <rect x="32.0" y="116" width="96" height="46" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="80" y="146" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#1d4ed8">ブラウザ</text>
+  <line x1="80" y1="162" x2="80" y2="485" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="157.0" y="116" width="96" height="46" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="205" y="146" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#6d28d9">API</text>
+  <line x1="205" y1="162" x2="205" y2="485" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="278.0" y="116" width="104" height="46" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="330" y="146" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#047857">メール処理</text>
+  <line x1="330" y1="162" x2="330" y2="485" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="73" y="190" width="14" height="280" rx="2" fill="#ffffff" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="198" y="200" width="14" height="240" rx="2" fill="#ffffff" stroke="#7c3aed" stroke-width="1.5"/>
+  <rect x="323" y="260" width="14" height="110" rx="2" fill="#ffffff" stroke="#059669" stroke-width="1.5"/>
+  <line x1="87" y1="200" x2="197" y2="200" stroke="#475569" stroke-width="2.5" marker-end="url(#fk)"/>
+  <text x="142.0" y="190" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#0f172a">POST</text>
+  <line x1="212" y1="260" x2="322" y2="260" stroke="#2563eb" stroke-width="2.5" marker-end="url(#fb)"/>
+  <text x="267.0" y="250" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">送信</text>
+  <line x1="323" y1="370" x2="213" y2="370" stroke="#475569" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ok)"/>
+  <text x="268.0" y="360" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#0f172a">結果</text>
+  <text x="267" y="322" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#1d4ed8">APIは待つ</text>
+  <line x1="198" y1="440" x2="88" y2="440" stroke="#475569" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ok)"/>
+  <text x="143.0" y="430" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#0f172a">201</text>
+  <text x="205" y="505" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#1d4ed8">メール送信が終わるまで応答しない</text>
+  <rect x="422.0" y="116" width="96" height="46" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="470" y="146" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#1d4ed8">ブラウザ</text>
+  <line x1="470" y1="162" x2="470" y2="485" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="547.0" y="116" width="96" height="46" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="595" y="146" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#6d28d9">API</text>
+  <line x1="595" y1="162" x2="595" y2="485" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="668.0" y="116" width="104" height="46" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="720" y="146" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#047857">メール処理</text>
+  <line x1="720" y1="162" x2="720" y2="485" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="463" y="190" width="14" height="150" rx="2" fill="#ffffff" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="588" y="200" width="14" height="110" rx="2" fill="#ffffff" stroke="#7c3aed" stroke-width="1.5"/>
+  <rect x="713" y="260" width="14" height="210" rx="2" fill="#ffffff" stroke="#059669" stroke-width="1.5"/>
+  <line x1="477" y1="200" x2="587" y2="200" stroke="#475569" stroke-width="2.5" marker-end="url(#fk)"/>
+  <text x="532.0" y="190" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#0f172a">POST</text>
+  <line x1="602" y1="260" x2="712" y2="260" stroke="#d97706" stroke-width="2.5" marker-end="url(#oa)"/>
+  <text x="657.0" y="250" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#b45309">依頼</text>
+  <line x1="588" y1="310" x2="478" y2="310" stroke="#475569" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ok)"/>
+  <text x="533.0" y="300" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#0f172a">201</text>
+  <text x="706" y="405" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#047857">送信中</text>
+  <text x="595" y="505" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#b45309">依頼したらすぐ応答する</text>
+</svg>

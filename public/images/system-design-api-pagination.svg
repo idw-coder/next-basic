@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="610" viewBox="0 0 800 610" role="img" aria-labelledby="title desc">
+  <title id="title">オフセット方式とカーソル方式の違い</title>
+  <desc id="desc">新着順で1ページ3件を表示する例。1ページ目でidが10、9、8の行を表示したあと、idが11の行が追加される。オフセット方式はLIMIT 3 OFFSET 3で先頭から3行を飛ばすため、8、7、6を返し、8が重複する。カーソル方式はidが8より小さい行を取るため、7、6、5を返し、重複しない。</desc>
+  <defs><marker id="fk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#475569" stroke-width="1.6"/></marker><marker id="fb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="ob" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#2563eb" stroke-width="1.6"/></marker><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="oa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#d97706" stroke-width="1.6"/></marker><marker id="fg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="og" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#059669" stroke-width="1.6"/></marker><marker id="fr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker><marker id="or" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#dc2626" stroke-width="1.6"/></marker><marker id="fv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7c3aed"/></marker><marker id="ov" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#7c3aed" stroke-width="1.6"/></marker></defs>
+  <rect width="800" height="610" rx="20" fill="#ffffff"/>
+  <text x="400" y="40" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">読み取りの間に行が増えたときの2ページ目</text>
+  <text x="400" y="72" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="600" fill="#475569">1ページ目で 10, 9, 8 を表示したあと、id 11 の行が追加された場合</text>
+  <rect x="20" y="90" width="370" height="500" rx="14" fill="#ffffff" stroke="#475569" stroke-width="1"/>
+  <rect x="410" y="90" width="370" height="500" rx="14" fill="#ffffff" stroke="#475569" stroke-width="1"/>
+  <text x="205" y="122" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="19" font-weight="800" fill="#b45309">オフセット方式</text>
+  <text x="205" y="150" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#0f172a">LIMIT 3 OFFSET 3</text>
+  <rect x="55" y="170" width="300" height="42" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <text x="75" y="197" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#475569">id 11</text>
+  <text x="340" y="197" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#475569">飛ばす</text>
+  <rect x="55" y="218" width="300" height="42" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <text x="75" y="245" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#475569">id 10</text>
+  <text x="340" y="245" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#475569">飛ばす</text>
+  <rect x="55" y="266" width="300" height="42" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <text x="75" y="293" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#475569">id 9</text>
+  <text x="340" y="293" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#475569">飛ばす</text>
+  <rect x="55" y="314" width="300" height="42" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <text x="75" y="341" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#b91c1c">id 8</text>
+  <text x="340" y="341" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#b91c1c">取得: 1ページ目と重複</text>
+  <rect x="55" y="362" width="300" height="42" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="75" y="389" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#047857">id 7</text>
+  <text x="340" y="389" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#047857">取得</text>
+  <rect x="55" y="410" width="300" height="42" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="75" y="437" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#047857">id 6</text>
+  <text x="340" y="437" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#047857">取得</text>
+  <text x="205" y="566" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="800" fill="#b91c1c">id 8 を2回表示する</text>
+  <text x="595" y="122" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="19" font-weight="800" fill="#1d4ed8">カーソル方式</text>
+  <text x="595" y="150" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="600" fill="#0f172a">WHERE id &lt; 8 LIMIT 3</text>
+  <rect x="445" y="170" width="300" height="42" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <text x="465" y="197" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#475569">id 11</text>
+  <text x="730" y="197" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#475569">条件に合わない</text>
+  <rect x="445" y="218" width="300" height="42" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <text x="465" y="245" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#475569">id 10</text>
+  <text x="730" y="245" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#475569">条件に合わない</text>
+  <rect x="445" y="266" width="300" height="42" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <text x="465" y="293" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#475569">id 9</text>
+  <text x="730" y="293" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#475569">条件に合わない</text>
+  <rect x="445" y="314" width="300" height="42" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <text x="465" y="341" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#475569">id 8</text>
+  <text x="730" y="341" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#475569">条件に合わない</text>
+  <rect x="445" y="362" width="300" height="42" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="465" y="389" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#047857">id 7</text>
+  <text x="730" y="389" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#047857">取得</text>
+  <rect x="445" y="410" width="300" height="42" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="465" y="437" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#047857">id 6</text>
+  <text x="730" y="437" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#047857">取得</text>
+  <rect x="445" y="458" width="300" height="42" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="465" y="485" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#047857">id 5</text>
+  <text x="730" y="485" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="700" fill="#047857">取得</text>
+  <text x="595" y="566" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="800" fill="#047857">重複しない</text>
+</svg>

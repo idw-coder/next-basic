@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="770" viewBox="0 0 800 770" role="img" aria-labelledby="title desc">
+  <title id="title">loop、opt、altの範囲</title>
+  <desc id="desc">注文処理のシーケンス図。loopはカートの商品ごとに在庫確認を繰り返す範囲、optはクーポン指定があるときだけ検証する範囲、altは在庫がある場合は注文を保存して201を返し、在庫不足の場合は409を返す範囲を示す。</desc>
+  <defs><marker id="fk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#475569" stroke-width="1.6"/></marker><marker id="fb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="ob" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#2563eb" stroke-width="1.6"/></marker><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="oa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#d97706" stroke-width="1.6"/></marker><marker id="fg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="og" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#059669" stroke-width="1.6"/></marker><marker id="fr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker><marker id="or" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#dc2626" stroke-width="1.6"/></marker><marker id="fv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7c3aed"/></marker><marker id="ov" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#7c3aed" stroke-width="1.6"/></marker></defs>
+  <rect width="800" height="770" rx="20" fill="#ffffff"/>
+  <text x="400" y="42" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">繰り返し・省略可能な処理・分岐を枠で囲む</text>
+  <rect x="50.0" y="70" width="160" height="46" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="130" y="100" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#1d4ed8">ブラウザ</text>
+  <line x1="130" y1="116" x2="130" y2="745" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="320.0" y="70" width="160" height="46" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="400" y="100" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#6d28d9">API</text>
+  <line x1="400" y1="116" x2="400" y2="745" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="590.0" y="70" width="160" height="46" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="670" y="100" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="18" font-weight="700" fill="#047857">DB</text>
+  <line x1="670" y1="116" x2="670" y2="745" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>
+  <rect x="123" y="130" width="14" height="570" rx="2" fill="#ffffff" stroke="#2563eb" stroke-width="1.5"/>
+  <rect x="393" y="140" width="14" height="550" rx="2" fill="#ffffff" stroke="#7c3aed" stroke-width="1.5"/>
+  <line x1="137" y1="140" x2="392" y2="140" stroke="#475569" stroke-width="2.5" marker-end="url(#fk)"/>
+  <text x="264.5" y="130" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#0f172a">POST /orders</text>
+  <rect x="215" y="165" width="540" height="125" rx="6" fill="none" stroke="#d97706" stroke-width="2"/>
+  <path d="M215 171a6 6 0 0 1 6-6H281V183l-10 10H215z" fill="#d97706"/>
+  <text x="245.0" y="185" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="800" fill="#ffffff">loop</text>
+  <text x="418" y="186" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#b45309">カートの商品ごと</text>
+  <rect x="663" y="215" width="14" height="50" rx="2" fill="#ffffff" stroke="#059669" stroke-width="1.5"/>
+  <line x1="407" y1="225" x2="662" y2="225" stroke="#475569" stroke-width="2.5" marker-end="url(#fk)"/>
+  <text x="534.5" y="215" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#0f172a">在庫を確認</text>
+  <line x1="663" y1="265" x2="408" y2="265" stroke="#475569" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ok)"/>
+  <text x="535.5" y="255" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#0f172a">在庫数</text>
+  <rect x="215" y="305" width="540" height="125" rx="6" fill="none" stroke="#7c3aed" stroke-width="2"/>
+  <path d="M215 311a6 6 0 0 1 6-6H270V323l-10 10H215z" fill="#7c3aed"/>
+  <text x="239.5" y="325" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="800" fill="#ffffff">opt</text>
+  <text x="418" y="326" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#6d28d9">クーポン指定あり</text>
+  <rect x="663" y="355" width="14" height="50" rx="2" fill="#ffffff" stroke="#059669" stroke-width="1.5"/>
+  <line x1="407" y1="365" x2="662" y2="365" stroke="#475569" stroke-width="2.5" marker-end="url(#fk)"/>
+  <text x="534.5" y="355" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#0f172a">クーポンを検証</text>
+  <line x1="663" y1="405" x2="408" y2="405" stroke="#475569" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ok)"/>
+  <text x="535.5" y="395" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#0f172a">検証結果</text>
+  <rect x="60" y="445" width="695" height="250" rx="6" fill="none" stroke="#059669" stroke-width="2"/>
+  <path d="M60 451a6 6 0 0 1 6-6H116V463l-10 10H60z" fill="#059669"/>
+  <text x="84" y="465" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="800" fill="#ffffff">alt</text>
+  <text x="418" y="466" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#047857">全商品の在庫あり</text>
+  <rect x="663" y="490" width="14" height="50" rx="2" fill="#ffffff" stroke="#059669" stroke-width="1.5"/>
+  <line x1="407" y1="500" x2="662" y2="500" stroke="#475569" stroke-width="2.5" marker-end="url(#fk)"/>
+  <text x="534.5" y="490" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#0f172a">注文を保存</text>
+  <line x1="663" y1="540" x2="408" y2="540" stroke="#475569" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ok)"/>
+  <text x="535.5" y="530" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#0f172a">保存結果</text>
+  <line x1="393" y1="590" x2="138" y2="590" stroke="#475569" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ok)"/>
+  <text x="265.5" y="580" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#0f172a">201 Created</text>
+  <line x1="60" y1="615" x2="755" y2="615" stroke="#059669" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="418" y="638" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#b91c1c">在庫不足</text>
+  <line x1="393" y1="670" x2="138" y2="670" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#or)"/>
+  <text x="265.5" y="660" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#b91c1c">409 Conflict</text>
+</svg>
