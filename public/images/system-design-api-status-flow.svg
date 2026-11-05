@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="760" viewBox="0 0 800 760" role="img" aria-labelledby="title desc">
+  <title id="title">APIのエラーステータスコードを選ぶ流れ</title>
+  <desc id="desc">認証情報が無効なら401、権限がなければ403、リソースがなければ404、形式が不正なら400、現在の状態と競合するなら409、業務ルールを満たさないなら422を返す。すべて通れば200、201、204のいずれかで成功を返す。予期しない例外はどの段階でも500を返す。</desc>
+  <defs><marker id="fk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker><marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#475569" stroke-width="1.6"/></marker><marker id="fb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#2563eb"/></marker><marker id="ob" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#2563eb" stroke-width="1.6"/></marker><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d97706"/></marker><marker id="oa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#d97706" stroke-width="1.6"/></marker><marker id="fg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#059669"/></marker><marker id="og" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#059669" stroke-width="1.6"/></marker><marker id="fr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker><marker id="or" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#dc2626" stroke-width="1.6"/></marker><marker id="fv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7c3aed"/></marker><marker id="ov" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#7c3aed" stroke-width="1.6"/></marker></defs>
+  <rect width="800" height="760" rx="20" fill="#ffffff"/>
+  <text x="400" y="42" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="24" font-weight="800" fill="#0f172a">エラーのステータスコードを選ぶ流れ</text>
+  <path d="M50 105L255 70L460 105L255 140z" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="255" y="111" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">認証情報は有効か</text>
+  <line x1="460" y1="105" x2="516" y2="105" stroke="#d97706" stroke-width="2.5" marker-end="url(#fa)"/>
+  <text x="488" y="96" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="800" fill="#b45309">No</text>
+  <rect x="520" y="76" width="262" height="58" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="651" y="100" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#b45309">401 Unauthorized</text>
+  <text x="651" y="122" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#475569">トークン未指定・期限切れ</text>
+  <line x1="255" y1="140" x2="255" y2="157" stroke="#059669" stroke-width="2.5" marker-end="url(#fg)"/>
+  <text x="267" y="155" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#047857">Yes</text>
+  <path d="M50 195L255 160L460 195L255 230z" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="255" y="201" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">この操作の権限があるか</text>
+  <line x1="460" y1="195" x2="516" y2="195" stroke="#d97706" stroke-width="2.5" marker-end="url(#fa)"/>
+  <text x="488" y="186" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="800" fill="#b45309">No</text>
+  <rect x="520" y="166" width="262" height="58" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="651" y="190" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#b45309">403 Forbidden</text>
+  <text x="651" y="212" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#475569">存在を隠すなら404も可</text>
+  <line x1="255" y1="230" x2="255" y2="247" stroke="#059669" stroke-width="2.5" marker-end="url(#fg)"/>
+  <text x="267" y="245" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#047857">Yes</text>
+  <path d="M50 285L255 250L460 285L255 320z" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="255" y="291" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">対象のリソースはあるか</text>
+  <line x1="460" y1="285" x2="516" y2="285" stroke="#d97706" stroke-width="2.5" marker-end="url(#fa)"/>
+  <text x="488" y="276" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="800" fill="#b45309">No</text>
+  <rect x="520" y="256" width="262" height="58" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="651" y="280" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#b45309">404 Not Found</text>
+  <text x="651" y="302" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#475569">存在しないIDの指定</text>
+  <line x1="255" y1="320" x2="255" y2="337" stroke="#059669" stroke-width="2.5" marker-end="url(#fg)"/>
+  <text x="267" y="335" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#047857">Yes</text>
+  <path d="M50 375L255 340L460 375L255 410z" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="255" y="381" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">リクエストの形式は正しいか</text>
+  <line x1="460" y1="375" x2="516" y2="375" stroke="#d97706" stroke-width="2.5" marker-end="url(#fa)"/>
+  <text x="488" y="366" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="800" fill="#b45309">No</text>
+  <rect x="520" y="346" width="262" height="58" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+  <text x="651" y="370" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#b45309">400 Bad Request</text>
+  <text x="651" y="392" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#475569">必須項目なし・型の誤り</text>
+  <line x1="255" y1="410" x2="255" y2="427" stroke="#059669" stroke-width="2.5" marker-end="url(#fg)"/>
+  <text x="267" y="425" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#047857">Yes</text>
+  <path d="M50 465L255 430L460 465L255 500z" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="255" y="471" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">現在の状態と競合しないか</text>
+  <line x1="460" y1="465" x2="516" y2="465" stroke="#dc2626" stroke-width="2.5" marker-end="url(#fr)"/>
+  <text x="488" y="456" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="800" fill="#b91c1c">No</text>
+  <rect x="520" y="436" width="262" height="58" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <text x="651" y="460" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#b91c1c">409 Conflict</text>
+  <text x="651" y="482" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#475569">重複登録・在庫不足・更新の衝突</text>
+  <line x1="255" y1="500" x2="255" y2="517" stroke="#059669" stroke-width="2.5" marker-end="url(#fg)"/>
+  <text x="267" y="515" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#047857">Yes</text>
+  <path d="M50 555L255 520L460 555L255 590z" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="255" y="561" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="16" font-weight="700" fill="#1d4ed8">業務ルールを満たすか</text>
+  <line x1="460" y1="555" x2="516" y2="555" stroke="#dc2626" stroke-width="2.5" marker-end="url(#fr)"/>
+  <text x="488" y="546" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="800" fill="#b91c1c">No</text>
+  <rect x="520" y="526" width="262" height="58" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <text x="651" y="550" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#b91c1c">422 Unprocessable Content</text>
+  <text x="651" y="572" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#475569">形式は正しいが処理できない</text>
+  <line x1="255" y1="590" x2="255" y2="622" stroke="#059669" stroke-width="2.5" marker-end="url(#fg)"/>
+  <text x="267" y="605" text-anchor="start" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="#047857">Yes</text>
+  <rect x="55" y="628" width="400" height="60" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text x="255" y="653" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="17" font-weight="800" fill="#047857">成功</text>
+  <text x="255" y="676" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="600" fill="#0f172a">200 OK / 201 Created / 204 No Content</text>
+  <rect x="520" y="628" width="262" height="60" rx="10" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+  <text x="651" y="653" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="700" fill="#0f172a">500 Internal Server Error</text>
+  <text x="651" y="676" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="14" font-weight="600" fill="#475569">予期しない例外はどの段階でも</text>
+  <text x="400" y="730" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif" font-size="15" font-weight="600" fill="#475569">判定の順番はこの本の整理です。HTTPの仕様が順番を定めているわけではありません</text>
+</svg>
