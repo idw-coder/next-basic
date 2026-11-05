@@ -40,6 +40,54 @@ export function Clock() {
 
 ---
 
+## useEffectの中身はいつ実行されるのか
+
+次のコードで、`console.log` はどの順番で出るでしょうか。
+
+```jsx
+import { useEffect } from 'react';
+
+const Comp = () => {
+  console.log('1');
+
+  useEffect(() => {
+    console.log('2');
+  }, []);
+
+  console.log('3');
+
+  return <div>hello</div>;
+};
+```
+
+Strict Modeが無効な場合の出力は、`1` → `3` → `2` です。上から順に `1` → `2` → `3` とはなりません。
+
+<YouTubeShort id="TT1CJqj0WmE" title="useEffectのログ、どの順番で出る？【React】" caption="useEffectのログが1 → 3 → 2の順に出る理由" />
+
+順番に見ていきます。
+
+1. コンポーネントの関数が呼ばれ、`console.log('1')` が実行されます
+2. `useEffect` が呼ばれます。渡した関数はここでは実行されず、あとで実行するものとして登録されるだけです
+3. `console.log('3')` が実行され、`return` でJSXを返します
+4. Reactがレンダー結果をDOMに反映します（コミット）
+5. 登録しておいた関数が実行され、`console.log('2')` が出ます
+
+依存配列が空なので、再レンダーされても `2` は再び出ません。`1` と `3` はレンダーのたびに出ます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+手元で試したら `1` `3` `1` `3` `2` `2` って出たんだけど、これは間違い？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+開発環境でStrict Modeが有効だと、そう出ます。[Strict Mode](https://ja.react.dev/reference/react/StrictMode)はレンダーとエフェクトを開発時だけ1回ずつ追加で実行するからです。本番ビルドには影響しません。詳しくは[Strict Modeで2回実行されるのはなぜ](/books/react-learning/03-react-lifecycle)で解説しています。
+</SpeechBubble>
+
+<Callout type="note" title="「画面に表示されたあと」の例外">
+  エフェクトは通常、画面の描画後に実行されます。ただし[公式リファレンス](https://ja.react.dev/reference/react/useEffect)によると、クリックなどのユーザー操作がきっかけの場合は、ブラウザが更新後の画面を描画する前に実行されることがあります。
+</Callout>
+
+---
+
 ## レンダーとマウントの違い
 
 `useEffect` の依存配列を理解するには、レンダー・マウント・アンマウントの違いを押さえておく必要があります。詳しくは[Reactのレンダー・マウント・再レンダー・アンマウントの違い](/books/react-learning/03-react-lifecycle)で解説しています。
