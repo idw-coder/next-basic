@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="HTML文書のイラスト">
+  <rect width="512" height="512" rx="56" fill="#df704b"/>
+  <path d="M119 67h202l72 72v306H119z" fill="#fff"/>
+  <path d="M321 67v74h72" fill="#f3c9bb"/>
+  <path d="M223 209l-57 55 57 55m66-110l57 55-57 55m-9-137l-48 164" fill="none" stroke="#df704b" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

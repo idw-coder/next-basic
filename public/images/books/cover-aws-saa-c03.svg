@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="クラウド構成のイラスト">
+  <rect width="512" height="512" rx="56" fill="#df9444"/>
+  <path d="M148 273c-39 0-70-31-70-70 0-38 30-68 67-70 18-49 65-83 121-83 67 0 122 50 129 115 32 8 55 36 55 70 0 40-33 73-73 73H148z" fill="#fff"/>
+  <path d="M174 318v44h164v-44M256 308v54" fill="none" stroke="#f6ddbf" stroke-width="18" stroke-linecap="round"/>
+  <rect x="115" y="354" width="118" height="83" rx="20" fill="#fff"/>
+  <rect x="279" y="354" width="118" height="83" rx="20" fill="#fff"/>
+</svg>

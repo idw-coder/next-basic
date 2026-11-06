@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="クラウド基盤のイラスト">
+  <rect width="512" height="512" rx="56" fill="#527ed6"/>
+  <path d="M158 282c-48 0-86-37-86-84 0-45 35-81 80-83 19-46 60-76 108-76 63 0 114 49 123 111 35 6 59 32 59 65 0 37-32 67-71 67H158z" fill="#fff"/>
+  <path d="M180 282v53m76-53v53m76-53v53" stroke="#d8e4fb" stroke-width="18" stroke-linecap="round"/>
+  <rect x="116" y="326" width="128" height="108" rx="20" fill="#fff"/>
+  <rect x="268" y="326" width="128" height="108" rx="20" fill="#fff"/>
+  <rect x="192" y="350" width="128" height="108" rx="20" fill="#d8e4fb"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="対話するエージェントのイラスト">
+  <rect width="512" height="512" rx="56" fill="#786f68"/>
+  <rect x="112" y="139" width="288" height="234" rx="52" fill="#fff"/>
+  <path d="M185 139v-31m142 31v-31" stroke="#eee9e5" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="199" cy="242" r="20" fill="#786f68"/>
+  <circle cx="313" cy="242" r="20" fill="#786f68"/>
+  <path d="M199 304c31 27 83 27 114 0" fill="none" stroke="#786f68" stroke-width="18" stroke-linecap="round"/>
+  <path d="M375 105l8 20 20 8-20 8-8 20-8-20-20-8 20-8z" fill="#eee9e5"/>
+</svg>

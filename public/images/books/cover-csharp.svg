@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="型のあるコードのイラスト">
+  <rect width="512" height="512" rx="56" fill="#43945f"/>
+  <rect x="86" y="91" width="340" height="330" rx="40" fill="#fff"/>
+  <path d="M185 211l-43 45 43 45m142-90l43 45-43 45" fill="none" stroke="#43945f" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M232 185l-25 142m78-142l-25 142m-72-89h119m-129 54h119" fill="none" stroke="#c7e2d0" stroke-width="16" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="データ検証のイラスト">
+  <rect width="512" height="512" rx="56" fill="#3e94ca"/>
+  <rect x="77" y="78" width="358" height="356" rx="38" fill="#fff"/>
+  <path d="M205 160c-34 0-44 18-44 52v29c0 24-12 34-31 34 19 0 31 10 31 34v29c0 34 10 52 44 52m102-230c34 0 44 18 44 52v29c0 24 12 34 31 34-19 0-31 10-31 34v29c0 34-10 52-44 52" fill="none" stroke="#3e94ca" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="256" cy="275" r="65" fill="#c7e3f3"/>
+  <path d="M221 275l24 24 48-53" fill="none" stroke="#3e94ca" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

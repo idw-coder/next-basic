@@ -313,7 +313,7 @@ const NEWS: { date: string; text: string; link?: string; images?: string[] }[] =
     date: '2026/11/03',
     text: '教科書「Vim入門 — VS Codeユーザーがターミナルで困らないための基本操作」を公開しました。終了、モード、カーソル移動、編集、Git・SSHでの対処、Neovim・LazyVimの導入を扱う全13章と、Vim・Neovim・tmuxのチートシート3付録です',
     link: '/books/vim',
-    images: ['/images/books/cover-vim.png'],
+    images: ['/images/books/cover-vim.svg'],
   },
   {
     date: '2026/11/01',
@@ -337,37 +337,37 @@ const NEWS: { date: string; text: string; link?: string; images?: string[] }[] =
     date: '2026/09/22',
     text: '教科書「MUI実践ガイド — Reactコンポーネントライブラリを使いこなす」を公開しました。sxによるスタイリング、テーマ設計、slotProps、ダークモード、Next.js App Router統合、Tailwind CSSとの共存まで全13章です。破壊的変更の多いv9を前提に、型定義と公式ドキュメントで裏を取った内容だけを載せています',
     link: '/books/mui',
-    images: ['/images/books/cover-mui.png'],
+    images: ['/images/books/cover-mui.svg'],
   },
   {
     date: '2026/08/30',
     text: '教科書「MySQL入門 — 接続・InnoDB・コネクションプールを実務目線で」を公開しました。MySQLがサーバーであること、SHOW PROCESSLISTでの接続確認、mysql2のコネクションプールまで、まず3章を公開し順次追加していきます',
     link: '/books/mysql',
-    images: ['/images/books/cover-mysql.png'],
+    images: ['/images/books/cover-mysql.svg'],
   },
   {
     date: '2026/08/25',
     text: '教科書「Zod入門 — TypeScriptで実行時の入力検証を型と一緒に書く」を公開しました。基本スキーマ、parseとsafeParseの違い、空文字やnullを通すかどうかの早見表、オブジェクトの検証まで、順次章を追加中です',
     link: '/books/zod',
-    images: ['/images/books/cover-zod.png'],
+    images: ['/images/books/cover-zod.svg'],
   },
   {
     date: '2026/08/24',
     text: '教科書「AIエージェント開発の実務 — 原則と手札を分けて覚える」を公開しました。実行環境・権限設計・コンテキスト設計・検証ループ・チーム導入まで全20章です',
     link: '/books/ai-agent-development',
-    images: ['/images/books/cover-ai-agent-development.png'],
+    images: ['/images/books/cover-ai-agent-development.svg'],
   },
   {
     date: '2026/08/20',
     text: '教科書「C#入門 — .NETで動く言語の基礎」を公開しました。型・クラス・インターフェースからLINQ・null安全・非同期処理まで全14章です',
     link: '/books/csharp',
-    images: ['/images/books/cover-csharp.png'],
+    images: ['/images/books/cover-csharp.svg'],
   },
   {
     date: '2026/07/18',
     text: '教科書「AZ-900 合格とクラウドの基礎がわかるAzure入門」を公開しました。クラウドの概念からEntra ID・RBACまで順次章を追加中です',
     link: '/books/azure-az-900',
-    images: ['/images/books/cover-azure-az-900.png'],
+    images: ['/images/books/cover-azure-az-900.svg'],
   },
   {
     date: '2026/07/16',
@@ -397,7 +397,7 @@ const NEWS: { date: string; text: string; link?: string; images?: string[] }[] =
     date: '2026/05/25',
     text: '教科書「JavaScriptをちゃんと理解する」を公開しました',
     link: '/books/javascript',
-    images: ['/images/books/cover-javascript.png'],
+    images: ['/images/books/cover-javascript.svg'],
   },
   {
     date: '2026/04/29',
@@ -415,7 +415,7 @@ const NEWS: { date: string; text: string; link?: string; images?: string[] }[] =
     date: '2026/04/18',
     text: '教科書「Gitをちゃんと使う」「Next.jsを動かして学ぶ」を公開しました',
     link: '/books',
-    images: ['/images/books/cover-git-basic.png', '/images/books/cover-next-js.png'],
+    images: ['/images/books/cover-git-basic.svg', '/images/books/cover-next-js.svg'],
   },
   {
     date: '2026/04/05',
@@ -431,12 +431,12 @@ const NEWS: { date: string; text: string; link?: string; images?: string[] }[] =
   {
     date: '2026/04/01',
     text: 'Next.js・Dockerクイズを公開しました',
-    images: ['/images/books/cover-next-js.png', '/images/books/cover-docker.png'],
+    images: ['/images/books/cover-next-js.svg', '/images/books/cover-docker.svg'],
   },
   {
     date: '2026/03/01',
     text: 'TypeScript・セキュリティ・CS基礎クイズを公開しました',
-    images: ['/images/books/cover-typescript.png'],
+    images: ['/images/books/cover-typescript.svg'],
   },
   {
     date: '2026/02/28',
@@ -461,17 +461,17 @@ const NEWS: { date: string; text: string; link?: string; images?: string[] }[] =
   {
     date: '2026/02/15',
     text: 'AWS、Git、Nginxクイズを公開しました',
-    images: ['/images/books/cover-aws-saa-c03.png', '/images/books/cover-git-basic.png'],
+    images: ['/images/books/cover-aws-saa-c03.svg', '/images/books/cover-git-basic.svg'],
   },
   {
     date: '2026/02/14',
     text: 'Vue、Node.jsクイズを公開しました',
-    images: ['/images/books/cover-node-js.png'],
+    images: ['/images/books/cover-node-js.svg'],
   },
   {
     date: '2026/02/08',
     text: 'HTML、CSS、JavaScript、Reactクイズを公開しました',
-    images: ['/images/books/cover-html-basics.png', '/images/books/cover-css-basics.png'],
+    images: ['/images/books/cover-html-basics.svg', '/images/books/cover-css-basics.svg'],
   },
   {
     date: '2026/02/08',

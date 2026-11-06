@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ブラウザとAPI通信のイラスト">
+  <rect width="512" height="512" rx="56" fill="#dc7c43"/>
+  <rect x="58" y="103" width="174" height="226" rx="28" fill="#fff"/>
+  <rect x="280" y="183" width="174" height="226" rx="28" fill="#fff"/>
+  <path d="M89 151h112M311 231h112" stroke="#f3d4c1" stroke-width="16" stroke-linecap="round"/>
+  <path d="M215 365h83m-18-20l20 20-20 20M297 148h-83m18-20l-20 20 20 20" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="145" cy="240" r="38" fill="#f3d4c1"/>
+  <path d="M348 281h42m-42 42h74" stroke="#dc7c43" stroke-width="16" stroke-linecap="round"/>
+</svg>

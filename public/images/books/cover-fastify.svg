@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="高速なAPIサーバーのイラスト">
+  <rect width="512" height="512" rx="56" fill="#d9a42f"/>
+  <rect x="78" y="102" width="250" height="308" rx="34" fill="#fff"/>
+  <path d="M125 171h156M125 230h126M125 289h156M125 348h100" stroke="#ead7a7" stroke-width="19" stroke-linecap="round"/>
+  <circle cx="282" cy="171" r="10" fill="#d9a42f"/>
+  <circle cx="252" cy="289" r="10" fill="#d9a42f"/>
+  <path d="M359 115l-66 143h65l-35 139 111-184h-75l47-98z" fill="#fff" stroke="#d9a42f" stroke-width="12" stroke-linejoin="round"/>
+</svg>

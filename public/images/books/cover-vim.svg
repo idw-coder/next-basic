@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ターミナル編集のイラスト">
+  <rect width="512" height="512" rx="56" fill="#a35bb0"/>
+  <rect x="66" y="91" width="380" height="330" rx="38" fill="#fff"/>
+  <path d="M66 153h380" stroke="#ead5ee" stroke-width="18"/>
+  <circle cx="108" cy="122" r="10" fill="#a35bb0"/><circle cx="138" cy="122" r="10" fill="#a35bb0"/>
+  <path d="M126 218l48 47-48 47" fill="none" stroke="#a35bb0" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M211 313h118M211 230h145M211 272h91" stroke="#ead5ee" stroke-width="18" stroke-linecap="round"/>
+  <rect x="329" y="291" width="20" height="45" rx="5" fill="#a35bb0"/>
+</svg>

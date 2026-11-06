@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ブランチと履歴のイラスト">
+  <rect width="512" height="512" rx="56" fill="#d96b78"/>
+  <path d="M175 126v260m0-166h111c38 0 69-31 69-69v-25" fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round"/>
+  <circle cx="175" cy="125" r="34" fill="#fff"/>
+  <circle cx="175" cy="386" r="34" fill="#fff"/>
+  <circle cx="355" cy="125" r="34" fill="#fff"/>
+  <circle cx="175" cy="220" r="12" fill="#f4cbd0"/>
+</svg>

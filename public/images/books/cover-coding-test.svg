@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="コード問題と合格印のイラスト">
+  <rect width="512" height="512" rx="56" fill="#75a640"/>
+  <rect x="70" y="94" width="372" height="324" rx="38" fill="#fff"/>
+  <circle cx="112" cy="134" r="10" fill="#cfe1b9"/>
+  <circle cx="142" cy="134" r="10" fill="#cfe1b9"/>
+  <path d="M191 208l-47 45 47 45m86-90l47 45-47 45m-13-120l-38 150" fill="none" stroke="#75a640" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="363" cy="345" r="57" fill="#75a640"/>
+  <path d="M331 345l21 21 42-46" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

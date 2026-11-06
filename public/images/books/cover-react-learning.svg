@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="組み合わせるUIコンポーネントのイラスト">
+  <rect width="512" height="512" rx="56" fill="#39a2b4"/>
+  <rect x="164" y="75" width="184" height="108" rx="25" fill="#fff"/>
+  <rect x="63" y="324" width="170" height="112" rx="25" fill="#fff"/>
+  <rect x="279" y="324" width="170" height="112" rx="25" fill="#fff"/>
+  <path d="M256 183v68m0 0H148v73m108-73h108v73" fill="none" stroke="#c5e6eb" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M204 117h104M103 367h90M319 367h90" stroke="#39a2b4" stroke-width="17" stroke-linecap="round"/>
+</svg>

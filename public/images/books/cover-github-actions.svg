@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="自動化パイプラインのイラスト">
+  <rect width="512" height="512" rx="56" fill="#6674c9"/>
+  <rect x="62" y="183" width="122" height="112" rx="24" fill="#fff"/>
+  <rect x="328" y="183" width="122" height="112" rx="24" fill="#fff"/>
+  <rect x="195" y="327" width="122" height="112" rx="24" fill="#fff"/>
+  <path d="M184 239h144M256 239v88" fill="none" stroke="#d9ddf4" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="256" cy="123" r="57" fill="#fff"/>
+  <path d="M225 123l21 21 42-46" fill="none" stroke="#6674c9" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

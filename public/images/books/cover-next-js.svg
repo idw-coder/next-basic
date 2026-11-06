@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Webアプリケーション画面のイラスト">
+  <rect width="512" height="512" rx="56" fill="#60656b"/>
+  <rect x="65" y="86" width="382" height="340" rx="38" fill="#fff"/>
+  <path d="M65 151h382" stroke="#dfe1e3" stroke-width="18"/>
+  <circle cx="108" cy="119" r="10" fill="#60656b"/><circle cx="138" cy="119" r="10" fill="#60656b"/>
+  <circle cx="256" cy="277" r="86" fill="#dfe1e3"/>
+  <path d="M170 277h172M256 191c-38 46-38 126 0 172m0-172c38 46 38 126 0 172" fill="none" stroke="#60656b" stroke-width="17" stroke-linecap="round"/>
+</svg>
