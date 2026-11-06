@@ -1,4 +1,4 @@
 title: 'Vim入門 — VS Codeユーザーがターミナルで困らないための基本操作'
 publishedAt: '2026-11-03'
 description: 'VS Codeを普段使う駆け出しエンジニアが、Gitのコミット編集やSSH接続先でVimが開いても困らないための入門書です。終了、モード、カーソル移動、編集、検索・置換、複数ファイル操作を身につけ、NeovimとLazyVimの導入、Vim・Neovim・tmuxのチートシートまで扱います。'
-coverImage: '/images/books/devicon_vim.png'
+coverImage: '/images/books/cover-vim.png'
