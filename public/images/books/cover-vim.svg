@@ -6,4 +6,6 @@
   <path d="M126 218l48 47-48 47" fill="none" stroke="#a35bb0" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M211 313h118M211 230h145M211 272h91" stroke="#ead5ee" stroke-width="18" stroke-linecap="round"/>
   <rect x="329" y="291" width="20" height="45" rx="5" fill="#a35bb0"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="50" font-weight="700" fill="#a35bb0">Vim</text>
 </svg>

@@ -6,4 +6,6 @@
   <path d="M184 239h144M256 239v88" fill="none" stroke="#d9ddf4" stroke-width="18" stroke-linecap="round"/>
   <circle cx="256" cy="123" r="57" fill="#fff"/>
   <path d="M225 123l21 21 42-46" fill="none" stroke="#6674c9" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="45" font-weight="700" fill="#6674c9">CI/CD</text>
 </svg>

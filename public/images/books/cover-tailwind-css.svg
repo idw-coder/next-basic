@@ -5,4 +5,6 @@
   <circle cx="195" cy="168" r="31" fill="#8968c8"/>
   <circle cx="320" cy="256" r="31" fill="#8968c8"/>
   <circle cx="238" cy="344" r="31" fill="#8968c8"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="43" font-weight="700" fill="#8968c8">Tailwind</text>
 </svg>

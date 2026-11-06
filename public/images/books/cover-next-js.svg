@@ -5,4 +5,6 @@
   <circle cx="108" cy="119" r="10" fill="#60656b"/><circle cx="138" cy="119" r="10" fill="#60656b"/>
   <circle cx="256" cy="277" r="86" fill="#dfe1e3"/>
   <path d="M170 277h172M256 191c-38 46-38 126 0 172m0-172c38 46 38 126 0 172" fill="none" stroke="#60656b" stroke-width="17" stroke-linecap="round"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="45" font-weight="700" fill="#60656b">Next.js</text>
 </svg>

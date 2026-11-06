@@ -4,4 +4,6 @@
   <path d="M205 160c-34 0-44 18-44 52v29c0 24-12 34-31 34 19 0 31 10 31 34v29c0 34 10 52 44 52m102-230c34 0 44 18 44 52v29c0 24 12 34 31 34-19 0-31 10-31 34v29c0 34-10 52-44 52" fill="none" stroke="#3e94ca" stroke-width="18" stroke-linecap="round"/>
   <circle cx="256" cy="275" r="65" fill="#c7e3f3"/>
   <path d="M221 275l24 24 48-53" fill="none" stroke="#3e94ca" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="50" font-weight="700" fill="#3e94ca">Zod</text>
 </svg>

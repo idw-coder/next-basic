@@ -5,4 +5,6 @@
   <circle cx="267" cy="170" r="10" fill="#3f93a4"/><circle cx="267" cy="236" r="10" fill="#3f93a4"/><circle cx="267" cy="302" r="10" fill="#3f93a4"/>
   <path d="M310 206h62v-44m-62 144h62v44" fill="none" stroke="#fff" stroke-width="20" stroke-linecap="round"/>
   <circle cx="394" cy="140" r="42" fill="#fff"/><circle cx="394" cy="372" r="42" fill="#fff"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="45" font-weight="700" fill="#3f93a4">Node.js</text>
 </svg>

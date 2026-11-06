@@ -6,4 +6,6 @@
   <circle cx="313" cy="242" r="20" fill="#786f68"/>
   <path d="M199 304c31 27 83 27 114 0" fill="none" stroke="#786f68" stroke-width="18" stroke-linecap="round"/>
   <path d="M375 105l8 20 20 8-20 8-8 20-8-20-20-8 20-8z" fill="#eee9e5"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="50" font-weight="700" fill="#786f68">AI</text>
 </svg>

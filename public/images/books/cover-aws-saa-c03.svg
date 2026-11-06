@@ -4,4 +4,6 @@
   <path d="M174 318v44h164v-44M256 308v54" fill="none" stroke="#f6ddbf" stroke-width="18" stroke-linecap="round"/>
   <rect x="115" y="354" width="118" height="83" rx="20" fill="#fff"/>
   <rect x="279" y="354" width="118" height="83" rx="20" fill="#fff"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="50" font-weight="700" fill="#df9444">AWS</text>
 </svg>
