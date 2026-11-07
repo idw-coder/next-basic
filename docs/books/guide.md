@@ -49,9 +49,10 @@ coverImage: '/images/books/nextjs-cover.png' # 任意。設定すると一覧カ
 
 表紙に公式ロゴを載せてよいのは、配布元の規約で利用が認められている技術だけ。規約で禁止されている技術は、`public/images/books/cover-*.svg` のオリジナルイラストを使う。
 
-- **使ってよい（`public/images/books/logos/` に配置済み）**: HTML5、CSS、JavaScript、TypeScript、Git、Tailwind CSS、C#、SQLite
-- **使わない（規約で表紙・ロゴの使用が禁止、または書面許可が必要）**: Node.js、Fastify（OpenJS Foundationが本の表紙への使用を禁止）、Docker、MySQL、AWS、Azure、Playwright、React、Next.js、GitHub・GitHub Actions
-- **規約が見つからないので使わない**: MUI、Zod、Vim
+- **使ってよい（`public/images/books/logos/` に配置済み）**: HTML5、CSS、JavaScript、TypeScript、Git、Tailwind CSS、C#、SQLite、Zod・MUI（規約はないが公式リポジトリがMITで配布）
+- **使わない（規約で表紙・ロゴの使用が禁止、または書面許可が必要）**: Node.js、Fastify（OpenJS Foundationが本の表紙への使用を禁止）、Docker、MySQL、AWS、Azure、Playwright、React、Next.js・Vercel、GitHub・GitHub Actions
+- **規約が見つからないので使わない**: Vim
+- **条件付き・保留**: AtCoder（ガイドラインで利用可。ただしAtCoderへの一報が必要）、Vitest（VoidZeroは非商用利用のみ歓迎。広告のあるこのサイトが該当するか未確認）
 
 ロゴを使うときは次を守る。
 

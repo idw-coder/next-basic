@@ -126,6 +126,17 @@ const LOGO_CREDITS = [
     href: 'https://github.com/dotnet/brand',
   },
   {
+    name: 'MUI',
+    notice:
+      'MUI logo from the Material UI repository, Copyright (c) 2014 Call-Em-All. Licensed under the MIT License. MUI is a trademark of Material-UI SAS.',
+    href: 'https://github.com/mui/material-ui',
+  },
+  {
+    name: 'Zod',
+    notice: 'Zod logo, Copyright (c) Colin McDonnell. Licensed under the MIT License.',
+    href: 'https://github.com/colinhacks/zod',
+  },
+  {
     name: 'SQLite',
     notice: 'SQLite logo from sqlite.org. SQLite is a trademark of its respective owner.',
     href: 'https://www.sqlite.org/',
