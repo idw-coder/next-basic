@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ターミナルのウィンドウのイラスト">
+  <rect width="512" height="512" rx="56" fill="#4d7c0f"/>
+  <rect x="72" y="84" width="368" height="276" rx="24" fill="#fff"/>
+  <rect x="72" y="84" width="368" height="52" rx="24" fill="#ecfccb"/>
+  <rect x="72" y="112" width="368" height="24" fill="#ecfccb"/>
+  <circle cx="108" cy="110" r="10" fill="#4d7c0f"/><circle cx="140" cy="110" r="10" fill="#84cc16"/><circle cx="172" cy="110" r="10" fill="#bef264"/>
+  <rect x="96" y="152" width="320" height="184" rx="14" fill="#1a2e05"/>
+  <path d="M128 200 L168 232 L128 264" fill="none" stroke="#bef264" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="188" y="252" width="72" height="16" rx="8" fill="#bef264"/>
+  <rect x="86" y="394" width="340" height="82" rx="28" fill="#fff" fill-opacity=".94"/>
+  <text x="256" y="450" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" font-weight="700" fill="#4d7c0f">WSL</text>
+</svg>

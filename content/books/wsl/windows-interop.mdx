@@ -1,0 +1,239 @@
+---
+title: 'WindowsとLinuxの連携 — コマンド呼び出し・PATH・改行コード・パーミッション'
+description: 'WSLからWindowsのコマンドを呼ぶ方法、wslpath、Windows側のPATHが混ざる問題、改行コードとファイルのパーミッションの違いを学びます。'
+order: 5
+---
+
+WSLでは、LinuxのターミナルからWindowsのプログラムを起動でき、PowerShellからLinuxのコマンドを実行できます。この連携は便利な一方で、WindowsのPATHがLinuxに混ざったり、WindowsとLinuxで改行コードやファイルの権限の扱いが違ったりすることが、トラブルの原因にもなります。
+
+この章では、連携の仕組みと、そこから生まれる典型的な問題を整理します。
+
+<Marker>WSLのLinuxはWindowsのプログラムを呼び出せます。その仕組みが、PATHの混在という問題も生みます。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  前の章で `explorer.exe .` がUbuntuの中から動いて驚きました。Linuxの中なのに、どうしてWindowsのプログラムが動くんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  WSLは、Linuxで `.exe` のファイルを実行しようとすると、それをWindows側に渡して起動する仕組みを持っています。さらに、WindowsのPATHがLinuxのPATHの後ろに追加されているので、`explorer.exe` と書くだけで見つかるんです。
+</SpeechBubble>
+
+## LinuxからWindowsのプログラムを呼ぶ
+
+Linuxのターミナルで、Windowsのプログラムを `.exe` まで付けて実行します。
+
+```bash
+explorer.exe .          # 現在のディレクトリをエクスプローラーで開く
+notepad.exe memo.txt    # メモ帳で開く
+cmd.exe /C dir          # コマンドプロンプトの組み込みコマンドを実行する
+powershell.exe -Command Get-Date
+```
+
+| ルール | 内容 |
+| ------ | ---- |
+| 拡張子が必要 | `explorer` ではなく `explorer.exe` と書く |
+| 大文字・小文字 | ファイル名の大文字・小文字を正しく書く |
+| 実行されるユーザー | Windowsにログインしているユーザーとして動く |
+| パイプやリダイレクト | Linuxのコマンドと同じように使える |
+
+`dir` のようにコマンドプロンプトに組み込まれたコマンドは単独の `.exe` ファイルではないため、`cmd.exe /C` 経由で実行します。
+
+### Linuxの出力をWindowsのクリップボードにコピーする
+
+`clip.exe` を使うと、Linuxのコマンドの出力をWindowsのクリップボードにコピーできます。
+
+```bash
+cat ~/.ssh/id_ed25519.pub | clip.exe
+```
+
+SSHの公開鍵をGitHubに登録するときなどに便利です。
+
+## WindowsからLinuxのコマンドを呼ぶ
+
+PowerShellで `wsl` の後ろにLinuxのコマンドを書くと、既定のディストリビューションでそのコマンドを実行します。
+
+```powershell
+wsl ls -la
+wsl grep -r "TODO" .
+dir | wsl grep git
+```
+
+PowerShellの現在のディレクトリが、Linux側でも現在のディレクトリになります。PowerShellで `C:\temp` にいれば、Linux側では `/mnt/c/temp` で実行されます。
+
+## パスを変換する — `wslpath`
+
+WindowsのパスとLinuxのパスは書き方が違います。`wslpath` で相互に変換できます。
+
+```bash
+wslpath 'C:\Users\taro\Downloads'
+# /mnt/c/Users/taro/Downloads
+
+wslpath -w ~/projects
+# \\wsl.localhost\Ubuntu\home\taro\projects
+```
+
+| オプション | 変換 |
+| ---------- | ---- |
+| なし（または `-u`） | Windowsのパス → Linuxのパス |
+| `-w` | Linuxのパス → Windowsのパス |
+| `-m` | Linuxのパス → `/` 区切りのWindowsのパス |
+
+Windowsのパスには `\` が含まれるため、bashでは `'...'` で囲みます。囲まないと `\` がエスケープ文字として解釈されます。
+
+## WindowsのPATHがLinuxに混ざる
+
+WSLは既定で、WindowsのPATHをLinuxの `PATH` 環境変数の後ろに追加します。`explorer.exe` や `code` がLinuxから見つかるのはこのためです。
+
+```bash
+echo $PATH | tr ':' '\n'
+# /usr/local/sbin
+# /usr/local/bin
+# /usr/bin
+# ...
+# /mnt/c/Program Files/nodejs/
+# /mnt/c/Users/taro/AppData/Roaming/npm
+# /mnt/c/Users/taro/AppData/Local/Programs/Microsoft VS Code/bin
+```
+
+ここで問題になるのが、**Windowsにも同じ名前のコマンドが入っている場合**です。Linux側にNode.jsを入れていないと、`node` や `npm` と入力したときにWindows側の `node.exe` が見つかって実行されることがあります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Ubuntuで `npm install` したら、なぜか `C:\` のパスが出てきてエラーになりました。
+</SpeechBubble>
+
+それがWindows側の `npm` が動いている状態です。Windowsの `npm` は、Linuxのパスを正しく扱えません。どのコマンドが実行されているかは `which` や `type -a` で確認できます。
+
+```bash
+which npm
+# /mnt/c/Program Files/nodejs/npm   ← Windows側が使われている
+
+type -a node
+# node is /home/taro/.nvm/versions/node/v22.x.x/bin/node   ← Linux側（先に見つかる）
+# node is /mnt/c/Program Files/nodejs/node                ← Windows側
+```
+
+<Marker>コマンドの動きがおかしいときは、`which` でパスが `/mnt/c` で始まっていないかを確認します。</Marker>
+
+Linux側にNode.jsを入れれば、PATHの前のほうにあるLinux側のコマンドが先に見つかるため、通常はこの問題は起きません。Node.jsの入れ方は[WSLにNode.jsを入れる](/books/wsl/dev-runtimes)で扱います。
+
+### WindowsのPATHを追加しないようにする
+
+WindowsのPATHが混ざること自体を止めたい場合は、`/etc/wsl.conf` に次の設定を書き、`wsl --shutdown` してから起動し直します。
+
+```ini
+[interop]
+appendWindowsPath=false
+```
+
+この設定にすると、`code` や `explorer.exe` もパスなしでは呼べなくなります。よく使うものだけ、`~/.bashrc` にエイリアスやPATHを書き足します。
+
+```bash
+# ~/.bashrc
+export PATH="$PATH:/mnt/c/Windows"
+export PATH="$PATH:/mnt/c/Users/taro/AppData/Local/Programs/Microsoft VS Code/bin"
+```
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="パソコンを見て驚く女性のイラスト" caption="Linuxで打ったコマンドが、Windows側のプログラムを動かしていることがある" maxWidth="320px" />
+
+## 改行コードの違い
+
+テキストファイルの行末に入る改行コードは、WindowsとLinuxで違います。
+
+| OS | 改行コード | 表記 |
+| -- | ---------- | ---- |
+| Windows | CR + LF | `\r\n` |
+| Linux | LF | `\n` |
+
+Windowsのアプリで作成・保存したシェルスクリプトをLinuxで実行すると、行末の `\r` がコマンドの一部として扱われ、エラーになります。
+
+```bash
+./setup.sh
+# bash: ./setup.sh: /bin/bash^M: bad interpreter: No such file or directory
+```
+
+`^M` は `\r` を表しています。1行目の `#!/bin/bash` が `#!/bin/bash\r` と読まれ、`/bin/bash\r` というプログラムが見つからない、というエラーです。
+
+### 改行コードを確認・変換する
+
+```bash
+file setup.sh
+# setup.sh: Bourne-Again shell script, ASCII text executable, with CRLF line terminators
+
+sed -i 's/\r$//' setup.sh   # CRLF を LF に変換する
+```
+
+`file` の出力に `with CRLF line terminators` とあれば、CRLFです。`sed` の代わりに、`sudo apt install dos2unix` で入る `dos2unix setup.sh` でも変換できます。
+
+### Gitで改行コードをそろえる
+
+WindowsのGitとLinuxのGitで同じリポジトリを扱うと、改行コードの自動変換の設定の違いから、中身は同じなのに全ファイルが変更扱いになることがあります。リポジトリに `.gitattributes` を置いて、改行コードを固定しておくのが確実です。
+
+```text
+# .gitattributes
+* text=auto eol=lf
+*.bat text eol=crlf
+```
+
+`text=auto eol=lf` は、Gitがテキストと判定したファイルを、作業ディレクトリでLFにそろえる指定です。Gitの設定は[VS CodeとGitをWSLで使う](/books/wsl/vscode-and-git)でも扱います。
+
+## ファイルのパーミッション
+
+Linuxでは、ファイルごとに所有者と、読み取り（r）・書き込み（w）・実行（x）の権限があります。Windowsのファイルシステム（NTFS）には、この仕組みがそのままの形では存在しません。
+
+| 置き場所 | `chmod` の効果 | `ls -l` の表示 |
+| -------- | -------------- | -------------- |
+| Linux側（`/home`） | 効く | 設定どおり |
+| Windows側（`/mnt/c`） | 既定では効かない | 既定では全ファイルが `rwxrwxrwx` のように表示される |
+
+`/mnt/c` の下で `chmod 600` を実行しても、エラーにはならずに無視されます。
+
+### SSHの秘密鍵をWindows側に置くとエラーになる
+
+SSHは、秘密鍵のファイルが他のユーザーから読める状態だと使用を拒否します。Windows側の `C:\Users\taro\.ssh` にある鍵をLinuxからそのまま使おうとすると、権限が `777` に見えるため、次のエラーになります。
+
+```text
+WARNING: UNPROTECTED PRIVATE KEY FILE!
+Permissions 0777 for '/mnt/c/Users/taro/.ssh/id_ed25519' are too open.
+```
+
+SSHの鍵はLinux側の `~/.ssh` に置き、`chmod 600` で権限を設定します。
+
+```bash
+mkdir -p ~/.ssh
+cp /mnt/c/Users/taro/.ssh/id_ed25519 ~/.ssh/
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/id_ed25519
+```
+
+<Callout type="note">
+`/etc/wsl.conf` の `[automount]` に `options = "metadata"` を指定すると、`/mnt/c` の下でもLinuxのパーミッションを記録できるようになります。ただし、プロジェクトをLinux側に置いていれば、通常は必要ありません。
+</Callout>
+
+## よくあるハマりどころ
+
+### `code .` が見つからない
+
+`code` はWindows側にインストールしたVS Codeのコマンドで、WindowsのPATHを経由して見つかります。`appendWindowsPath=false` にしている場合や、VS Codeのインストール時にPATHへの追加を選ばなかった場合は見つかりません。VS Codeを入れ直すか、`~/.bashrc` にVS Codeの `bin` フォルダーをPATHとして追加します。
+
+### PATHにスペースや括弧が含まれてシェルスクリプトが壊れる
+
+WindowsのPATHには `/mnt/c/Program Files/...` のようにスペースや括弧を含むものがあります。`$PATH` を引用符なしで展開するスクリプトは、ここで分割されて誤動作することがあります。WindowsのPATHが不要なら、`appendWindowsPath=false` にするのが根本的な対策です。
+
+### Windowsのアプリで編集したらスクリプトが動かなくなった
+
+メモ帳などで保存すると、改行コードがCRLFになることがあります。`file` で確認し、LFに戻します。Linux側のファイルは、Linuxのエディターか、WSL拡張機能を使ったVS Codeで編集します。
+
+## ちゃんと使うためのポイント
+
+- Linuxから `.exe` まで付ければWindowsのプログラムを呼べる。PowerShellからは `wsl コマンド` でLinuxのコマンドを呼べる
+- `wslpath` でWindowsとLinuxのパスを相互に変換できる
+- WindowsのPATHがLinuxのPATHに追加される。`which` で、どちらのコマンドが動いているかを確認する
+- `bad interpreter` と `^M` が出たら改行コードがCRLF。`.gitattributes` でLFにそろえる
+- `/mnt/c` の下では `chmod` が効かない。SSHの鍵はLinux側の `~/.ssh` に置く
+
+## 参考リンク
+
+- [ファイル システム間での作業（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/filesystems)
+- [WSL での詳細設定の構成（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/wsl-config)
+
+VS CodeとGitをWSLで使う設定は、[VS CodeとGitをWSLで使う](/books/wsl/vscode-and-git)で扱います。

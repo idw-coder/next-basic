@@ -6,7 +6,7 @@ import {
   BookOpen, Sparkles, ArrowRight,
   Blocks, Braces, FileCode2, Atom, Paintbrush, Wind,
   Cpu, Globe, GitBranch, FlaskConical, Globe2, TestTube2, Database,
-  Container, Server, Cloud, Hash, Bot,
+  Container, Server, Cloud, Hash, Bot, Terminal,
   type LucideIcon,
 } from 'lucide-react';
 import { getBookTheme } from '@/lib/book-theme';
@@ -18,7 +18,7 @@ import { getBookShortTitle } from '@/lib/book-title';
 const iconMap: Record<string, LucideIcon> = {
   BookOpen, Blocks, Braces, FileCode2, Atom, Paintbrush, Wind,
   Cpu, Globe, GitBranch, FlaskConical, Globe2, TestTube2, Database,
-  Container, Server, Cloud, Hash, Bot,
+  Container, Server, Cloud, Hash, Bot, Terminal,
 };
 
 interface ChapterLink {

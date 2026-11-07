@@ -323,6 +323,17 @@ const bookThemeMap: Record<string, BookTheme> = {
     badgeText: 'text-green-700',
     iconName: 'Hash',
   },
+  wsl: {
+    cardBg: 'bg-lime-50',
+    iconBg: 'bg-lime-100',
+    iconText: 'text-lime-800',
+    accent: 'text-lime-800',
+    accentHover: 'group-hover:text-lime-900',
+    accentBg: 'bg-lime-700',
+    badgeBg: 'bg-lime-50',
+    badgeText: 'text-lime-800',
+    iconName: 'Terminal',
+  },
   'ai-agent-development': {
     cardBg: 'bg-stone-50',
     iconBg: 'bg-stone-100',

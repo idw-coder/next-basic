@@ -1,0 +1,116 @@
+---
+title: 'WSLコマンドチートシート'
+description: 'wslコマンド、ファイルの行き来、設定ファイルなど、WSLでよく使うコマンドと設定を一覧にまとめます。'
+order: 12
+---
+
+この本で扱ったWSLのコマンドと設定を、用途ごとに一覧にまとめます。各項目の詳しい説明は、表の右端の章を参照してください。
+
+<Marker>`wsl` で始まるコマンドはPowerShellで、それ以外のLinuxのコマンドはUbuntuのターミナルで実行します。</Marker>
+
+<Figure src="/images/readingbook_woman_color.png" alt="本を読む女性のイラスト" caption="困ったときに引けるよう、よく使うものだけをまとめた" maxWidth="320px" />
+
+## インストールと更新（PowerShell）
+
+| コマンド | 動作 | 章 |
+| -------- | ---- | -- |
+| `wsl --install` | WSLとUbuntuを入れる（管理者として実行） | [インストール](/books/wsl/install-and-setup) |
+| `wsl --install -d Ubuntu-24.04` | ディストリビューションを指定して入れる | [インストール](/books/wsl/install-and-setup) |
+| `wsl -l -o` | インストールできるディストリビューションの一覧 | [インストール](/books/wsl/install-and-setup) |
+| `wsl --update` | WSL本体とカーネルを更新する | [インストール](/books/wsl/install-and-setup) |
+| `wsl --version` | WSLとカーネルのバージョン | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl --status` | 既定のディストリビューションなどの設定 | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+
+## ディストリビューションの管理（PowerShell）
+
+| コマンド | 動作 | 章 |
+| -------- | ---- | -- |
+| `wsl -l -v` | 一覧・状態・WSLのバージョン | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl` / `wsl ~` | 既定のディストリビューションを起動する（`~` はホームから） | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl -d Ubuntu` | 指定したディストリビューションを起動する | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl -u root` | rootユーザーで起動する | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl --set-default Ubuntu` | 既定のディストリビューションを変える | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl --terminate Ubuntu` | 指定したディストリビューションを停止する | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl --shutdown` | すべてのディストリビューションと仮想マシンを停止する | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl --set-version Ubuntu 2` | WSL1からWSL2に変換する | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+
+## バックアップと削除（PowerShell）
+
+| コマンド | 動作 | 章 |
+| -------- | ---- | -- |
+| `wsl --export Ubuntu D:\backup\ubuntu.tar` | tarファイルに書き出す | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl --import 新しい名前 D:\wsl\フォルダー D:\backup\ubuntu.tar` | 書き出したファイルから登録する | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl --unregister Ubuntu` | 削除する（中身はすべて消える） | [wslコマンド](/books/wsl/wsl-command-and-distros) |
+| `wsl --manage Ubuntu --set-sparse true` | 仮想ディスクをスパースにする | [トラブル対処](/books/wsl/troubleshooting) |
+
+## ファイルの行き来
+
+| 操作 | コマンド・パス | 章 |
+| ---- | -------------- | -- |
+| LinuxからCドライブを見る | `/mnt/c/Users/ユーザー名/...` | [ファイルの置き場所](/books/wsl/filesystem) |
+| WindowsからLinuxを見る | `\\wsl.localhost\Ubuntu\home\ユーザー名` | [ファイルの置き場所](/books/wsl/filesystem) |
+| 現在のディレクトリをエクスプローラーで開く | `explorer.exe .` | [ファイルの置き場所](/books/wsl/filesystem) |
+| WindowsのパスをLinuxのパスに変換する | `wslpath 'C:\Users\taro'` | [Windowsとの連携](/books/wsl/windows-interop) |
+| LinuxのパスをWindowsのパスに変換する | `wslpath -w ~/projects` | [Windowsとの連携](/books/wsl/windows-interop) |
+| 出力をクリップボードにコピーする | `cat ファイル \| clip.exe` | [Windowsとの連携](/books/wsl/windows-interop) |
+| 現在の場所を確認する（`/mnt/` ならWindows側） | `pwd` | [ファイルの置き場所](/books/wsl/filesystem) |
+
+## 開発環境
+
+| 操作 | コマンド | 章 |
+| ---- | -------- | -- |
+| VS CodeでLinux側のフォルダーを開く | `code .` | [VS CodeとGit](/books/wsl/vscode-and-git) |
+| どのコマンドが実行されるか確認する | `which node` / `type -a node` | [Node.jsを入れる](/books/wsl/dev-runtimes) |
+| ビルドツールを入れる | `sudo apt install -y build-essential` | [Node.jsを入れる](/books/wsl/dev-runtimes) |
+| Node.jsのLTS版を入れる | `nvm install --lts` | [Node.jsを入れる](/books/wsl/dev-runtimes) |
+| 改行コードを確認する | `file ファイル名` | [Windowsとの連携](/books/wsl/windows-interop) |
+| CRLFをLFに変換する | `sed -i 's/\r$//' ファイル名` | [Windowsとの連携](/books/wsl/windows-interop) |
+| Gitの改行コードの設定 | `git config --global core.autocrlf input` | [VS CodeとGit](/books/wsl/vscode-and-git) |
+| SSH鍵を作る | `ssh-keygen -t ed25519 -C "メールアドレス"` | [VS CodeとGit](/books/wsl/vscode-and-git) |
+
+## ネットワーク
+
+| 操作 | コマンド | 章 |
+| ---- | -------- | -- |
+| LinuxのIPアドレスを確認する | `hostname -I` | [ネットワーク](/books/wsl/networking) |
+| LinuxからWindowsのIPアドレスを確認する（NATモード） | `ip route show \| grep -i default \| awk '{ print $3 }'` | [ネットワーク](/books/wsl/networking) |
+| 待ち受けているポートを確認する | `ss -tlnp` | [ネットワーク](/books/wsl/networking) |
+| 名前解決を確認する | `ping -c 3 github.com` | [トラブル対処](/books/wsl/troubleshooting) |
+
+## 設定ファイル
+
+| やりたいこと | ファイル | 書く内容 | 章 |
+| ------------ | -------- | -------- | -- |
+| メモリの上限 | `.wslconfig` | `[wsl2]` `memory=8GB` | [設定ファイル](/books/wsl/wslconfig-and-wsl-conf) |
+| CPUの数 | `.wslconfig` | `[wsl2]` `processors=4` | [設定ファイル](/books/wsl/wslconfig-and-wsl-conf) |
+| ミラーモード | `.wslconfig` | `[wsl2]` `networkingMode=mirrored` | [ネットワーク](/books/wsl/networking) |
+| systemdを有効にする | `/etc/wsl.conf` | `[boot]` `systemd=true` | [設定ファイル](/books/wsl/wslconfig-and-wsl-conf) |
+| WindowsのPATHを混ぜない | `/etc/wsl.conf` | `[interop]` `appendWindowsPath=false` | [Windowsとの連携](/books/wsl/windows-interop) |
+| 既定のユーザー | `/etc/wsl.conf` | `[user]` `default=ユーザー名` | [設定ファイル](/books/wsl/wslconfig-and-wsl-conf) |
+
+`.wslconfig` は `C:\Users\ユーザー名\.wslconfig`、`wsl.conf` は各ディストリビューションの `/etc/wsl.conf` に置きます。どちらも、編集したら `wsl --shutdown` を実行してから起動し直します。
+
+## トラブルのときに最初に確認すること
+
+| 症状 | 最初に確認すること | 章 |
+| ---- | ------------------ | -- |
+| 動作がおかしい | `wsl --shutdown` → `wsl --update` | [トラブル対処](/books/wsl/troubleshooting) |
+| 遅い | `pwd` が `/mnt/c` で始まっていないか | [トラブル対処](/books/wsl/troubleshooting) |
+| Windowsのメモリが足りない | タスクマネージャーの `VmmemWSL`、`.wslconfig` の `memory` | [トラブル対処](/books/wsl/troubleshooting) |
+| Cドライブが減り続ける | 仮想ディスクの縮小 | [トラブル対処](/books/wsl/troubleshooting) |
+| `localhost` に繋がらない | `ss -tlnp` で待ち受けアドレスを確認 | [ネットワーク](/books/wsl/networking) |
+| `npm` の動きがおかしい | `which npm` が `/mnt/c` を指していないか | [Node.jsを入れる](/books/wsl/dev-runtimes) |
+| `bad interpreter` と `^M` | 改行コードがCRLFになっていないか | [Windowsとの連携](/books/wsl/windows-interop) |
+| `apt update` で `not valid yet` | `date` で時刻がずれていないか | [トラブル対処](/books/wsl/troubleshooting) |
+| `docker` が見つからない | Docker Desktopの「WSL Integration」 | [Docker](/books/wsl/docker-on-wsl) |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  WSLのトラブルの多くは、「いまどちらのOSで動いているか」を確かめると原因が見えてきます。`pwd` と `which` で場所を確認する習慣をつけておきましょう。
+</SpeechBubble>
+
+## 参考リンク
+
+- [WSL の基本的なコマンド（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/basic-commands)
+- [WSL での詳細設定の構成（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/wsl-config)
+
+WSLの環境が整ったら、[Docker入門](/books/docker)や[Node.js入門](/books/node-js)の本を、WSLの上で進めてみてください。

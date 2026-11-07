@@ -1,0 +1,4 @@
+title: 'WSL入門 — WindowsでLinux開発環境を作る'
+publishedAt: '2026-11-07'
+description: 'WSL（Windows Subsystem for Linux）の仕組み、インストール、ファイルの置き場所、VS Code・Git・Node.js・Dockerとの組み合わせ、ネットワーク、設定ファイル、トラブル対処まで、WindowsでWeb開発環境を作るための基礎を学ぶ入門書です。'
+coverImage: '/images/books/cover-wsl.svg'

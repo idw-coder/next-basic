@@ -1,0 +1,205 @@
+---
+title: 'WSLのネットワーク — localhostに繋がらないときの確認'
+description: 'WSL2のNATモードとミラーモードの違い、WindowsからWSLのサーバーへアクセスする方法、LAN内の他の端末から接続するときの設定を整理します。'
+order: 8
+---
+
+WSLで `npm run dev` を実行し、Windowsのブラウザで `http://localhost:3000` を開く。WSLでの開発では、この流れを毎日のように繰り返します。多くの場合はそのまま繋がりますが、WSL2のLinuxは仮想マシンの中で動いているため、通信の方向によっては設定が必要になります。
+
+この章では、WSL2のネットワークの仕組みと、通信の方向ごとの接続方法を整理します。
+
+<Marker>WSL2のLinuxは、Windowsとは別のIPアドレスを持つ仮想マシンの中で動いています。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  WSLで起動したサーバーに、Windowsのブラウザから `localhost` で繋がりました。WindowsとWSLは同じネットワークなんですよね？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  実は別のネットワークです。WSLが、Windowsの `localhost` に来た通信をLinux側へ転送してくれているので、同じように見えているんです。逆向き（LinuxからWindows）や、他のPCからの通信では、その転送が効かない場合があります。
+</SpeechBubble>
+
+## 2つのネットワークモード
+
+WSL2には、ネットワークの構成方法が2つあります。
+
+| モード | 動作 | 使える環境 |
+| ------ | ---- | ---------- |
+| NATモード（既定） | Linuxは仮想ネットワークの中にあり、Windowsとは別のIPアドレスを持つ | Windows 10・11 |
+| ミラーモード | Windowsのネットワークインターフェースを、Linuxにもそのまま見せる | Windows 11 22H2以降 |
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    B["Windowsのブラウザ"] -->|"localhost:3000"| W["Windows"]
+    W -->|"転送"| V["仮想ネットワーク"]
+    V --> L["Linux 172.x.x.x"]
+`}
+/>
+
+NATモードでは、Linuxは `172.x.x.x` のような仮想ネットワーク内のIPアドレスを持ちます。このIPアドレスは、WSLを起動し直すたびに変わることがあります。
+
+```bash
+hostname -I
+# 172.30.98.229
+```
+
+## WindowsからWSLのサーバーへ
+
+NATモードでも、WindowsからWSLのサーバーへは `localhost` で接続できます。WSLが、Linuxで待ち受けているポートを検知し、Windowsの `localhost` の同じポートに来た通信をLinuxへ転送するためです（`.wslconfig` の `localhostForwarding`。既定で有効）。
+
+```bash
+# WSL側
+npm run dev
+# Local: http://localhost:3000
+```
+
+Windowsのブラウザで `http://localhost:3000` を開けば表示されます。
+
+<Marker>WindowsからWSLのサーバーへは、通常 `localhost:ポート番号` でそのまま繋がります。</Marker>
+
+### 繋がらないときに確認すること
+
+| 確認すること | 方法 |
+| ------------ | ---- |
+| Linuxでサーバーが本当に待ち受けているか | `ss -tlnp` でポートが `LISTEN` になっているか |
+| Windows側で同じポートを別のプログラムが使っていないか | PowerShellで `netstat -ano \| findstr :3000` |
+| サーバーの待ち受けアドレス | `ss -tlnp` の `Local Address` 欄 |
+
+```bash
+ss -tlnp
+# State   Recv-Q  Send-Q  Local Address:Port  Peer Address:Port  Process
+# LISTEN  0       511     0.0.0.0:3000        0.0.0.0:*          users:(("node",pid=1234,fd=20))
+```
+
+`0.0.0.0:3000` はすべてのアドレスで、`127.0.0.1:3000` はLinux内のループバックだけで待ち受けている状態です。`localhost` の転送はどちらでも動くのが基本ですが、`[::1]:3000` のようにIPv6のループバックだけで待ち受けている場合などに繋がらないことがあります。そのときは、開発サーバーに待ち受けアドレスを `0.0.0.0` と指定すると解決することが多いです。
+
+```bash
+npx vite --host 0.0.0.0
+npx next dev -H 0.0.0.0
+```
+
+<Figure src="/images/calling_suit_man_color.png" alt="電話をかける男性のイラスト" caption="Windowsのlocalhostに来た通信を、WSLがLinuxへ転送している" maxWidth="320px" />
+
+## WSLからWindowsのサーバーへ
+
+逆向き、つまりLinuxからWindowsで動いているサーバー（Windowsに入れたDBや、Windowsで起動したAPIなど）へ接続する場合、NATモードでは `localhost` は使えません。Linuxの `localhost` はLinux自身を指すためです。
+
+LinuxからWindowsを指すIPアドレスは、次のコマンドで確認できます。
+
+```bash
+ip route show | grep -i default | awk '{ print $3 }'
+# 172.30.96.1
+```
+
+このIPアドレスで接続するには、Windows側のサーバーが次の条件を満たしている必要があります。
+
+- `127.0.0.1` だけでなく、このIPアドレス（またはすべてのアドレス）で待ち受けている
+- Windowsのファイアウォールが、その通信を許可している
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  毎回IPアドレスを調べるのは面倒ですね……。
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  そういうときはミラーモードを使います。ミラーモードなら、LinuxからWindowsのサーバーにも `localhost` で繋がります。もう一つの方法は、Windowsで動かしていたサーバーをWSLかDockerに移して、全部Linux側にそろえることです。
+</SpeechBubble>
+
+## ミラーモード
+
+ミラーモードは、Windowsのネットワークインターフェースを、Linuxにもそのまま見せるモードです。Windows 11 22H2以降で使えます。
+
+`%UserProfile%\.wslconfig`（Windows側の `C:\Users\ユーザー名\.wslconfig`）に次のように書き、PowerShellで `wsl --shutdown` を実行してから起動し直します。
+
+```ini
+[wsl2]
+networkingMode=mirrored
+```
+
+| 項目 | NATモード | ミラーモード |
+| ---- | --------- | ------------ |
+| WindowsからWSLへ | `localhost` で繋がる | `localhost` で繋がる |
+| WSLからWindowsへ | WindowsのIPアドレスを調べて指定する | `localhost`（`127.0.0.1`）で繋がる |
+| LANの他の端末からWSLへ | ポート転送の設定が必要 | ファイアウォールの許可だけで繋がる |
+| LinuxのIPアドレス | Windowsとは別。起動し直すと変わることがある | Windowsと同じ |
+| IPv6 | 制限がある | 使える |
+| VPN | 繋がらないことがある | 互換性が改善されている |
+
+<Marker>WSLとWindowsの間で双方向に通信したいなら、Windows 11ではミラーモードを使うのが簡単です。</Marker>
+
+公式ドキュメントでは、ミラーモードの `localhost` はIPv4の `127.0.0.1` だけが対象で、IPv6の `::1` は使えないとしています。`.wslconfig` の書き方は[.wslconfigとwsl.confの違い](/books/wsl/wslconfig-and-wsl-conf)で扱います。
+
+## LANの他の端末からWSLへ
+
+スマートフォンの実機で開発中のサイトを確認したいときなど、同じLANにある別の端末からWSLのサーバーにアクセスする場合です。まず、サーバーを `0.0.0.0` で待ち受けるようにします。
+
+```bash
+npx vite --host 0.0.0.0
+```
+
+### ミラーモードの場合
+
+WSLへの外部からの通信を許可するHyper-Vファイアウォールの設定を、管理者として開いたPowerShellで追加します。
+
+```powershell
+New-NetFirewallHyperVRule -Name "MyWebServer" -DisplayName "My Web Server" `
+  -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' `
+  -Protocol TCP -LocalPorts 5173
+```
+
+`-VMCreatorId` の値は、WSLを表す固定のIDです。スマートフォンからは `http://WindowsのIPアドレス:5173` でアクセスします。WindowsのIPアドレスは、PowerShellの `ipconfig` で確認できます。
+
+### NATモードの場合
+
+Windowsに来た通信をLinuxのIPアドレスへ転送する設定を、管理者として開いたPowerShellで追加します。
+
+```powershell
+netsh interface portproxy add v4tov4 listenport=5173 listenaddress=0.0.0.0 connectport=5173 connectaddress=172.30.98.229
+```
+
+`connectaddress` には、`wsl hostname -I` で確認したLinuxのIPアドレスを指定します。このIPアドレスはWSLを起動し直すと変わることがあるため、そのたびに設定し直す必要があります。Windowsのファイアウォールでも、該当するポートへの受信を許可します。
+
+<Callout type="warning">
+LANから接続できるようにすると、同じネットワークにいる他の人からもアクセスできる状態になります。カフェなどの公共のネットワークでは設定しないようにし、確認が終わったらファイアウォールのルールやポート転送を削除しましょう。
+</Callout>
+
+<Figure src="/images/toppa_suit_woman_color.png" alt="前に進む女性のイラスト" caption="実機での確認は、0.0.0.0での待ち受けとファイアウォールの設定がそろって初めて繋がる" maxWidth="320px" />
+
+## 通信の方向ごとのまとめ
+
+| 出発点 | 行き先 | NATモード | ミラーモード |
+| ------ | ------ | --------- | ------------ |
+| Windows | WSLのサーバー | `localhost:ポート` | `localhost:ポート` |
+| WSL | Windowsのサーバー | `ip route` で調べたIPアドレス | `localhost:ポート` |
+| LANの他の端末 | WSLのサーバー | `netsh` のポート転送＋ファイアウォール | Hyper-Vファイアウォールの許可 |
+| WSL | インターネット | そのまま繋がる | そのまま繋がる |
+
+Docker Desktopで動かしているコンテナのポートは、Docker Desktopが別の仕組みでWindowsの `localhost` に公開するため、`docker run -p 3000:3000` で公開すればWindowsのブラウザから `localhost:3000` で繋がります。コンテナ同士の通信は[Dockerネットワーク](/books/docker/network-basics)で扱っています。
+
+## よくあるハマりどころ
+
+### VPNに接続するとWSLからインターネットに繋がらない
+
+NATモードでは、VPNの設定によってLinuxからのDNS（名前解決）や通信が届かなくなることがあります。Windows 11 22H2以降では、DNSの問い合わせをWindowsに直接渡す「DNSトンネリング」が既定で有効になっており、改善されています。それでも繋がらない場合は、ミラーモードを試します。
+
+### WSLを起動し直したらポート転送が効かなくなった
+
+NATモードのLinuxのIPアドレスは、起動し直すと変わることがあります。`netsh interface portproxy` の `connectaddress` を新しいIPアドレスに設定し直すか、ミラーモードに切り替えます。設定済みのポート転送は `netsh interface portproxy show all` で確認できます。
+
+### `localhost` で繋がらないが、`127.0.0.1` だと繋がる
+
+ブラウザやOSが `localhost` をIPv6の `::1` として解決し、サーバーがIPv4だけで待ち受けている場合に起きます。URLを `http://127.0.0.1:3000` にするか、サーバーの待ち受けアドレスを見直します。
+
+## ちゃんと使うためのポイント
+
+- WSL2の既定はNATモードで、LinuxはWindowsとは別のIPアドレスを持つ
+- WindowsからWSLのサーバーへは、NATモードでも `localhost` で繋がる
+- 繋がらないときは `ss -tlnp` で待ち受けアドレスを確認し、`0.0.0.0` を試す
+- WSLからWindowsへは、NATモードではIPアドレスを調べる。ミラーモードなら `localhost`
+- Windows 11 22H2以降なら、`.wslconfig` の `networkingMode=mirrored` で双方向に `localhost` が使える
+- LANに公開する設定は、使い終わったら削除する
+
+## 参考リンク
+
+- [WSL を使用したネットワーク アプリケーションへのアクセス（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/networking)
+
+WSLでDockerを使う方法は、[WSLでDockerを使う](/books/wsl/docker-on-wsl)で扱います。

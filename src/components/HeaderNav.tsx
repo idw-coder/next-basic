@@ -33,6 +33,7 @@ import {
   RotateCcw,
   Search,
   Shield,
+  Terminal,
   TestTube2,
   User as UserIcon,
   Wind,
@@ -82,6 +83,7 @@ const bookIconMap: Record<string, LucideIcon> = {
   Database,
   Hash,
   Bot,
+  Terminal,
 };
 
 export default function HeaderNav({ books }: HeaderNavProps) {

@@ -1,0 +1,214 @@
+---
+title: '.wslconfigとwsl.confの違い — メモリ上限・systemd・自動マウント'
+description: 'WSL全体の設定を書く .wslconfig と、ディストリビューションごとの設定を書く /etc/wsl.conf の違い、メモリ上限やsystemdの有効化を整理します。'
+order: 10
+---
+
+WSLの動作は、2つの設定ファイルで変更できます。Windows側に置く `.wslconfig` と、Linux側に置く `/etc/wsl.conf` です。名前が似ていますが、置く場所も、効く範囲も違います。
+
+<Marker>`.wslconfig` はWSL2の仮想マシン全体の設定、`wsl.conf` はディストリビューションごとの設定です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  メモリの上限を設定しようとして、Ubuntuの `/etc/wsl.conf` に `memory=4GB` と書いたのに、効きませんでした。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  メモリは仮想マシン全体に関わる設定なので、Windows側の `.wslconfig` に書きます。どちらのファイルに何を書くかを最初に整理しておきましょう。
+</SpeechBubble>
+
+## 2つの設定ファイルの違い
+
+| 観点 | `.wslconfig` | `wsl.conf` |
+| ---- | ------------ | ---------- |
+| 置き場所 | Windows側の `%UserProfile%\.wslconfig`（`C:\Users\ユーザー名\.wslconfig`） | 各ディストリビューションの `/etc/wsl.conf` |
+| 効く範囲 | WSL2の仮想マシン全体（全ディストリビューション共通） | そのディストリビューションだけ |
+| 主な設定 | メモリ、CPU数、スワップ、ネットワークモード | systemd、自動マウント、WindowsのPATH、既定のユーザー |
+| 対象 | WSL2だけ | WSL1とWSL2 |
+| 書式 | INIファイル形式（`[セクション]` と `キー=値`） | INIファイル形式 |
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    C[".wslconfig（Windows側）"] --> V["WSL2の仮想マシン"]
+    V --> U["Ubuntu"]
+    V --> D["Debian"]
+    U --- UC["/etc/wsl.conf"]
+    D --- DC["/etc/wsl.conf"]
+`}
+/>
+
+どちらのファイルも、最初は存在しません。必要になったら自分で作ります。書式が間違っていると、WSLはその設定を無視して通常どおり起動します。
+
+## 設定を反映させる — `wsl --shutdown`
+
+設定ファイルは、WSLが起動するときに読み込まれます。ファイルを編集したら、PowerShellで次のコマンドを実行し、仮想マシンごと停止してから起動し直します。
+
+```powershell
+wsl --shutdown
+```
+
+ターミナルを閉じるだけでは、WSLはすぐには停止しません。公式ドキュメントでは、すべてのシェルを閉じてから停止するまで約8秒かかるとして、「8秒ルール」と呼んでいます。確実に反映させるには `wsl --shutdown` を使います。
+
+<Marker>設定ファイルを編集したら、`wsl --shutdown` を実行してから起動し直します。</Marker>
+
+## `.wslconfig` — 仮想マシン全体の設定
+
+Windowsのエクスプローラーのアドレスバーに `%UserProfile%` と入力するとユーザーフォルダーが開くので、そこに `.wslconfig` を作ります。
+
+```ini
+# C:\Users\taro\.wslconfig
+[wsl2]
+memory=8GB
+processors=4
+swap=4GB
+networkingMode=mirrored
+```
+
+### `[wsl2]` の主な設定
+
+| キー | 既定値 | 内容 |
+| ---- | ------ | ---- |
+| `memory` | Windowsのメモリの50% | 仮想マシンが使えるメモリの上限 |
+| `processors` | Windowsの論理プロセッサ数 | 仮想マシンが使えるCPUの数 |
+| `swap` | Windowsのメモリの25%（GB単位に切り上げ） | スワップの大きさ。`0` で無効 |
+| `localhostForwarding` | `true` | WindowsからLinuxのサーバーに `localhost` で接続できるようにする |
+| `networkingMode` | `nat` | `mirrored` にするとミラーモード（Windows 11 22H2以降） |
+| `guiApplications` | `true` | LinuxのGUIアプリ（WSLg）を使えるようにする |
+| `defaultVhdSize` | 1TB | 新しく作る仮想ディスクの最大サイズ |
+
+サイズは `8GB`、`512MB` のように単位を付けて書きます。Windowsのパスを書く設定では、`C:\\Temp\\kernel` のように `\` を2つ重ねます。ネットワークモードの違いは[WSLのネットワーク](/books/wsl/networking)で扱いました。
+
+### メモリの上限を決める
+
+WSL2の仮想マシンは、必要に応じてメモリを使い、既定ではWindowsのメモリの50%まで使えます。Dockerで大きなイメージをビルドしたり、複数のコンテナを動かしたりすると、Windows側のメモリが足りなくなることがあります。その場合は `memory` で上限を設定します。
+
+| PCのメモリ | 設定の例 |
+| ---------- | -------- |
+| 16GB | `memory=6GB`〜`8GB` |
+| 32GB | `memory=12GB`〜`16GB` |
+
+設定値は使い方によって変わるため、上の表は目安です。WSLで動かすものに対して上限が小さすぎると、ビルドが途中で失敗したり、プロセスが強制終了されたりします。
+
+<Figure src="/images/plan_selection_man_color.png" alt="プランを選ぶ男性のイラスト" caption="メモリの上限は、WindowsとWSLのどちらで何を動かすかで決める" maxWidth="320px" />
+
+### `[experimental]` の設定
+
+将来的に既定になる予定の機能を、先に試すための設定です。
+
+| キー | 内容 |
+| ---- | ---- |
+| `autoMemoryReclaim` | Linuxがキャッシュとして持っているメモリを、Windowsに返すようにする。`gradual`（少しずつ）、`dropCache`（すぐに）、`disabled`（無効）から選ぶ |
+| `sparseVhd` | 新しく作る仮想ディスクを、空き領域を自動で縮小できる形式（スパース）にする |
+
+```ini
+[experimental]
+autoMemoryReclaim=gradual
+sparseVhd=true
+```
+
+実験的な機能は、名前や既定値がWSLのバージョンによって変わることがあります。使う前に公式ドキュメントで現在の状態を確認してください。
+
+### 「WSL 設定」アプリ
+
+最近のWSLには、スタートメニューから開ける「WSL 設定」（WSL Settings）アプリがあります。メモリやネットワークモードなどを画面で変更でき、内容は `.wslconfig` に保存されます。公式ドキュメントでも、`.wslconfig` を手で編集するより、このアプリを使うことを勧めています。
+
+## `wsl.conf` — ディストリビューションごとの設定
+
+Ubuntuの中で、`/etc/wsl.conf` を管理者権限で編集します。
+
+```bash
+sudo nano /etc/wsl.conf
+```
+
+```ini
+# /etc/wsl.conf
+[boot]
+systemd=true
+
+[user]
+default=taro
+
+[interop]
+appendWindowsPath=true
+
+[automount]
+options = "metadata"
+```
+
+### 主なセクションと設定
+
+| セクション | キー | 既定値 | 内容 |
+| ---------- | ---- | ------ | ---- |
+| `[boot]` | `systemd` | `false` | systemdを起動時のプロセスとして使う（WSL2だけ） |
+| `[boot]` | `command` | なし | ディストリビューションの起動時に、rootで実行するコマンド |
+| `[user]` | `default` | 初回起動時に作ったユーザー | `wsl` で起動したときのユーザー |
+| `[interop]` | `enabled` | `true` | LinuxからWindowsのプログラムを起動できるようにする |
+| `[interop]` | `appendWindowsPath` | `true` | WindowsのPATHをLinuxの `PATH` に追加する |
+| `[automount]` | `enabled` | `true` | Windowsのドライブを `/mnt` の下に自動でマウントする |
+| `[automount]` | `root` | `/mnt/` | ドライブをマウントするディレクトリ |
+| `[automount]` | `options` | なし | マウントのオプション。`metadata` でパーミッションを記録できる |
+| `[network]` | `hostname` | Windowsのホスト名 | ディストリビューションのホスト名 |
+| `[network]` | `generateResolvConf` | `true` | `/etc/resolv.conf`（DNSの設定）を自動で生成する |
+
+`systemd` の既定値は `false` ですが、`wsl --install` で入るUbuntuでは、`/etc/wsl.conf` に `systemd=true` があらかじめ書かれていることが多いです。自分の環境は `cat /etc/wsl.conf` で確認します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  systemdを有効にすると、何ができるようになるんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  `systemctl` でサービスを管理できるようになります。Docker EngineやMySQLのように、サービスとして常駐させるソフトウェアは、systemdがあるとUbuntuの起動時に自動で起動できます。通常のLinuxサーバーと同じ手順が使えるのが利点です。
+</SpeechBubble>
+
+```bash
+systemctl status
+sudo systemctl enable --now docker
+```
+
+## どちらに書くかの判断
+
+| やりたいこと | 書くファイル | 設定 |
+| ------------ | ------------ | ---- |
+| WSLが使うメモリを制限したい | `.wslconfig` | `[wsl2]` の `memory` |
+| ミラーモードにしたい | `.wslconfig` | `[wsl2]` の `networkingMode=mirrored` |
+| systemdを有効にしたい | `wsl.conf` | `[boot]` の `systemd=true` |
+| WindowsのPATHを混ぜたくない | `wsl.conf` | `[interop]` の `appendWindowsPath=false` |
+| インポートしたディストリビューションの既定のユーザーを変えたい | `wsl.conf` | `[user]` の `default` |
+| `/mnt/c` でもパーミッションを使いたい | `wsl.conf` | `[automount]` の `options = "metadata"` |
+| DNSの設定を自分で管理したい | `wsl.conf` | `[network]` の `generateResolvConf=false` |
+
+<Figure src="/images/creative_color.png" alt="創作活動のイラスト" caption="仮想マシン全体なら .wslconfig、ディストリビューションごとなら wsl.conf" maxWidth="320px" />
+
+## よくあるハマりどころ
+
+### `.wslconfig` を作ったのに効かない
+
+次の点を確認します。
+
+- ファイル名が `.wslconfig.txt` になっていないか。メモ帳で保存すると `.txt` が付くことがあるため、エクスプローラーの「表示」→「ファイル名拡張子」を有効にして確認する
+- 置き場所が `C:\Users\ユーザー名\` の直下か
+- セクション名が `[wsl2]` になっているか
+- 編集後に `wsl --shutdown` を実行したか
+
+### `generateResolvConf=false` にしたらインターネットに繋がらない
+
+`/etc/resolv.conf` が自動で作られなくなり、DNSサーバーの設定が空になっています。`/etc/resolv.conf` に `nameserver` を自分で書く必要があります。VPN対策などで明確な理由がない限り、既定の `true` のままにします。
+
+### `wsl.conf` を書き間違えて起動できなくなった
+
+書式の間違いだけなら、WSLはその設定を無視して起動します。`[boot]` の `command` に止まらないコマンドを書いた場合などに起動しなくなったときは、PowerShellから `wsl -u root` で入って `/etc/wsl.conf` を直すか、`wsl -d Ubuntu -u root -e nano /etc/wsl.conf` で直接編集します。
+
+## ちゃんと使うためのポイント
+
+- `.wslconfig` はWindowsのユーザーフォルダーに置き、仮想マシン全体に効く
+- `/etc/wsl.conf` は各ディストリビューションに置き、そのディストリビューションだけに効く
+- メモリ・CPU・ネットワークモードは `.wslconfig`、systemd・PATH・既定のユーザーは `wsl.conf`
+- 編集したら `wsl --shutdown` で仮想マシンごと止めてから起動し直す
+- 実験的な設定は、WSLのバージョンによって変わるので公式ドキュメントで確認する
+
+## 参考リンク
+
+- [WSL での詳細設定の構成（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/wsl-config)
+- [systemd を使用して WSL で Linux サービスを管理する（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/systemd)
+
+WSLが遅い、容量が膨らむといったトラブルへの対処は、[WSLのトラブル対処](/books/wsl/troubleshooting)で扱います。

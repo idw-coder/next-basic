@@ -1,0 +1,164 @@
+---
+title: 'WSLのファイルの置き場所 — /mnt/cと\\wsl.localhostの違い'
+description: 'WSLからWindowsのファイルを見る /mnt/c と、WindowsからLinuxのファイルを見る \\wsl.localhost の仕組み、プロジェクトをどちらに置くと速いかを整理します。'
+order: 4
+---
+
+WSLを使うと、1台のPCの中にWindowsのファイルとLinuxのファイルが同時に存在します。どちらのOSからも相手のファイルを読み書きできますが、**どちら側に置いたファイルを、どちらのOSのツールで操作するか**によって、速さが大きく変わります。
+
+この章では、2つのファイルシステムの見え方と、プロジェクトをどこに置くべきかを整理します。
+
+<Marker>Linuxのコマンドで扱うファイルはLinux側に、Windowsのアプリで扱うファイルはWindows側に置きます。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  今まで `C:\Users\taro\projects` に置いていたプロジェクトを、そのままWSLから使ってもいいですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  使うことはできます。ただ、WSLの中から `npm install` やGitを実行すると、Linux側に置いた場合より何倍も遅くなります。WSLで開発するなら、プロジェクトはLinux側のホームディレクトリに移しましょう。
+</SpeechBubble>
+
+## 2つのファイルシステム
+
+| ファイルの置き場所 | Linuxから見たパス | Windowsから見たパス |
+| ------------------ | ----------------- | ------------------- |
+| Linux側（Ubuntuの中） | `/home/taro/projects` | `\\wsl.localhost\Ubuntu\home\taro\projects` |
+| Windows側（Cドライブ） | `/mnt/c/Users/taro/projects` | `C:\Users\taro\projects` |
+
+Linux側のファイルは、[WSLとは何か](/books/wsl/what-is-wsl)で見たとおり、仮想ディスク `ext4.vhdx` の中にext4ファイルシステムとして保存されています。Windows側のファイルは、通常どおりNTFSのドライブに保存されています。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    L["Linuxのコマンド"] -->|"速い"| E["Linux側 /home"]
+    L -->|"遅い（/mnt/c）"| N["Windows側 C:"]
+    W["Windowsのアプリ"] -->|"速い"| N
+    W -->|"遅い（wsl.localhost）"| E
+`}
+/>
+
+## LinuxからWindowsのファイルを見る — `/mnt/c`
+
+WSLは、Windowsのドライブを `/mnt` の下に自動でマウントします。Cドライブは `/mnt/c`、Dドライブは `/mnt/d` です。
+
+```bash
+ls /mnt/c/Users/taro/Downloads
+cp /mnt/c/Users/taro/Downloads/data.csv ~/projects/
+```
+
+ダウンロードしたファイルをLinux側にコピーするときなどに使います。
+
+## WindowsからLinuxのファイルを見る — `\\wsl.localhost`
+
+Windowsのエクスプローラーのアドレスバーに `\\wsl.localhost\Ubuntu` と入力すると、Ubuntuのルートディレクトリ（`/`）が開きます。エクスプローラーの左側のナビゲーションにも「Linux」という項目が表示され、そこから開くこともできます。
+
+古い表記の `\\wsl$\Ubuntu` でも同じ場所が開きます。
+
+### Linuxのターミナルからエクスプローラーを開く
+
+Ubuntuのターミナルで次のコマンドを実行すると、現在のディレクトリをWindowsのエクスプローラーで開けます。
+
+```bash
+explorer.exe .
+```
+
+`explorer.exe` はWindowsのプログラムですが、WSLの中から呼び出せます。最後の `.` は「現在のディレクトリ」を表します。
+
+<Figure src="/images/walking_woman_color.png" alt="歩く女性のイラスト" caption="どちらのOSからも相手のファイルは見えるが、境界をまたぐと遅くなる" maxWidth="320px" />
+
+## なぜ境界をまたぐと遅いのか
+
+WSL2では、Linuxは仮想マシンの中で動いています。Linuxから `/mnt/c` のファイルを読むと、仮想マシンの外にあるWindowsのファイルを、9Pというネットワーク向けのファイル共有プロトコルを経由して読み書きします。1回のアクセスごとに仮想マシンとWindowsの間で通信が発生するため、ファイルの数が多いほど時間がかかります。
+
+| 処理 | ファイルへのアクセス | `/mnt/c` の下での影響 |
+| ---- | -------------------- | --------------------- |
+| `npm install` | 数万個の小さなファイルを作る | 非常に遅くなる |
+| `git status` | 全ファイルの状態を確認する | 遅くなる |
+| 開発サーバーのファイル監視 | 変更を検知する | 変更が検知されないことがある |
+| 大きなファイル1つのコピー | 1回の大きな読み書き | 影響は比較的小さい |
+
+<Marker>`npm install` やGitのように大量のファイルを扱う処理ほど、`/mnt/c` の下での実行は遅くなります。</Marker>
+
+### ファイルの変更が検知されない
+
+Linux側のツールがファイルの変更を検知するときは、Linuxカーネルの inotify という仕組みを使います。Windows側でファイルを変更しても、`/mnt/c` の下のファイルについてはLinuxにこの通知が届かないことがあり、開発サーバーのホットリロードが動かない原因になります。プロジェクトをLinux側に置けば、この問題は起きません。
+
+## プロジェクトはどこに置くか
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  でも、Linux側に置いたらVS Codeやエクスプローラーから開くのが遅くなるんじゃないですか？
+</SpeechBubble>
+
+エクスプローラーで開くのは確かにWindowsからのアクセスになります。ただ、VS CodeにはWSL拡張機能があり、ファイルの読み書きやGitの実行をLinux側で行うため、Linux側に置いたプロジェクトでも速く動きます。この使い方は[VS CodeとGitをWSLで使う](/books/wsl/vscode-and-git)で扱います。
+
+| ファイル | 置き場所 |
+| -------- | -------- |
+| WSLで開発するプロジェクト（Node.js、Dockerなど） | Linux側の `~/projects` など |
+| Windowsのアプリで編集する文書や画像 | Windows側 |
+| ダウンロードしたファイル | Windows側に保存し、必要なものだけLinux側にコピーする |
+
+### プロジェクトをLinux側に移す
+
+Windows側にあるプロジェクトは、Gitで管理しているなら、Linux側で改めて `git clone` するのが確実です。
+
+```bash
+mkdir -p ~/projects
+cd ~/projects
+git clone git@github.com:your-name/my-app.git
+```
+
+Gitで管理していない場合は、`cp` でコピーします。`node_modules` はOSによって中身が違うため、コピーせずにLinux側で `npm install` し直します。
+
+```bash
+cp -r /mnt/c/Users/taro/projects/my-app ~/projects/
+cd ~/projects/my-app
+rm -rf node_modules
+npm install
+```
+
+## ファイル名の大文字・小文字
+
+Linuxのファイルシステムは、ファイル名の大文字と小文字を区別します。`Button.tsx` と `button.tsx` は別のファイルです。Windowsは既定で区別しません。
+
+| 置き場所 | 大文字・小文字 |
+| -------- | -------------- |
+| Linux側 | 区別する |
+| Windows側（`/mnt/c`） | 既定では区別しない |
+
+Linux側で開発していれば、`import './button'` のように大文字・小文字を間違えたimportは手元でもエラーになります。本番のLinuxサーバーと同じ条件で、間違いに気づけます。
+
+<Figure src="/images/inspiration_color.png" alt="ひらめきのイラスト" caption="Linux側で開発すると、大文字・小文字の間違いに手元で気づける" maxWidth="320px" />
+
+## よくあるハマりどころ
+
+### Windowsのツールで `ext4.vhdx` のあるフォルダーを直接触る
+
+ディストリビューションの仮想ディスクは、`C:\Users\ユーザー名\AppData\Local\` の下などに置かれています。公式ドキュメントでは、このフォルダーの中のファイルをWindowsのツールで変更・移動しないよう注意しています。ディストリビューションが壊れることがあるためです。Linux側のファイルには、必ず `\\wsl.localhost\Ubuntu\...` からアクセスします。
+
+### `/mnt/c` の下で `npm install` して遅い・エラーになる
+
+`pwd` で現在のディレクトリを確認し、`/mnt/` で始まっていたら、Windows側で作業しています。プロジェクトをLinux側に移します。
+
+```bash
+pwd
+# /mnt/c/Users/taro/projects/my-app   ← Windows側
+```
+
+### Windowsのエクスプローラーでファイルを作ると改行コードやパーミッションが変わる
+
+Windowsのアプリで作ったファイルは、改行コードがCRLFになったり、Linuxの実行権限が付かなかったりします。シェルスクリプトが動かない原因になるため、Linux側のファイルはLinux側のツール（またはWSL拡張機能を使ったVS Code）で作成・編集します。詳しくは[WindowsとLinuxの連携](/books/wsl/windows-interop)で扱います。
+
+## ちゃんと使うためのポイント
+
+- Linux側のファイルは `/home/ユーザー名`、Windowsからは `\\wsl.localhost\Ubuntu\...` で見える
+- Windows側のファイルは、Linuxから `/mnt/c/...` で見える
+- OSの境界をまたいだファイルアクセスは遅い。特に `npm install` やGitで差が出る
+- WSLで開発するプロジェクトはLinux側のホームディレクトリに置く
+- `explorer.exe .` で、Linux側の現在のディレクトリをエクスプローラーで開ける
+- 仮想ディスクのあるフォルダーをWindowsのツールで直接触らない
+
+## 参考リンク
+
+- [ファイル システム間での作業（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/filesystems)
+
+WindowsとLinuxのコマンドを組み合わせる方法や、改行コード・パーミッションの違いは、[WindowsとLinuxの連携](/books/wsl/windows-interop)で扱います。

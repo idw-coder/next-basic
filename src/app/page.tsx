@@ -310,6 +310,12 @@ const CATEGORIES: CategoryDef[] = [
 
 const NEWS: { date: string; text: string; link?: string; images?: string[] }[] = [
   {
+    date: '2026/11/07',
+    text: '教科書「WSL入門 — WindowsでLinux開発環境を作る」を公開しました。WSL1とWSL2の違い、インストール、ファイルの置き場所、VS Code・Git・Node.js・Dockerとの組み合わせ、ネットワーク、設定ファイル、トラブル対処を扱う全11章とチートシートです',
+    link: '/books/wsl',
+    images: ['/images/books/cover-wsl.svg'],
+  },
+  {
     date: '2026/11/03',
     text: '教科書「Vim入門 — VS Codeユーザーがターミナルで困らないための基本操作」を公開しました。終了、モード、カーソル移動、編集、Git・SSHでの対処、Neovim・LazyVimの導入を扱う全13章と、Vim・Neovim・tmuxのチートシート3付録です',
     link: '/books/vim',

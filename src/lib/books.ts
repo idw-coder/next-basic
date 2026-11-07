@@ -29,6 +29,7 @@ const categoryToBookMap: Record<string, string> = {
 
 /** 書籍一覧の表示順（先頭が先に表示される） */
 export const BOOK_ORDER = [
+  'wsl',
   'mui',
   'mysql',
   'zod',

@@ -1,0 +1,210 @@
+---
+title: 'WSLでDockerを使う — Docker DesktopとDocker Engineの違い'
+description: 'Docker DesktopのWSL2バックエンドと、WSLのUbuntuにDocker Engineを直接入れる方法の違い、それぞれの設定と注意点を学びます。'
+order: 9
+---
+
+DockerはLinuxのコンテナを動かす仕組みなので、Windowsで使うときはLinuxの環境が必要です。WSL2は本物のLinuxカーネルを動かしているため、WindowsでDockerを使うための土台として広く使われています。
+
+WSLでDockerを使う方法は大きく2つあります。Windowsに**Docker Desktop**を入れる方法と、Ubuntuの中に**Docker Engine**を直接入れる方法です。この章では、それぞれの仕組みと設定、どちらを選ぶかを整理します。Dockerそのものの使い方は[Docker入門](/books/docker)で扱っています。
+
+<Marker>WSLでDockerを使うには、Docker Desktopを入れるか、UbuntuにDocker Engineを入れるかのどちらかを選びます。両方は入れません。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Docker Desktopを入れればWindowsでもDockerが使えると聞きました。WSLとはどういう関係なんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  Docker Desktopは、コンテナを動かすエンジンをWSL2の上で動かしています。WSLの仕組みを使ってLinuxの環境を用意し、そこでDocker Engineを動かして、WindowsとWSLのどちらからでも `docker` コマンドを使えるようにしているんです。
+</SpeechBubble>
+
+## 2つの方法
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    subgraph A["Docker Desktop"]
+      D1["docker-desktop（専用の環境）"] --- E1["Docker Engine"]
+      U1["Ubuntu"] -->|"docker コマンド"| E1
+    end
+    subgraph B["Docker Engineを直接入れる"]
+      U2["Ubuntu"] --- E2["Docker Engine"]
+    end
+`}
+/>
+
+| 観点 | Docker Desktop | Docker Engineを直接入れる |
+| ---- | -------------- | ------------------------ |
+| インストール先 | Windows | Ubuntuの中 |
+| エンジンが動く場所 | Docker Desktop専用のWSL環境 | Ubuntuそのもの |
+| GUI | あり（コンテナ、イメージ、ボリュームの一覧など） | なし（コマンドだけ） |
+| WindowsのPowerShellから `docker` | 使える | 使えない（`wsl docker ...` なら可） |
+| ポートの公開 | Windowsの `localhost` に公開される | WSLの `localhost` 転送で、Windowsからも `localhost` で届く |
+| 起動 | Docker Desktopを起動する | systemdでUbuntuの起動時に自動で起動する |
+| ライセンス | 一定規模以上の企業での利用は有料 | 無料（オープンソース） |
+
+## 方法1 — Docker Desktopを使う
+
+### インストール
+
+1. [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)をWindowsにインストールする
+2. Docker Desktopを起動し、「Settings」→「General」で「Use WSL 2 based engine」が有効になっていることを確認する（WSL2が使える環境では既定で有効）
+3. 「Settings」→「Resources」→「WSL Integration」で、使うディストリビューション（Ubuntu）を有効にして「Apply」を押す
+
+設定が終わったら、Ubuntuのターミナルで確認します。
+
+```bash
+docker version
+docker run --rm hello-world
+```
+
+`wsl -l -v` を実行すると、Docker Desktop専用の `docker-desktop` というディストリビューションが追加されているのが分かります。これはDocker Desktopが管理するもので、直接ログインして使うものではありません。
+
+```powershell
+wsl -l -v
+#   NAME              STATE           VERSION
+# * Ubuntu            Running         2
+#   docker-desktop    Running         2
+```
+
+<Figure src="/images/meeting_color.png" alt="打ち合わせをするイラスト" caption="Docker Desktopは、WSL2の上でエンジンを動かし、Ubuntuと連携させる" maxWidth="320px" />
+
+### ライセンスに注意する
+
+Docker Desktopは、個人での利用、教育目的、小規模な企業（従業員数と年間売上が一定以下）での利用は無料ですが、それ以外の企業で使うには有料のサブスクリプションが必要です。会社のPCで使う場合は、社内の方針を確認してください。条件は変わることがあるため、[Docker Desktopのライセンスの公式ページ](https://docs.docker.com/subscription/desktop-license/)で確認します。
+
+## 方法2 — UbuntuにDocker Engineを直接入れる
+
+Docker Desktopを使わず、Ubuntuの中に通常のLinuxサーバーと同じ手順でDocker Engineを入れる方法です。
+
+### systemdが有効か確認する
+
+Docker Engineは、Linuxのサービス管理の仕組みであるsystemdで起動・管理します。WSLではsystemdを使うかどうかを `/etc/wsl.conf` で設定します。
+
+```bash
+cat /etc/wsl.conf
+# [boot]
+# systemd=true
+```
+
+`systemd=true` があれば有効です。ない場合は追記し、PowerShellで `wsl --shutdown` を実行してから起動し直します。
+
+```bash
+sudo tee -a /etc/wsl.conf > /dev/null <<'EOF'
+[boot]
+systemd=true
+EOF
+```
+
+### インストール
+
+Docker公式のaptリポジトリを追加して入れます。次のコマンドはDocker公式ドキュメントの手順です。手順は変わることがあるので、実行前に[公式のインストール手順](https://docs.docker.com/engine/install/ubuntu/)で確認してください。
+
+```bash
+# Docker公式のGPG鍵を追加する
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# リポジトリを追加する
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+# Docker Engineを入れる
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+### `sudo` なしで使えるようにする
+
+インストール直後は、`docker` コマンドに `sudo` が必要です。自分のユーザーを `docker` グループに追加すると、`sudo` なしで使えます。
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+グループの変更は、ログインし直すまで反映されません。いったん `exit` し、PowerShellで `wsl --terminate Ubuntu` を実行してから開き直します。
+
+```bash
+docker run --rm hello-world
+docker compose version
+```
+
+<Callout type="warning">
+`docker` グループに入ったユーザーは、コンテナを通じてroot権限と同等の操作ができるようになります。自分だけが使う開発用のWSLでは一般的な設定ですが、複数人で使う環境では注意が必要です。
+</Callout>
+
+## どちらを選ぶか
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  結局、どっちを使えばいいんですか？
+</SpeechBubble>
+
+| 状況 | おすすめ |
+| ---- | -------- |
+| 初めてDockerを使う。GUIでコンテナの状態を見たい | Docker Desktop |
+| PowerShellやWindowsのツールからも `docker` を使いたい | Docker Desktop |
+| 会社の規模やライセンスの都合でDocker Desktopを使えない | Docker Engine |
+| 本番サーバーと同じ構成で動かしたい。Docker Desktopの常駐を避けたい | Docker Engine |
+
+<Marker>迷ったら、個人の学習ではDocker Desktop、ライセンスの制約がある場合はDocker Engineを選びます。</Marker>
+
+<Callout type="column" title="WSLに組み込まれたコンテナ機能">
+WSLのバージョン2.9.3以降には、`wslc` というコンテナのCLIが組み込まれています。別のエンジンを入れずに `wslc run` などでLinuxのコンテナを動かせる新しい機能です。Docker DesktopやDocker Engineとは別の仕組みなので、この本では扱いません。詳しくは[WSL コンテナーの使用を開始する（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/tutorials/wsl-containers)を参照してください。
+</Callout>
+
+## プロジェクトはLinux側に置く
+
+どちらの方法でも、プロジェクトのファイルはLinux側（`~/projects` など）に置きます。`/mnt/c` の下のプロジェクトをbind mountすると、[WSLのファイルの置き場所](/books/wsl/filesystem)で見たとおり、ファイルアクセスが遅く、ファイルの変更が検知されないこともあります。
+
+```bash
+cd ~/projects/my-app
+docker compose up -d
+```
+
+<Figure src="/images/highfive_hi_color.png" alt="ハイタッチするイラスト" caption="プロジェクトをLinux側に置けば、bind mountも速く動く" maxWidth="320px" />
+
+## よくあるハマりどころ
+
+### Docker Desktopを入れたのにUbuntuで `docker: command not found`
+
+「Settings」→「Resources」→「WSL Integration」で、Ubuntuが有効になっていません。有効にして「Apply」を押し、Ubuntuのターミナルを開き直します。
+
+### Docker DesktopとDocker Engineを両方入れて動きがおかしい
+
+Docker公式ドキュメントでは、Docker Desktopを入れる前に、WSLのディストリビューションに直接入れたDocker Engineやdocker CLIをアンインストールするよう案内しています。両方あると、どちらのエンジンにつながっているか分からなくなり、イメージやコンテナが見えなくなったりします。どちらか一方にします。
+
+### `permission denied while trying to connect to the Docker daemon socket`
+
+Docker Engineを直接入れた場合に、`docker` グループへの追加がまだ反映されていない状態です。`groups` コマンドの出力に `docker` が含まれているか確認し、含まれていなければディストリビューションを起動し直します。
+
+### `Cannot connect to the Docker daemon` と表示される
+
+エンジンが起動していません。Docker Desktopの場合はDocker Desktopを起動します。Docker Engineの場合は、systemdが有効になっているかを確認し、`sudo systemctl status docker` でサービスの状態を確認します。
+
+### Cドライブの容量が減り続ける
+
+Docker Desktopのイメージやボリュームは、Docker Desktop専用の仮想ディスクに保存され、使っていないイメージを消しても仮想ディスクのファイルは自動では小さくなりません。`docker system prune` で不要なデータを消したうえで、仮想ディスクを縮小します。手順は[WSLのトラブル対処](/books/wsl/troubleshooting)で扱います。
+
+## ちゃんと使うためのポイント
+
+- Docker DesktopはWSL2の上でエンジンを動かす。「WSL Integration」でUbuntuを有効にする
+- Docker Engineを直接入れるなら、systemdを有効にし、公式のaptリポジトリから入れる
+- Docker DesktopとDocker Engineは両方入れない
+- Docker Desktopの企業での利用は、ライセンスの条件を確認する
+- プロジェクトはLinux側に置いてからbind mountする
+
+## 参考リンク
+
+- [Docker Desktop WSL 2 backend on Windows（Docker Docs）](https://docs.docker.com/desktop/features/wsl/)
+- [Install Docker Engine on Ubuntu（Docker Docs）](https://docs.docker.com/engine/install/ubuntu/)
+
+メモリの上限やsystemdなど、WSLの設定ファイルの書き方は、[.wslconfigとwsl.confの違い](/books/wsl/wslconfig-and-wsl-conf)で扱います。

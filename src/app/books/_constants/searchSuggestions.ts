@@ -229,6 +229,23 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Docker',
   ],
 
+  wsl: [
+    'wsl --install',
+    'wsl --shutdown',
+    '/mnt/c',
+    'wsl.localhost',
+    'WSL2',
+    'ミラーモード',
+    '.wslconfig',
+    'wsl.conf',
+    'systemd',
+    'appendWindowsPath',
+    'Docker Desktop',
+    'nvm',
+    '改行コード',
+    'ext4.vhdx',
+  ],
+
   docker: [
     'Dockerfile',
     'docker compose',

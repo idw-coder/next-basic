@@ -1,0 +1,207 @@
+---
+title: 'VS CodeとGitをWSLで使う — WSL拡張機能・改行設定・SSH鍵'
+description: 'VS CodeのWSL拡張機能でLinux側のファイルを編集する方法、Gitの core.autocrlf の設定、SSH鍵と認証情報の扱いを整理します。'
+order: 6
+---
+
+WSLで開発するとき、エディターはWindowsのVS Codeを使い、ファイルやGit、Node.jsはLinux側に置く構成が一般的です。これを実現するのがVS Codeの**WSL拡張機能**です。
+
+この章では、WSL拡張機能の仕組みと使い方、WSLでGitを使うための設定（ユーザー情報・改行コード・認証）を整理します。
+
+<Marker>VS CodeはWindowsで表示し、ファイルの読み書き・Git・ターミナルはLinux側で動かすのが、WSLでの基本の開発スタイルです。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Linux側のファイルは、Windowsのエクスプローラーから `\\wsl.localhost` で開けますよね。VS Codeでもそのフォルダーを開けばいいんじゃないですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  開くことはできますが、そうするとVS CodeはWindowsのアプリとしてファイルを読み書きするので、OSの境界をまたいで遅くなります。Gitも拡張機能もWindows側で動いてしまいます。WSL拡張機能を使えば、その処理をLinux側で動かせます。
+</SpeechBubble>
+
+## WSL拡張機能の仕組み
+
+WSL拡張機能を使うと、VS Codeは2つの部分に分かれて動きます。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    U["VS Codeの画面（Windows）"] -->|"通信"| S["VS Code Server（Linux）"]
+    S --> F["ファイル /home"]
+    S --> G["Git・ターミナル"]
+    S --> X["拡張機能"]
+`}
+/>
+
+| 部分 | 動く場所 | 担当すること |
+| ---- | -------- | ------------ |
+| VS Codeの画面 | Windows | 画面の表示、キー入力、テーマなど |
+| VS Code Server | Linux（`~/.vscode-server`） | ファイルの読み書き、ターミナル、Git、言語機能などの拡張機能 |
+
+ファイルの読み書きやGitの実行はLinux側のVS Code Serverが行うため、Linux側に置いたプロジェクトを、Linuxのファイルアクセスの速さのまま扱えます。
+
+## セットアップ
+
+1. WindowsにVS Codeをインストールする（Linux側には入れない）
+2. VS Codeの拡張機能から「WSL」（発行元: Microsoft）をインストールする
+3. Ubuntuのターミナルでプロジェクトのディレクトリに移動し、`code .` を実行する
+
+```bash
+cd ~/projects/my-app
+code .
+```
+
+初回は、Linux側にVS Code Serverが自動でダウンロードされます。VS Codeのウィンドウが開いたら、左下に `WSL: Ubuntu` と表示されていることを確認します。
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="デスクで確認作業をする女性のイラスト" caption="左下に WSL: Ubuntu と出ていれば、Linux側で動いている" maxWidth="320px" />
+
+### VS Codeから開く方法
+
+Ubuntuのターミナルを使わずに、VS Codeから開くこともできます。左下の `><` のようなアイコン（リモートウィンドウを開く）をクリックし、「WSLへの接続」を選んでから、「フォルダーを開く」でLinux側のフォルダーを選びます。
+
+### ターミナルと拡張機能
+
+WSLに接続したウィンドウでターミナルを開くと、Ubuntuのbashが起動します。`npm run dev` などのコマンドは、このターミナルで実行します。
+
+拡張機能は、「ローカル（Windows）」と「WSL: Ubuntu」に分かれて表示されます。ESLintやPrettierのようにファイルの中身を扱う拡張機能は、WSL側にインストールする必要があります。拡張機能の一覧で「WSL: Ubuntu にインストール」というボタンが表示されたものは、押してLinux側に入れます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Windowsで使っていたESLintが、WSLのウィンドウでは動いていませんでした。
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  拡張機能はWindows側とLinux側で別々に入っているからです。テーマやキーバインドのような画面に関わるものはWindows側だけで動きますが、コードを解析するものはLinux側にも入れる必要があります。
+</SpeechBubble>
+
+## Gitの初期設定
+
+Ubuntuには最初からGitが入っています。WindowsにGitを入れていても、Linux側のGitは別のプログラムで、設定ファイル（`~/.gitconfig`）も別です。Linux側でも設定します。
+
+```bash
+sudo apt update && sudo apt install -y git   # 最新にする
+git config --global user.name "Taro Yamada"
+git config --global user.email "taro@example.com"
+git config --global init.defaultBranch main
+```
+
+| 設定 | 内容 |
+| ---- | ---- |
+| `user.name` / `user.email` | コミットに記録される名前とメールアドレス |
+| `init.defaultBranch` | `git init` で作るブランチの名前 |
+
+<Marker>WindowsのGitとLinuxのGitは別物です。WSLで開発するリポジトリは、Linux側のGitだけで操作します。</Marker>
+
+## 改行コードの設定
+
+Windows版のGitは、インストール時の既定の設定で `core.autocrlf=true` になっていることが多く、チェックアウト時に改行コードをCRLFに変換します。Linux側のGitは既定で変換しません。
+
+| 設定 | チェックアウト時 | コミット時 | 向いている環境 |
+| ---- | ---------------- | ---------- | -------------- |
+| `core.autocrlf=true` | LF → CRLF | CRLF → LF | Windowsだけで作業する |
+| `core.autocrlf=input` | 変換しない | CRLF → LF | Linux・macOS・WSL |
+| `core.autocrlf=false` | 変換しない | 変換しない | 改行コードを `.gitattributes` で管理する |
+
+WSLで作業するなら、Linux側は `input` か `false` にします。
+
+```bash
+git config --global core.autocrlf input
+```
+
+ただし `core.autocrlf` は個人の設定なので、チームの全員が同じ設定とは限りません。リポジトリに `.gitattributes` を置いて改行コードを固定しておくと、各自の設定に左右されなくなります。
+
+```text
+# .gitattributes
+* text=auto eol=lf
+```
+
+改行コードの違いがなぜ問題になるかは、[WindowsとLinuxの連携](/books/wsl/windows-interop)で扱いました。VS Codeでも、新規ファイルの改行コードをLFにしておきます。
+
+```json
+// settings.json
+{
+  "files.eol": "\n"
+}
+```
+
+## GitHubへの認証
+
+GitHubにpushするには認証が必要です。WSLでは、主に次の2つの方法があります。
+
+| 方法 | リモートのURL | 準備 |
+| ---- | ------------- | ---- |
+| SSH鍵 | `git@github.com:user/repo.git` | Linux側で鍵を作り、公開鍵をGitHubに登録する |
+| HTTPS + Git Credential Manager | `https://github.com/user/repo.git` | Git for Windowsに含まれる認証ヘルパーをLinux側から使う |
+
+### SSH鍵を使う
+
+Linux側でSSH鍵を作ります。
+
+```bash
+ssh-keygen -t ed25519 -C "taro@example.com"
+# 保存場所はEnterで既定（~/.ssh/id_ed25519）のまま
+# パスフレーズを設定する
+
+cat ~/.ssh/id_ed25519.pub | clip.exe
+```
+
+`clip.exe` で公開鍵（`.pub`）をクリップボードにコピーし、GitHubの「Settings」→「SSH and GPG keys」→「New SSH key」に貼り付けて登録します。登録できたら、接続を確認します。
+
+```bash
+ssh -T git@github.com
+# Hi taro! You've successfully authenticated, ...
+```
+
+秘密鍵（`.pub` が付いていない方）は、GitHubを含め誰にも渡しません。Windows側の鍵を流用する場合も、Linux側の `~/.ssh` にコピーして `chmod 600` にします。
+
+### HTTPSとGit Credential Managerを使う
+
+WindowsにGit for Windowsをインストールしている場合、それに含まれるGit Credential Manager（GCM）をLinux側のGitから使えます。認証はブラウザで行われ、取得したトークンはWindowsの資格情報マネージャーに保存されます。
+
+```bash
+git config --global credential.helper "/mnt/c/Program\ Files/Git/mingw64/bin/git-credential-manager.exe"
+```
+
+パスはGit for Windowsのバージョンやインストール先によって違うことがあります。設定の詳細は、公式の[WSL で Git の使用を開始する](https://learn.microsoft.com/ja-jp/windows/wsl/tutorials/wsl-git)で確認してください。
+
+<Figure src="/images/fork_suit_man_color.png" alt="分かれ道に立つ男性のイラスト" caption="SSHとHTTPSのどちらで認証するかを決めて、リモートのURLをそろえる" maxWidth="320px" />
+
+## よくあるハマりどころ
+
+### `git status` で全ファイルが変更扱いになる
+
+同じリポジトリをWindowsのGitとLinuxのGitの両方で操作していると、改行コードの変換や、実行権限の扱いの違いで、中身が同じでも全ファイルが変更扱いになることがあります。
+
+```bash
+git diff
+# old mode 100644
+# new mode 100755
+```
+
+`old mode` / `new mode` と出る場合は、実行権限（ファイルモード）の違いです。`/mnt/c` の下ではパーミッションが正しく扱われないため起きやすく、リポジトリをLinux側に置き直すのが根本的な対策です。改行コードの違いは `.gitattributes` でそろえます。
+
+### `code .` を実行するとWindows側でフォルダーが開く
+
+WSL拡張機能が入っていないと、`\\wsl.localhost` のフォルダーをWindowsのVS Codeがそのまま開きます。拡張機能を入れてから、もう一度 `code .` を実行します。左下に `WSL: Ubuntu` と表示されていれば正しく接続されています。
+
+### pushのたびにユーザー名とパスワードを聞かれる
+
+HTTPSのリモートURLで、認証ヘルパーが設定されていない状態です。GitHubはパスワードによるpushを受け付けていないため、SSHに切り替えるか、GCMを設定します。リモートのURLは `git remote -v` で確認し、SSHに変える場合は次のようにします。
+
+```bash
+git remote set-url origin git@github.com:taro/my-app.git
+```
+
+## ちゃんと使うためのポイント
+
+- VS CodeはWindowsに入れ、WSL拡張機能を使ってLinux側のフォルダーを開く
+- Ubuntuのターミナルで `code .` を実行し、左下に `WSL: Ubuntu` と出ることを確認する
+- コードを解析する拡張機能は、WSL側にもインストールする
+- WindowsのGitとLinuxのGitは別物。Linux側でも `user.name` と `user.email` を設定する
+- Linux側は `core.autocrlf=input` にし、リポジトリには `.gitattributes` を置く
+- GitHubへの認証は、Linux側で作ったSSH鍵か、Git Credential Managerで行う
+
+## 参考リンク
+
+- [WSL で VS Code の使用を開始する（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/tutorials/wsl-vscode)
+- [WSL で Git の使用を開始する（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/tutorials/wsl-git)
+
+Gitそのものの使い方は[Gitをちゃんと使う](/books/git-basic)で扱っています。Node.jsなどの開発環境をLinux側に入れる方法は、[WSLにNode.jsを入れる](/books/wsl/dev-runtimes)で扱います。

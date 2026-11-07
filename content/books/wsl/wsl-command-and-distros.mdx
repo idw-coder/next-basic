@@ -1,0 +1,204 @@
+---
+title: 'wslコマンドとディストリビューションの管理 — 一覧・停止・バックアップ・削除'
+description: 'wsl -l -v、--shutdown、--set-default、--export と --import、--unregister など、ディストリビューションを管理するwslコマンドの使い方を学びます。'
+order: 3
+---
+
+`wsl` コマンドは、WSLとディストリビューションをWindows側から操作するためのコマンドです。起動・停止、一覧の確認、バックアップ、削除など、ディストリビューションの管理はすべてこのコマンドで行います。
+
+この章のコマンドは、特に断りがない限り**PowerShell**（またはコマンドプロンプト）で実行します。
+
+<Marker>`wsl` コマンドはWindows側からディストリビューションを管理するコマンドで、PowerShellで実行します。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Ubuntuの中で `wsl -l -v` と打ったら「command not found」になりました。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  `wsl` はWindowsのプログラム（`wsl.exe`）です。Ubuntuの中から呼ぶときは、`wsl.exe -l -v` のように拡張子まで付ける必要があります。Windowsのプログラムを呼び出す仕組みは[WindowsとLinuxの連携](/books/wsl/windows-interop)で扱います。
+</SpeechBubble>
+
+## 一覧と状態を確認する
+
+```powershell
+wsl -l -v
+#   NAME            STATE           VERSION
+# * Ubuntu          Running         2
+#   Ubuntu-22.04    Stopped         2
+```
+
+| 列 | 意味 |
+| -- | ---- |
+| `*` | 既定のディストリビューション。`wsl` とだけ入力したときに起動する |
+| `NAME` | ディストリビューションの名前。ほかのコマンドで指定するときに使う |
+| `STATE` | `Running`（実行中）、`Stopped`（停止中）など |
+| `VERSION` | WSL1かWSL2か |
+
+`-l` は `--list`、`-v` は `--verbose` の短縮形です。
+
+| コマンド | 表示されるもの |
+| -------- | -------------- |
+| `wsl -l -v` | インストール済みのディストリビューションと状態 |
+| `wsl -l --running` | 実行中のものだけ |
+| `wsl -l -o` | インストールできるディストリビューションの一覧（`--online`） |
+| `wsl --status` | 既定のディストリビューションや既定のWSLバージョンなど |
+| `wsl --version` | WSL本体とカーネルのバージョン |
+
+## 起動する
+
+| コマンド | 動作 |
+| -------- | ---- |
+| `wsl` | 既定のディストリビューションを、PowerShellの現在のディレクトリで起動する |
+| `wsl ~` | 既定のディストリビューションを、ホームディレクトリで起動する |
+| `wsl -d Ubuntu-22.04` | 指定したディストリビューションを起動する |
+| `wsl -u root` | 指定したユーザーで起動する |
+| `wsl ls -la` | ディストリビューションに入らず、Linuxのコマンドを1つだけ実行する |
+
+最後の例のように、`wsl` の後ろにLinuxのコマンドを書くと、そのコマンドだけを実行して結果をPowerShellに表示します。
+
+### 既定のディストリビューションを変える
+
+```powershell
+wsl --set-default Ubuntu-22.04
+```
+
+`wsl -s Ubuntu-22.04` と短く書くこともできます。
+
+## 停止する
+
+WSL2のディストリビューションは、ターミナルを閉じてもすぐには停止しません。しばらく何も実行されていない状態が続くと自動で停止し、すべてのディストリビューションが停止したあと、さらにしばらくするとWSL2の仮想マシンも停止します。
+
+すぐに止めたいときは、次のコマンドを使います。
+
+| コマンド | 動作 |
+| -------- | ---- |
+| `wsl --terminate Ubuntu` | 指定したディストリビューションだけを停止する（`-t` でも可） |
+| `wsl --shutdown` | すべてのディストリビューションと、WSL2の仮想マシンを停止する |
+
+<Marker>WSLの設定ファイルを変更したあとは、`wsl --shutdown` で仮想マシンごと止めてから起動し直します。</Marker>
+
+`.wslconfig` のように仮想マシン全体に関わる設定は、仮想マシンを起動し直さないと反映されません。`wsl --terminate` ではディストリビューションしか止まらないため、`wsl --shutdown` を使います。設定ファイルは[.wslconfigとwsl.confの違い](/books/wsl/wslconfig-and-wsl-conf)で扱います。
+
+<Callout type="warning">
+`wsl --shutdown` は、実行中のすべてのディストリビューションを即座に止めます。WSLの中で動かしている開発サーバーやDockerのコンテナもすべて止まるので、作業中のものがないか確認してから実行しましょう。
+</Callout>
+
+## バックアップと復元 — `--export` と `--import`
+
+ディストリビューションの中身をまるごと1つのファイルに書き出し、別の名前や場所で復元できます。
+
+```powershell
+# 書き出す（tar形式）
+wsl --export Ubuntu D:\backup\ubuntu.tar
+
+# 復元する（新しい名前、インストール先のフォルダー、元のファイル）
+wsl --import Ubuntu-restore D:\wsl\Ubuntu-restore D:\backup\ubuntu.tar
+```
+
+**構文：** `wsl --export <ディストリビューション名> <ファイル名>`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `<ディストリビューション名>` | 書き出すディストリビューション（`wsl -l -v` の `NAME`） |
+| `<ファイル名>` | 書き出し先のファイル。既定はtar形式。`--vhd` を付けると `.vhdx` 形式 |
+
+**構文：** `wsl --import <ディストリビューション名> <インストール先> <ファイル名>`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `<ディストリビューション名>` | 新しく登録する名前。既存の名前とは重複できない |
+| `<インストール先>` | 仮想ディスク（`ext4.vhdx`）を置くWindowsのフォルダー |
+| `<ファイル名>` | `--export` で書き出したファイル |
+
+### 使いどころ
+
+| 目的 | やり方 |
+| ---- | ------ |
+| 大きな変更の前にバックアップを取る | `--export` で書き出しておき、壊れたら `--import` で戻す |
+| Cドライブの容量が足りないので別のドライブに移す | `--export` → `--unregister` → 別ドライブに `--import` |
+| 同じ環境を複製して試す | 別の名前で `--import` する |
+
+<Figure src="/images/search_woman_color.png" alt="探し物をする女性のイラスト" caption="export と import で、ディストリビューションをファイルとして持ち運べる" maxWidth="320px" />
+
+### インポートしたディストリビューションは root で起動する
+
+`--import` で登録したディストリビューションは、起動するとrootユーザーになります。元のユーザーで起動するようにするには、ディストリビューションの中で `/etc/wsl.conf` に既定のユーザーを書き、起動し直します。
+
+```bash
+sudo tee -a /etc/wsl.conf > /dev/null <<'EOF'
+[user]
+default=taro
+EOF
+```
+
+```powershell
+wsl --terminate Ubuntu-restore
+wsl -d Ubuntu-restore
+```
+
+## 削除する — `--unregister`
+
+```powershell
+wsl --unregister Ubuntu-22.04
+```
+
+`--unregister` は、ディストリビューションの登録を解除し、その仮想ディスクを削除します。**中のファイル、インストールしたパッケージ、設定はすべて消え、元に戻せません。** 残したいファイルがあれば、先に `--export` しておきます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Ubuntuの調子が悪いので、Windowsの「アプリ」の一覧からアンインストールしました。これで削除できていますか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  Microsoft Storeから入れたディストリビューションなら、アプリとしてアンインストールしても削除されます。ただ、`--import` で登録したものはアプリの一覧に出てきません。`wsl --unregister` なら、どの方法で入れたものでも同じように削除できます。
+</SpeechBubble>
+
+## WSL1とWSL2を切り替える
+
+```powershell
+# 既存のディストリビューションのバージョンを変える
+wsl --set-version Ubuntu 2
+
+# これから入れるディストリビューションの既定を変える
+wsl --set-default-version 2
+```
+
+`--set-version` による変換は時間がかかり、ディストリビューションの中身によっては失敗することもあります。大きなプロジェクトが入っている場合は、先に `--export` でバックアップを取っておきます。
+
+## Linux側から `wsl.exe` を呼ぶ
+
+ディストリビューションの中から `wsl` コマンドを使う場合は、`wsl.exe` と拡張子まで書きます。
+
+```bash
+wsl.exe -l -v
+```
+
+自分が動いているディストリビューションを `wsl.exe --shutdown` で止めると、そのターミナルも切断されます。
+
+## よくあるハマりどころ
+
+### 設定を変えたのに反映されない
+
+ターミナルを閉じてすぐに開き直しても、ディストリビューションや仮想マシンはまだ動いていることがあります。公式ドキュメントでは、すべてのシェルを閉じてから停止するまでに約8秒かかるとしています。`wsl -l --running` で何も動いていないことを確認するか、`wsl --shutdown` で確実に止めてから起動します。
+
+### `--import` 先にCドライブ直下の分かりにくい場所を選んでしまう
+
+`--import` の第2引数のフォルダーには `ext4.vhdx` が作られ、ディストリビューションを使っている間ずっと必要です。あとから見つけられるよう、`D:\wsl\ディストリビューション名` のように分かりやすい場所にしておきます。このフォルダーの中のファイルをWindowsのエクスプローラーで直接移動・編集すると、ディストリビューションが壊れることがあります。
+
+### `--unregister` で名前を打ち間違える
+
+`--unregister` は確認なしで削除します。実行前に `wsl -l -v` で名前を確認し、コピーして貼り付けると安全です。
+
+## ちゃんと使うためのポイント
+
+- `wsl` コマンドはPowerShellで実行する。Ubuntuの中からは `wsl.exe` と書く
+- `wsl -l -v` で、ディストリビューションの名前・状態・WSLのバージョンを確認する
+- 設定を反映させるときは `wsl --shutdown` で仮想マシンごと止める
+- `--export` と `--import` で、バックアップ・復元・別ドライブへの移動ができる
+- `--import` したディストリビューションは、`/etc/wsl.conf` で既定のユーザーを設定する
+- `--unregister` は中身をすべて削除し、元に戻せない
+
+## 参考リンク
+
+- [WSL の基本的なコマンド（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/basic-commands)
+
+Linux側とWindows側のファイルをどう行き来するかは、[WSLのファイルの置き場所](/books/wsl/filesystem)で扱います。

@@ -1,0 +1,230 @@
+---
+title: 'WSLとは何か — WSL1とWSL2の違いと仕組み'
+description: 'WSL（Windows Subsystem for Linux）とは何か、WindowsでのWeb開発にLinux環境が必要な理由、WSL1とWSL2の仕組みの違い、仮想マシンやGit Bashとの違いを整理します。'
+order: 1
+---
+
+WSL（Windows Subsystem for Linux）は、Windowsの上でLinuxを動かすための、Windowsに標準で用意されている機能です。WSLを入れると、WindowsのターミナルからUbuntuなどのLinuxディストリビューションを起動して、`apt` でパッケージを入れたり、bashのシェルスクリプトを実行したりできます。
+
+仮想化ソフトをインストールしたり、PCを再起動してOSを切り替えたりする必要はありません。Windowsのアプリと、Linuxのコマンドを同時に使えます。
+
+<Marker>WSLは、Windowsを使ったまま、本物のLinux環境で開発するための機能です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  WindowsにもNode.jsやGitのインストーラーがありますよね。わざわざLinuxを入れる必要があるんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  Windowsだけで開発できる場面も多いです。ただ、Web開発のツールやサーバーはLinuxで動かす前提で作られているものが多く、Windowsだけだとそこでつまずきます。まず、どんなところで差が出るのかを見ていきましょう。
+</SpeechBubble>
+
+## WindowsでのWeb開発にLinux環境が必要になる理由
+
+Webアプリを動かす本番のサーバーは、ほとんどがLinuxです。開発で使うツールも、Linux（とmacOS）での動作を前提に作られていることが多く、Windowsでそのまま使うと次のような違いでつまずきます。
+
+| 違い | Windows | Linux | 起きること |
+| ---- | ------- | ----- | ---------- |
+| シェル | PowerShell、コマンドプロンプト | bash など | `package.json` の `scripts` に書かれた `rm -rf dist` や `export NODE_ENV=production` が動かない |
+| パスの区切り | `C:\Users\...`（`\`） | `/home/...`（`/`） | パスを文字列で組み立てているスクリプトが壊れる |
+| ファイル名の大文字・小文字 | 区別しない | 区別する | `import './Button'` と `button.tsx` のずれが、手元では動いて本番だけ失敗する |
+| 改行コード | CRLF | LF | シェルスクリプトが `bad interpreter` などのエラーで動かない |
+| ネイティブモジュール | Windows向けにビルドされる | Linux向けにビルドされる | `bcrypt` などのビルドに失敗する、本番と違うバイナリで動く |
+
+WSLを使えば、開発中のコードをLinuxの上で動かせるため、本番のサーバーと同じ条件で確認できます。Dockerも、Linuxのコンテナを動かす仕組みなので、Windowsで使う場合はWSL2の上で動かすのが基本の構成です。
+
+<Marker>本番がLinuxなら、開発もLinuxで動かしておくと、環境の違いによる不具合を開発中に見つけられます。</Marker>
+
+<Figure src="/images/idea_drawing_woman.png" alt="アイデアを描く女性のイラスト" caption="Windowsを使ったまま、Linuxで開発できる" maxWidth="320px" />
+
+## WSLでできること
+
+| できること | 例 |
+| ---------- | -- |
+| Linuxのコマンドを使う | `ls`、`grep`、`find`、`ssh`、`make` |
+| パッケージを入れる | `sudo apt install git` |
+| 開発環境を作る | Node.js、Python、Ruby、Goなどを入れてサーバーを起動する |
+| Dockerを動かす | Docker DesktopのWSL2バックエンド、またはWSL内にDocker Engineを入れる |
+| Windowsのアプリと連携する | VS CodeでLinux側のファイルを編集する、Linux側からWindowsのブラウザでページを開く |
+| LinuxのGUIアプリを動かす | Windows 11では、Linuxのデスクトップアプリをウィンドウとして表示できる（WSLg） |
+
+## 他の方法との違い
+
+WindowsでLinuxのコマンドを使う方法は、WSLのほかにもあります。
+
+| 方法 | 動作 | WSLとの違い |
+| ---- | ---- | ----------- |
+| WSL | Windows上でLinuxを動かすWindowsの機能 | — |
+| 仮想マシン（VirtualBox、Hyper-Vなど） | PCの中に別のコンピューターを丸ごと作り、そこでLinuxを動かす | 起動に時間がかかり、メモリやディスクを最初に割り当てる。Windowsとのファイルのやり取りに設定が要る |
+| デュアルブート | PCにWindowsとLinuxを両方入れ、起動時にどちらかを選ぶ | WindowsとLinuxを同時に使えない。切り替えるたびに再起動が要る |
+| Git Bash | Git for Windowsに付属する、bashと一部のコマンドのWindows版 | Linuxそのものではない。`apt` が使えず、Linux向けのプログラムは動かない |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Git Bashでも `ls` や `rm -rf` は動きますよね。それでは足りないんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  Git Bashは、よく使うコマンドをWindows向けに移植したものです。コマンドの見た目は同じでも、動いているのはWindowsのプログラムなので、Linux向けのツールを入れたり、本番と同じ条件で動かしたりはできません。ちょっとしたコマンド操作ならGit Bashで足りますが、開発環境として使うならWSLです。
+</SpeechBubble>
+
+## WSL1とWSL2
+
+WSLには、仕組みがまったく違うWSL1とWSL2の2つのバージョンがあります。現在、新しくディストリビューションをインストールしたときの既定はWSL2です。
+
+### WSL1 — LinuxのシステムコールをWindowsが処理する
+
+プログラムがファイルを開く、プロセスを作るといった操作をするときは、OSのカーネルに**システムコール**という形で処理を依頼します。WSL1は、Linuxのプログラムが出したシステムコールを、Windowsのカーネルが処理できる形に変換して実行します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["Linuxのプログラム"] -->|"Linuxのシステムコール"| B["WSL1の変換レイヤー"]
+    B -->|"Windowsの処理に変換"| C["Windowsのカーネル"]
+`}
+/>
+
+Linuxのカーネルは動いていません。そのため、変換が用意されていないシステムコールを使うプログラムは動きません。Dockerは、Linuxカーネルの機能（名前空間やcgroups）を直接使うため、WSL1では動きません。
+
+### WSL2 — 軽量な仮想マシンで本物のLinuxカーネルを動かす
+
+WSL2は、Hyper-Vの仮想化技術を使って軽量な仮想マシンを起動し、その中でMicrosoftがビルドした本物のLinuxカーネルを動かします。Linuxのプログラムが出したシステムコールは、そのLinuxカーネルがそのまま処理します。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["Linuxのプログラム"] -->|"Linuxのシステムコール"| B["Linuxカーネル"]
+    B --- C["軽量な仮想マシン"]
+    C --- D["Windows（Hyper-Vの仮想化）"]
+`}
+/>
+
+本物のLinuxカーネルなので、Dockerを含めてLinuxのプログラムがほぼそのまま動きます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  仮想マシンということは、VirtualBoxでLinuxを動かすのと同じなんですか？
+</SpeechBubble>
+
+仕組みとしては仮想マシンですが、使い方は大きく違います。VirtualBoxでは、仮想マシンの作成、メモリやディスクの割り当て、OSのインストールを自分で行い、Linuxのデスクトップ画面が表示されます。WSL2の仮想マシンはWindowsが自動で管理します（公式の比較表では「マネージドVM」と呼ばれています）。ターミナルで `wsl` と入力すれば数秒で起動し、メモリは必要な分だけ使います。利用者が仮想マシンを意識する場面はほとんどありません。
+
+### 公式の比較表
+
+Microsoftの公式ドキュメントでは、WSL1とWSL2を次のように比較しています。
+
+| 機能 | WSL1 | WSL2 |
+| ---- | ---- | ---- |
+| WindowsとLinuxの統合 | ✅ | ✅ |
+| 起動が速い | ✅ | ✅ |
+| 従来の仮想マシンより使うリソースが少ない | ✅ | ✅ |
+| 現在のバージョンのVMwareやVirtualBoxと一緒に動かせる | ✅ | ❌ |
+| マネージドVM | ❌ | ✅ |
+| 完全なLinuxカーネル | ❌ | ✅ |
+| システムコールの完全な互換性 | ❌ | ✅ |
+| OSをまたいだファイルアクセスの速さ | ✅ | ❌ |
+| systemdのサポート | ❌ | ✅ |
+| IPv6のサポート | ✅ | ✅ |
+
+出典: [WSL 1 と WSL 2 の比較（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/compare-versions)
+
+### 「OSをまたいだファイルアクセス」が遅い理由
+
+WSL2で注意が必要なのが、表の「OSをまたいだファイルアクセスの速さ」が ❌ になっている点です。
+
+WSL2のLinuxのファイルは、仮想マシン用の仮想ディスク（`ext4.vhdx` というファイル）の中に、Linuxのファイルシステム（ext4）で保存されています。Linuxから自分のファイルを読み書きするのは速いのですが、Linuxから `C:` ドライブのファイルを読むときや、WindowsからLinuxのファイルを読むときは、仮想マシンの境界をまたいでネットワーク経由のファイル共有と同じ形でアクセスするため、遅くなります。
+
+| 操作 | 速さ |
+| ---- | ---- |
+| Linuxから、Linuxのファイル（`/home/ユーザー名/...`）を読み書きする | 速い |
+| Linuxから、Windowsのファイル（`/mnt/c/...`）を読み書きする | 遅い |
+| Windowsから、Linuxのファイル（`\\wsl.localhost\...`）を読み書きする | 遅い |
+
+<Marker>WSL2では、プロジェクトのファイルはLinux側（`/home` の下）に置いて、Linuxのコマンドで操作します。</Marker>
+
+`npm install` のように大量の小さなファイルを読み書きする処理は、`/mnt/c` の下で実行すると何倍も時間がかかります。ファイルの置き場所の詳しい考え方は[WSLのファイルの置き場所](/books/wsl/filesystem)で扱います。
+
+<Figure src="/images/phone_check.png" alt="スマートフォンを確認するイラスト" caption="WSL2では、ファイルをどちらのOS側に置くかで速さが変わる" maxWidth="320px" />
+
+### WSL1を選ぶ場面
+
+ほとんどの場合はWSL2を使います。WSL1が向いているのは、次のような限られた場面です。
+
+- プロジェクトのファイルをWindows側に置く必要があり、Linuxのコマンドからそれを頻繁に操作する
+- 仮想化を使えない環境（会社のPCで仮想化が無効になっているなど）
+- WSL2と一緒に動かせない古い仮想化ソフトを使い続ける必要がある
+
+この本では、WSL2を前提に説明します。
+
+## WSL2の構成
+
+WSL2では、Ubuntuを複数のバージョン入れたり、Ubuntuと別のディストリビューションを両方入れたりできます。このとき、ディストリビューションごとに仮想マシンが作られるわけではなく、**1つの仮想マシンの中で、ディストリビューションごとに分離された環境として動きます。**
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    W["Windows"] --> V["WSL2の仮想マシン（1つ）"]
+    V --> K["Linuxカーネル"]
+    K --> U["Ubuntu"]
+    K --> D["Debian"]
+`}
+/>
+
+| 部品 | 内容 |
+| ---- | ---- |
+| Linuxカーネル | 全ディストリビューションで共有する。`wsl --update` で更新される |
+| ディストリビューション | Ubuntu、Debianなど。それぞれが自分の仮想ディスク（`ext4.vhdx`）を持つ |
+| 仮想マシン | すべてのディストリビューションを停止してしばらくすると、自動で停止する |
+
+起動しているLinuxカーネルは、`uname -r` で確認できます。末尾に `WSL2` と付いていれば、WSL2のカーネルで動いています。
+
+```bash
+uname -r
+# 6.6.87.2-microsoft-standard-WSL2
+```
+
+カーネルのバージョン番号は、WSLの更新によって変わります。
+
+## 自分の環境がWSL1かWSL2かを確認する
+
+すでにWSLを使っている場合は、PowerShellで `wsl -l -v` を実行すると、ディストリビューションごとのバージョンを確認できます。
+
+```powershell
+wsl -l -v
+#   NAME      STATE           VERSION
+# * Ubuntu    Running         2
+```
+
+`VERSION` が `1` になっている場合は、次のコマンドでWSL2に変換できます。ディストリビューションのサイズによっては、変換に数分以上かかります。
+
+```powershell
+wsl --set-version Ubuntu 2
+```
+
+`wsl` コマンドの使い方は[wslコマンドとディストリビューションの管理](/books/wsl/wsl-command-and-distros)で詳しく扱います。
+
+## よくある誤解
+
+### 「WSLはエミュレーターだから遅い」
+
+WSL2では、Linuxのプログラムは本物のLinuxカーネルの上で動き、CPUの命令もそのまま実行されます。命令を1つずつ変換して実行するエミュレーターではありません。WSLが遅いと感じる場合、多くは `/mnt/c` の下のファイルを操作しているのが原因です。
+
+### 「WSLを入れるとWindowsとLinuxのどちらかしか使えない」
+
+WSLはWindowsの上で動くため、WindowsのアプリとLinuxのコマンドを同時に使えます。VS CodeはWindowsのアプリとして起動したまま、Linux側のファイルを編集し、Linux側でコマンドを実行できます。この使い方は[VS CodeとGitをWSLで使う](/books/wsl/vscode-and-git)で扱います。
+
+### 「WSL2のUbuntuは本番サーバーのUbuntuとまったく同じ」
+
+ディストリビューションのパッケージやコマンドは同じですが、カーネルはMicrosoftがWSL向けにビルドしたものです。また、ネットワークはWindowsを経由し、起動の仕組みもWindowsが管理しています。本番のサーバーと同じ動作になることが多いものの、カーネルの設定やネットワークに関わる部分は違うことがあります。
+
+## ちゃんと使うためのポイント
+
+- WSLは、Windowsを使ったままLinux環境で開発するためのWindowsの機能
+- WSL1はLinuxのシステムコールを変換し、WSL2は軽量な仮想マシンで本物のLinuxカーネルを動かす
+- 新しくインストールするときの既定はWSL2。Dockerを使うならWSL2が必要
+- WSL2では、プロジェクトのファイルをLinux側（`/home` の下）に置く
+- 複数のディストリビューションは、1つの仮想マシンとLinuxカーネルを共有する
+- `wsl -l -v` で、ディストリビューションごとのWSLのバージョンを確認できる
+
+## 参考リンク
+
+- [WSL とは（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/about)
+- [WSL 1 と WSL 2 の比較（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/compare-versions)
+
+WSLとUbuntuを実際にインストールする手順は、[WSLのインストール手順](/books/wsl/install-and-setup)で扱います。

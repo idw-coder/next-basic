@@ -1,0 +1,241 @@
+---
+title: 'WSLのトラブル対処 — 遅い・容量が膨らむ・時刻がずれる'
+description: 'WSLが遅いとき、仮想ディスクの容量が膨らんだとき、時刻やDNSがおかしいときの原因と対処、よく出るエラーの調べ方をまとめます。'
+order: 11
+---
+
+WSLを使い続けていると、「急に遅くなった」「Cドライブの空きが減り続ける」「インターネットに繋がらない」といったトラブルに出会います。多くは原因の見当がつけば、決まった手順で解決できます。
+
+この章では、よくある症状ごとに、原因の確かめ方と対処をまとめます。
+
+<Marker>トラブルの多くは、ファイルの置き場所、仮想ディスク、ネットワーク、仮想マシンの状態のどれかが原因です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  WSLの調子が悪いとき、まず何をすればいいですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  まずは `wsl --shutdown` で仮想マシンごと止めて、起動し直してみてください。それで直らなければ、`wsl --update` でWSLを最新にします。この2つで解決するトラブルはかなり多いです。
+</SpeechBubble>
+
+## 最初に試すこと
+
+| 順番 | PowerShellで実行するコマンド | 目的 |
+| ---- | ---------------------------- | ---- |
+| 1 | `wsl --shutdown` | 仮想マシンを止めて、状態をリセットする |
+| 2 | `wsl --update` | WSL本体とカーネルを最新にする |
+| 3 | `wsl --version` | WSLとカーネルのバージョンを確認する（調べるときや質問するときに使う） |
+| 4 | `wsl --status` | 既定のディストリビューションや設定を確認する |
+
+## 症状1 — WSLが遅い
+
+### `/mnt/c` の下で作業していないか
+
+最も多い原因です。ターミナルで `pwd` を実行し、`/mnt/c` で始まっていれば、Windows側のファイルを操作しています。WSL2では、OSの境界をまたいだファイルアクセスが遅くなります。
+
+```bash
+pwd
+# /mnt/c/Users/taro/projects/my-app   ← Windows側
+```
+
+プロジェクトをLinux側の `~/projects` に移します。理由と移し方は[WSLのファイルの置き場所](/books/wsl/filesystem)で扱いました。
+
+### VS CodeがWSLに接続されているか
+
+VS Codeで `\\wsl.localhost` のフォルダーを直接開いていると、ファイルの読み書きやGitがWindows側で動くため遅くなります。左下に `WSL: Ubuntu` と表示されているかを確認します。詳しくは[VS CodeとGitをWSLで使う](/books/wsl/vscode-and-git)を参照してください。
+
+### メモリが足りていないか
+
+Ubuntuで `free -h` を実行し、メモリの空きを確認します。WSLのメモリの上限は既定でWindowsのメモリの50%です。Dockerのビルドなどで足りない場合は、`.wslconfig` の `memory` を見直します。
+
+```bash
+free -h
+#                total        used        free      shared  buff/cache   available
+# Mem:           7.7Gi       6.9Gi       200Mi       ...
+```
+
+## 症状2 — Windowsのメモリが足りなくなる
+
+タスクマネージャーで `VmmemWSL`（または `Vmmem`）というプロセスが大量のメモリを使っている場合、それがWSL2の仮想マシンです。
+
+Linuxは、読み込んだファイルの内容をメモリにキャッシュとして残し、次に読むときに速くします。このキャッシュも、Windowsから見ると仮想マシンが使っているメモリに含まれます。
+
+| 対処 | 方法 |
+| ---- | ---- |
+| すぐにメモリを解放したい | `wsl --shutdown` |
+| 使えるメモリの上限を決める | `.wslconfig` の `[wsl2]` に `memory=8GB` など |
+| キャッシュをWindowsに返すようにする | `.wslconfig` の `[experimental]` に `autoMemoryReclaim=gradual` |
+
+設定の書き方は[.wslconfigとwsl.confの違い](/books/wsl/wslconfig-and-wsl-conf)で扱いました。
+
+<Figure src="/images/deta_man_color.png" alt="データを見る男性のイラスト" caption="VmmemWSL のメモリには、Linuxのファイルキャッシュも含まれる" maxWidth="320px" />
+
+## 症状3 — Cドライブの空きが減り続ける
+
+Linux側のファイルは、仮想ディスク `ext4.vhdx` に保存されています。この仮想ディスクは、ファイルが増えると自動で大きくなりますが、**ファイルを削除しても自動では小さくなりません。** `node_modules` やDockerのイメージを作っては消すことを繰り返すと、Linuxの中では空きがあっても、`ext4.vhdx` のファイルサイズは大きいまま残ります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Ubuntuの中で不要なファイルを消したのに、Cドライブの空きが全然増えません。
+</SpeechBubble>
+
+それがこの症状です。中身を消したうえで、仮想ディスクを縮小する操作が別に必要です。
+
+### 手順1 — 中の不要なデータを消す
+
+```bash
+# Linux側の使用量を確認する
+df -h /
+
+# Dockerを使っている場合、使っていないイメージやキャッシュを消す
+docker system prune -a
+
+# aptのキャッシュを消す
+sudo apt clean
+```
+
+`docker system prune -a` は、停止中のコンテナ、使われていないイメージ・ネットワーク・ビルドキャッシュを削除します。残しておきたいイメージも、コンテナから使われていなければ消えるので注意します。
+
+### 手順2 — 仮想ディスクの場所を調べる
+
+PowerShellで次のコマンドを実行します（`Ubuntu` の部分は `wsl -l -v` の名前に合わせます）。
+
+```powershell
+(Get-ChildItem -Path HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss | Where-Object { $_.GetValue("DistributionName") -eq 'Ubuntu' }).GetValue("BasePath") + "\ext4.vhdx"
+# C:\Users\taro\AppData\Local\Packages\CanonicalGroupLimited.Ubuntu..._79rhkp1fndgsc\LocalState\ext4.vhdx
+```
+
+### 手順3 — 仮想ディスクを縮小する
+
+方法は2つあります。
+
+**方法A：スパースにする**
+
+仮想ディスクを、空き領域を自動で縮小できる形式（スパースVHD）に変えます。
+
+```powershell
+wsl --shutdown
+wsl --manage Ubuntu --set-sparse true
+```
+
+`wsl --manage` はWSLの比較的新しいバージョンで追加されたコマンドです。使えない場合は `wsl --update` で更新するか、`wsl --help` で使えるオプションを確認します。
+
+**方法B：diskpartで縮小する**
+
+Windowsの `diskpart` で仮想ディスクを縮小します。管理者として開いたPowerShellで実行します。
+
+```powershell
+wsl --shutdown
+diskpart
+```
+
+```text
+DISKPART> select vdisk file="C:\Users\taro\AppData\Local\Packages\...\LocalState\ext4.vhdx"
+DISKPART> attach vdisk readonly
+DISKPART> compact vdisk
+DISKPART> detach vdisk
+DISKPART> exit
+```
+
+`file=` には、手順2で調べたパスを指定します。公式ドキュメントでは、`compact` などの操作は、仮想ディスクがスパースになっていると失敗するとしています。方法Aでスパースにしている場合は、方法Bは使いません。
+
+<Callout type="warning">
+仮想ディスクを操作する前に、`wsl --export` でディストリビューションのバックアップを取っておくと安心です。また、エクスプローラーで `ext4.vhdx` のファイルを直接移動・削除すると、ディストリビューションが壊れます。
+</Callout>
+
+### Docker Desktopの仮想ディスク
+
+Docker Desktopのイメージやボリュームは、Ubuntuとは別の、Docker Desktop専用の仮想ディスクに保存されます。場所は、Docker Desktopの「Settings」→「Resources」→「Advanced」の「Disk image location」で確認できます。
+
+## 症状4 — インターネットに繋がらない
+
+まず、IPアドレスで通信できるか、名前解決（DNS）ができるかを切り分けます。
+
+```bash
+ping -c 3 8.8.8.8        # IPアドレスで通信できるか
+ping -c 3 github.com     # 名前解決できるか
+cat /etc/resolv.conf     # DNSサーバーの設定
+```
+
+| 結果 | 原因の候補 |
+| ---- | ---------- |
+| どちらも失敗する | Windows自体が繋がっていない、VPN・セキュリティソフトが通信を止めている |
+| IPアドレスは成功、名前は失敗 | DNSの問題。VPNとの相性、`/etc/resolv.conf` の内容 |
+| どちらも成功する | WSLのネットワークは正常。アプリやプロキシの設定を確認する |
+
+VPNに接続しているときだけ繋がらない場合は、`.wslconfig` で `networkingMode=mirrored` を試します。Windows 11 22H2以降では、DNSの問い合わせをWindowsに直接渡すDNSトンネリング（`dnsTunneling`）が既定で有効になっており、VPNとの互換性が改善されています。ネットワークの仕組みは[WSLのネットワーク](/books/wsl/networking)で扱いました。
+
+## 症状5 — 時刻がずれる
+
+PCをスリープから復帰させたあと、Linuxの時刻がずれたままになることがあります。時刻がずれると、次のようなエラーが出ます。
+
+| エラー | 場面 |
+| ------ | ---- |
+| `Release file ... is not valid yet` | `sudo apt update` |
+| 証明書の有効期限に関するエラー | `curl` や `git clone` などのHTTPS通信 |
+| `Clock skew detected` | `make` などのビルド |
+
+`date` でLinuxの時刻を確認し、Windowsの時刻とずれていれば、次のどちらかで直します。
+
+```bash
+sudo hwclock -s     # ハードウェアクロックから時刻を設定し直す
+```
+
+```powershell
+wsl --shutdown      # 仮想マシンを起動し直す
+```
+
+<Figure src="/images/harry_man_color.png" alt="急いでいる男性のイラスト" caption="スリープ明けのエラーは、時刻のずれが原因のことがある" maxWidth="320px" />
+
+## 症状6 — ファイルシステムが読み取り専用になる
+
+突然の電源断などのあとに、起動時に次のメッセージが表示され、ファイルに書き込めなくなることがあります。
+
+```text
+An error occurred mounting the distribution disk, it was mounted read-only as a fallback.
+```
+
+データを守るため、仮想ディスクが読み取り専用でマウントされた状態です。公式ドキュメントには、`wsl --mount` で仮想ディスクを接続し、`e2fsck` でファイルシステムを修復する手順が載っています。手順が長く、ディスクを直接扱うため、まず `wsl --export` でバックアップを取り、[VHD マウント エラーを修復する方法（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/disk-space)に従って進めます。
+
+## よく出るエラーコード
+
+| エラー | 原因 | 対処 |
+| ------ | ---- | ---- |
+| `0x80370102` | CPUの仮想化が無効、または「仮想マシン プラットフォーム」が無効 | BIOSで仮想化を有効にする。`wsl --install` をやり直す |
+| `0x8007019e` | 「Linux 用 Windows サブシステム」の機能が有効になっていない | 「Windowsの機能の有効化または無効化」で有効にする |
+| `0x80070003` | CPUの仮想化が無効になっている | BIOSで仮想化を有効にする |
+
+ここにないエラーは、エラーコードやメッセージで[WSL のトラブルシューティング（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/troubleshooting)を検索するか、WSLのGitHubリポジトリのIssuesで探します。
+
+## それでも直らないとき — 作り直す
+
+設定をいろいろ変えて、どこが原因か分からなくなった場合は、ディストリビューションを作り直すのが早いこともあります。
+
+```powershell
+# 必要なファイルを残すためにバックアップする
+wsl --export Ubuntu D:\backup\ubuntu.tar
+
+# 削除して入れ直す
+wsl --unregister Ubuntu
+wsl --install -d Ubuntu
+```
+
+プロジェクトをGitで管理し、リモートにpushしておけば、作り直したあとも `git clone` するだけで作業を再開できます。
+
+<Marker>プロジェクトをGitのリモートに置いておけば、WSLの環境はいつでも作り直せます。</Marker>
+
+## ちゃんと使うためのポイント
+
+- 最初に `wsl --shutdown` と `wsl --update` を試す
+- 遅いときは、`pwd` で `/mnt/c` の下で作業していないか確認する
+- `VmmemWSL` のメモリは、`.wslconfig` の `memory` で上限を決める
+- 仮想ディスクはファイルを消しても縮まない。スパースにするかdiskpartで縮小する
+- 繋がらないときは、IPアドレスと名前解決を分けて確認する
+- スリープ明けのエラーは、`date` で時刻を確認する
+- 大きな操作の前には `wsl --export` でバックアップを取る
+
+## 参考リンク
+
+- [WSL のトラブルシューティング（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/troubleshooting)
+- [WSL ディスク領域を管理する方法（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/disk-space)
+
+この本で使ったコマンドや設定は、[WSLコマンドチートシート](/books/wsl/cheatsheet)にまとめています。

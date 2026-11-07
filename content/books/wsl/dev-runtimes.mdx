@@ -1,0 +1,175 @@
+---
+title: 'WSLにNode.jsを入れる — aptとnvmの違い'
+description: 'WSLのUbuntuにNode.jsなどの開発環境を入れる方法として、aptとnvmの違い、Windows側の node が呼ばれてしまう問題と確認方法を学びます。'
+order: 7
+---
+
+WSLで開発するときは、Node.jsやPythonなどの実行環境も**Linux側に**入れます。Windowsにすでに入っていても、それとは別にUbuntuの中へ入れ直します。
+
+この章では、Node.jsを例に、Ubuntuのパッケージ管理（apt）で入れる方法と、バージョン管理ツール（nvm）で入れる方法の違いを整理します。Node.jsのバージョンの選び方そのものは、Node.js本の[Node.jsのインストールとバージョン管理](/books/node-js/setup-and-version)で扱っています。この章では、WSLならではの注意点に絞ります。
+
+<Marker>WSLで使う開発ツールは、Windows側に入っていてもLinux側に入れ直します。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  WindowsにNode.jsを入れてあって、Ubuntuで `node -v` を打ったらバージョンが表示されました。もう入っているということですよね？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  それはWindows側の `node.exe` が、WindowsのPATHを経由して見つかっているだけかもしれません。`which node` で確かめてみましょう。パスが `/mnt/c` で始まっていたら、Linux側にはまだ入っていません。
+</SpeechBubble>
+
+## まずWindows側のNode.jsが使われていないか確認する
+
+```bash
+which node
+# /mnt/c/Program Files/nodejs/node   ← Windows側
+```
+
+WSLは既定で、WindowsのPATHをLinuxのPATHの後ろに追加します。Linux側にNode.jsがないと、Windows側の `node` や `npm` が見つかって実行されます。Windows側の `npm` は、Linuxのパスを正しく扱えないため、`npm install` が失敗したり、`node_modules` にWindows向けのファイルが作られたりします。この仕組みは[WindowsとLinuxの連携](/books/wsl/windows-interop)で扱いました。
+
+Linux側にNode.jsを入れれば、PATHの前のほうにあるLinux側のコマンドが先に見つかるようになります。
+
+## 入れる前に — ビルドツールを入れておく
+
+npmのパッケージの中には、インストール時にC/C++のコードをコンパイルするもの（ネイティブモジュール）があります。そのためのコンパイラーなどを先に入れておきます。
+
+```bash
+sudo apt update
+sudo apt install -y build-essential curl
+```
+
+`build-essential` には、`gcc`、`g++`、`make` などが含まれています。
+
+## 方法1 — aptで入れる
+
+Ubuntuのパッケージ管理で入れる方法です。
+
+```bash
+sudo apt install -y nodejs npm
+node -v
+```
+
+手軽ですが、入るバージョンはUbuntuのリリースごとに固定されています。Ubuntuのサポート期間中はセキュリティ修正が入りますが、Node.jsのメジャーバージョンは上がりません。フレームワークが要求するバージョンより古いことが多く、Web開発には向きません。
+
+## 方法2 — nvmで入れる（おすすめ）
+
+nvm（Node Version Manager）は、複数のバージョンのNode.jsを入れて切り替えられるツールです。Node.jsはホームディレクトリの下（`~/.nvm`）に入るため、`sudo` も要りません。
+
+```bash
+# nvmを入れる（バージョン番号は公式READMEで最新を確認する）
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.41.0/install.sh | bash
+
+# 設定を読み込み直す（ターミナルを開き直してもよい）
+source ~/.bashrc
+
+# 最新のLTS版を入れる
+nvm install --lts
+
+node -v
+which node
+# /home/taro/.nvm/versions/node/v22.x.x/bin/node   ← Linux側
+```
+
+インストールスクリプトは、`~/.bashrc` にnvmを読み込む設定を追記します。`source ~/.bashrc` を実行するか、ターミナルを開き直すと `nvm` コマンドが使えるようになります。
+
+| コマンド | 動作 |
+| -------- | ---- |
+| `nvm install --lts` | 最新のLTS版を入れる |
+| `nvm install 22` | バージョン22系の最新を入れる |
+| `nvm use 22` | 現在のシェルで使うバージョンを切り替える |
+| `nvm alias default 22` | 新しいシェルで使う既定のバージョンを設定する |
+| `nvm ls` | 入っているバージョンの一覧 |
+
+<Marker>`which node` が `/home/...` を指していれば、Linux側のNode.jsが使われています。</Marker>
+
+### プロジェクトごとにバージョンをそろえる
+
+プロジェクトのルートに `.nvmrc` を置くと、`nvm use` だけでそのバージョンに切り替えられます。
+
+```bash
+echo "22" > .nvmrc
+nvm use
+```
+
+<Figure src="/images/running_man_color-1.png" alt="走る男性のイラスト" caption="nvmなら、プロジェクトごとにNode.jsのバージョンを切り替えられる" maxWidth="320px" />
+
+### aptとnvmの比較
+
+| 観点 | apt | nvm |
+| ---- | --- | --- |
+| 入るバージョン | Ubuntuのリリースで固定。古いことが多い | 任意のバージョンを選べる |
+| 複数バージョンの切り替え | できない | できる |
+| インストール先 | `/usr/bin`（システム全体） | `~/.nvm`（ユーザーごと） |
+| `npm install -g` | `sudo` が要る | `sudo` は要らない |
+
+<Callout type="note">
+nvmのほかにも、fnm、Volta、miseなどのバージョン管理ツールがあります。どれもLinux側に入れれば同じように使えます。チームで使っているものがあれば、それに合わせます。
+</Callout>
+
+## Pythonを使う場合
+
+UbuntuにはPython 3が最初から入っています。ただし、システムのPythonに `pip install` でパッケージを直接入れようとすると、最近のUbuntuではエラーになります。
+
+```bash
+pip install requests
+# error: externally-managed-environment
+```
+
+Ubuntuのシステムが使っているPythonのパッケージを壊さないための仕組みです。プロジェクトごとに仮想環境（venv）を作って、その中に入れます。
+
+```bash
+sudo apt install -y python3-venv
+python3 -m venv .venv
+source .venv/bin/activate
+pip install requests
+```
+
+## データベースはどうするか
+
+MySQLやPostgreSQLもaptでUbuntuに直接入れられますが、プロジェクトごとにバージョンが違ったり、使い終わったら消したかったりする場合は、Dockerで動かすほうが管理しやすくなります。WSLでのDockerの使い方は[WSLでDockerを使う](/books/wsl/docker-on-wsl)で扱います。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Node.jsもDockerの中で動かせば、WSLに入れなくてもいいんじゃないですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  それも一つの方法です。ただ、エディターの補完やリンターはLinux側の `node_modules` やNode.jsを使って動くので、WSLにもNode.jsを入れておくほうが開発は快適です。DBのように自分のコードを書かないものはDocker、日常的に触る言語の実行環境はWSLに入れる、という分け方がよく使われます。
+</SpeechBubble>
+
+## よくあるハマりどころ
+
+### nvmを入れたのに `nvm: command not found`
+
+インストールスクリプトが `~/.bashrc` に追記した設定が、まだ読み込まれていません。`source ~/.bashrc` を実行するか、ターミナルを開き直します。zshを使っている場合は `~/.zshrc` に設定が書かれているか確認します。
+
+### `sudo npm install -g` で `npm: command not found`
+
+nvmで入れたNode.jsはホームディレクトリの下にあり、`sudo` で実行するときのPATHには含まれません。nvmで入れた場合、グローバルインストールにも `sudo` は不要です。
+
+```bash
+npm install -g pnpm   # sudo なしで実行する
+```
+
+### `npm install` でネイティブモジュールのビルドに失敗する
+
+`gyp ERR!` や `make: not found` が出る場合は、`build-essential` が入っていません。`sudo apt install -y build-essential` を実行してから、`npm install` をやり直します。
+
+### Windows側でNode.jsをアンインストールしたくない
+
+Windows側のNode.jsを残しておいても、Linux側に入れれば、Linuxではそちらが優先されます。WindowsのPATHそのものをLinuxに混ぜたくない場合は、`/etc/wsl.conf` の `appendWindowsPath=false` を使います。
+
+## ちゃんと使うためのポイント
+
+- `which node` で、Windows側（`/mnt/c`）のNode.jsが使われていないか確認する
+- 先に `build-essential` を入れておく
+- Node.jsはaptではなくnvmで入れる。`sudo` は要らない
+- プロジェクトのバージョンは `.nvmrc` でそろえる
+- Pythonのパッケージはvenvの中に入れる
+- DBなどはDockerで動かし、日常的に使う言語の実行環境はWSLに入れる
+
+## 参考リンク
+
+- [nvm（GitHub）](https://github.com/nvm-sh/nvm)
+- [WSL 上で Node.js を設定する（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/dev-environment/javascript/nodejs-on-wsl)
+
+WSLで動かしたサーバーにWindowsのブラウザからアクセスする仕組みは、[WSLのネットワーク](/books/wsl/networking)で扱います。

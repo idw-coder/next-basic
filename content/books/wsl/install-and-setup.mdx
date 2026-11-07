@@ -1,0 +1,219 @@
+---
+title: 'WSLのインストール手順 — wsl --installとUbuntuの初期設定'
+description: 'wsl --install でWSLとUbuntuを入れる手順、初回起動時のユーザー作成、wsl --update による更新、インストールでつまずきやすい点を整理します。'
+order: 2
+---
+
+WSLのインストールは、PowerShellでコマンドを1つ実行し、PCを再起動するだけで終わります。この章では、インストールから、Ubuntuのユーザー作成、パッケージの更新までを順番に進めます。
+
+<Marker>WSLのインストールは `wsl --install` の1コマンドで、WSL本体とUbuntuがまとめて入ります。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Windowsの機能を有効にしたり、カーネルを別にダウンロードしたりする手順を見たことがあります。あれは要らないんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  それは以前の手動インストールの手順です。今は `wsl --install` が、必要なWindowsの機能の有効化、WSL本体とLinuxカーネルの導入、Ubuntuのインストールまでまとめて行います。
+</SpeechBubble>
+
+## インストールの前に確認すること
+
+| 項目 | 条件 | 確認方法 |
+| ---- | ---- | -------- |
+| Windowsのバージョン | Windows 11、またはWindows 10 バージョン2004（ビルド19041）以降 | `Win + R` で `winver` を実行 |
+| CPUの仮想化 | BIOS（UEFI）で仮想化が有効になっている | タスクマネージャーの「パフォーマンス」→「CPU」の「仮想化」欄 |
+
+CPUの仮想化は、WSL2が軽量な仮想マシンを動かすために必要です。タスクマネージャーで「仮想化: 無効」と表示される場合は、PCの起動時にBIOS（UEFI）の設定画面を開き、Intel VT-x や AMD-V（SVM）といった項目を有効にします。設定画面の開き方や項目名はPCのメーカーによって違うため、メーカーのマニュアルで確認してください。
+
+## 手順1 — `wsl --install` を実行する
+
+スタートメニューで「PowerShell」を検索し、右クリックして「管理者として実行」を選びます。開いたPowerShellで次のコマンドを実行します。
+
+```powershell
+wsl --install
+```
+
+このコマンドは次の処理をまとめて行います。
+
+| 処理 | 内容 |
+| ---- | ---- |
+| Windowsの機能を有効にする | 「仮想マシン プラットフォーム」など、WSL2に必要な機能を有効にする |
+| WSL本体を入れる | Microsoft Store版のWSLと、MicrosoftがビルドしたLinuxカーネルを入れる |
+| ディストリビューションを入れる | 指定がなければUbuntuを入れる |
+
+処理が終わったら、PCを再起動します。
+
+<Callout type="note">
+`wsl --install` で自動的に入るのは、WSL本体とUbuntuだけです。Windows Terminalは、Windows 11では最初から入っています。Windows 10の場合はMicrosoft Storeから入れておくと、PowerShellとUbuntuをタブで切り替えながら使えます。
+</Callout>
+
+### Ubuntu以外を入れたい場合
+
+インストールできるディストリビューションの一覧は `wsl --list --online`（短縮形は `wsl -l -o`）で確認できます。
+
+```powershell
+wsl --list --online
+# NAME                            FRIENDLY NAME
+# Ubuntu                          Ubuntu
+# Ubuntu-24.04                    Ubuntu 24.04 LTS
+# Debian                          Debian GNU/Linux
+# ...
+```
+
+`-d` で名前を指定すると、そのディストリビューションが入ります。
+
+```powershell
+wsl --install -d Ubuntu-24.04
+```
+
+`Ubuntu` はその時点の最新のLTS版を指し、`Ubuntu-24.04` のようにバージョン付きの名前はそのバージョンに固定されます。一覧の内容は時期によって変わります。この本では、`wsl --install` で入るUbuntuを前提に説明します。
+
+## 手順2 — Ubuntuのユーザーを作る
+
+再起動すると、Ubuntuのウィンドウが自動で開きます。開かない場合は、スタートメニューから「Ubuntu」を起動します。初回はファイルの展開に少し時間がかかり、そのあとユーザー名とパスワードを聞かれます。
+
+```text
+Enter new UNIX username: taro
+New password:
+Retype new password:
+```
+
+| 項目 | 注意点 |
+| ---- | ------ |
+| ユーザー名 | 英小文字で始まる半角英数字にする。Windowsのユーザー名と同じである必要はない |
+| パスワード | 入力しても画面に何も表示されないが、入力はされている |
+
+ここで作るのは、**Ubuntuの中だけで使うユーザー**です。Windowsのアカウントとは別物で、パスワードも別に管理されます。このパスワードは、`sudo` で管理者権限のコマンドを実行するときに使います。
+
+<Figure src="/images/pc-work-woman01.png" alt="パソコンで作業する女性のイラスト" caption="初回起動時に作るのは、Ubuntuの中だけで使うユーザー" maxWidth="320px" />
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  パスワードを打っても何も出てこないので、壊れたのかと思いました。
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  Linuxでは、パスワードの入力中は `*` も表示しないのが普通です。入力は受け付けているので、そのまま打ってEnterを押してください。
+</SpeechBubble>
+
+プロンプトが表示されれば、Ubuntuを使える状態です。
+
+```bash
+taro@DESKTOP-ABC123:~$
+```
+
+`taro` がユーザー名、`DESKTOP-ABC123` がホスト名（既定ではWindowsのPC名）、`~` が現在のディレクトリ（ホームディレクトリ `/home/taro`）です。
+
+## 手順3 — パッケージを最新にする
+
+インストール直後のUbuntuは、パッケージが最新とは限りません。最初に更新しておきます。
+
+```bash
+sudo apt update
+sudo apt upgrade -y
+```
+
+| コマンド | 動作 |
+| -------- | ---- |
+| `sudo apt update` | パッケージの一覧（どのバージョンが入手できるか）を取得する |
+| `sudo apt upgrade -y` | 入っているパッケージを新しいバージョンに更新する。`-y` は確認に自動で「はい」と答える |
+
+`sudo` を付けると、管理者（root）の権限でコマンドを実行します。初回は手順2で作ったパスワードを聞かれます。
+
+## 手順4 — インストール結果を確認する
+
+PowerShellに戻り、ディストリビューションとWSLのバージョンを確認します。
+
+```powershell
+wsl -l -v
+#   NAME      STATE           VERSION
+# * Ubuntu    Running         2
+
+wsl --version
+# WSL バージョン: 2.x.x.x
+# カーネル バージョン: 6.x.x.x-x
+# ...
+```
+
+`VERSION` が `2` ならWSL2で動いています。`*` が付いているのが、`wsl` とだけ入力したときに起動する既定のディストリビューションです。
+
+## WSLを更新する
+
+WSL本体とLinuxカーネルは、Microsoft Store経由で更新されます。手動で最新にするには次のコマンドを実行します。
+
+```powershell
+wsl --update
+```
+
+<Marker>`wsl --update` はWSL本体とカーネルの更新、`sudo apt upgrade` はUbuntuのパッケージの更新です。両方とも定期的に実行します。</Marker>
+
+| 更新するもの | コマンド | 実行する場所 |
+| ------------ | -------- | ------------ |
+| WSL本体とLinuxカーネル | `wsl --update` | PowerShell |
+| Ubuntuのパッケージ | `sudo apt update && sudo apt upgrade` | Ubuntu |
+
+## Ubuntuを起動する方法
+
+| 方法 | 操作 |
+| ---- | ---- |
+| Windows Terminal | タブの「∨」から「Ubuntu」を選ぶ |
+| スタートメニュー | 「Ubuntu」を検索して起動する |
+| PowerShell | `wsl` と入力する（既定のディストリビューションが起動する） |
+| PowerShell（ホームから始める） | `wsl ~` と入力する |
+
+Ubuntuを終了するときは `exit` を入力します。
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="階段を上る男性のイラスト" caption="インストールが終わったら、まずパッケージを最新にする" maxWidth="320px" />
+
+## よくあるハマりどころ
+
+### `wsl --install` でヘルプが表示されるだけ
+
+すでにWSLが一部でも入っている環境では、`wsl --install` を実行してもインストールが始まらず、ヘルプが表示されることがあります。その場合は、ディストリビューションを指定して実行します。
+
+```powershell
+wsl --list --online
+wsl --install -d Ubuntu
+```
+
+### `0x80370102` や「仮想化を有効にしてください」というエラー
+
+CPUの仮想化がBIOSで無効になっているか、Windowsの「仮想マシン プラットフォーム」が有効になっていないのが原因です。タスクマネージャーで仮想化の状態を確認し、無効ならBIOSで有効にします。
+
+### インストールが `0.0%` から進まない
+
+Microsoft Storeからのダウンロードが止まっていることがあります。`--web-download` を付けると、Storeを使わずにダウンロードします。
+
+```powershell
+wsl --install --web-download -d Ubuntu
+```
+
+### Ubuntuのパスワードを忘れた
+
+PowerShellから、rootユーザーとしてUbuntuを起動し、パスワードを設定し直します。
+
+```powershell
+wsl -u root
+```
+
+```bash
+passwd taro
+exit
+```
+
+`wsl -u root` で起動すると、パスワードなしでrootになれます。`passwd ユーザー名` で新しいパスワードを設定します。
+
+## ちゃんと使うためのポイント
+
+- 管理者として開いたPowerShellで `wsl --install` を実行し、PCを再起動する
+- CPUの仮想化がBIOSで有効になっている必要がある
+- 初回起動時に作るユーザーとパスワードは、Ubuntuの中だけのもの
+- インストール直後に `sudo apt update` と `sudo apt upgrade` を実行する
+- `wsl -l -v` でWSL2になっていることを確認する
+- WSL本体は `wsl --update`、Ubuntuのパッケージは `apt` で更新する
+
+## 参考リンク
+
+- [WSL を使用して Windows に Linux をインストールする方法（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/install)
+- [WSL 開発環境を設定するためのベスト プラクティス（Microsoft Learn）](https://learn.microsoft.com/ja-jp/windows/wsl/setup/environment)
+
+インストールしたディストリビューションの停止、バックアップ、削除の方法は、[wslコマンドとディストリビューションの管理](/books/wsl/wsl-command-and-distros)で扱います。
