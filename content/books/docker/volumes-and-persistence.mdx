@@ -2,7 +2,246 @@
 title: 'ボリュームとデータ永続化 — コンテナを消しても残すデータ'
 description: 'Dockerボリューム、bind mount、DBデータの永続化、node_modulesの扱いなど、コンテナの外に残すデータの考え方を学びます。'
 order: 6
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+コンテナの中で書き込んだファイルは、**そのコンテナを削除すると一緒に消えます。** MySQLのコンテナを `docker rm` したら、テーブルもデータも全部なくなります。
+
+これを避けるために、データを**コンテナの外**に置く仕組みがあります。Dockerには主に「ボリューム」と「bind mount」の2種類があり、用途によって使い分けます。
+
+<Marker>コンテナは消して作り直すもの。残したいデータは、最初からコンテナの外に置きます。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `docker stop` しただけでもデータは消えちゃうんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  `stop` だけなら消えません。停止したコンテナは書き込み領域ごと残っているので、`docker start` すれば元どおりです。消えるのは `docker rm` でコンテナを削除したときです。`docker compose down` もコンテナを削除するので、ここで消えたと気づく人が多いですね。
+</SpeechBubble>
+
+## コンテナの書き込み領域
+
+イメージは読み取り専用のレイヤーの重なりです。コンテナを起動すると、その上に**コンテナごとの書き込み可能なレイヤー**が1枚追加され、コンテナ内でのファイル作成・変更はすべてこのレイヤーに記録されます。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    W["書き込みレイヤー（コンテナごと）"] --- L3["イメージのレイヤー3"]
+    L3 --- L2["イメージのレイヤー2"]
+    L2 --- L1["イメージのレイヤー1"]
+`}
+/>
+
+書き込みレイヤーはコンテナと一緒に作られ、コンテナと一緒に削除されます。同じイメージから新しいコンテナを起動しても、前のコンテナで書き込んだ内容は引き継がれません。
+
+## マウントの種類
+
+コンテナの外にデータを置く方法は3つあります。
+
+| 種類 | データの置き場所 | 主な用途 |
+| ---- | ---------------- | -------- |
+| ボリューム（volume） | Dockerが管理する領域 | DBのデータ、アプリが生成するファイル |
+| bind mount | ホストPCの任意のディレクトリ | 開発中のソースコード、設定ファイル |
+| tmpfs | ホストのメモリ上（Linuxのみ） | 一時ファイル。コンテナ停止で消える |
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    C["コンテナ"] -->|volume| V["Docker管理の領域"]
+    C -->|bind mount| H["ホストのディレクトリ"]
+    C -->|tmpfs| M["メモリ"]
+`}
+/>
+
+## ボリューム
+
+ボリュームは、Dockerが作成・管理するデータ領域です。ホストのどこに保存されるかを利用者が意識する必要はなく、名前で扱います。
+
+```bash
+# ボリュームを作る
+docker volume create db-data
+
+# ボリュームをコンテナの /var/lib/mysql にマウントして起動する
+docker run -d --name db \
+  -e MYSQL_ROOT_PASSWORD=root \
+  -v db-data:/var/lib/mysql \
+  mysql:8.4
+```
+
+`-v ボリューム名:コンテナ内のパス` の形で指定します。ボリュームが存在しなければ、`docker run` の時点で自動的に作られます。
+
+この状態でコンテナを削除して作り直しても、`db-data` ボリュームは残っているため、データはそのまま使えます。
+
+```bash
+docker rm -f db
+docker run -d --name db \
+  -e MYSQL_ROOT_PASSWORD=root \
+  -v db-data:/var/lib/mysql \
+  mysql:8.4
+# 前のコンテナで作ったテーブルが残っている
+```
+
+<Figure src="/images/boomerang_woman_color.png" alt="ブーメランを投げる女性のイラスト" caption="コンテナを作り直しても、ボリュームのデータは戻ってくる" maxWidth="320px" />
+
+### ボリュームを操作するコマンド
+
+| コマンド | 動作 |
+| -------- | ---- |
+| `docker volume ls` | ボリュームの一覧を表示する |
+| `docker volume inspect db-data` | ボリュームの詳細（作成日時、ホスト上の保存先など）を表示する |
+| `docker volume rm db-data` | ボリュームを削除する。使用中のコンテナがあると削除できない |
+| `docker volume prune` | どのコンテナからも使われていない匿名ボリュームを削除する。`-a` を付けると名前付きボリュームも対象になる |
+
+<Callout type="warning">
+`docker volume prune -a` は、停止中のコンテナにも使われていない名前付きボリュームまで削除します。プロジェクトを一時的に `down` しているだけのDBデータも消えるので、実行前に `docker volume ls` で対象を確認しましょう。
+</Callout>
+
+## bind mount
+
+bind mountは、ホストPCの特定のディレクトリをそのままコンテナ内に見せる仕組みです。
+
+```bash
+docker run --rm -it \
+  -v "$(pwd)":/app \
+  -w /app \
+  node:22-slim \
+  node src/server.js
+```
+
+`-v` の左側が `/` や `./` で始まるパスならbind mount、名前ならボリュームとして扱われます。
+
+| 書き方 | 種類 |
+| ------ | ---- |
+| `-v db-data:/var/lib/mysql` | ボリューム（名前） |
+| `-v "$(pwd)":/app` | bind mount（絶対パス） |
+| `-v ./config:/etc/app` | bind mount（Composeでは相対パスも書ける） |
+
+bind mountでは、ホスト側で編集した内容がすぐにコンテナから見え、コンテナ内で書き込んだ内容もすぐにホスト側に現れます。[Node.jsアプリをDocker化する](/books/docker/nodejs-app-container)の開発用構成は、この性質を使っています。
+
+### 読み取り専用でマウントする
+
+設定ファイルのように、コンテナから書き換えられたくないものは `:ro` を付けて読み取り専用にします。
+
+```bash
+docker run -d -v "$(pwd)"/nginx.conf:/etc/nginx/nginx.conf:ro nginx
+```
+
+### `--mount` という書き方
+
+`-v` の代わりに `--mount` を使うと、種類を明示して書けます。
+
+```bash
+docker run -d --mount type=volume,src=db-data,dst=/var/lib/mysql mysql:8.4
+docker run -d --mount type=bind,src="$(pwd)",dst=/app,readonly node:22-slim
+```
+
+`-v` はホスト側のパスが存在しないと、そのパスにディレクトリを自動で作ります。`--mount` は存在しない場合にエラーで止まります。パスの打ち間違いで空のディレクトリがマウントされる事故を防ぎたい場合は `--mount` が向いています。
+
+## ボリュームとbind mountの使い分け
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  DBのデータもbind mountで手元のフォルダに置いたほうが、中身が見えて安心な気がします。
+</SpeechBubble>
+
+DBのデータディレクトリは、DBプロセスが決まったユーザーIDと権限で読み書きする前提で作られています。bind mountにすると、ホスト側のファイル権限やOSの違い（macOSとLinuxのファイルシステムの違いなど）の影響を受けて、起動に失敗したり権限エラーになったりすることがあります。DBのデータはファイルを直接開いて確認するものでもないため、ボリュームに置くのが基本です。
+
+| データ | 置き場所 | 理由 |
+| ------ | -------- | ---- |
+| DBのデータ | ボリューム | 中身を直接触らない。権限の問題を避ける |
+| 開発中のソースコード | bind mount | 手元で編集した内容をすぐ反映させたい |
+| 設定ファイル | bind mount（`:ro`） | 手元で管理し、コンテナからは読むだけ |
+| コンテナ内の `node_modules` | 匿名ボリューム | 手元の `node_modules` と混ぜない |
+
+<Marker>人が編集するファイルはbind mount、プログラムだけが読み書きするデータはボリューム、と分けると迷いません。</Marker>
+
+## Composeでのボリューム
+
+Composeでは、サービスの `volumes` でマウントを指定し、名前付きボリュームはトップレベルの `volumes` に宣言します。
+
+```yaml
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  db-data:
+```
+
+| 行 | 種類 | 内容 |
+| -- | ---- | ---- |
+| `db-data:/var/lib/mysql` | ボリューム | MySQLのデータを保存する |
+| `./db/init:/docker-entrypoint-initdb.d:ro` | bind mount | 初期化用のSQLファイルを読み取り専用で渡す |
+
+Composeが作るボリュームの実際の名前は、`<プロジェクト名>_db-data` のようにプロジェクト名が前に付きます。プロジェクト名は既定で `compose.yaml` があるディレクトリ名です。
+
+```bash
+docker volume ls
+# DRIVER    VOLUME NAME
+# local     my-app_db-data
+```
+
+### `down` と `down -v` の違い
+
+| コマンド | コンテナ | ネットワーク | 名前付きボリューム |
+| -------- | -------- | ------------ | ------------------ |
+| `docker compose down` | 削除 | 削除 | **残る** |
+| `docker compose down -v` | 削除 | 削除 | 削除 |
+
+`-v` を付けると、`compose.yaml` で宣言したボリュームとサービスに付いた匿名ボリュームも削除されます。DBを初期状態からやり直したいときには便利ですが、開発中のデータも全部消えます。
+
+## よくあるハマりどころ
+
+### `MYSQL_ROOT_PASSWORD` を変えたのに反映されない
+
+MySQLの公式イメージは、`/var/lib/mysql` が**空のときだけ**初期化処理を行います。`MYSQL_ROOT_PASSWORD` や `MYSQL_DATABASE` によるユーザー・データベースの作成、`/docker-entrypoint-initdb.d` のSQLファイルの実行は、この初期化のときにしか動きません。
+
+すでにボリュームにデータがある状態で環境変数を変えても、既存のデータがそのまま使われます。
+
+```bash
+# 初期化からやり直す（データは消える）
+docker compose down -v
+docker compose up -d
+```
+
+<Figure src="/images/marubatsu.png" alt="丸とバツの札を持つイラスト" caption="初期化用の環境変数は、データが空のときの1回だけ使われる" maxWidth="320px" />
+
+### `docker compose down -v` でデータを消してしまう
+
+`-v` は「verbose（詳細表示）」ではなく「volumes」です。ログを詳しく見たいつもりで付けると、DBのデータが消えます。
+
+### 匿名ボリュームが溜まり続ける
+
+Dockerfileに `VOLUME` 命令があるイメージ（MySQLの公式イメージなど）を、ボリューム指定なしで起動すると、名前のない匿名ボリュームが毎回作られます。コンテナを削除しても匿名ボリュームは残るため、`docker volume ls` に英数字だけの名前が大量に並ぶことがあります。`docker run --rm` で起動したコンテナの匿名ボリュームは、コンテナと一緒に削除されます。
+
+### ボリュームのバックアップ
+
+ボリュームの中身をファイルに書き出すには、一時的なコンテナでボリュームとカレントディレクトリをマウントし、`tar` で固めます。
+
+```bash
+docker run --rm \
+  -v db-data:/data:ro \
+  -v "$(pwd)":/backup \
+  alpine tar czf /backup/db-data.tar.gz -C /data .
+```
+
+ただし、MySQLが動いている最中にデータファイルをコピーすると、書き込み途中の状態を写して壊れたバックアップになることがあります。DBのバックアップは `mysqldump` などDB側の仕組みを使います。MySQLのバックアップ方法は[MySQL運用入門](/books/mysql/backup-slow-query-log-and-configuration)で扱っています。
+
+## ちゃんと使うためのポイント
+
+- コンテナ内で書き込んだデータは、コンテナを削除すると消える
+- DBのデータは名前付きボリュームに置く
+- 開発中のソースや設定ファイルはbind mountでマウントする
+- `docker compose down` はボリュームを残し、`down -v` はボリュームも削除する
+- MySQLの初期化用の環境変数は、データディレクトリが空のときだけ効く
+- 稼働中のDBのバックアップは、ボリュームのコピーではなくDBのツールで取る
+
+## 参考リンク
+
+- [Volumes（Docker Docs）](https://docs.docker.com/engine/storage/volumes/)
+- [Bind mounts（Docker Docs）](https://docs.docker.com/engine/storage/bind-mounts/)
+
+コンテナ同士やホストPCとの通信の仕組みは、[Dockerネットワーク](/books/docker/network-basics)で整理します。

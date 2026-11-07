@@ -2,7 +2,253 @@
 title: 'Dockerネットワーク — localhostとサービス名の混乱をなくす'
 description: 'Dockerネットワークの基本、コンテナ間通信、ホストPCとの通信、Composeのサービス名解決を整理します。'
 order: 7
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Dockerを使い始めて最もつまずきやすいのが、「どのホスト名とポートを指定すれば繋がるのか」です。ホストPCからは `localhost:3306` で繋がるのに、アプリのコンテナからは同じ指定で繋がらない、という状況は誰もが一度は経験します。
+
+原因は、**コンテナごとに独立したネットワーク環境を持っている**ことです。この章では、通信の「出発点」と「行き先」の組み合わせごとに、何を指定すればよいかを整理します。
+
+<Marker>接続先を書くときは、「その通信はどのコンテナ（またはホスト）から出ていくのか」を最初に確認します。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `localhost` って「自分のPC」のことですよね。コンテナの中から書いても同じPCを指すんじゃないんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  `localhost` は「この通信を出しているマシン自身」です。コンテナはネットワーク上では独立した1台として扱われるので、コンテナ内の `localhost` はそのコンテナ自身になります。ホストPCでも、隣のDBコンテナでもありません。
+</SpeechBubble>
+
+## コンテナは独自のネットワーク環境を持つ
+
+コンテナを起動すると、Dockerはそのコンテナ専用のネットワークインターフェースとIPアドレスを用意します。Linuxのネットワーク名前空間（network namespace）という機能で、ホストや他のコンテナとはループバック（`127.0.0.1`）もIPアドレスも別々になります。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    H["ホストPC"] -->|"-p 3000:3000"| A["appコンテナ"]
+    A -->|"db:3306"| D["dbコンテナ"]
+    H -->|"-p 3306:3306"| D
+`}
+/>
+
+コンテナ同士は、同じDockerネットワークに参加していれば、そのネットワーク内のIPアドレスやコンテナ名で通信できます。ホストPCからコンテナへは、`-p` で公開したポートを通して通信します。
+
+## ネットワークドライバー
+
+Dockerネットワークにはドライバーと呼ばれる種類があります。Web開発で主に使うのは次の3つです。
+
+| ドライバー | 動作 | 使いどころ |
+| ---------- | ---- | ---------- |
+| `bridge` | ホスト内に仮想ネットワークを作り、コンテナをつなぐ | 既定。ほとんどの場合これ |
+| `host` | コンテナがホストのネットワークをそのまま使う | Linuxでポート変換を避けたい特殊な場合 |
+| `none` | ネットワークに接続しない | 通信させたくない処理 |
+
+```bash
+docker network ls
+# NETWORK ID     NAME      DRIVER    SCOPE
+# 1a2b3c4d5e6f   bridge    bridge    local
+# 2b3c4d5e6f7a   host      host      local
+# 3c4d5e6f7a8b   none      null      local
+```
+
+`docker run` でネットワークを指定しないと、コンテナは `bridge` という名前の既定のネットワークに接続されます。
+
+## 既定のbridgeとユーザー定義ネットワークの違い
+
+ここが最初の落とし穴です。既定の `bridge` ネットワークでは、**コンテナ名でほかのコンテナを指定できません。** IPアドレスでは届きますが、IPアドレスはコンテナを作り直すたびに変わる可能性があります。
+
+`docker network create` で自分で作ったネットワーク（ユーザー定義ネットワーク）では、Docker内蔵のDNSサーバーがコンテナ名をIPアドレスに変換するため、名前で通信できます。
+
+```bash
+# ネットワークを作る
+docker network create my-net
+
+# 同じネットワークに2つのコンテナを接続する
+docker run -d --name db --network my-net \
+  -e MYSQL_ROOT_PASSWORD=root mysql:8.4
+
+docker run --rm -it --network my-net node:22-slim \
+  getent hosts db
+# 172.18.0.2      db
+```
+
+`getent hosts db` は、`db` という名前がどのIPアドレスに解決されるかを表示するコマンドです。`node:22-slim` はDebianベースなので最初から使えます。
+
+| 比較 | 既定の `bridge` | ユーザー定義ネットワーク |
+| ---- | --------------- | ------------------------ |
+| コンテナ名での名前解決 | できない | できる |
+| 作り方 | 何も指定しなければ自動で接続 | `docker network create` で作り、`--network` で接続 |
+| 他のネットワークとの分離 | 指定なしのコンテナが全部同居する | ネットワークごとに分けられる |
+
+<Marker>コンテナ同士を名前で通信させたいなら、ユーザー定義ネットワークに入れる必要があります。</Marker>
+
+## Composeは自動でネットワークを作る
+
+Composeを使うと、この作業は自動で行われます。`docker compose up` を実行すると、Composeは `<プロジェクト名>_default` というユーザー定義ネットワークを作り、全サービスをそこに接続します。さらに、**サービス名**がDNSで解決できるようになります。
+
+```yaml
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: 3306
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+```
+
+```bash
+docker compose up -d
+docker network ls
+# NETWORK ID     NAME             DRIVER    SCOPE
+# 4d5e6f7a8b9c   my-app_default   bridge    local
+```
+
+`app` コンテナから見ると、`db` というホスト名は `db` サービスのコンテナのIPアドレスに解決されます。[Docker Compose入門](/books/docker/docker-compose-basics)で「サービス名で通信する」と説明したのは、この仕組みによるものです。
+
+<Figure src="/images/calling_suit_man_color.png" alt="電話をかける男性のイラスト" caption="同じComposeプロジェクト内では、サービス名を指定すれば相手に届く" maxWidth="320px" />
+
+## ポート公開 — ホストからコンテナへ
+
+ホストPCからコンテナ内のサーバーにアクセスするには、ポートを公開します。
+
+```bash
+docker run -d -p 8080:80 nginx
+```
+
+`-p ホスト側のポート:コンテナ側のポート` の順です。ホストの `8080` 番に来た通信が、コンテナの `80` 番に転送されます。
+
+| 書き方 | 意味 |
+| ------ | ---- |
+| `-p 8080:80` | ホストの全インターフェースの8080番 → コンテナの80番 |
+| `-p 127.0.0.1:3306:3306` | ホストの `127.0.0.1` の3306番だけ → コンテナの3306番 |
+| `-p 3000` | ホスト側は空いているポートを自動で割り当てる |
+
+`-p 8080:80` のようにIPアドレスを省略すると、ホストの全インターフェース（`0.0.0.0`）で待ち受けます。同じネットワークにいる他のPCからもアクセスできる状態になるため、DBのように外から触らせたくないポートは `127.0.0.1:` を付けて公開範囲を絞ります。
+
+<Callout type="warning">
+Linuxサーバーでは、Dockerが公開したポートは、ufwなどで設定したファイアウォールのルールより先に処理される場合があります。ファイアウォールで閉じたつもりのポートが外から見えている、という事故があるため、公開範囲は `-p` の指定そのもので絞りましょう。
+</Callout>
+
+### `ports` と `expose` の違い
+
+Composeには `ports` と `expose` があり、名前が似ていますが動作は違います。
+
+| 設定 | ホストから届くか | 動作 |
+| ---- | ---------------- | ---- |
+| `ports: ["3306:3306"]` | 届く | ホストのポートをコンテナのポートにつなぐ |
+| `expose: ["3306"]` | 届かない | 使うポートを記載するだけ。公開はしない |
+
+同じネットワークにいるコンテナ同士は、`ports` も `expose` もなくても、コンテナ側のポートに直接届きます。`ports` は「ホストから」アクセスするためだけの設定です。
+
+## どこから、どこへ、何を書くか
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  結局、場面ごとに何を書けばいいのか一覧で見たいです。
+</SpeechBubble>
+
+| 出発点 | 行き先 | ホスト名 | ポート |
+| ------ | ------ | -------- | ------ |
+| ホストPC | コンテナ | `localhost` | `ports` の**左側**（ホスト側） |
+| コンテナ | 同じComposeの別サービス | サービス名（`db` など） | **コンテナ側**のポート |
+| コンテナ | 自分自身 | `localhost` | コンテナ側のポート |
+| コンテナ | ホストPCで動くサーバー | `host.docker.internal` | ホストで待ち受けているポート |
+| コンテナ | インターネット | 通常のドメイン名 | 通常のポート |
+
+コンテナからインターネットへの通信は、特に設定しなくても行えます。Dockerがホストのネットワークを経由して外へ出す設定（NAT）を自動で行うためです。
+
+### コンテナからホストPCへ
+
+ホストPCで直接動かしているAPIサーバーやDBにコンテナから接続したいときは、`host.docker.internal` を使います。Docker Desktop（macOS・Windows）では、このホスト名が最初からホストPCを指します。
+
+Linuxでは既定で用意されていないため、`host-gateway` という特別な値を使って追加します。
+
+```bash
+docker run --add-host=host.docker.internal:host-gateway my-app
+```
+
+```yaml
+services:
+  app:
+    build: .
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+```
+
+<Figure src="/images/walking_woman_color.png" alt="歩く女性のイラスト" caption="通信の出発点がどこかを確かめてから、行き先の書き方を決める" maxWidth="320px" />
+
+## よくあるハマりどころ
+
+### コンテナ同士なのにホスト側のポートを指定している
+
+DBのポートを `"3307:3306"` で公開している場合、ホストPCから接続するときは `localhost:3307` ですが、`app` コンテナから接続するときは `db:3306` です。
+
+```yaml
+services:
+  app:
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: 3306 # 3307ではない
+  db:
+    image: mysql:8.4
+    ports:
+      - "3307:3306"
+```
+
+コンテナ同士の通信はポート転送を通らず、ネットワーク内で直接相手のコンテナに届きます。そのため、`ports` の左側の値は関係ありません。
+
+### `localhost` でDBに繋ごうとして `ECONNREFUSED`
+
+アプリのコンテナで `DATABASE_HOST=localhost` と設定すると、アプリは自分のコンテナの3306番に接続しようとします。そこではMySQLが動いていないので、接続を拒否されて `ECONNREFUSED 127.0.0.1:3306` のようなエラーになります。サービス名に変えます。
+
+### 別々のComposeプロジェクト同士で通信できない
+
+ディレクトリが違う2つの `compose.yaml` は、それぞれ別の `_default` ネットワークを作るため、互いのサービス名では届きません。共有したいネットワークを先に作り、両方のプロジェクトで `external: true` として参加させます。
+
+```bash
+docker network create shared-net
+```
+
+```yaml
+# 両方の compose.yaml に書く
+services:
+  app:
+    networks:
+      - shared-net
+
+networks:
+  shared-net:
+    external: true
+```
+
+### 接続先が解決できているか確かめる
+
+繋がらないときは、まずアプリのコンテナの中から名前が解決できるかを確認します。
+
+```bash
+docker compose exec app getent hosts db
+docker network inspect my-app_default
+```
+
+`getent` が何も返さなければ、2つのコンテナが同じネットワークにいません。`docker network inspect` の `Containers` 欄で、どのコンテナが参加しているかを確認できます。
+
+## ちゃんと使うためのポイント
+
+- コンテナ内の `localhost` はそのコンテナ自身を指す
+- 既定の `bridge` ではコンテナ名で通信できない。ユーザー定義ネットワークならできる
+- Composeは自動でネットワークを作り、サービス名で通信できるようにする
+- コンテナ同士はコンテナ側のポート、ホストからは `ports` の左側のポートを使う
+- 外から触らせたくないポートは `127.0.0.1:` を付けて公開する
+- コンテナからホストPCへは `host.docker.internal`（Linuxでは `host-gateway` で追加）
+
+## 参考リンク
+
+- [Networking overview（Docker Docs）](https://docs.docker.com/engine/network/)
+- [Networking in Compose（Docker Docs）](https://docs.docker.com/compose/how-tos/networking/)
+
+接続先のホスト名やパスワードをどこに書くかは、[環境変数と設定管理](/books/docker/env-and-config)で扱います。

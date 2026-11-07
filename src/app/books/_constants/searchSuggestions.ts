@@ -229,6 +229,21 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Docker',
   ],
 
+  docker: [
+    'Dockerfile',
+    'docker compose',
+    'localhost',
+    'ボリューム',
+    'bind mount',
+    'ネットワーク',
+    '.env',
+    'env_file',
+    'タグ',
+    'ECR',
+    'マルチステージビルド',
+    'healthcheck',
+  ],
+
   fastify: [
     'route',
     'schema',

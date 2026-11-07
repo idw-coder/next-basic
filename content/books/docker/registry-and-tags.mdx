@@ -2,7 +2,226 @@
 title: 'イメージのタグとレジストリ — Docker Hub・ECR・push/pull'
 description: 'Dockerイメージのタグ、レジストリ、Docker Hub、Amazon ECR、Gitリポジトリとの違い、push/pullの流れを学びます。'
 order: 9
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+手元で `docker build` したイメージは、そのPCの中にしかありません。CIや本番サーバーで同じイメージを動かすには、イメージを**レジストリ**にアップロード（push）し、使う側でダウンロード（pull）します。
+
+このとき、どのイメージのどのバージョンかを識別するのが**タグ**です。この章では、イメージ名の構造、タグの付け方、Docker HubとAmazon ECRへのpushの手順を見ていきます。
+
+<Marker>イメージ名には「どのレジストリの、どのリポジトリの、どのバージョンか」がすべて含まれています。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `docker pull nginx` って書くだけで取れるのに、レジストリの場所はどこで決まっているんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  省略された部分にDockerが既定値を補っているんです。`nginx` は、正式には `docker.io/library/nginx:latest` という名前です。
+</SpeechBubble>
+
+## イメージ名の構造
+
+イメージ名は次の部品でできています。
+
+```text
+[レジストリ/][名前空間/]リポジトリ[:タグ]
+```
+
+| 部品 | 例 | 省略したとき |
+| ---- | -- | ------------ |
+| レジストリ | `docker.io`、`ghcr.io`、`123456789012.dkr.ecr.ap-northeast-1.amazonaws.com` | `docker.io`（Docker Hub） |
+| 名前空間 | `library`、ユーザー名、組織名 | Docker Hubでは `library`（公式イメージ） |
+| リポジトリ | `nginx`、`my-app` | 省略できない |
+| タグ | `1.27`、`22-slim`、`latest` | `latest` |
+
+いくつかの例を、省略なしの形に直すと次のようになります。
+
+| 書いた名前 | 省略なしの名前 |
+| ---------- | -------------- |
+| `nginx` | `docker.io/library/nginx:latest` |
+| `node:22-slim` | `docker.io/library/node:22-slim` |
+| `myuser/my-app:1.0.0` | `docker.io/myuser/my-app:1.0.0` |
+| `ghcr.io/my-org/my-app:1.0.0` | 省略なし（GitHub Container Registry） |
+
+<Callout type="note">
+ここでの「リポジトリ」は、同じ名前を持つイメージのタグをまとめた置き場所のことです。Gitのリポジトリとは別物です。Gitリポジトリはソースコードの変更履歴を、Dockerのリポジトリはビルド済みのイメージを保存します。違いは[Dockerとは何か](/books/docker/what-is-docker)でも整理しています。
+</Callout>
+
+## タグを付ける
+
+`docker build -t` でビルド時に名前を付けるほか、`docker tag` で既存のイメージに別の名前を追加できます。
+
+```bash
+docker build -t my-app:1.0.0 .
+
+# 同じイメージに、push先の名前を追加する
+docker tag my-app:1.0.0 myuser/my-app:1.0.0
+docker tag my-app:1.0.0 myuser/my-app:latest
+```
+
+**構文：** `docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]`
+
+| 引数 | 説明 |
+| ---- | ---- |
+| `SOURCE_IMAGE[:TAG]`（第1引数） | すでに手元にあるイメージの名前 |
+| `TARGET_IMAGE[:TAG]`（第2引数） | 追加する新しい名前 |
+
+`docker tag` はイメージをコピーしません。同じイメージ（同じイメージID）に、名前を1つ追加するだけです。
+
+```bash
+docker images
+# REPOSITORY       TAG      IMAGE ID       SIZE
+# my-app           1.0.0    3f2a1b4c5d6e   230MB
+# myuser/my-app    1.0.0    3f2a1b4c5d6e   230MB
+# myuser/my-app    latest   3f2a1b4c5d6e   230MB
+```
+
+## `latest` は「最新」を保証しない
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `latest` を指定しておけば、いつでも一番新しいバージョンが取れるんですよね？
+</SpeechBubble>
+
+`latest` は、タグを省略したときに使われる**ただの名前**です。Dockerが自動で最新のビルドに付け替えるわけではありません。pushする人が `latest` を付けなければ古いままですし、別のブランチのビルドに `latest` を付けてしまえば、それが `latest` になります。
+
+さらに、タグは**後から別のイメージに付け替えられます。** 同じ `my-app:latest` をpullしても、昨日と今日で中身が違うことがあります。本番で `latest` を指定すると、いつ・どのコードが動いているのかを追えなくなります。
+
+<Marker>本番で動かすイメージは、`latest` ではなく中身を特定できるタグで指定します。</Marker>
+
+<Figure src="/images/harry_man_color.png" alt="急いでいる男性のイラスト" caption="latestを指定していると、知らないうちに中身が変わっていることがある" maxWidth="320px" />
+
+### タグの付け方の例
+
+| タグ | 例 | 用途 |
+| ---- | -- | ---- |
+| セマンティックバージョン | `1.4.2` | リリース単位でバージョンを管理する |
+| GitのコミットSHA | `a1b2c3d` | どのコミットからビルドしたかを特定する |
+| 環境名 | `staging`、`production` | いまその環境で使っているものを示す（付け替わる前提） |
+
+CIでビルドするときは、コミットSHAのタグを必ず付けておくと、本番で動いているイメージから元のコードへたどれます。
+
+```bash
+docker build -t my-app:$(git rev-parse --short HEAD) .
+```
+
+### ダイジェストで指定する
+
+タグとは別に、イメージには内容から計算された**ダイジェスト**（`sha256:` で始まるハッシュ値）が付いています。中身が1バイトでも違えばダイジェストも変わるため、ダイジェストで指定すると、必ず同じイメージが取れます。
+
+```bash
+docker images --digests
+docker pull node:22-slim@sha256:<ダイジェスト>
+```
+
+| 指定方法 | 付け替え | 用途 |
+| -------- | -------- | ---- |
+| タグ（`:1.4.2`） | できる | 人が読んで分かる名前で指定する |
+| ダイジェスト（`@sha256:...`） | できない | 中身を完全に固定する |
+
+## Docker Hubにpushする
+
+Docker Hubにpushするには、Docker Hubのアカウントでログインし、`ユーザー名/リポジトリ名` の形の名前を付けてpushします。
+
+```bash
+# 1. ログインする
+docker login
+
+# 2. Docker Hub用の名前を付ける
+docker tag my-app:1.0.0 myuser/my-app:1.0.0
+
+# 3. pushする
+docker push myuser/my-app:1.0.0
+```
+
+別のPCでは、同じ名前でpullできます。プライベートリポジトリの場合は、pullする側でもログインが必要です。
+
+```bash
+docker pull myuser/my-app:1.0.0
+```
+
+## Amazon ECRにpushする
+
+AWSでコンテナを動かす場合は、Amazon ECR（Elastic Container Registry）にイメージを置くのが一般的です。ECRのレジストリのアドレスは、AWSアカウントIDとリージョンから決まります。
+
+```text
+<アカウントID>.dkr.ecr.<リージョン>.amazonaws.com/<リポジトリ名>:<タグ>
+```
+
+```bash
+# 1. ECRのリポジトリを作る（最初の1回だけ）
+aws ecr create-repository --repository-name my-app --region ap-northeast-1
+
+# 2. ECRにログインする
+aws ecr get-login-password --region ap-northeast-1 \
+  | docker login --username AWS --password-stdin \
+    123456789012.dkr.ecr.ap-northeast-1.amazonaws.com
+
+# 3. ECR用の名前を付ける
+docker tag my-app:1.0.0 \
+  123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/my-app:1.0.0
+
+# 4. pushする
+docker push 123456789012.dkr.ecr.ap-northeast-1.amazonaws.com/my-app:1.0.0
+```
+
+`aws ecr get-login-password` は、IAMの認証情報を使って一時的なパスワードを発行します。このパスワードは12時間で期限が切れるため、CIでは毎回ログインし直します。
+
+ECRには、リポジトリごとに**タグのイミュータビリティ**（不変性）を有効にする設定があります。有効にすると、同じタグで別のイメージをpushしようとするとエラーになり、タグの付け替えを防げます。
+
+ECRとECSの関係は、AWS SAA本の[コンピューティング選択](/books/aws-saa-c03/compute-selection)で扱っています。
+
+## 主なレジストリ
+
+| レジストリ | アドレス | 特徴 |
+| ---------- | -------- | ---- |
+| Docker Hub | `docker.io` | 公式イメージの配布元。名前の省略時の既定 |
+| Amazon ECR | `<アカウントID>.dkr.ecr.<リージョン>.amazonaws.com` | IAMで権限を管理。ECSやLambdaから直接使える |
+| GitHub Container Registry | `ghcr.io` | GitHubのリポジトリと連携。GitHub Actionsからpushしやすい |
+| Google Artifact Registry | `<リージョン>-docker.pkg.dev` | Google Cloudで使う |
+
+<Figure src="/images/readingbook_woman_color.png" alt="本を読む女性のイラスト" caption="レジストリは、実行する環境のクラウドに合わせて選ぶのが基本" maxWidth="320px" />
+
+<Callout type="info">
+Docker Hubは、ログインしていない状態や無料プランでのpullに回数制限を設けています。CIで公式イメージを頻繁にpullすると制限に当たることがあるため、CIでもログインしてからpullする構成にしておきます。制限の内容は変わることがあるので、[Docker Hubの公式ドキュメント](https://docs.docker.com/docker-hub/usage/)で確認してください。
+</Callout>
+
+## よくあるハマりどころ
+
+### `denied: requested access to the resource is denied`
+
+pushで最も多いエラーです。次のどれかが原因です。
+
+- `docker login` していない、またはログインしたレジストリが違う
+- イメージ名にユーザー名（名前空間）が付いていない。`my-app:1.0.0` のままpushすると `docker.io/library/my-app` へのpushになり、権限がない
+- ECRで、ログイン時のアカウントIDやリージョンと、イメージ名のものが違う
+
+### Apple Siliconでビルドしたイメージが本番で `exec format error`
+
+Apple SiliconのMacで `docker build` すると、既定で `linux/arm64` のイメージができます。本番の実行環境が `linux/amd64`（x86_64）の場合、そのイメージは起動できず、`exec format error` で終了します。
+
+`--platform` で、実行環境に合わせたイメージを作ります。
+
+```bash
+docker build --platform linux/amd64 -t my-app:1.0.0 .
+```
+
+本番のイメージはCI（Linuxのx86_64ランナーなど）でビルドしてpushするようにしておくと、開発者のPCの違いに左右されません。GitHub Actionsでのデプロイは[デプロイの自動化](/books/github-actions/09-deployment)で扱っています。
+
+### pullしたのに古いイメージのまま
+
+`docker run my-app:latest` は、手元に `my-app:latest` があればそれを使い、レジストリを確認しません。レジストリ側で `latest` が付け替えられていても、手元は古いままです。最新を取得するには、先に `docker pull` を実行します。Composeでは `docker compose pull` を使います。
+
+## ちゃんと使うためのポイント
+
+- イメージ名は `レジストリ/名前空間/リポジトリ:タグ`。省略部分には `docker.io`、`library`、`latest` が補われる
+- `docker tag` はイメージをコピーせず、名前を追加するだけ
+- `latest` は最新を保証しない。本番ではバージョンやコミットSHAのタグで指定する
+- タグは付け替えられる。中身を完全に固定したいときはダイジェストで指定する
+- ECRへは `aws ecr get-login-password` でログインしてからpushする
+- 実行環境のCPUアーキテクチャに合わせて `--platform` を指定する
+
+## 参考リンク
+
+- [docker image tag（Docker Docs）](https://docs.docker.com/reference/cli/docker/image/tag/)
+- [Docker イメージをプッシュする（Amazon ECR ユーザーガイド）](https://docs.aws.amazon.com/ja_jp/AmazonECR/latest/userguide/docker-push-ecr-image.html)
+
+レジストリに置くイメージを小さく安全にする方法は、[本番運用で気をつけること](/books/docker/production-practices)で扱います。

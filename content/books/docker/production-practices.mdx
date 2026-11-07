@@ -2,7 +2,261 @@
 title: '本番運用で気をつけること — 軽量化・ログ・セキュリティ'
 description: '本番向けDocker運用で意識したい、マルチステージビルド、軽量イメージ、ログ、脆弱性、タグ固定の基本を整理します。'
 order: 10
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+開発環境で動いたイメージを、そのまま本番に持っていくと問題が出ることがあります。イメージが大きくてデプロイに時間がかかる、rootで動いている、ログがどこにも残らない、使っているベースイメージに脆弱性がある、といったものです。
+
+この章では、本番で動かすイメージと、その運用で押さえておきたい点を見ていきます。
+
+<Marker>本番のイメージは「小さく」「権限を絞り」「ログを標準出力に出し」「中身を固定する」の4点を基準に作ります。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  開発で動いているなら、本番でも同じイメージで問題ないんじゃないですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  動くかどうかだけなら問題ないことも多いです。ただ本番では、そのイメージが何台ものサーバーに配られ、インターネットからのリクエストを受けます。不要なものが入っているほど転送に時間がかかり、攻撃に使える部品も増えます。
+</SpeechBubble>
+
+## マルチステージビルド
+
+TypeScriptのアプリでは、ビルドに `typescript` などの開発用パッケージが必要ですが、実行時には `tsc` が出力したJavaScriptと本番用の依存があれば足ります。**マルチステージビルド**を使うと、ビルド用の環境と実行用の環境を1つのDockerfileの中で分けられます。
+
+```dockerfile
+# ---- ビルド用のステージ ----
+FROM node:22-slim AS build
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY tsconfig.json ./
+COPY src ./src
+RUN npm run build
+
+# ---- 実行用のステージ ----
+FROM node:22-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY --from=build --chown=node:node /app/dist ./dist
+
+USER node
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
+```
+
+| 記述 | 意味 |
+| ---- | ---- |
+| `FROM ... AS build` | ステージに `build` という名前を付ける |
+| `RUN npm ci`（buildステージ） | `devDependencies` も含めて入れ、TypeScriptをビルドする |
+| `FROM ... AS runtime` | 新しいステージを、まっさらなベースイメージから始める |
+| `COPY --from=build` | `build` ステージで作った `dist` だけを持ってくる |
+
+最終的なイメージになるのは、最後のステージ（`runtime`）だけです。`build` ステージに入れた `typescript` や `src` のTypeScriptファイルは、最終イメージには含まれません。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    S["src（TypeScript）"] --> B["buildステージ"]
+    B -->|"dist だけコピー"| R["runtimeステージ"]
+    R --> I["最終イメージ"]
+`}
+/>
+
+<Marker>マルチステージビルドでは、最後のステージに入れたものだけが本番イメージに残ります。</Marker>
+
+## ベースイメージを選ぶ
+
+Node.jsの公式イメージには、OSのパッケージ構成が違う種類があります。
+
+| タグ | 中身 | 注意点 |
+| ---- | ---- | ------ |
+| `node:22` | Debianベース。ビルドツールや多くのパッケージを含む | 大きい。ネイティブモジュールのビルドには便利 |
+| `node:22-slim` | Debianベースで、パッケージを最小限にしたもの | `curl` や `git` などは入っていない |
+| `node:22-alpine` | Alpine Linuxベース | 標準Cライブラリがglibcではなくmuslのため、一部のネイティブモジュールで問題が出る |
+
+どれを使うかに迷ったら、まず `-slim` から始めるのが無難です。サイズは `docker images` で実際に比べられます。
+
+```bash
+docker images my-app
+```
+
+<Callout type="note">
+Googleが配布しているdistrolessイメージ（`gcr.io/distroless/nodejs22-debian12` など）は、シェルやパッケージマネージャーも含まない最小構成のイメージです。攻撃に使える部品が少ない一方、コンテナに入って調査することができないため、運用の慣れが必要です。
+</Callout>
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="パソコンを見て驚く女性のイラスト" caption="ベースイメージを変えるだけで、イメージのサイズは大きく変わる" maxWidth="320px" />
+
+## rootで動かさない
+
+Dockerのコンテナは、何も指定しなければrootユーザーで実行されます。アプリに脆弱性があって任意のコマンドを実行された場合、root権限があるとコンテナ内のファイルを自由に書き換えられ、設定によってはホストへの影響も広がります。
+
+Node.jsの公式イメージには `node` というユーザー（UID 1000）が用意されているので、`USER node` で切り替えます。
+
+```dockerfile
+COPY --from=build --chown=node:node /app/dist ./dist
+USER node
+```
+
+`USER` より後の `RUN` や `CMD` は、すべて `node` ユーザーで実行されます。アプリがファイルを書き込むディレクトリがある場合は、`--chown` で所有者を `node` にしておかないと、権限エラーで書き込めません。
+
+## ログは標準出力に出す
+
+コンテナのアプリは、ログをファイルではなく**標準出力**（stdout）と**標準エラー出力**（stderr）に出します。Dockerはコンテナの標準出力を集めており、`docker logs` で確認できます。
+
+```bash
+docker logs -f my-app
+docker compose logs -f app
+```
+
+ファイルに書き出すと、そのファイルはコンテナの書き込みレイヤーに溜まり、コンテナを削除すると消えます。標準出力に出しておけば、ECSならCloudWatch Logsへ、ほかの基盤でもそれぞれのログ収集の仕組みへ、設定だけで送れます。
+
+<Marker>コンテナのログは標準出力に出し、集めて保存するのは実行基盤の仕事にします。</Marker>
+
+### ログのローテーション
+
+Dockerは既定で、標準出力の内容を `json-file` ドライバーでホストのファイルに保存します。既定ではサイズの上限がないため、長期間動かすとディスクを使い切ることがあります。上限を設定しておきます。
+
+```bash
+docker run -d \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
+  my-app:1.0.0
+```
+
+```yaml
+services:
+  app:
+    image: my-app:1.0.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+```
+
+`max-size` は1ファイルの上限、`max-file` は残すファイルの数です。この例では、1つのコンテナで最大30MBまでになります。
+
+## ヘルスチェックと再起動
+
+### `HEALTHCHECK`
+
+プロセスが動いていても、アプリが応答できない状態になることがあります。Dockerfileの `HEALTHCHECK` で、定期的にアプリの状態を確認できます。
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD node -e "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+```
+
+`node:22-slim` には `curl` が入っていないため、ここではNode.jsの `fetch` で確認しています。結果は `docker ps` の `STATUS` 欄に `(healthy)` や `(unhealthy)` として表示されます。
+
+<Callout type="warning">
+AWSのECSは、Dockerfileの `HEALTHCHECK` ではなく、タスク定義の `healthCheck` に書いた設定でコンテナの状態を判断します。ECSで動かす場合は、タスク定義側にも確認コマンドを設定してください。
+</Callout>
+
+### 再起動ポリシー
+
+1台のサーバーで `docker run` やComposeを使って動かす場合は、再起動ポリシーを設定しておくと、プロセスが異常終了したときやサーバーを再起動したときに、Dockerがコンテナを起動し直します。
+
+| ポリシー | 動作 |
+| -------- | ---- |
+| `no` | 再起動しない（既定） |
+| `on-failure` | 終了コードが0以外のときだけ再起動する |
+| `always` | 常に再起動する。手動で止めても、Dockerの再起動時に起動する |
+| `unless-stopped` | 常に再起動する。ただし手動で止めたものは起動しない |
+
+```yaml
+services:
+  app:
+    image: my-app:1.0.0
+    restart: unless-stopped
+```
+
+## 脆弱性をスキャンする
+
+ベースイメージのOSパッケージやnpmの依存には、後から脆弱性が見つかります。イメージをスキャンして、既知の脆弱性を含んでいないかを確認します。
+
+```bash
+# Docker Scout（Docker Desktopに付属）
+docker scout cves my-app:1.0.0
+
+# Trivy（オープンソースのスキャナー）
+trivy image my-app:1.0.0
+```
+
+ECRにも、pushしたイメージをスキャンする機能があります。CIでビルドのたびにスキャンし、重大な脆弱性があればデプロイを止める運用にしておくと、気づかないまま本番に出すことを防げます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  スキャンで見つかったら、どうやって直すんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  OSのパッケージが原因なら、ベースイメージを新しいものに更新してビルドし直すのが基本です。npmの依存が原因なら、そのパッケージを修正済みのバージョンに上げます。どちらも、イメージを作り直してデプロイするまでが対応です。
+</SpeechBubble>
+
+## ベースイメージのタグを固定する
+
+`FROM node:22-slim` は、ビルドするたびにその時点の `22-slim` を取得します。Node.jsのマイナーバージョンやDebianのパッケージが変わるため、同じDockerfileでも、ビルドした日によって中身が変わります。
+
+| 書き方 | 中身の固定度 | 更新の手間 |
+| ------ | ------------ | ---------- |
+| `node:22-slim` | 低い。ビルドのたびに変わりうる | 何もしなくてもセキュリティ修正が入る |
+| `node:22.11.0-slim` | Node.jsのバージョンは固定。OSパッケージは変わりうる | バージョンを手で上げる |
+| `node:22-slim@sha256:...` | 完全に固定 | ダイジェストを手で更新する |
+
+固定するほど再現性は上がりますが、固定したままにするとセキュリティ修正も入らなくなります。DependabotやRenovateを使うと、新しいバージョンやダイジェストへの更新をプルリクエストとして自動で作れるため、「固定しつつ、更新も止めない」運用ができます。
+
+タグとダイジェストの違いは、[イメージのタグとレジストリ](/books/docker/registry-and-tags)で扱いました。
+
+<Figure src="/images/highfive_hi_color.png" alt="ハイタッチするイラスト" caption="固定と更新を両立させると、安心してデプロイできる" maxWidth="320px" />
+
+## よくあるハマりどころ
+
+### `.dockerignore` がなくてイメージが大きい・秘密情報が入る
+
+`COPY . .` を使っていて `.dockerignore` がないと、`.git`、`node_modules`、`.env`、テスト用のファイルまでイメージに入ります。マルチステージビルドでも、buildステージで `COPY . .` していれば、そのステージのキャッシュには残ります。`.dockerignore` は必ず用意します。
+
+```text
+.git
+node_modules
+dist
+.env
+*.log
+```
+
+### `HEALTHCHECK` に `curl` を使って常に unhealthy
+
+`-slim` や `-alpine`、distrolessのイメージには `curl` が入っていないことがあります。`HEALTHCHECK CMD curl ...` と書くと、コマンドが見つからずに失敗し続け、アプリは正常なのに `unhealthy` になります。イメージに含まれているコマンド（Node.jsなら `node`）で確認します。
+
+### `docker stop` に10秒かかる
+
+`SIGTERM` を受け取ってもアプリが終了せず、10秒後に `SIGKILL` で強制終了されています。処理中のリクエストが途中で切られる原因にもなります。`CMD` で `node` を直接起動し、アプリで `SIGTERM` の終了処理を書きます。詳しくは[Node.jsアプリをDocker化する](/books/docker/nodejs-app-container)を参照してください。
+
+## ちゃんと使うためのポイント
+
+- マルチステージビルドで、ビルド用のパッケージを本番イメージに残さない
+- ベースイメージは `-slim` から始め、`docker images` でサイズを確認する
+- `USER node` でroot以外のユーザーで実行する
+- ログは標準出力に出し、`json-file` の上限を設定する
+- `HEALTHCHECK` はイメージに含まれるコマンドで書く。ECSではタスク定義に設定する
+- 脆弱性スキャンをCIに組み込み、ベースイメージのタグは固定しつつ自動更新する
+
+## 参考リンク
+
+- [Multi-stage builds（Docker Docs）](https://docs.docker.com/build/building/multi-stage/)
+- [Building best practices（Docker Docs）](https://docs.docker.com/build/building/best-practices/)
+- [Configure logging drivers（Docker Docs）](https://docs.docker.com/engine/logging/configure/)
+
+これで、イメージの作成から本番運用までの基本がそろいました。最後に、ここまでの内容を問題で確認してみましょう。
+
+---
+
+<QuizLink
+  href="/quiz/docker"
+  title="Dockerのクイズで確認する"
+  description="Dockerfile、Compose、ボリューム、ネットワーク、本番運用の基本を問題で確認しましょう。"
+/>

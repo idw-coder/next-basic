@@ -2,7 +2,300 @@
 title: 'Node.jsアプリをDocker化する — 開発用と本番用の考え方'
 description: 'Node.jsアプリをDockerで動かすときの基本構成、開発用コンテナと本番用イメージの違い、ポート公開と依存関係の扱いを整理します。'
 order: 5
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+[Dockerfile入門](/books/docker/dockerfile-basics)と[Docker Compose入門](/books/docker/docker-compose-basics)で、イメージの作り方と複数コンテナの起動方法を見ました。この章では、Express製のNode.jsアプリを題材に、**開発で使うコンテナ**と**本番で動かすイメージ**を分けて作ります。
+
+同じアプリでも、開発中と本番では求めるものが違います。開発中は「コードを保存したらすぐ反映される」ことが大事で、本番は「小さく、安全に、同じものが確実に動く」ことが大事です。1つのDockerfileで両方を満たそうとすると、どちらにも中途半端な構成になります。
+
+<Marker>開発用はソースをマウントして即反映、本番用はソースをイメージに焼き込む。この違いが構成の出発点です。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Dockerfileを1つ書いたら、それを開発でも本番でも使い回せばいいんじゃないですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  イメージに入れるものが違うんです。開発ではテストツールやnodemonのような開発用パッケージが要るし、コードは手元のファイルを直接見せたい。本番では開発用パッケージを入れず、コードはイメージの中に固定します。
+</SpeechBubble>
+
+## 題材にするアプリ
+
+次のような最小のExpressアプリを使います。
+
+```text
+my-app/
+├── package.json
+├── package-lock.json
+├── src/
+│   └── server.js
+├── Dockerfile
+├── compose.yaml
+└── .dockerignore
+```
+
+```js
+// src/server.js
+const express = require('express');
+
+const app = express();
+const port = process.env.PORT ?? 3000;
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/', (req, res) => {
+  res.send('Hello from container');
+});
+
+app.listen(port, () => {
+  console.log(`listening on ${port}`);
+});
+```
+
+```json
+{
+  "name": "my-app",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
+```
+
+`node --watch` は、ファイルの変更を検知してプロセスを再起動するNode.js組み込みのオプションです。nodemonを入れなくても開発時の自動再起動ができます。
+
+## 開発用の構成 — ソースをbind mountする
+
+開発用では、ソースコードをイメージにコピーするのではなく、**手元のディレクトリをコンテナ内にマウント**します。こうすると、エディタで保存した内容がそのままコンテナから見えます。
+
+```yaml
+# compose.yaml（開発用）
+services:
+  app:
+    image: node:22-slim
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+```
+
+| 設定 | 意味 |
+| ---- | ---- |
+| `image: node:22-slim` | 開発用は自前のDockerfileを作らず、公式イメージをそのまま使う |
+| `command` | 起動時に依存をインストールしてから `npm run dev` を実行する |
+| `.:/app` | 手元のカレントディレクトリをコンテナの `/app` にマウントする |
+| `/app/node_modules` | `node_modules` だけはコンテナ側の領域を使う（後述） |
+
+`docker compose up` で起動すると、`src/server.js` を保存するたびに `node --watch` がプロセスを再起動します。
+
+<Figure src="/images/running_man_color-1.png" alt="走る男性のイラスト" caption="開発用コンテナは、保存してすぐ確認できる速さを優先する" maxWidth="320px" />
+
+### `/app/node_modules` を分ける理由
+
+`.:/app` だけをマウントすると、コンテナ内の `/app/node_modules` は手元の `node_modules` そのものになります。手元がmacOS、コンテナがLinuxの場合、ネイティブモジュール（`bcrypt` や `sharp` など）はOSごとにビルド結果が違うため、macOS向けにビルドされたファイルをLinuxで読み込んで落ちることがあります。
+
+`- /app/node_modules` の行は、パスだけを書いた**匿名ボリューム**です。`/app/node_modules` にだけ別の領域が重なるので、コンテナ内の `npm install` はLinux向けのファイルをそこに作り、手元の `node_modules` とは混ざりません。
+
+<Callout type="note">
+ボリュームとbind mountの違いは[ボリュームとデータ永続化](/books/docker/volumes-and-persistence)で詳しく扱います。ここでは「`node_modules` だけ手元と切り離す書き方がある」と押さえておけば十分です。
+</Callout>
+
+### `docker compose watch` を使う方法もある
+
+bind mountの代わりに、Composeの `develop.watch` でファイルの変更をコンテナへ同期する方法もあります。
+
+```yaml
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: rebuild
+          path: package.json
+```
+
+```bash
+docker compose watch
+```
+
+`sync` は変更されたファイルをコンテナへコピーし、`rebuild` は対象ファイルが変わったときにイメージを作り直します。`package.json` を変えたら依存を入れ直す必要があるため、`rebuild` を指定しています。
+
+## 本番用の構成 — ソースをイメージに入れる
+
+本番用は、Dockerfileでソースと依存をイメージに入れます。[Dockerfile入門](/books/docker/dockerfile-basics)の最小構成から、本番向けに次の点を変えます。
+
+```dockerfile
+FROM node:22-slim
+
+ENV NODE_ENV=production
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY --chown=node:node src ./src
+
+USER node
+EXPOSE 3000
+
+CMD ["node", "src/server.js"]
+```
+
+| 変更点 | 理由 |
+| ------ | ---- |
+| `node:22-slim` | フル版の `node:22` よりOSパッケージが少なく、イメージが小さい |
+| `ENV NODE_ENV=production` | Expressなどのライブラリが本番向けの動作になる |
+| `npm ci --omit=dev` | lock fileどおりに入れ、`devDependencies` は入れない |
+| `COPY --chown=node:node src ./src` | 必要なディレクトリだけをコピーし、所有者を `node` ユーザーにする |
+| `USER node` | rootではなく、公式イメージに用意されている `node` ユーザーで実行する |
+| `CMD ["node", ...]` | `npm start` を経由せず `node` を直接起動する（後述） |
+
+`EXPOSE 3000` は「このコンテナは3000番を使う」という**宣言**で、ポートを公開する効果はありません。ホストからアクセスするには、`docker run -p 3000:3000` や Composeの `ports` が必要です。
+
+### `npm install` ではなく `npm ci`
+
+`npm ci` は `package-lock.json` に書かれたバージョンをそのまま入れ、lock fileと `package.json` が食い違っていればエラーで止まります。`npm install` は条件によってlock fileを書き換えることがあるため、イメージごとに入るバージョンがずれる原因になります。
+
+<Marker>本番イメージでは `npm ci` を使い、ビルドのたびに同じ依存が入るようにします。</Marker>
+
+### `npm start` ではなく `node` を直接起動する
+
+`docker stop` は、コンテナのメインプロセス（PID 1）に `SIGTERM` を送り、既定で10秒待っても終わらなければ `SIGKILL` で強制終了します。`CMD ["npm", "start"]` にすると、PID 1はnpmになり、アプリのNodeプロセスはその子プロセスになります。npmがシグナルをアプリへ渡す動きは環境によって異なり、アプリ側の終了処理が動かないまま強制終了されることがあります。
+
+Node.js公式のDockerイメージのベストプラクティスでも、`CMD ["node", "index.js"]` のように `node` を直接起動する書き方が示されています。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `node` を直接起動すれば、`SIGTERM` は必ずアプリに届くんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+  届きます。ただ、PID 1のプロセスはLinuxの既定のシグナル処理が効かないので、アプリで `process.on('SIGTERM', ...)` を書いていないと何もせずに10秒待たされます。終了処理を書くか、`docker run --init` やComposeの `init: true` で小さなinitプロセスをPID 1に置きます。
+</SpeechBubble>
+
+```js
+// src/server.js の app.listen(...) を次のように書き換える
+const server = app.listen(port, () => {
+  console.log(`listening on ${port}`);
+});
+
+process.on('SIGTERM', () => {
+  server.close(() => process.exit(0));
+});
+```
+
+`server.close()` は新しい接続の受け付けを止め、処理中のリクエストが終わってからコールバックを呼びます。
+
+## 開発用と本番用を並べて比べる
+
+| 観点 | 開発用 | 本番用 |
+| ---- | ------ | ------ |
+| ソースコード | bind mountで手元を見せる | `COPY` でイメージに入れる |
+| 依存のインストール | `npm install`（devDependenciesも入れる） | `npm ci --omit=dev` |
+| 起動コマンド | `npm run dev`（`node --watch`） | `node src/server.js` |
+| 実行ユーザー | 気にしないことが多い | `USER node` |
+| イメージ | 公式イメージをそのまま使う | 自前のDockerfileでビルドする |
+
+<Figure src="/images/gats_suit_man_color.png" alt="ガッツポーズをする男性のイラスト" caption="本番用イメージは、同じものが確実に動くことを優先する" maxWidth="320px" />
+
+## DBと一緒に開発する
+
+実務の開発環境では、アプリと一緒にDBも起動することがほとんどです。[Docker Compose入門](/books/docker/docker-compose-basics)で見たとおり、`depends_on` だけではDBの準備完了まで待ちません。`healthcheck` と `condition: service_healthy` を組み合わせると、DBが接続を受け付けられる状態になってからアプリを起動できます。
+
+```yaml
+services:
+  app:
+    image: node:22-slim
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      DATABASE_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: app_db
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - db-data:/var/lib/mysql
+
+volumes:
+  db-data:
+```
+
+| 設定 | 意味 |
+| ---- | ---- |
+| `healthcheck.test` | コンテナ内で実行する確認コマンド。終了コード0なら正常 |
+| `interval` | 確認を実行する間隔 |
+| `retries` | 何回続けて失敗したら異常（unhealthy）とみなすか |
+| `condition: service_healthy` | `db` が正常（healthy）になってから `app` を起動する |
+
+MySQLへの接続とコネクションプールの書き方は、MySQL本の[Node.jsからMySQLに接続する](/books/mysql/nodejs-mysql2-connection-pool)で扱っています。
+
+## よくあるハマりどころ
+
+### ホストから `localhost:3000` にアクセスできない
+
+コンテナは起動していてログにも `listening on 3000` と出ているのに、ブラウザから繋がらない場合は、アプリが `127.0.0.1` だけで待ち受けていないかを確認します。
+
+```js
+// コンテナの外から届かない
+app.listen(3000, '127.0.0.1');
+
+// コンテナの外から届く（Expressは省略時に全インターフェースで待ち受ける）
+app.listen(3000);
+```
+
+コンテナ内の `127.0.0.1` はコンテナ自身のループバックです。`-p 3000:3000` で転送されてくる通信はコンテナのネットワークインターフェース側に届くため、`127.0.0.1` だけで待ち受けていると受け取れません。Viteなどの開発サーバーは既定で `localhost` だけで待ち受けるため、`--host` オプションで `0.0.0.0` を指定する必要があります。
+
+### `package.json` を変えたのに反映されない
+
+本番用イメージは、ビルドした時点の依存しか入っていません。パッケージを追加したら `docker compose build`（または `docker compose up --build`）でイメージを作り直します。開発用構成でも、匿名ボリュームの `node_modules` には古い依存が残るため、コンテナを作り直して `npm install` をやり直します。
+
+```bash
+docker compose up --build
+```
+
+### `.dockerignore` を書かずに `node_modules` をコピーしてしまう
+
+`COPY . .` を使う場合、`.dockerignore` に `node_modules` がないと手元の `node_modules` がイメージに入ります。macOSでビルドしたネイティブモジュールがLinuxのイメージに混ざり、起動時にエラーになります。本番用のDockerfileでは `COPY . .` を避け、必要なディレクトリだけをコピーすると、この事故は起きにくくなります。
+
+## ちゃんと使うためのポイント
+
+- 開発用はbind mountでソースを見せ、`node --watch` などで自動再起動する
+- `node_modules` は匿名ボリュームで手元と切り離す
+- 本番用は `npm ci --omit=dev` で依存を固定し、`USER node` で実行する
+- `CMD` は `npm start` ではなく `node` を直接起動し、`SIGTERM` の終了処理を書く
+- アプリは `127.0.0.1` ではなく全インターフェースで待ち受ける
+- DBの準備完了を待つには `healthcheck` と `condition: service_healthy` を使う
+
+## 参考リンク
+
+- [Docker and Node.js Best Practices（nodejs/docker-node）](https://github.com/nodejs/docker-node/blob/main/docs/BestPractices.md)
+- [Use Compose Watch（Docker Docs）](https://docs.docker.com/compose/how-tos/file-watch/)
+
+DBのデータや `node_modules` をコンテナの外に置く仕組みは、[ボリュームとデータ永続化](/books/docker/volumes-and-persistence)で整理します。

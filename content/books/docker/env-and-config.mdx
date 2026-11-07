@@ -2,7 +2,266 @@
 title: '環境変数と設定管理 — .envと秘密情報の扱い'
 description: 'Docker Composeのenvironment、env_file、.envの読み込み、秘密情報をイメージに含めない考え方を学びます。'
 order: 8
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+DBの接続先、APIキー、ポート番号のように、環境によって変わる値はコードに直接書かず、**環境変数**で渡します。同じイメージを開発・ステージング・本番で使い回せるのは、環境ごとの違いを環境変数で外から与えているからです。
+
+Dockerでは環境変数を渡す方法が複数あり、`.env` ファイルの扱いが特に誤解されやすいところです。この章では、それぞれの書き方がどの段階で、どこに効くのかを整理します。
+
+<Marker>イメージには環境ごとに変わる値を入れず、起動するときに環境変数で渡します。</Marker>
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `compose.yaml` と同じ場所に `.env` を置いておけば、中身は全部コンテナに渡るんですよね？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  そこが一番多い誤解です。その `.env` はComposeが `compose.yaml` を読むときに使うだけで、コンテナには自動では渡りません。この章で順に見ていきましょう。
+</SpeechBubble>
+
+## `docker run` で環境変数を渡す
+
+`docker run` では `-e` で1つずつ、`--env-file` でファイルからまとめて渡せます。
+
+```bash
+docker run -e PORT=3000 -e DATABASE_HOST=db my-app
+
+docker run --env-file ./app.env my-app
+```
+
+```text
+# app.env
+PORT=3000
+DATABASE_HOST=db
+```
+
+コンテナの中では、Node.jsなら `process.env.PORT` のように読み取れます。渡った値は、起動中のコンテナで確認できます。
+
+```bash
+docker exec my-app env
+```
+
+## Composeで環境変数を渡す2つの書き方
+
+### `environment` — 直接書く
+
+```yaml
+services:
+  app:
+    build: .
+    environment:
+      PORT: 3000
+      DATABASE_HOST: db
+      NODE_ENV: development
+```
+
+### `env_file` — ファイルから読み込む
+
+```yaml
+services:
+  app:
+    build: .
+    env_file:
+      - ./app.env
+```
+
+`env_file` に書いたファイルの中身が、そのままコンテナの環境変数になります。変数が多い場合や、サービスごとに設定をファイルで分けたい場合に使います。
+
+| 書き方 | 向いている場面 |
+| ------ | -------------- |
+| `environment` | 値が少ない。`compose.yaml` を見ただけで設定が分かるようにしたい |
+| `env_file` | 値が多い。秘密情報を `compose.yaml` と別のファイルに分けて、Gitに入れないようにしたい |
+
+## `.env` はComposeファイルの変数展開に使われる
+
+`compose.yaml` と同じディレクトリにある `.env` は、Composeが `compose.yaml` の中の `${変数名}` を**置き換えるため**に自動で読み込みます。コンテナの環境変数として自動で渡されるわけではありません。
+
+```text
+# .env
+MYSQL_VERSION=8.4
+DB_PASSWORD=secret
+```
+
+```yaml
+# compose.yaml
+services:
+  db:
+    image: mysql:${MYSQL_VERSION}
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+```
+
+この例では、`.env` の `MYSQL_VERSION` は `image:` の値を組み立てるのに使われています。`MYSQL_VERSION` という環境変数はコンテナには存在しません。`DB_PASSWORD` も同じで、コンテナに渡っているのは `environment` に書いた `MYSQL_ROOT_PASSWORD` だけです。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    E[".env"] -->|"変数展開"| Y["compose.yaml"]
+    Y -->|"environment"| C["コンテナ"]
+    F["app.env"] -->|"env_file"| C
+`}
+/>
+
+<Marker>`.env` は `compose.yaml` を書き換えるための値、`env_file` と `environment` はコンテナに渡す値です。</Marker>
+
+<Figure src="/images/inspiration_color.png" alt="ひらめきのイラスト" caption=".env と env_file は、効く場所が違う" maxWidth="320px" />
+
+### 変数展開の書き方
+
+| 書き方 | 動作 |
+| ------ | ---- |
+| `${VAR}` | `VAR` の値に置き換える。未定義なら空文字になり、警告が出る |
+| `${VAR:-default}` | `VAR` が未定義または空なら `default` を使う |
+| `${VAR:?メッセージ}` | `VAR` が未定義または空ならエラーで止める |
+
+必須の秘密情報には `${VAR:?...}` を使うと、設定し忘れたまま空のパスワードで起動する事故を防げます。
+
+```yaml
+environment:
+  MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD を .env に設定してください}
+```
+
+### 展開結果を確認する
+
+`docker compose config` は、変数展開を済ませた最終的な設定を表示します。値が想定どおりに入っているかを、起動する前に確認できます。
+
+```bash
+docker compose config
+```
+
+## 同じ変数を複数の場所で指定したとき
+
+同じ名前の環境変数を複数の方法で指定した場合、Composeは次の優先順位で値を決めます（上ほど優先）。
+
+| 優先度 | 指定方法 |
+| ------ | -------- |
+| 1 | `docker compose run -e` で指定した値 |
+| 2 | `environment`（シェルや `.env` の値で展開された結果を含む） |
+| 3 | `env_file` |
+| 4 | Dockerfileの `ENV` |
+
+`environment` と `env_file` の両方に同じ変数がある場合は、`environment` の値が使われます。
+
+## Dockerfileの `ARG` と `ENV`
+
+Dockerfileにも変数を扱う命令が2つあります。
+
+| 命令 | 使えるタイミング | イメージに残るか |
+| ---- | ---------------- | ---------------- |
+| `ARG` | `docker build` 中だけ | 値は環境変数として残らない |
+| `ENV` | build中も、起動したコンテナでも | 残る |
+
+```dockerfile
+FROM node:22-slim
+
+ARG APP_VERSION=dev
+ENV NODE_ENV=production
+ENV APP_VERSION=${APP_VERSION}
+```
+
+```bash
+docker build --build-arg APP_VERSION=1.2.0 -t my-app .
+```
+
+`ARG` はビルド時に `--build-arg` で値を受け取ります。起動後のコンテナでも使いたい値は、上の例のように `ENV` に移します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  じゃあ、APIキーも `ENV` でDockerfileに書いておけば、毎回渡さなくて済みますね。
+</SpeechBubble>
+
+それは避けます。次の節で理由を説明します。
+
+## 秘密情報をイメージに入れない
+
+`ENV` で設定した値は、イメージの設定情報として保存されます。イメージを手に入れた人なら、誰でも次のコマンドで読めます。
+
+```bash
+docker image inspect my-app --format '{{json .Config.Env}}'
+```
+
+`ARG` で渡した値も、それを使った `RUN` 命令の記録として `docker history` に残ることがあります。`COPY . .` で `.env` をイメージに入れてしまった場合も、ファイルとしてそのまま残ります。
+
+イメージはレジストリにpushされ、CI、本番サーバー、場合によっては他のチームにも配られます。イメージに秘密情報が入っていると、配った先すべてに秘密情報を配ったのと同じことになります。
+
+<Marker>パスワードやAPIキーは、`ENV`・`ARG`・`COPY` のどれでもイメージに入れないようにします。</Marker>
+
+<Callout type="warning">
+`.dockerignore` に `.env` を書いておくと、`COPY . .` で誤ってイメージに入れる事故を防げます。`.gitignore` と `.dockerignore` は別のファイルなので、両方に書きます。
+</Callout>
+
+### ビルド中に秘密情報が必要な場合
+
+プライベートなnpmパッケージを入れるために、ビルド中だけトークンが必要になることがあります。このときはビルドシークレットを使います。
+
+```dockerfile
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc npm ci
+```
+
+```bash
+docker build --secret id=npmrc,src=$HOME/.npmrc -t my-app .
+```
+
+`--mount=type=secret` で渡したファイルは、その `RUN` 命令の実行中だけ存在し、イメージのレイヤーには保存されません。
+
+## Composeの `secrets`
+
+起動時に渡す秘密情報は、環境変数の代わりにファイルとして渡す方法もあります。Composeの `secrets` を使うと、指定したファイルがコンテナの `/run/secrets/<名前>` にマウントされます。
+
+```yaml
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+    secrets:
+      - db_root_password
+
+secrets:
+  db_root_password:
+    file: ./secrets/db_root_password.txt
+```
+
+MySQLやPostgreSQLの公式イメージは、`MYSQL_ROOT_PASSWORD_FILE` のように末尾に `_FILE` を付けた変数を受け付け、指定されたファイルからパスワードを読み込みます。環境変数は `docker inspect` やプロセスの情報から見えることがあるため、ファイルで渡すほうが露出する範囲を狭くできます。
+
+<Figure src="/images/toppa_suit_woman_color.png" alt="前に進む女性のイラスト" caption="秘密情報は、イメージの外から起動時に渡す" maxWidth="320px" />
+
+## 本番環境での渡し方
+
+本番では、秘密情報をファイルで手作業配置するより、実行基盤の機能で渡すのが一般的です。AWSのECSであれば、タスク定義の `secrets` でSecrets ManagerやSystems Manager Parameter Storeの値を参照し、コンテナの起動時に環境変数として注入できます。ECSの全体像はAWS SAA本の[コンピューティング選択](/books/aws-saa-c03/compute-selection)で扱っています。
+
+## よくあるハマりどころ
+
+### `.env` を書いたのにアプリで `undefined` になる
+
+`.env` はComposeファイルの変数展開にしか使われません。アプリにも渡したい場合は、`env_file: - .env` と書くか、`environment` で `${VAR}` として明示的に渡します。
+
+```yaml
+services:
+  app:
+    env_file:
+      - .env
+```
+
+### 値を変えたのにコンテナに反映されない
+
+環境変数はコンテナを作成するときに決まります。`docker compose restart` は既存のコンテナを再起動するだけなので、新しい値は反映されません。`docker compose up -d` を実行すると、設定が変わったサービスのコンテナが作り直されます。
+
+### 値の前後に引用符が残る
+
+`env_file` や `.env` で `PASSWORD="abc"` と書いた場合、Composeは引用符を取り除いて `abc` として扱います。一方、`docker run --env-file` は引用符を取り除かず、`"abc"` という値になります。同じファイルを両方で使うときは、引用符を付けない書き方にそろえておくと安全です。
+
+## ちゃんと使うためのポイント
+
+- 環境ごとに変わる値は、イメージに入れず起動時に環境変数で渡す
+- `compose.yaml` 横の `.env` は変数展開用で、コンテナには自動で渡らない
+- コンテナに渡すのは `environment` と `env_file`。両方あれば `environment` が優先
+- `docker compose config` で展開後の設定を確認する
+- 秘密情報を `ENV`・`ARG`・`COPY` でイメージに入れない。`.dockerignore` に `.env` を書く
+- ビルド中の秘密情報は `RUN --mount=type=secret`、起動時はComposeの `secrets` や実行基盤の機能で渡す
+
+## 参考リンク
+
+- [Environment variables precedence（Docker Docs）](https://docs.docker.com/compose/how-tos/environment-variables/envvars-precedence/)
+- [Secrets in Compose（Docker Docs）](https://docs.docker.com/compose/how-tos/use-secrets/)
+- [Build secrets（Docker Docs）](https://docs.docker.com/build/building/secrets/)
+
+作ったイメージに名前とバージョンを付けて配る方法は、[イメージのタグとレジストリ](/books/docker/registry-and-tags)で扱います。
