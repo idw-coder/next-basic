@@ -45,6 +45,19 @@ coverImage: '/images/books/nextjs-cover.png' # 任意。設定すると一覧カ
 `publishedAt` は `YYYY-MM-DD` 形式で指定する。公開日から1か月以内は、トップページと `/books` のカードにNEWバッジが自動表示される。
 `coverImage` を省略した場合は、テーマごとのデフォルトアイコン背景を表示する。
 
+#### 表紙に技術のロゴを使ってよいか
+
+表紙に公式ロゴを載せてよいのは、配布元の規約で利用が認められている技術だけ。規約で禁止されている技術は、`public/images/books/cover-*.svg` のオリジナルイラストを使う。
+
+- **使ってよい（`public/images/books/logos/` に配置済み）**: HTML5、CSS、JavaScript、TypeScript、Git、Tailwind CSS、C#、SQLite
+- **使わない（規約で表紙・ロゴの使用が禁止、または書面許可が必要）**: Node.js、Fastify（OpenJS Foundationが本の表紙への使用を禁止）、Docker、MySQL、AWS、Azure、Playwright、React、Next.js、GitHub・GitHub Actions
+- **規約が見つからないので使わない**: MUI、Zod、Vim
+
+ロゴを使うときは次を守る。
+
+- 配布元のファイルを、色・形・縦横比を変えずにそのまま置く
+- `src/app/about/page.tsx` の `LOGO_CREDITS` にクレジットと商標表記を追加する
+
 ### 章の MDX（`*.mdx`）
 
 ```yaml

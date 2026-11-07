@@ -200,6 +200,12 @@ export default function RootLayout({
                   </ul>
                 </nav>
                 <div className="text-center text-ink-muted text-xs md:text-sm">
+                  <p className="mb-2 text-[11px] leading-5 md:text-xs">
+                    掲載している製品名・ロゴは各権利者の商標です。本サイトは各権利者と提携しておらず、承認も受けていません。
+                    <Link href="/about#trademarks" className="ml-1 underline hover:text-brand-blue">
+                      ロゴの出典
+                    </Link>
+                  </p>
                   <p>&copy; 2026 ウェブエンジニア問題集. All rights reserved.</p>
                 </div>
               </div>

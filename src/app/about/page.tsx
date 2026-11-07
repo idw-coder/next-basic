@@ -86,6 +86,52 @@ const POLICIES = [
   },
 ];
 
+// 教科書の表紙に載せているロゴ。各配布元の規約に従い、色や形は変えずにそのまま使う
+const LOGO_CREDITS = [
+  {
+    name: 'HTML5',
+    notice: 'HTML5 Logo by W3C. Licensed under CC BY 3.0.',
+    href: 'https://www.w3.org/html/logo/',
+  },
+  {
+    name: 'CSS',
+    notice: 'CSS logo by the CSS-Next Community Group. Released under CC0 1.0.',
+    href: 'https://github.com/CSS-Next/logo.css',
+  },
+  {
+    name: 'JavaScript',
+    notice:
+      'JS logo, Copyright (c) 2011 Christopher Williams. Licensed under the MIT License. JavaScript is a trademark of Oracle and/or its affiliates.',
+    href: 'https://github.com/voodootikigod/logo.js',
+  },
+  {
+    name: 'TypeScript',
+    notice: 'TypeScript and the TypeScript logo are trademarks of Microsoft Corporation.',
+    href: 'https://www.typescriptlang.org/branding/',
+  },
+  {
+    name: 'Git',
+    notice:
+      'Git Logo by Jason Long is licensed under CC BY 3.0. Git and the Git logo are either registered trademarks or trademarks of Software Freedom Conservancy, Inc., corporate home of the Git Project, in the United States and/or other countries.',
+    href: 'https://git-scm.com/community/logos',
+  },
+  {
+    name: 'Tailwind CSS',
+    notice: 'The Tailwind name and logos are trademarks of Tailwind Labs Inc.',
+    href: 'https://tailwindcss.com/brand',
+  },
+  {
+    name: 'C#',
+    notice: 'C# language icon from the .NET brand repository. Copyright the .NET authors.',
+    href: 'https://github.com/dotnet/brand',
+  },
+  {
+    name: 'SQLite',
+    notice: 'SQLite logo from sqlite.org. SQLite is a trademark of its respective owner.',
+    href: 'https://www.sqlite.org/',
+  },
+];
+
 export default function AboutPage() {
   const books = getAllBooks();
   const publicChapterCount = books.reduce(
@@ -261,6 +307,36 @@ export default function AboutPage() {
                 技術構成を見る
               </Link>
             </div>
+          </div>
+        </section>
+
+        <section id="trademarks" className="mb-12 scroll-mt-24 md:mb-16">
+          <SectionHeading center={false} className="mb-5" subtitle="教科書の表紙に使っているロゴの出典">
+            ロゴと商標について
+          </SectionHeading>
+          <div className="rounded-2xl border border-cream-line bg-white/92 p-5 text-sm leading-7 text-ink-muted shadow-[0_14px_40px_rgba(47,48,47,0.06)] md:p-6">
+            <p className="mb-4">
+              本サイトに掲載している製品名・技術名・ロゴは、各権利者の商標または登録商標です。
+              本サイトは個人が運営する非公式の学習サイトであり、各権利者と提携しておらず、承認や推奨も受けていません。
+              一部の教科書の表紙では、配布元が利用を認めているロゴを改変せずに使用しています。
+            </p>
+            <ul className="space-y-2.5 text-xs leading-6 md:text-[13px]">
+              {LOGO_CREDITS.map(({ name, notice, href }) => (
+                <li key={name}>
+                  <span className="font-bold text-ink">{name}</span>
+                  <span className="mx-1.5 text-ink/30">—</span>
+                  {notice}{' '}
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-brand-blue hover:underline"
+                  >
+                    出典 ↗
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
