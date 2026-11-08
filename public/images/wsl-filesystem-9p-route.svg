@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="490" viewBox="0 0 800 490" role="img" aria-labelledby="title desc" font-family="'Hiragino Sans','Noto Sans JP','Yu Gothic',sans-serif">
+  <title id="title">同じ git status がファイルの場所によって通る経路</title>
+  <desc id="desc">Linux側の ~/projects/my-app で git status を実行すると、git、Linuxカーネル、ext4 の順に仮想マシンの中だけで処理が完結する。Windows側の /mnt/c/Users/taro/projects/my-app で実行すると、git、Linuxカーネル、9Pクライアントを経て仮想マシンの境界をまたぎ、Windows側の9Pサーバー、NTFS まで要求が届き、結果が同じ経路で戻る。git status は全ファイルを1つずつ問い合わせるため、往復の回数はファイル数に比例する。</desc>
+  <defs>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker>
+  </defs>
+
+  <rect x="1" y="1" width="798" height="488" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <text x="40" y="44" font-size="20" font-weight="700" fill="#0f172a">同じ <tspan font-family="Menlo,Consolas,monospace">git status</tspan> でも、ファイルの場所で経路が変わる</text>
+
+  <!-- Row A -->
+  <text x="40" y="88" font-size="15" font-weight="700" fill="#c2410c">A. <tspan font-family="Menlo,Consolas,monospace">~/projects/my-app</tspan> で実行（Linux側のファイル）</text>
+  <rect x="30" y="100" width="500" height="76" rx="10" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+  <rect x="45" y="110" width="110" height="56" rx="8" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="100" y="144" font-size="15" fill="#0f172a" text-anchor="middle" font-family="Menlo,Consolas,monospace">git</text>
+  <line x1="157" y1="138" x2="196" y2="138" stroke="#475569" stroke-width="2" marker-end="url(#ag)"/>
+  <rect x="200" y="110" width="150" height="56" rx="8" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="275" y="144" font-size="14" fill="#0f172a" text-anchor="middle">Linuxカーネル</text>
+  <line x1="352" y1="138" x2="391" y2="138" stroke="#475569" stroke-width="2" marker-end="url(#ag)"/>
+  <rect x="395" y="110" width="120" height="56" rx="8" fill="#ffedd5" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="455" y="144" font-size="15" fill="#0f172a" text-anchor="middle">ext4</text>
+  <text x="550" y="134" font-size="15" font-weight="700" fill="#059669">仮想マシンの中で</text>
+  <text x="550" y="156" font-size="15" font-weight="700" fill="#059669">完結する</text>
+
+  <!-- Row B -->
+  <text x="40" y="218" font-size="15" font-weight="700" fill="#1d4ed8">B. <tspan font-family="Menlo,Consolas,monospace">/mnt/c/Users/taro/projects/my-app</tspan> で実行（Windows側のファイル）</text>
+  <rect x="30" y="232" width="415" height="120" rx="10" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+  <text x="42" y="252" font-size="12" fill="#c2410c">仮想マシンの中</text>
+  <rect x="455" y="232" width="315" height="120" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="467" y="252" font-size="12" fill="#1d4ed8">Windows</text>
+  <line x1="450" y1="226" x2="450" y2="362" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="450" y="380" font-size="13" font-weight="700" fill="#dc2626" text-anchor="middle">仮想マシンの境界</text>
+
+  <rect x="42" y="266" width="80" height="56" rx="8" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="82" y="300" font-size="15" fill="#0f172a" text-anchor="middle" font-family="Menlo,Consolas,monospace">git</text>
+  <line x1="124" y1="294" x2="148" y2="294" stroke="#475569" stroke-width="2" marker-end="url(#ag)"/>
+  <rect x="152" y="266" width="125" height="56" rx="8" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="214" y="300" font-size="13.5" fill="#0f172a" text-anchor="middle">Linuxカーネル</text>
+  <line x1="279" y1="294" x2="303" y2="294" stroke="#475569" stroke-width="2" marker-end="url(#ag)"/>
+  <rect x="307" y="266" width="120" height="56" rx="8" fill="#ffffff" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="367" y="300" font-size="13.5" fill="#0f172a" text-anchor="middle">9Pクライアント</text>
+
+  <line x1="429" y1="284" x2="471" y2="284" stroke="#dc2626" stroke-width="2.5" marker-end="url(#ar)"/>
+  <line x1="473" y1="306" x2="431" y2="306" stroke="#dc2626" stroke-width="2.5" marker-end="url(#ar)"/>
+
+  <rect x="475" y="266" width="125" height="56" rx="8" fill="#ffffff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="537" y="300" font-size="13.5" fill="#0f172a" text-anchor="middle">9Pサーバー</text>
+  <line x1="602" y1="294" x2="626" y2="294" stroke="#475569" stroke-width="2" marker-end="url(#ag)"/>
+  <rect x="630" y="266" width="125" height="56" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="692" y="300" font-size="14" fill="#0f172a" text-anchor="middle">NTFS</text>
+
+  <!-- note -->
+  <rect x="30" y="400" width="740" height="70" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+  <text x="400" y="428" font-size="14" fill="#0f172a" text-anchor="middle"><tspan font-family="Menlo,Consolas,monospace">git status</tspan> は、管理している全ファイルの更新日時などを1つずつ問い合わせる。</text>
+  <text x="400" y="453" font-size="14" fill="#0f172a" text-anchor="middle">Bでは問い合わせ1回ごとに境界をまたいで往復するため、ファイル数が多いほど差が開く。</text>
+</svg>

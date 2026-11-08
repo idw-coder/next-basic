@@ -4,7 +4,8 @@ description: 'WSLからWindowsのファイルを見る /mnt/c と、Windowsか�
 order: 4
 ---
 
-WSLを使うと、1台のPCの中にWindowsのファイルとLinuxのファイルが同時に存在します。どちらのOSからも相手のファイルを読み書きできますが、**どちら側に置いたファイルを、どちらのOSのツールで操作するか**によって、速さが大きく変わります。
+WSLを使うと、1台のPCの中にWindowsのファイルとLinuxのファイルが同時に存在します。
+どちらのOSからも相手のファイルを読み書きできますが、**どちら側に置いたファイルを、どちらのOSのツールで操作するか**によって、速さが大きく変わります。
 
 この章では、2つのファイルシステムの見え方と、プロジェクトをどこに置くべきかを整理します。
 
@@ -15,8 +16,33 @@ WSLを使うと、1台のPCの中にWindowsのファイルとLinuxのファイ�
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-  使うことはできます。ただ、WSLの中から `npm install` やGitを実行すると、Linux側に置いた場合より何倍も遅くなります。WSLで開発するなら、プロジェクトはLinux側のホームディレクトリに移しましょう。
+  使うことはできます。ただ、WSLの中から `npm install` やGitを実行すると、Linux側に置いた場合より大幅に遅くなります。WSLで開発するなら、プロジェクトはLinux側のホームディレクトリに移しましょう。
 </SpeechBubble>
+
+## ターミナルの中で動いているのはどちらのOSか
+
+ファイルの置き場所の話に入る前に、「どのターミナルでコマンドを打っているか」をはっきりさせておきます。ここを曖昧にしたままだと、`/mnt/c` の意味がつかめません。
+
+Windows Terminalは、Windowsのアプリです。Windows Terminal自体はコマンドを実行せず、タブの中で動いている**シェル**（コマンドを受け取って実行するプログラム）の入出力を表示しているだけです。タブごとに、どのシェルを動かすかが違います。
+
+| Windows Terminalのタブ | 動いているシェル | シェルが動いている場所 | プロンプトの例 |
+| ---------------------- | ---------------- | ---------------------- | -------------- |
+| PowerShell | `pwsh.exe` / `powershell.exe` | Windows | `PS C:\Users\taro>` |
+| コマンドプロンプト | `cmd.exe` | Windows | `C:\Users\taro>` |
+| Ubuntu | `bash` | WSL2の仮想マシンの中のLinux | `taro@PC:~$` |
+
+この章で「WSLのターミナル」「Linuxのターミナル」と書くときは、**Ubuntuのタブで動いているbash**を指します。PowerShellで `wsl` と入力して切り替えた場合も、そこから先はbashがLinuxの中で動いています。VS CodeをWSL拡張機能でつないだときの統合ターミナルも同じで、bashはLinuxの中で動いています。
+
+迷ったら、次のコマンドで確認できます。
+
+```bash
+uname -s
+# Linux   ← Linuxの中で動いているシェル
+```
+
+PowerShellで `uname` を実行すると「コマンドが見つからない」というエラーになります。プロンプトが `PS` で始まるか、`ユーザー名@PC名:` の形かを見ても判別できます。
+
+<Marker>どのOSのファイルにアクセスするかは、ターミナルのウィンドウではなく、そのタブで動いているシェルがWindowsとLinuxのどちらで動いているかで決まります。</Marker>
 
 ## 2つのファイルシステム
 
@@ -27,15 +53,20 @@ WSLを使うと、1台のPCの中にWindowsのファイルとLinuxのファイ�
 
 Linux側のファイルは、[WSLとは何か](/books/wsl/what-is-wsl)で見たとおり、仮想ディスク `ext4.vhdx` の中にext4ファイルシステムとして保存されています。Windows側のファイルは、通常どおりNTFSのドライブに保存されています。
 
-<MermaidDiagram
-  chart={`
-flowchart LR
-    L["Linuxのコマンド"] -->|"速い"| E["Linux側 /home"]
-    L -->|"遅い（/mnt/c）"| N["Windows側 C:"]
-    W["Windowsのアプリ"] -->|"速い"| N
-    W -->|"遅い（wsl.localhost）"| E
-`}
+<Figure
+  src="/images/wsl-filesystem-structure.svg"
+  alt="WindowsのプロセスはNTFSを、Linuxのプロセスはext4を直接読み書きし、相手側のファイルには9Pで仮想マシンの境界をまたいでアクセスすることを示す図"
+  maxWidth="760px"
+  maxHeight="none"
+  caption="同じ側のファイルは直接、相手側のファイルは9P経由で読み書きする"
 />
+
+図の中の要素を順に見ていきます。
+
+- **Windowsのプロセス**（エクスプローラー、PowerShellなど）は、WindowsのカーネルからNTFSのCドライブを直接読み書きします
+- **Linuxのプロセス**（bash、git、nodeなど）は、WSL2の仮想マシンの中のLinuxカーネルから、ext4を直接読み書きします
+- ext4の中身は、Cドライブ上の `ext4.vhdx` という1つのファイルに保存されています。ただしWindowsからは「大きなファイルが1つある」としか見えず、中の `/home/taro/projects` などを直接開くことはできません
+- 相手側のファイルを読むときだけ、**9P**というファイル共有用のプロトコルで仮想マシンの境界をまたぎます。Linuxからは `/mnt/c`、Windowsからは `\\wsl.localhost` というパスがこの経路の入口です
 
 ## LinuxからWindowsのファイルを見る — `/mnt/c`
 
@@ -66,9 +97,57 @@ explorer.exe .
 
 <Figure src="/images/walking_woman_color.png" alt="歩く女性のイラスト" caption="どちらのOSからも相手のファイルは見えるが、境界をまたぐと遅くなる" maxWidth="320px" />
 
+## 同じコマンドを `~` と `/mnt/c` で実行するとどうなるか
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  Ubuntuのタブのbashで `cd /mnt/c/Users/taro/projects/my-app` してから `git status` するのと、`cd ~/projects/my-app` してから `git status` するのとでは、やっていることは同じなんですか？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  どちらも、Linuxの中で動くgitが、Linuxのファイル操作でファイルを読んでいます。コマンドの書き方も、表示される結果も基本的に同じです。違うのは、ファイルを読む要求が仮想マシンの中で終わるか、Windowsまで届くかです。その差が速度に出ます。
+</SpeechBubble>
+
+`/mnt/c` の下も、Linuxから見れば普通のディレクトリです。`ls`、`cat`、`git`、`npm` はどちらの場所でも同じように動き、同じファイルを読み書きします。ただし、結果まで完全に同じになるわけではなく、次の点が違います。
+
+| 比べる点 | `~/projects/my-app`（Linux側） | `/mnt/c/.../my-app`（Windows側） |
+| -------- | ------------------------------ | -------------------------------- |
+| コマンドの書き方 | 同じ | 同じ |
+| 読み書きの速度 | 速い | ファイル数が多い処理ほど遅い |
+| ファイル名の大文字・小文字 | 区別する | 既定では区別しない |
+| `chmod` で付けた実行権限 | 保存される | 既定の設定では保存されない |
+| ファイル変更の通知（inotify） | 届く | Windows側での変更は届かないことがある |
+
+大文字・小文字とファイル変更の通知については、この章の後半で扱います。
+
+### 速度の差を自分で測る
+
+`time` を前に付けると、コマンドにかかった時間が表示されます。同じリポジトリをLinux側とWindows側の両方に置いて、`git status` の時間を比べてみてください。
+
+```bash
+cd ~/projects/my-app
+time git status
+
+cd /mnt/c/Users/taro/projects/my-app
+time git status
+```
+
+出力の最後に表示される `real` が、実行開始から終了までの時間です。ファイル数の多いリポジトリほど、2つの `real` の差が大きくなります。
+
 ## なぜ境界をまたぐと遅いのか
 
-WSL2では、Linuxは仮想マシンの中で動いています。Linuxから `/mnt/c` のファイルを読むと、仮想マシンの外にあるWindowsのファイルを、9Pというネットワーク向けのファイル共有プロトコルを経由して読み書きします。1回のアクセスごとに仮想マシンとWindowsの間で通信が発生するため、ファイルの数が多いほど時間がかかります。
+WSL2では、Linuxは仮想マシンの中で動いています。Linuxから `/mnt/c` のファイルを読むと、仮想マシンの外にあるWindowsのファイルを、9Pというファイル共有用のプロトコルを経由して読み書きします。1回のアクセスごとに仮想マシンとWindowsの間で通信が発生するため、ファイルの数が多いほど時間がかかります。
+
+<Figure
+  src="/images/wsl-filesystem-9p-route.svg"
+  alt="Linux側のファイルではgit、Linuxカーネル、ext4の順に仮想マシン内で完結し、/mnt/cのファイルでは9Pクライアントから仮想マシンの境界をまたいでWindowsの9PサーバーとNTFSまで往復することを示す図"
+  maxWidth="760px"
+  maxHeight="none"
+  caption="/mnt/cの下では、ファイル操作のたびに仮想マシンの境界を往復する"
+/>
+
+Aの経路では、gitの要求はLinuxカーネルがext4から直接読んで返します。Bの経路では、Linuxカーネルの中の9Pクライアントが要求を9Pのメッセージに変換し、Windows側で動いている9Pサーバーへ送ります。9PサーバーがNTFSからファイルの情報を読み、同じ経路で結果を返します。
+
+逆向きも同じ仕組みです。PowerShellやエクスプローラーで `\\wsl.localhost\Ubuntu\...` を開くと、今度はLinux側で動く9Pサーバーに要求が送られます。そのため、Windowsのツールで大量のLinux側ファイルを扱う処理も遅くなります。
 
 | 処理 | ファイルへのアクセス | `/mnt/c` の下での影響 |
 | ---- | -------------------- | --------------------- |
@@ -89,7 +168,8 @@ Linux側のツールがファイルの変更を検知するときは、Linuxカ�
   でも、Linux側に置いたらVS Codeやエクスプローラーから開くのが遅くなるんじゃないですか？
 </SpeechBubble>
 
-エクスプローラーで開くのは確かにWindowsからのアクセスになります。ただ、VS CodeにはWSL拡張機能があり、ファイルの読み書きやGitの実行をLinux側で行うため、Linux側に置いたプロジェクトでも速く動きます。この使い方は[VS CodeとGitをWSLで使う](/books/wsl/vscode-and-git)で扱います。
+エクスプローラーで開くのは確かにWindowsからのアクセスになります。
+ただ、VS CodeにはWSL拡張機能があり、ファイルの読み書きやGitの実行をLinux側で行うため、Linux側に置いたプロジェクトでも速く動きます。この使い方は[VS CodeとGitをWSLで使う](/books/wsl/vscode-and-git)で扱います。
 
 | ファイル | 置き場所 |
 | -------- | -------- |
