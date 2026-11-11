@@ -159,7 +159,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Turso',
   ],
 
-  'integration-and-e2e-testing': ['E2E', '統合テスト', 'モック', 'CI'],
+  'integration-and-e2e-testing': ['E2E', '統合テスト', 'Storybook', 'モック', 'CI'],
 
   'system-design': ['要件定義', 'DB設計', 'API設計', '認証', 'エラー設計'],
 
@@ -426,12 +426,12 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'Route Handler',
     'Server Actions',
     'metadata',
+    'proxy.ts',
     'middleware',
+    'NextResponse',
     'layout',
     'loading',
-    'error',
     'fetch',
-    'cache',
     'revalidate',
     '環境変数',
   ],

@@ -1,6 +1,6 @@
 ---
 title: 'コンポーネント結合テスト — UIパーツを組み合わせて検証する'
-description: 'Testing Libraryを使ったコンポーネント結合テストの書き方、ユーザー操作のシミュレーション、MSWによるAPIモックを整理します。'
+description: 'StorybookによるUI状態の切り出しと、Testing Libraryを使ったコンポーネント結合テスト、MSWによるAPIモックを整理します。'
 order: 3
 ---
 
@@ -35,6 +35,45 @@ const button = screen.getByRole('button', { name: '送信' });
 CSSクラス名やコンポーネントの内部構造は頻繁に変わります。テストがそれに依存していると、機能は壊れていないのにテストだけ壊れる — という無駄な作業が発生します。ユーザーに見える情報（テキスト、ラベル、ロール）に基づくテストは、リファクタリング耐性が高くなります。
 
 </Callout>
+
+---
+
+## StorybookでUIの状態を切り出す
+
+Storybookは、UIコンポーネントやページをアプリケーション全体から切り離し、ブラウザ上で開発・確認・テストするためのフロントエンド開発ツールです。コンポーネントへ渡すpropsや周辺の状態を固定した表示例を **story（ストーリー）** と呼びます。
+
+たとえばボタンなら、通常・無効・処理中などの状態を別々のstoryとして保存できます。
+
+```tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from './Button';
+
+const meta = {
+  component: Button,
+} satisfies Meta<typeof Button>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Primary: Story = {
+  args: { children: '保存' },
+};
+
+export const Disabled: Story = {
+  args: { children: '保存', disabled: true },
+};
+```
+
+StorybookとTesting Libraryは、次の役割を中心に使い分けます。
+
+| ツール | 中心となる役割 | 適した確認 |
+|---|---|---|
+| Storybook | UIの状態をstoryとして保存し、単独で表示・共有する | 通常・ローディング・空・エラーなどの表示状態 |
+| Testing Library | ユーザー視点でコンポーネントを操作し、結果を自動検証する | 入力・クリック・表示更新などの振る舞い |
+
+どちらか一方だけを選ぶ必要はありません。Storybookの `play` 関数へユーザー操作と検証内容を書けば、storyを操作テストとして実行できます。Storybookで表示状態を揃え、Testing Libraryの考え方で操作後の振る舞いを検証すると、同じUIの開発・確認・テストをつなげられます。
+
+storyの仕組みと作成方法は、[Storybook公式ドキュメント「What's a story?」](https://storybook.js.org/docs/get-started/whats-a-story)で確認できます。
 
 ---
 
@@ -248,6 +287,7 @@ describe('UserList', () => {
 ## まとめ
 
 - <Marker>コンポーネント結合テストは **複数のUIパーツの連携** を検証する</Marker>
+- Storybookは **UIの状態をstoryとして保存** し、単独で表示・共有・テストできる
 - Testing Libraryは **ユーザー視点のセレクタ**（ラベル、ロール、テキスト）を使う
 - **MSW** でAPIレスポンスをモックし、ネットワーク越しの連携を再現する
 - 非同期の待機は `findBy` / `waitFor` を使い、`setTimeout` は避ける
