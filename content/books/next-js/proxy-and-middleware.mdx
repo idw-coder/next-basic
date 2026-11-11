@@ -109,11 +109,77 @@ export function proxy(request: NextRequest) {
 
 ---
 
+<a id="execution-order"></a>
+
+## リクエストが処理される順番 — Proxyはどこで実行されるか
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+  `proxy.ts` がポートをlistenして、全部のリクエストを最初に受け取っているの？
+</SpeechBubble>
+
+ポートをlistenしているのは `proxy.ts` ではなく、**Next.jsのHTTPサーバー**です。`next dev` や `next start` を実行すると、Node.jsのプロセスがポート（デフォルトは3000）をlistenします。`proxy.ts` に書いた `proxy()` は、そのサーバーがリクエストを受け取るたびに呼び出す関数です。
+
+```txt
+ブラウザ
+  ↓ HTTPリクエスト
+Next.jsのHTTPサーバー（ポート3000をlisten）
+  ↓ リクエストごとに proxy(request) を呼ぶ
+proxy.ts
+  ↓ NextResponse.next() が返ったら先へ進む
+page.tsx / route.ts / 静的ファイル
+```
+
+また、`proxy()` はサーバーの処理の中で一番最初に実行されるわけではありません。Next.js公式ドキュメントは、1つのリクエストに対する実行順を次のように定めています。
+
+| 順番 | 実行されるもの                                                          |
+| ---- | ----------------------------------------------------------------------- |
+| 1    | `next.config.js` の `headers`                                           |
+| 2    | `next.config.js` の `redirects`                                         |
+| 3    | **Proxy**                                                               |
+| 4    | `next.config.js` の `rewrites`（`beforeFiles`）                         |
+| 5    | ファイルシステムのルート（`public/`、`_next/static/`、`app/` など）     |
+| 6    | `next.config.js` の `rewrites`（`afterFiles`）                          |
+| 7    | 動的ルート（`/blog/[slug]` など）                                       |
+| 8    | `next.config.js` の `rewrites`（`fallback`）                            |
+
+<MermaidDiagram
+  id="next-proxy-execution-order"
+  chart={`
+flowchart TB
+    A["HTTPサーバーが受信"] --> B["config の headers"]
+    B --> C["config の redirects"]
+    C --> D["proxy.ts"]
+    D --> E["config の rewrites"]
+    E --> F["public や _next/static"]
+    F --> G["app のページと route.ts"]
+`}
+/>
+
+この順番から、次の2点が分かります。
+
+- **`next.config.js` の `redirects` に一致したリクエストは、Proxyに届きません。** 3番目のProxyより先に、2番目でリダイレクトのレスポンスが返るためです
+- <Marker>Proxyは、`public/` や `_next/static/` のファイルを返す処理（5番目）より前に実行されます。</Marker> つまり、ページだけでなくCSS・JavaScript・画像へのリクエストでも `proxy()` が呼ばれます
+
+2点目は、次の節で扱う `matcher` が必要になる理由です。
+
+<Callout type="note" title="デプロイ先によって実行場所は変わる">
+  `next start` で自分のサーバーに置く場合、Proxyはアプリ本体と同じNode.jsプロセスの中で実行されます。ホスティングサービスにデプロイした場合にProxyがどこで実行されるかは、サービスごとに異なります。デプロイ先の公式ドキュメントで確認してください。
+</Callout>
+
+---
+
 <a id="matcher"></a>
 
 ## `matcher` で対象URLを絞る
 
-Proxyは入口の処理なので、対象URLを絞らないと余計なリクエストでも実行されます。実務では `config.matcher` で対象を明示するのが基本です。
+<Marker>`matcher` を書かない場合、Proxyはすべてのリクエストで実行されます。</Marker> 公式ドキュメントには、対象に含まれるものとして次が挙げられています。
+
+- ページとRoute Handler
+- ビルドされたJavaScript・CSS（`_next/static`）
+- 画像最適化のリクエスト（`_next/image`）
+- `public/` フォルダのファイル
+
+`matcher` なしで「Cookieがなければ `/login` へリダイレクト」と書くと、ログインページが読み込むCSSやJavaScriptのリクエストまでリダイレクトされ、画面が崩れます。そのため、実務では `config.matcher` で対象を明示するのが基本です。
 
 ```ts
 // src/proxy.ts
@@ -135,6 +201,30 @@ export const config = {
   最初からサイト全体を対象にするより、`/dashboard/:path*` や `/admin/:path*`
   のように守りたい範囲を絞る方が安全です。対象が広いほど、画像、静的ファイル、API、プリフェッチなども考慮する必要が出ます。
 </Callout>
+
+### サイト全体を対象にして、静的ファイルだけ除外する
+
+ほぼ全ページを対象にしたい場合は、「除外するパス」を正規表現の否定先読み `(?!...)` で指定します。
+
+```ts
+export const config = {
+  matcher: [
+    // api、_next/static、_next/image、.png で終わるパス以外すべて
+    '/((?!api|_next/static|_next/image|.*\\.png$).*)',
+  ],
+};
+```
+
+`matcher` に書ける値をまとめます。
+
+| 書き方           | 例                                        | 対象                               |
+| ---------------- | ----------------------------------------- | ---------------------------------- |
+| 文字列1つ        | `'/about'`                                | `/about` だけ                      |
+| 文字列の配列     | `['/about', '/contact']`                  | どれかに一致したパス               |
+| パスパターン     | `'/dashboard/:path*'`                     | `/dashboard` とその配下すべて      |
+| 正規表現         | `'/((?!api\|_next/static).*)'`            | 正規表現に一致したパス             |
+
+`:path*` の `*` は「0個以上のパス区切り」を表します。`/dashboard/:path*` は `/dashboard`、`/dashboard/a`、`/dashboard/a/b` のすべてに一致します。
 
 ---
 
@@ -248,6 +338,137 @@ export function proxy(request: NextRequest) {
 ```
 
 `NextResponse.next({ request: { headers } })` は、後続のページやRoute Handlerに渡すリクエストヘッダーを変更します。一方で、クライアントに返すレスポンスヘッダーを設定したい場合は、`const response = NextResponse.next()` を作ってから `response.headers.set()` します。
+
+```ts
+export function proxy(request: NextRequest) {
+  const response = NextResponse.next();
+  response.headers.set('x-frame-options', 'DENY');
+  return response;
+}
+```
+
+### 表示するURLを変えずに別のページを返す（rewrite）
+
+`NextResponse.rewrite()` は、ブラウザのアドレスバーのURLを変えずに、別のパスの内容を返します。`redirect()` との違いは、ブラウザに新しいURLへの再リクエストをさせるかどうかです。
+
+```ts
+export function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === '/about') {
+    // ブラウザのURLは /about のまま、/about-2 の内容を返す
+    return NextResponse.rewrite(new URL('/about-2', request.url));
+  }
+
+  return NextResponse.next();
+}
+```
+
+| メソッド     | ブラウザに返るもの                         | アドレスバーのURL | リクエスト回数 |
+| ------------ | ------------------------------------------ | ----------------- | -------------- |
+| `redirect()` | ステータス307と `Location` ヘッダー        | 新しいURLに変わる | 2回            |
+| `rewrite()`  | 書き換え先のページの内容（ステータス200）  | 変わらない        | 1回            |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+  URLを変えたいなら `redirect()`、URLはそのままで中身だけ差し替えたいなら `rewrite()` だよ。
+</SpeechBubble>
+
+### Cookieを書き込む・削除する
+
+リクエストのCookieは `request.cookies` で読み、レスポンスのCookieは `response.cookies` で書きます。`response.cookies.set()` を呼ぶと、レスポンスに `Set-Cookie` ヘッダーが付きます。
+
+```ts
+export function proxy(request: NextRequest) {
+  const response = NextResponse.next();
+
+  // Set-Cookie: theme=dark; Path=/; HttpOnly をレスポンスに付ける
+  response.cookies.set('theme', 'dark', { path: '/', httpOnly: true });
+
+  // ブラウザ側の old-token を削除する
+  response.cookies.delete('old-token');
+
+  return response;
+}
+```
+
+### ページに進ませず、ProxyからJSONを返す
+
+`NextResponse.next()` を返さずに `NextResponse.json()` を返すと、後続の `route.ts` は実行されず、そのJSONがそのままレスポンスになります。APIへの未認証リクエストを401で止める例です。
+
+```ts
+export function proxy(request: NextRequest) {
+  const session = request.cookies.get('session')?.value;
+
+  if (!session) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: '/api/:path*',
+};
+```
+
+ページへのアクセスは `redirect()` で `/login` へ送り、APIへのアクセスは `json()` で401を返す、という使い分けになります。`fetch` で呼ばれるAPIにリダイレクトを返すと、呼び出し側はログインページのHTMLを受け取ってしまうためです。
+
+---
+
+<a id="api-reference"></a>
+
+## NextRequest・NextResponseの一覧
+
+ここまでに出てきたものを含め、Proxyでよく使うプロパティとメソッドをまとめます。どちらも `next/server` からimportします。
+
+<Figure
+  src="/images/readingbook_woman_color.png"
+  alt="リファレンスを確認しているイメージ"
+  maxWidth="200px"
+/>
+
+### NextRequest — リクエストを読む
+
+`NextRequest` は、Web標準の `Request` にNext.js用のプロパティを足したクラスです。`request.method` や `request.headers` など、`Request` のプロパティはそのまま使えます。
+
+| プロパティ・メソッド            | 戻り値                             | 内容                                         |
+| ------------------------------- | ---------------------------------- | -------------------------------------------- |
+| `request.nextUrl.pathname`      | 文字列                             | パス。`/dashboard/settings` など             |
+| `request.nextUrl.searchParams`  | `URLSearchParams`                  | クエリ文字列                                 |
+| `request.url`                   | 文字列                             | オリジンを含むURL全体                        |
+| `request.method`                | 文字列                             | `GET`、`POST` など                           |
+| `request.headers.get(name)`     | 文字列 / `null`                    | リクエストヘッダーの値                       |
+| `request.cookies.get(name)`     | `{ name, value }` / `undefined`    | Cookieを1つ取得する                          |
+| `request.cookies.getAll()`      | `{ name, value }` の配列           | Cookieをすべて取得する                       |
+| `request.cookies.has(name)`     | `boolean`                          | Cookieがあるかどうか                         |
+
+`request.cookies.get('session')` の戻り値はオブジェクトなので、値を取り出すには `?.value` を付けます。
+
+### NextResponse — レスポンスを作る
+
+`NextResponse` は、Web標準の `Response` にNext.js用のメソッドを足したクラスです。次の4つはすべて静的メソッドで、`NextResponse` のインスタンスを返します。
+
+| メソッド                             | 引数                                   | 動作                                                   |
+| ------------------------------------ | -------------------------------------- | ------------------------------------------------------ |
+| `NextResponse.next(init?)`           | `init.request.headers` で転送ヘッダー  | 後続の処理（ページ・Route Handler）へ進める            |
+| `NextResponse.redirect(url, init?)`  | `url` は絶対URL。`init` はステータス   | 別のURLへリダイレクトする。デフォルトのステータスは307 |
+| `NextResponse.rewrite(url, init?)`   | `url` は絶対URL                        | ブラウザのURLを変えずに、別のパスの内容を返す          |
+| `NextResponse.json(body, init?)`     | `body` はJSONにする値。`init.status`   | JSONのレスポンスを返す                                 |
+
+`redirect()` と `rewrite()` の `url` には、`'/login'` のような相対パスではなく絶対URLを渡します。そのため `new URL('/login', request.url)` と書いて、現在のオリジンを付けたURLを作ります。
+
+作ったレスポンスに対しては、次のメソッドでヘッダーとCookieを操作できます。
+
+| メソッド                                       | 戻り値                           | 動作                                           |
+| ---------------------------------------------- | -------------------------------- | ---------------------------------------------- |
+| `response.headers.set(name, value)`            | なし                             | レスポンスヘッダーを設定する                   |
+| `response.cookies.set(name, value, options?)`  | `response.cookies` 自身          | `Set-Cookie` ヘッダーを付ける                  |
+| `response.cookies.get(name)`                   | `{ name, value }` / `undefined`  | レスポンスに設定済みのCookieを取得する         |
+| `response.cookies.delete(name)`                | `boolean`                        | Cookieを削除する。削除したら `true`            |
+
+`response.cookies.set()` の `options` には、`path`・`httpOnly`・`secure`・`sameSite`・`maxAge` など、`Set-Cookie` ヘッダーの属性を指定します。
+
+<Callout type="info" title="Route Handlerでも同じクラスを使う">
+  `NextRequest` と `NextResponse` は、[Route Handlers](/books/next-js/route-handlers) の `route.ts` でも同じものを使います。ただし `NextResponse.next()` はProxy専用です。`route.ts` には「後続の処理」がないため、`NextResponse.json()` などでレスポンスを返します。
+</Callout>
 
 ---
 
@@ -437,8 +658,9 @@ Proxyは便利ですが、何でも置ける場所ではありません。
 
 - `proxy.ts` は、ページやRoute Handlerに届く前に実行される入口処理
 - Next.js 16では `middleware.ts` が非推奨になり、`proxy.ts` / `proxy()` にリネームされた
-- `matcher` で対象URLを狭く絞るのが基本
-- `NextRequest` でURL・Cookie・ヘッダーを読み、`NextResponse` で通過・リダイレクト・rewrite・ヘッダー操作を行う
+- ポートをlistenするのはNext.jsのHTTPサーバーで、`proxy()` はリクエストごとに呼び出される関数。`next.config.js` の `headers` と `redirects` の後、ファイルやページを返す処理の前に実行される
+- `matcher` を書かないと、`_next/static` や `public/` のファイルを含むすべてのリクエストで実行される。`matcher` で対象URLを狭く絞るのが基本
+- `NextRequest` でURL・Cookie・ヘッダーを読み、`NextResponse` の `next()`・`redirect()`・`rewrite()`・`json()` でレスポンスを決める
 - Edge RuntimeはWeb標準API中心の軽量な実行環境で、Node.js Runtimeとは使えるAPIが異なる
 - 古いMiddlewareはEdge Runtimeのみという説明が多いが、Next.js 15.5以降とNext.js 16のProxyではランタイムの扱いが変わっている
 - Proxyは強力だが、認証・認可の最終チェックはRoute HandlerやServer Actions側にも必ず置く
@@ -451,6 +673,7 @@ Proxyは便利ですが、何でも置ける場所ではありません。
 - [Codemods | Next.js](https://nextjs.org/docs/app/guides/upgrading/codemods) — `middleware-to-proxy` を含む、バージョン移行用codemodの一覧（英語）
 - [Edge Runtime | Next.js](https://nextjs.org/docs/app/api-reference/edge) — Edge Runtimeで使えるWeb標準APIの一覧（英語）
 - [NextResponse | Next.js](https://nextjs.org/docs/app/api-reference/functions/next-response) — `redirect` / `rewrite` / `next` とヘッダー・Cookie操作の公式リファレンス（英語）
+- [NextRequest | Next.js](https://nextjs.org/docs/app/api-reference/functions/next-request) — `nextUrl` と `cookies` の公式リファレンス（英語）
 
 <QuizLink
   href="/quiz/nextjs"
