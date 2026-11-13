@@ -27,7 +27,9 @@ import {
   BOOKS_OG_IMAGE_ALT,
   BOOKS_OG_IMAGE_HEIGHT,
   BOOKS_OG_IMAGE_WIDTH,
+  SERP_TITLE_BUDGET,
   SITE_PUBLISHER,
+  stripSubtitle,
 } from '@/lib/book-seo';
 
 export function generateStaticParams() {
@@ -43,13 +45,18 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
   const book = getBook(bookSlug);
   if (!book) return {};
   const chapters = getChaptersByBook(bookSlug);
-  const seoContent = getBookSeoContent(bookSlug);
   // 「| ウェブエンジニア問題集」は日本語SERPの省略位置より後ろで表示されないため、
-  // 同じ文字数を本の中身を示す語に使う
-  const title = `${book.title}｜全${chapters.length}章の無料教科書`;
-  const description = seoContent
-    ? `${book.description} ${seoContent.prerequisites ? `前提知識：${seoContent.prerequisites}` : ''} 全${chapters.length}章で基礎から順番に学べる無料の技術書コンテンツ。`
-    : `${book.description} 全${chapters.length}章で基礎から順番に学べる無料の技術書コンテンツ。`;
+  // 同じ文字数を本の中身を示す語に使う。
+  // 本のタイトルに「— 補足」が付くと全体が40字を超え、「全N章の無料教科書」まで
+  // 表示されなくなるので、収まらない本は補足を落とした主題だけを使う。
+  const suffix = `｜全${chapters.length}章の無料教科書`;
+  const title =
+    `${book.title}${suffix}`.length <= SERP_TITLE_BUDGET
+      ? `${book.title}${suffix}`
+      : `${stripSubtitle(book.title)}${suffix}`;
+  // 以前は前提知識と定型文を連結して200字を超えており、検索結果では後半が表示されなかった。
+  // 本の説明文（約100字）に章数だけを添える。
+  const description = `${book.description} 全${chapters.length}章・無料。`;
   return {
     title,
     description,

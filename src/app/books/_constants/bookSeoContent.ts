@@ -1229,6 +1229,446 @@ const bookSeoContentMap: Record<string, BookSeoContent> = {
     ],
     relatedQuizSlug: null,
   },
+
+  zod: {
+    overview:
+      'ZodはTypeScript向けのスキーマ検証ライブラリです。スキーマを1つ書くと、実行時の入力検証と、そのスキーマから導いた静的な型の両方が得られます。本書では、文字列・数値・オブジェクト・配列のスキーマ、parseとsafeParseの違い、空文字やnullの扱い、union、refineとtransform、z.infer、ZodErrorの読み方、z.coerceを順に扱い、React Hook Formとの連携、APIの入力とレスポンスの検証、Zod 3から4への移行までを解説します。',
+    whyLearn:
+      'TypeScriptの型はコンパイル時にだけ存在し、実行時には消えます。フォームの入力、APIのレスポンス、環境変数のように外部から届く値は、型注釈を書いても中身までは保証されません。Zodで境界の値を検証しておくと、想定外の値が処理の奥まで進む前にエラーとして検出できます。スキーマから型を導出できるため、検証ルールと型定義を二重に管理する必要もなくなります。',
+    prerequisites:
+      'TypeScriptの基本的な型（オブジェクト型、ユニオン型、ジェネリクス）を読めることが前提です。不安がある方は先に『TypeScript入門』を読むことをおすすめします。フォーム連携の章ではReactの基礎知識を使います。',
+    topics: [
+      {
+        title: 'スキーマの基本とparse・safeParse',
+        description:
+          'z.string・z.number・z.objectなどの基本スキーマと、例外を投げるparse、結果オブジェクトを返すsafeParseの使い分けを学びます。',
+      },
+      {
+        title: '空文字・null・undefinedの扱い',
+        description:
+          'optional・nullable・nullishの違いと、空文字がz.string()を通るかどうかなど、デフォルトの挙動を早見表で確認します。',
+      },
+      {
+        title: 'refine・transform・z.infer',
+        description:
+          '独自の検証ルール、値の変換、スキーマからの型の導出と、inputとoutputで型が分かれるケースを扱います。',
+      },
+      {
+        title: 'フォーム・API・移行',
+        description:
+          'React Hook Formとの連携、APIの入力とレスポンスの検証、エラーメッセージの日本語化、Zod 3から4で変わった書き方を整理します。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'parseとsafeParseはどちらを使えばよいですか？',
+        answer:
+          'parseは検証に失敗するとZodErrorを投げ、safeParseは例外を投げずに success が true か false の結果オブジェクトを返します。フォームやAPIの入力のように失敗が通常の流れとして起きる場所ではsafeParse、失敗したら処理を止めたい起動時の環境変数チェックなどではparseが向いています。',
+      },
+      {
+        question: 'TypeScriptの型があるのに、なぜZodが必要なのですか？',
+        answer:
+          'TypeScriptの型はコンパイル後のJavaScriptには残らないため、実行時に届いた値が型どおりかどうかは確認されません。Zodは実行時に値を検証し、通過した値にだけ型を付けます。',
+      },
+      {
+        question: 'Zod 3とZod 4のどちらに対応していますか？',
+        answer:
+          '本書はZod 4の書き方で解説しています。Zod 3から変わった書き方は「Zod 3から4への移行」の章に対応表としてまとめています。',
+      },
+    ],
+    targetAudience: [
+      'TypeScriptでフォームやAPIの入力検証を書いている方',
+      'as による型アサーションで外部データを受け取っていて不安がある方',
+      'React Hook FormとZodを組み合わせたい方',
+      'Zod 3で書かれたコードをZod 4へ移行する方',
+    ],
+    relatedQuizSlug: 'ts-general',
+  },
+
+  docker: {
+    overview:
+      'Dockerは、アプリケーションと実行に必要なライブラリをイメージにまとめ、コンテナとして起動するためのツールです。本書では、イメージ・コンテナ・レジストリの関係、pull・run・ps・stopなどの基本操作、Dockerfileの書き方、Docker Composeによる複数コンテナの起動、Node.jsアプリのDocker化、ボリューム、ネットワーク、環境変数、タグとレジストリ、本番運用の注意点までを順に解説します。',
+    whyLearn:
+      'Web開発では、アプリケーション・データベース・キャッシュなど複数のプロセスを同じバージョンで動かす必要があります。Dockerを使うと、その構成をDockerfileとcompose.yamlというファイルで共有でき、開発者ごとの環境差による不具合を減らせます。CI/CDや各クラウドのコンテナ実行サービスもDockerイメージを入力にしているため、デプロイの仕組みを理解する前提知識にもなります。',
+    prerequisites:
+      'ターミナルで基本的なコマンド（cd、lsなど）を実行できることが前提です。Node.jsアプリをDocker化する章では、npmとpackage.jsonの基礎知識を使います。Linuxの詳しい知識は不要です。',
+    topics: [
+      {
+        title: 'イメージとコンテナ',
+        description:
+          'イメージとコンテナの違い、docker pull・run・ps・stop・rmの基本操作、タグとレジストリの関係を学びます。',
+      },
+      {
+        title: 'DockerfileとCompose',
+        description:
+          'FROM・COPY・RUN・CMDの役割、ビルドキャッシュ、Docker Composeで複数のコンテナをまとめて起動する方法を扱います。',
+      },
+      {
+        title: 'ボリュームとネットワーク',
+        description:
+          'コンテナを削除しても残るデータの置き方、コンテナ内のlocalhostが指す先、Composeのサービス名による名前解決を整理します。',
+      },
+      {
+        title: '設定管理と本番運用',
+        description:
+          '環境変数と.envの扱い、秘密情報をイメージに含めない方法、イメージの軽量化、ログ、セキュリティの注意点を確認します。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'コンテナと仮想マシンは何が違いますか？',
+        answer:
+          '仮想マシンはゲストOSを丸ごと起動しますが、コンテナはホストのLinuxカーネルを共有し、プロセスを分離して動かします。OSを起動しないぶん、コンテナは起動が速く、使用するメモリとディスクも少なくなります。',
+      },
+      {
+        question: 'イメージとコンテナの違いは何ですか？',
+        answer:
+          'イメージはファイルシステムと起動設定をまとめた読み取り専用のデータで、コンテナはそのイメージから起動した実行中（または停止中）のプロセスです。1つのイメージから複数のコンテナを起動できます。',
+      },
+      {
+        question: 'コンテナの中からlocalhostでDBに接続できないのはなぜですか？',
+        answer:
+          'コンテナ内のlocalhostはそのコンテナ自身を指すため、別のコンテナで動くDBには届きません。Docker Composeでは、接続先のホスト名にサービス名（例: db）を指定します。',
+      },
+    ],
+    targetAudience: [
+      'チームのリポジトリにあるDockerfileやcompose.yamlを読めるようになりたい方',
+      'ローカルにDBを直接インストールせずに開発環境を作りたい方',
+      'Node.jsアプリをコンテナでデプロイしたい方',
+      'docker runのオプションの意味を整理したい方',
+    ],
+    relatedQuizSlug: 'docker',
+  },
+
+  mysql: {
+    overview:
+      '本書は、SQLの基本構文を学んだ方がMySQLを実務で扱えるようになるための教科書です。接続の確認、データ型の選び方、utf8mb4と照合順序、InnoDBとクラスタ化インデックス、複合インデックスとEXPLAIN、トランザクションとロック、ON DUPLICATE KEY UPDATEなどMySQL固有の構文、Node.jsのmysql2とコネクションプール、ALTER TABLEとオンラインDDL、ユーザーと権限、mysqldumpとスロークエリログまでを解説します。',
+    whyLearn:
+      'SELECTやJOINの書き方はどのデータベースでもほぼ共通ですが、文字コード、インデックスの構造、ロックの挙動、スキーマ変更の方法はデータベースごとに異なります。MySQLで起きる文字化け、遅いクエリ、デッドロック、Too many connectionsといった問題は、MySQL固有の仕組みを知っていないと原因を特定できません。',
+    prerequisites:
+      'SELECT・JOIN・GROUP BYなどSQLの基本構文を理解していることが前提です。不安がある方は先に『SQLとデータベースの基礎』を読むことをおすすめします。Node.jsから接続する章ではJavaScriptのasync/awaitを使います。',
+    topics: [
+      {
+        title: '接続・データ型・文字コード',
+        description:
+          'mysqlコマンドでの接続、SHOW PROCESSLIST、INT・DECIMAL・VARCHAR・DATETIME・JSONの選び方、utf8mb4と照合順序を扱います。',
+      },
+      {
+        title: 'InnoDBとインデックス',
+        description:
+          'クラスタ化インデックスの構造、複合インデックスの列順、EXPLAINによる実行計画の読み方を学びます。',
+      },
+      {
+        title: 'トランザクションとロック',
+        description:
+          '分離レベル、SELECT ... FOR UPDATE、ギャップロック、デッドロックが起きる条件を整理します。',
+      },
+      {
+        title: 'アプリ接続と運用',
+        description:
+          'mysql2のコネクションプール、オンラインDDL、CREATE USERとGRANTによる最小権限、mysqldumpと復元テスト、スロークエリログを扱います。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'SQLを学んだことがなくても読めますか？',
+        answer:
+          '本書はSELECTやJOINの基本を説明していません。SQLが初めての方は、先に『SQLとデータベースの基礎』を読んでから進むことをおすすめします。',
+      },
+      {
+        question: 'utf8とutf8mb4はどちらを使えばよいですか？',
+        answer:
+          'utf8mb4を使います。MySQLのutf8（utf8mb3）は1文字を最大3バイトで保存するため、絵文字など4バイトの文字を保存できません。utf8mb4は4バイトの文字まで保存できます。',
+      },
+      {
+        question: 'InnoDBとは何ですか？',
+        answer:
+          'InnoDBはMySQLの既定のストレージエンジンで、トランザクションと行単位のロックに対応しています。テーブルのデータは主キーの順に並んだクラスタ化インデックスとして保存されます。',
+      },
+    ],
+    targetAudience: [
+      'SQLの基本は書けるが、MySQL固有の挙動を整理したい方',
+      'クエリが遅い原因をEXPLAINで調べられるようになりたい方',
+      'Node.jsアプリからMySQLに接続する実装を担当する方',
+      'バックアップや権限設定など運用の基礎を押さえたい方',
+    ],
+    relatedQuizSlug: 'sql-basic',
+  },
+
+  fastify: {
+    overview:
+      'FastifyはNode.jsのWebフレームワークです。本書では、最小サーバーの起動、ルーティング、requestとreply、JSON Schemaによる入力値の検証、エラーハンドリング、プラグインとカプセル化、フック、Pinoによる構造化ログ、fastify.injectを使ったテスト、TypeScriptでのディレクトリ構成、本番運用までを扱い、最後にTodo APIを最初から完成させます。',
+    whyLearn:
+      'Fastifyは、ルートごとにJSON Schemaを書くと入力の検証とレスポンスのシリアライズを行う仕組みを標準で備えています。検証コードをハンドラーの中に手書きする必要がなく、プラグインの単位で機能を分割できるため、APIの規模が大きくなっても構成を保ちやすくなります。Expressの次に学ぶNode.jsフレームワークとして選ばれることが増えています。',
+    prerequisites:
+      'Node.jsとnpmの基本、async/await、HTTPメソッドとステータスコードを理解していることが前提です。不安がある方は先に『Node.js入門』と『HTTP & Web API入門』を読むことをおすすめします。',
+    topics: [
+      {
+        title: 'ルーティングとrequest・reply',
+        description:
+          'GET・POSTの定義、パスパラメータとクエリの取得、ステータスコードとヘッダーを指定したレスポンスの返し方を学びます。',
+      },
+      {
+        title: 'schema validationとエラー処理',
+        description:
+          'JSON Schemaでbody・params・querystringを検証する方法と、4xxと500を分けて返すエラーハンドラーを扱います。',
+      },
+      {
+        title: 'プラグイン・カプセル化・フック',
+        description:
+          'registerによる機能の分割、デコレーターが見える範囲、onRequestやpreHandlerで認証や前処理を差し込む方法を整理します。',
+      },
+      {
+        title: 'テスト・ログ・本番運用',
+        description:
+          'fastify.injectとnode:testによるAPIテスト、Pinoのログ、CORS、環境変数、終了処理（graceful shutdown）を確認します。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'Expressを使ったことがなくても読めますか？',
+        answer:
+          'はい。Node.jsでHTTPサーバーを動かした経験があれば読み進められます。Expressとの違いは第1章で比較していますが、Expressの知識は前提にしていません。',
+      },
+      {
+        question: 'FastifyとExpressは何が違いますか？',
+        answer:
+          'Fastifyは、JSON Schemaによる入力検証、構造化ログ（Pino）、プラグインごとに設定の見える範囲を分けるカプセル化を標準で備えています。Expressではこれらをミドルウェアや外部ライブラリを組み合わせて用意します。',
+      },
+      {
+        question: 'TypeScriptで書けますか？',
+        answer:
+          'はい。Fastifyは型定義を同梱しています。本書ではJavaScriptで基本を学んだあと、TypeScriptでの書き方とディレクトリ構成を1章使って扱います。',
+      },
+    ],
+    targetAudience: [
+      'Node.jsでREST APIを作りたい方',
+      'Expressの経験があり、Fastifyへの移行を検討している方',
+      '入力値の検証をスキーマで管理したい方',
+      'APIのテストとログの基本を押さえたい方',
+    ],
+    relatedQuizSlug: 'nodejs-basic',
+  },
+
+  wsl: {
+    overview:
+      'WSL（Windows Subsystem for Linux）は、Windows上でLinuxディストリビューションを動かす機能です。本書では、WSL1とWSL2の違い、wsl --installによる導入、wslコマンドでのディストリビューション管理、ファイルの置き場所、WindowsとLinuxの間でのコマンド呼び出しと改行コード、VS Code・Git・Node.js・Dockerの設定、ネットワーク、.wslconfigとwsl.conf、トラブル対処までを、Ubuntuを前提に解説します。',
+    whyLearn:
+      'Web開発の手順書やサーバーの多くはLinuxを前提にしています。WSLを使うと、Windowsのままapt・bash・Dockerなどを本番と同じLinuxのコマンドで動かせます。一方で、ファイルをWindows側（/mnt/c）に置くと処理が遅くなる、localhostに繋がらない、ディスクの使用量が減らないといったWSL特有の問題があり、仕組みを知らないと原因を調べられません。',
+    prerequisites:
+      'Windows 10（バージョン2004以降）またはWindows 11のPCが必要です。Linuxコマンドの経験は不要で、cdやlsなど必要なコマンドは本書の中で説明します。',
+    topics: [
+      {
+        title: '仕組みとインストール',
+        description:
+          'WSL1とWSL2の違い、wsl --installの手順、Ubuntuの初期設定、ディストリビューションの一覧・停止・バックアップ・削除を扱います。',
+      },
+      {
+        title: 'ファイルとWindows連携',
+        description:
+          '/mnt/cと\\\\wsl.localhostの違い、Linux側にプロジェクトを置く理由、PATH、改行コード、パーミッションを整理します。',
+      },
+      {
+        title: '開発ツールの設定',
+        description:
+          'VS CodeのWSL拡張機能、Gitの改行設定とSSH鍵、nvmによるNode.jsの導入、Docker DesktopとDocker Engineの違いを学びます。',
+      },
+      {
+        title: 'ネットワーク・設定・トラブル対処',
+        description:
+          'localhostに繋がらないときの確認、.wslconfigでのメモリ上限、systemdの有効化、動作が遅い・容量が膨らむ・時刻がずれるときの対処を確認します。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'WSL1とWSL2はどちらを使えばよいですか？',
+        answer:
+          '通常はWSL2を使います。WSL2は軽量な仮想マシンの中で実際のLinuxカーネルを動かすため、Dockerなどカーネルの機能を必要とするツールが動きます。wsl --installで導入した場合の既定もWSL2です。',
+      },
+      {
+        question: 'プロジェクトのファイルはWindows側とLinux側のどちらに置けばよいですか？',
+        answer:
+          'Linux側（例: /home/ユーザー名 の下）に置きます。WSL2から/mnt/c以下のWindowsのファイルにアクセスすると、ファイルシステムをまたぐ処理が入り、npm installやgit statusが大幅に遅くなります。',
+      },
+      {
+        question: 'WSLは無料で使えますか？',
+        answer:
+          'はい。WSLはWindowsの機能として提供されており、Ubuntuなどのディストリビューションも無料で入手できます。',
+      },
+    ],
+    targetAudience: [
+      'WindowsのPCでWeb開発を始める方',
+      'Linux前提の手順書をWindowsで実行したい方',
+      'WSL上でnpm installやビルドが遅くて困っている方',
+      'Docker DesktopとWSLの関係を整理したい方',
+    ],
+    relatedQuizSlug: 'linux',
+  },
+
+  vim: {
+    overview:
+      '本書は、普段VS Codeを使っているエンジニアが、git commitやSSH接続先でVimが開いたときに困らないための入門書です。終了方法、Normal・Insert・Visualの各モード、カーソル移動、削除・コピー・貼り付け、オペレーターとテキストオブジェクト、検索と置換、バッファと画面分割を扱い、.vimrcの基本、NeovimとLazyVimの導入、Vim・Neovim・tmuxのチートシートまでを収録しています。',
+    whyLearn:
+      'サーバーにSSHで接続したときや、Gitがコミットメッセージの入力を求めたときなど、Vimしか使えない場面や既定でVimが開く場面があります。終了・保存・最小限の編集ができれば、こうした場面で作業が止まりません。VS CodeのVim拡張を使えば、エディタを変えずに同じキー操作を練習できます。',
+    prerequisites:
+      'ターミナルを開いてコマンドを実行できることが前提です。Vimの経験は不要です。',
+    topics: [
+      {
+        title: '終了とモード',
+        description:
+          ':q!と:wqの違い、Normal・Insert・Visualモードの切り替え、Escで戻る操作を最初に身につけます。',
+      },
+      {
+        title: '移動と編集',
+        description:
+          'hjkl・w・0・gg・Gによる移動、dd・yy・p・uによる編集、ciwやdi"などオペレーターとテキストオブジェクトの組み合わせを学びます。',
+      },
+      {
+        title: '検索・置換と複数ファイル',
+        description:
+          '/とnによる検索、:%sによる置換、バッファの切り替え、:spと:vsによる画面分割を扱います。',
+      },
+      {
+        title: '設定とNeovim',
+        description:
+          '.vimrcの最小限の設定、Neovimのインストール、LazyVimの公式スターターによる環境構築を確認します。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'Vimを終了できません。どうすればよいですか？',
+        answer:
+          'Escを押してNormalモードに戻り、:q! と入力してEnterを押すと、変更を保存せずに終了します。保存して終了する場合は :wq です。',
+      },
+      {
+        question: 'VimとNeovimは何が違いますか？',
+        answer:
+          'NeovimはVimから派生したエディタで、基本のキー操作は共通です。Neovimは設定をLuaで書くことができ、LSPクライアントを標準で備えています。本書の基本操作の章はどちらでも同じように使えます。',
+      },
+      {
+        question: 'VS Codeから乗り換える必要がありますか？',
+        answer:
+          'いいえ。本書の目的は、Vimが開いた場面で必要な操作ができるようになることです。VS CodeにVim拡張を入れて、普段のエディタのままキー操作を練習する方法も扱っています。',
+      },
+    ],
+    targetAudience: [
+      'git commitでVimが開いて終了できなかった経験がある方',
+      'SSH接続先で設定ファイルを編集する必要がある方',
+      'VS CodeのVim拡張を試してみたい方',
+      'NeovimとLazyVimに興味がある方',
+    ],
+    relatedQuizSlug: null,
+  },
+
+  csharp: {
+    overview:
+      'C#は、Microsoftが開発した静的型付けのプログラミング言語で、.NETの上で動作します。本書では、C#と.NETの関係、.NET SDKのインストールとdotnet run、変数と型、条件分岐と繰り返し、メソッド、クラスとプロパティ、継承とインターフェース、ListとDictionary、LINQ、null許容参照型、例外処理、async/await、ジェネリクス、recordやパターンマッチングなどのモダン構文までを段階的に解説します。',
+    whyLearn:
+      'C#は、ASP.NET CoreによるWeb API、業務システム、Unityによるゲーム開発などで使われています。.NET SDKはWindows・macOS・Linuxで動作し、無料で入手できます。値型と参照型の違い、null許容参照型、LINQ、async/awaitはC#のコードを読むうえで必ず出てくるため、最初に仕組みを理解しておくと既存のコードが読めるようになります。',
+    prerequisites:
+      'ほかのプログラミング言語で変数・条件分岐・関数を書いた経験があると読み進めやすいです。C#や.NETの経験は不要で、開発環境の構築から説明します。',
+    topics: [
+      {
+        title: '型と基本構文',
+        description:
+          '値型と参照型、varの使いどころ、if・switch式・foreach、メソッドの引数とref・out、オーバーロードを学びます。',
+      },
+      {
+        title: 'クラスとインターフェース',
+        description:
+          'フィールド・プロパティ・コンストラクタ、継承、virtual・override・abstractの使い分け、インターフェースを扱います。',
+      },
+      {
+        title: 'コレクションとLINQ',
+        description:
+          'ListとDictionaryの主要メソッド、Where・Select・OrderByによるコレクション操作、ジェネリクスと型制約を整理します。',
+      },
+      {
+        title: 'null安全・例外・非同期',
+        description:
+          'null許容参照型と?.・??演算子、try/catch/finallyとusing、async/awaitとTaskの仕組み、recordとパターンマッチングを確認します。',
+      },
+    ],
+    faqs: [
+      {
+        question: 'C#と.NETは何が違いますか？',
+        answer:
+          'C#はプログラミング言語で、.NETはC#で書いたプログラムを実行するためのランタイムと標準ライブラリです。C#のコードはコンパイルされ、.NETのランタイム上で動作します。',
+      },
+      {
+        question: 'macOSやLinuxでもC#を学べますか？',
+        answer:
+          'はい。.NET SDKはWindows・macOS・Linuxに対応しており、dotnetコマンドでプロジェクトの作成・ビルド・実行ができます。本書はVisual Studioに依存せず、dotnetコマンドを使って進めます。',
+      },
+      {
+        question: 'JavaやTypeScriptの経験は役に立ちますか？',
+        answer:
+          'クラス、インターフェース、ジェネリクス、async/awaitなど共通する概念が多く、理解の助けになります。プロパティ、LINQ、値型（struct）、null許容参照型のようにC#で書き方や挙動が異なる部分は、本書の該当章で説明しています。',
+      },
+    ],
+    targetAudience: [
+      'C#を初めて学ぶ方',
+      'ほかの言語の経験があり、業務でC#のコードを読むことになった方',
+      'LINQやasync/awaitの仕組みを整理したい方',
+      'ASP.NET CoreやUnityを学ぶ前に言語の基礎を固めたい方',
+    ],
+    relatedQuizSlug: null,
+  },
+
+  'ai-agent-development': {
+    overview:
+      '本書は、AIコーディングエージェントを実務の開発で使うための考え方をまとめた本です。エージェントとコード補完・チャットの違い、ローカル実行とクラウド実行の判断軸、権限設計とサンドボックス、シークレットの扱い、並行実行、コンテキスト設計、AGENTS.mdやCLAUDE.mdの書き方、タスクの切り方、ツールとMCP、検証ループ、コードレビュー、評価、モデル選択とコスト、チーム導入までを扱います。製品名や調査データなど変わりやすい情報は、更新を前提にした章に分けています。',
+    whyLearn:
+      'AIコーディングエージェントは、ファイルの編集やコマンドの実行を自分で行います。何を許可するか、どの情報を渡すか、完了をどう検証させるかを決めないまま使うと、意図しない変更や秘密情報の流出、レビューしきれない量の差分が発生します。ツールの操作方法は製品ごとに変わりますが、権限・コンテキスト・検証の設計は製品が変わっても共通して使えます。',
+    prerequisites:
+      'Gitの基本操作と、ターミナルでのコマンド実行、Pull Requestを使った開発の流れを理解していることが前提です。特定のAIツールの利用経験は不要です。',
+    topics: [
+      {
+        title: '実行環境と権限',
+        description:
+          'ローカル実行とクラウド実行の違い、許可するコマンドの決め方、サンドボックス、シークレットをエージェントに渡さない設計を学びます。',
+      },
+      {
+        title: 'コンテキストと指示',
+        description:
+          'エージェントに渡す情報の選び方、設定ファイルの置き場所、AGENTS.mdやCLAUDE.mdに書くと効く指示と効かない指示を整理します。',
+      },
+      {
+        title: 'タスク設計と検証',
+        description:
+          '失敗しにくいタスクの切り方、ツールとMCPの設計、エージェント自身にテストを実行させる検証ループ、人間がレビューで見るべき差分を扱います。',
+      },
+      {
+        title: '評価・コスト・チーム導入',
+        description:
+          'evalによる評価とリグレッションの検出、モデル選択とコストの判断軸、チーム導入時の失敗パターンを確認します。',
+      },
+    ],
+    faqs: [
+      {
+        question: '特定のAIツールの使い方を解説する本ですか？',
+        answer:
+          'いいえ。権限、コンテキスト、検証など、ツールが変わっても使える設計の考え方を中心に扱います。具体的な製品の分類と選び方は、更新を前提にした章にまとめています。',
+      },
+      {
+        question: 'AIエージェントとコード補完は何が違いますか？',
+        answer:
+          'コード補完は、編集中の位置に続くコードを提案します。エージェントは、指示を受けてファイルの読み書きやコマンドの実行を複数回繰り返し、結果を確認しながらタスクを進めます。',
+      },
+      {
+        question: 'プログラミング初学者でも読めますか？',
+        answer:
+          'GitとPull Requestを使った開発の経験がある方を対象にしています。エージェントが出した差分を自分でレビューできることが前提になるため、先にプログラミングとGitの基礎を身につけることをおすすめします。',
+      },
+    ],
+    targetAudience: [
+      'AIコーディングエージェントを業務で使い始めた方',
+      'エージェントに何を許可してよいか判断に迷っている方',
+      'AGENTS.mdやCLAUDE.mdに何を書けばよいか知りたい方',
+      'チームへの導入ルールを作る立場の方',
+    ],
+    relatedQuizSlug: null,
+  },
 };
 
 export function getBookSeoContent(bookSlug: string): BookSeoContent | null {
