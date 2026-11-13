@@ -100,7 +100,9 @@ export async function generateMetadata({
     return { title: 'カテゴリが見つかりません' };
   }
 
-  const title = `${category.category_name} 問題集 | ウェブエンジニア問題集`;
+  // 「◯◯ クイズ」「◯◯ 問題」の両方で検索されるので、title に両方の語を入れる。
+  // 以前の後半はサイト名（ウェブエンジニア問題集）で、「問題集」が2回並ぶだけだった。
+  const title = `${category.category_name} 問題集｜解説つきの無料4択クイズ`;
   const description = category.description
     ? `${category.category_name}の問題集。${category.description} 無料で学べる4択クイズ形式。`
     : `${category.category_name}に関する4択クイズ問題集。基礎から実践まで無料で学べます。`;

@@ -132,6 +132,63 @@ const categoryContentMap: Record<string, CategorySeoContent> = {
     ],
   },
 
+  "css-basic": {
+    overview:
+      "CSSは、HTMLで書いた要素の色・大きさ・配置を指定するスタイルシート言語です。このCSSクイズでは、セレクタと詳細度、ボックスモデル、position と z-index、Flexbox、CSS Grid、メディアクエリ、rem と em の違い、transition とアニメーションを4択問題で確認できます。:has()、コンテナクエリ、ネイティブネスティングといった比較的新しい機能も出題しています。",
+    whyLearn:
+      "CSSはプロパティの数が多く、書いたとおりに表示されない原因を自分で特定できるかどうかで作業時間が大きく変わります。z-index が効かない、text-overflow: ellipsis が省略されない、要素が親からはみ出すといった不具合は、スタッキングコンテキストやボックスモデルの仕様を知っていれば原因を絞り込めます。Tailwind CSSやMUIを使う場合も、クラスやpropsが最終的にどのCSSプロパティになるかを理解していると調査が速くなります。",
+    topics: [
+      {
+        title: "セレクタと詳細度",
+        description:
+          "子セレクタ、属性セレクタ、:nth-child、:hover、::before に加えて、詳細度の計算と :is()・:where()・:has() の違いを出題します。",
+      },
+      {
+        title: "ボックスモデルと配置",
+        description:
+          "content・padding・border・margin の順序、box-sizing: border-box、position の各値、z-index とスタッキングコンテキスト、overflow を扱います。",
+      },
+      {
+        title: "FlexboxとGrid",
+        description:
+          "justify-content、flex-direction、flex-grow、gap、grid-template-columns、grid-template-areas、auto-fit と minmax() による列数の自動調整を確認します。",
+      },
+      {
+        title: "レスポンシブと単位",
+        description:
+          "メディアクエリの構文、rem と em の基準の違い、clamp()、aspect-ratio、object-fit、コンテナクエリについて出題します。",
+      },
+    ],
+    faqs: [
+      {
+        question: "remとemの違いは何ですか？",
+        answer:
+          "rem はルート要素（html）の font-size を基準にした単位で、em はその要素自身の font-size を基準にした単位です（font-size プロパティに使った場合だけは親要素の font-size が基準になります）。em は要素を入れ子にすると倍率が掛け合わされるため、フォントサイズには rem を使うことが多いです。",
+      },
+      {
+        question: "FlexboxとCSS Gridはどう使い分けますか？",
+        answer:
+          "Flexboxは横一列または縦一列の1方向に要素を並べるレイアウトに、CSS Gridは行と列の2方向を同時に指定するレイアウトに向いています。ナビゲーションやボタンの横並びはFlexbox、カード一覧やページ全体の枠組みはGridで書くことが多いです。",
+      },
+      {
+        question: "z-indexを指定しても要素が前面に出ないのはなぜですか？",
+        answer:
+          "z-index は position が static 以外の要素（および Flexbox・Grid のアイテム）にだけ効きます。また、親要素がスタッキングコンテキストを作っている場合、子要素の z-index はその親の中での順序にしかなりません。親に transform や opacity（1未満）が指定されていないかを確認します。",
+      },
+    ],
+    targetAudience: [
+      "HTMLを学び終えてCSSに進んだ初学者",
+      "FlexboxとGridの使い分けを整理したい方",
+      "レイアウト崩れの原因を自分で特定できるようになりたい方",
+      "Tailwind CSSを使う前にCSSの仕様を確認したいエンジニア",
+    ],
+    relatedCategories: [
+      { slug: "html-basic", name: "HTML基礎" },
+      { slug: "javascript-basic", name: "JavaScript基礎" },
+      { slug: "react-basic", name: "React基礎" },
+    ],
+  },
+
   "javascript-basic": {
     overview:
       "JavaScriptはWeb開発において不可欠なプログラミング言語です。ブラウザ上で動的なインタラクションを実現するクライアントサイドから、Node.jsを利用したサーバーサイド開発まで、幅広い領域で使用されています。ES6以降の仕様で大幅に改善され、アロー関数、分割代入、Promise/async-await、モジュールシステムなどのモダンな文法が標準となりました。",

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, HelpCircle } from 'lucide-react';
@@ -15,6 +16,7 @@ import { toPlainText } from '@/lib/quizContent';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getCategorySeoContent } from '../categoryContent';
 import { resolveQuizOrigin } from '@/lib/quizOrigin';
+import { SITE_URL } from '@/lib/site';
 import QuizInteraction from './QuizInteraction';
 
 interface Choice {
@@ -278,20 +280,59 @@ export default async function QuizDetailPage({
   );
 }
 
+/** description の上限。日本語の検索結果ではおおむね120字前後で省略される */
+const DESCRIPTION_MAX_LENGTH = 120;
+
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function truncate(text: string, maxLength: number): string {
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ category: string; quizId: string }>;
-}) {
+}): Promise<Metadata> {
   const { category, quizId } = await params;
   const quiz = await getQuiz(quizId);
+  // テーマ未登録のカテゴリは label が「クイズ」になるので、技術名としては使わない
+  const theme = getCategoryTheme(category);
+  const label = theme.slug === 'default' ? '' : theme.label;
+  const lead = label ? `${label}の4択クイズ。` : '4択クイズ。';
+
+  // 問題文はエラーメッセージそのままの検索（例: "as unknown as"）に一致するので、
+  // 省略せず title の先頭に置く。後ろはサイト名ではなく、どの技術のクイズかを示す。
+  const question = collapseWhitespace(quiz.question);
+  const title = `${question}｜${label}クイズ`;
+
+  // 問題文は title と重複するので、description には解説の冒頭を出す。
+  const explanation = collapseWhitespace(toPlainText(quiz.explanation));
+  const description = truncate(
+    explanation ? `${lead}解説: ${explanation}` : `${lead}${question}`,
+    DESCRIPTION_MAX_LENGTH,
+  );
 
   return {
-    title: `${quiz.question} | ウェブエンジニア問題集`,
-    description: quiz.question,
+    title,
+    description,
     // 流入元を ?from= で受け取るため、パラメータ付きURLを重複ページにしない
     alternates: {
       canonical: `/quiz/${category}/${quizId}`,
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      locale: 'ja_JP',
+      url: `${SITE_URL}/quiz/${category}/${quizId}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
     },
   };
 }

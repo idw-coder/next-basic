@@ -73,12 +73,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.5,
     },
-    {
-      url: `${SITE_URL}/about/tech`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.4,
-    },
+    // /about/tech は EntryGuard がクライアント側でトップへリダイレクトするため載せない。
+    // sitemap に載せると、クローラーには本文のないURLを申告することになる。
     {
       url: `${SITE_URL}/search`,
       lastModified: new Date(),
