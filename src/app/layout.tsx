@@ -81,7 +81,7 @@ export default function RootLayout({
   }));
 
   return (
-    <html lang="ja">
+    <html lang="ja" data-scroll-behavior="smooth">
       <head>
         {clientId && !isDevelopment && (
           <link rel="preconnect" href="https://pagead2.googlesyndication.com" />

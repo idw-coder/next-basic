@@ -41,3 +41,13 @@
 - **新しい本を1冊追加したら、`docs/books/guide.md` の「デプロイ後の作業」を1〜6まで全部実行する。** テーマ色・表示順・NEWバッジ・クイズ連携・検索サジェスト・**トップページのお知らせ（`src/app/page.tsx` の `NEWS` 配列）**。特に6番目は忘れられやすい。MDXを置いただけでは公開作業は終わっていない
 - **日本語で `**強調**` を閉じるとき、`**` の直前に全角括弧や句読点を置かない。** CommonMarkのflanking規則により太字にならず、`**` がそのまま表示される
   - 誤: `**文（statement）**と、` / 正: `**文**（statement）と、`
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
