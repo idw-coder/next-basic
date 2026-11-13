@@ -2,14 +2,326 @@
 title: 'プロトタイプとclass構文 — 継承モデルの仕組みを理解する'
 description: 'プロトタイプチェーンの仕組み、class構文・extends・super・static、ES2022のプライベートフィールドまでを解説します。'
 order: 10
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+JavaScriptのオブジェクトは、別のオブジェクトを参照してプロパティを引き継げます。この参照関係を **プロトタイプチェーン** と呼びます。`class`構文も、内部ではこの仕組みを使っています。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`class` を使っているだけなら、プロトタイプを知らなくても大丈夫？
+</SpeechBubble>
+
+`class`の基本コードは書けても、メソッドがどこに置かれるか、`instanceof`が何を調べるか、継承でなぜ `super()` が必要かを理解するにはプロトタイプが役立ちます。
+
+## プロトタイプチェーンとは
+
+オブジェクトでプロパティを読むと、JavaScriptは最初にそのオブジェクト自身を調べます。見つからなければプロトタイプへ進み、見つかるか終端の `null` に到達するまで探索します。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["dog自身"] -->|参照| B["Dog.prototype"]
+    B -->|参照| C["Object.prototype"]
+    C -->|終端| D["null"]
+`}
+/>
+
+```js
+const animal = {
+  speak() {
+    return `${this.name}が鳴く`;
+  },
+};
+
+const dog = Object.create(animal);
+dog.name = 'ポチ';
+
+console.log(dog.speak()); // "ポチが鳴く"
+console.log(Object.hasOwn(dog, 'speak')); // false
+```
+
+### Object.createでプロトタイプを指定する
+
+**構文：** `Object.create(proto, propertiesObject?)`
+
+| 引数 | 説明 |
+|---|---|
+| `proto`（第1引数） | 新しいオブジェクトのプロトタイプ。オブジェクトまたは `null` |
+| `propertiesObject`（第2引数、省略可） | 追加するプロパティ記述子 |
+
+**戻り値：** 指定したプロトタイプを持つ新しいオブジェクト
+
+プロトタイプの確認には `Object.getPrototypeOf(object)` を使います。
+
+```js
+console.log(Object.getPrototypeOf(dog) === animal); // true
+```
+
+<Callout type="warning" title="__proto__を直接操作しない">
+  `__proto__` は古い互換機能です。プロトタイプの取得は `Object.getPrototypeOf()`、生成時の指定は `Object.create()` を使います。実行途中のプロトタイプ変更は最適化を妨げるため避けます。
+</Callout>
+
+## コンストラクター関数とnewの仕組み
+
+`class`が導入される前は、コンストラクター関数と `prototype` プロパティを組み合わせてインスタンスを作る書き方が一般的でした。
+
+```js
+function User(name) {
+  this.name = name;
+}
+
+User.prototype.greet = function () {
+  return `こんにちは、${this.name}です`;
+};
+
+const user = new User('太郎');
+console.log(user.greet()); // "こんにちは、太郎です"
+```
+
+`new User('太郎')`では、概念上次の処理が行われます。
+
+1. 新しい空のオブジェクトを作る
+2. そのプロトタイプを `User.prototype` にする
+3. `this`を新しいオブジェクトにして `User` を呼ぶ
+4. 関数が別のオブジェクトを明示的に返さなければ、新しいオブジェクトを返す
+
+<Marker>インスタンスメソッドを `prototype` に置くと、すべてのインスタンスが同じ関数を共有できます。</Marker>
+
+## class構文でインスタンスを作る
+
+`class`構文は、プロトタイプベースの仕組みを読みやすく表現します。
+
+```js
+class User {
+  constructor(name) {
+    this.name = name;
+  }
+
+  greet() {
+    return `こんにちは、${this.name}です`;
+  }
+}
+
+const user = new User('太郎');
+
+console.log(user.greet()); // "こんにちは、太郎です"
+console.log(Object.hasOwn(user, 'greet')); // false
+console.log(User.prototype.greet === user.greet); // true
+```
+
+### constructor
+
+**構文：**
+
+```js
+class ClassName {
+  constructor(...args) {
+    // インスタンスの初期化
+  }
+}
+```
+
+| 引数 | 説明 |
+|---|---|
+| `...args` | `new ClassName(...)`から渡される値。個数と意味はクラスが決める |
+
+**戻り値：** 通常は明示的に返さず、`new`が生成したインスタンスを返す
+
+`constructor`は1つのクラスに1つだけ定義できます。省略した場合は既定のコンストラクターが使われます。
+
+### フィールドとメソッドの違い
+
+```js
+class Counter {
+  count = 0; // 各インスタンス自身に作られるフィールド
+
+  increment() { // prototypeで共有されるメソッド
+    this.count += 1;
+  }
+}
+```
+
+フィールド初期化子はインスタンスごとに評価されます。メソッドは `Counter.prototype` に置かれ、インスタンス間で共有されます。
+
+## getterとsetterで読み書きを制御する
+
+getterはプロパティを読む形でメソッドを実行し、setterは代入する形で値を受け取ります。
+
+```js
+class Temperature {
+  #celsius = 0;
+
+  get celsius() {
+    return this.#celsius;
+  }
+
+  set celsius(value) {
+    if (!Number.isFinite(value)) {
+      throw new TypeError('数値を指定してください');
+    }
+    this.#celsius = value;
+  }
+}
+
+const temperature = new Temperature();
+temperature.celsius = 25;
+console.log(temperature.celsius); // 25
+```
+
+setterは戻り値を利用できません。複雑な処理や失敗理由を呼び出し側で扱いたい場合は、`setTemperature(value)`のような通常メソッドの方が明確です。
+
+## staticでクラス側の機能を定義する
+
+`static`を付けたフィールドやメソッドは、インスタンスではなくクラス自身に作られます。
+
+```js
+class User {
+  static count = 0;
+
+  constructor(name) {
+    this.name = name;
+    User.count += 1;
+  }
+
+  static createGuest() {
+    return new User('ゲスト');
+  }
+}
+
+const guest = User.createGuest();
+
+console.log(User.count); // 1
+console.log(guest.count); // undefined
+```
+
+staticメソッドは、ファクトリー関数やクラス全体に関係するユーティリティに向いています。インスタンス固有の値を読む処理は通常のメソッドに置きます。
+
+## プライベート要素で外部アクセスを防ぐ
+
+名前の先頭に `#` を付けたフィールドやメソッドは、宣言したクラスの本体内からだけアクセスできます。
+
+```js
+class BankAccount {
+  #balance = 0;
+
+  deposit(amount) {
+    if (amount <= 0) {
+      throw new RangeError('入金額は1以上にしてください');
+    }
+    this.#balance += amount;
+  }
+
+  getBalance() {
+    return this.#balance;
+  }
+}
+
+const account = new BankAccount();
+account.deposit(1000);
+
+console.log(account.getBalance()); // 1000
+// console.log(account.#balance); // SyntaxError
+```
+
+`#balance`は単なる命名規則ではありません。クラス外から記述した時点で構文エラーになる、言語機能としての非公開要素です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+外から変更してよい値は公開メソッドで操作し、壊されたくない内部状態はプライベート要素に置くと境界が明確になります。
+</SpeechBubble>
+
+## extendsとsuperで継承する
+
+`extends`は親クラスを指定し、`super`は親クラスのコンストラクターやメソッドを呼び出します。
+
+```js
+class Employee {
+  constructor(name) {
+    this.name = name;
+  }
+
+  describe() {
+    return `従業員: ${this.name}`;
+  }
+}
+
+class Engineer extends Employee {
+  constructor(name, language) {
+    super(name);
+    this.language = language;
+  }
+
+  describe() {
+    return `${super.describe()} / 使用言語: ${this.language}`;
+  }
+}
+
+const engineer = new Engineer('太郎', 'JavaScript');
+console.log(engineer.describe());
+// "従業員: 太郎 / 使用言語: JavaScript"
+```
+
+派生クラスのコンストラクターでは、`this`を使う前に `super()` を呼ぶ必要があります。親クラスによるインスタンス初期化が終わる前は `this`を利用できないためです。
+
+### instanceofが調べているもの
+
+**構文：** `object instanceof Constructor`
+
+| 値 | 説明 |
+|---|---|
+| `object`（左辺） | 調べるオブジェクト |
+| `Constructor`（右辺） | `prototype`がチェーン内にあるか調べるコンストラクター |
+
+**戻り値：** `Constructor.prototype`がオブジェクトのプロトタイプチェーンにあれば `true`
+
+```js
+console.log(engineer instanceof Engineer); // true
+console.log(engineer instanceof Employee); // true
+console.log(engineer instanceof Object); // true
+```
+
+<Callout type="note" title="継承より委譲が単純な場合もある">
+  `extends`は「派生クラスは親クラスの一種である」と言える関係に向いています。機能を一部借りたいだけなら、別オブジェクトをプロパティとして持つコンポジションの方が変更に強くなります。
+</Callout>
+
+## よくあるハマりどころ
+
+### メソッドを取り出してthisを失う
+
+クラスのメソッドも、呼び出し方によって `this` が決まります。詳しくは[thisの正体](/books/javascript/11-this-keyword)で扱います。
+
+```js
+const greet = user.greet;
+// greet(); // thisがuserではない
+```
+
+### 派生クラスでsuperより先にthisを使う
+
+`constructor`を定義した派生クラスでは、最初に必要な値を `super(...)` へ渡して親の初期化を完了させます。
+
+### privateとアンダースコアを同じだと思う
+
+`_balance`は慣習的な名前にすぎず、外部からアクセスできます。強制的に隠す必要がある場合は `#balance` を使います。
+
+### 継承を深くしすぎる
+
+継承階層が深いと、どのクラスが値を変更したか追いにくくなります。共通化のためだけに継承せず、委譲や小さな関数も検討します。
+
+## ちゃんと使うためのポイント
+
+- プロパティ探索は自身からプロトタイプへ進む
+- クラスメソッドは `ClassName.prototype` で共有される
+- クラス全体の機能には `static`、内部状態には `#private`を使う
+- 派生クラスでは `this` より先に `super()` を呼ぶ
+- 継承は「親の一種」と言える関係に絞り、機能の再利用だけなら委譲を検討する
 
 ## 参考リンク
 
 - [MDN — クラス](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Classes)
+- [MDN — 継承とプロトタイプチェーン](https://developer.mozilla.org/ja/docs/Web/JavaScript/Guide/Inheritance_and_the_prototype_chain)
 - [MDN — extends](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Classes/extends)
-- [MDN — super](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/super)
 - [MDN — プライベート要素](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Classes/Private_elements)
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>

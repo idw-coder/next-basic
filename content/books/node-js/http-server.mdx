@@ -2,7 +2,298 @@
 title: 'httpモジュールでサーバーを作る — Expressの前に知る素のNode.js'
 description: 'Node.js標準のhttpモジュールを使い、リクエストとレスポンス、HTTPサーバーの最小構成、Expressの前提知識を学びます。'
 order: 11
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.js標準の `node:http` モジュールだけでHTTPサーバーを作れます。フレームワークを使う前に、リクエストの読み取りとレスポンスの終了を自分で書くと、Expressが省略している処理を理解できます。
+
+HTTPのメソッド、ステータスコード、ヘッダーの意味は[HTTPとWeb APIの基礎](/books/http-and-web-api)で扱います。この章ではNode.js APIへ落とし込む部分に集中します。
+
+## 最小のHTTPサーバー
+
+```js
+import { createServer } from 'node:http';
+
+const server = createServer((request, response) => {
+  response.statusCode = 200;
+  response.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  response.end('こんにちは、Node.js');
+});
+
+server.listen(3000, () => {
+  console.log('http://localhost:3000 で起動しました');
+});
+```
+
+```bash
+node server.js
+curl -i http://localhost:3000
+```
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["クライアント"] -->|request| B["Node.js"]
+    B -->|response| A
+`}
+/>
+
+### http.createServer
+
+**構文：** `createServer(options?, requestListener?)`
+
+| 引数 | 説明 |
+|---|---|
+| `options`（第1引数、省略可） | HTTPサーバーの動作オプション |
+| `requestListener`（省略可） | リクエストごとに `request`と `response`を受け取る関数 |
+
+**戻り値：** `http.Server`インスタンス
+
+`request`は受信データを読む `http.IncomingMessage`、`response`は送信内容を組み立てる `http.ServerResponse`です。どちらもStreamを基盤にしています。
+
+### server.listen
+
+**構文：** `server.listen(port, host?, callback?)`
+
+| 引数 | 説明 |
+|---|---|
+| `port`（第1引数） | 待ち受けるTCPポート番号 |
+| `host`（第2引数、省略可） | 待ち受けるホスト名またはIPアドレス |
+| `callback`（省略可） | 待ち受け開始後に呼ぶ関数 |
+
+**戻り値：** 呼び出したServer自身
+
+<Callout type="note" title="listenのhost省略">
+  hostを省略した場合の待受アドレスはOSやNode.jsの構成に依存します。ローカルだけに限定するなら `127.0.0.1`、コンテナ外から受けるなら通常 `0.0.0.0`を明示します。
+</Callout>
+
+## requestからメソッドとURLを読む
+
+`request.method`には `GET`や `POST`、`request.url`にはパスとクエリ文字列が入ります。`request.url`は相対形式なので、`URL`へ渡すときは基準URLを指定します。
+
+```js
+const server = createServer((request, response) => {
+  const url = new URL(request.url, 'http://localhost');
+
+  console.log(request.method); // GET
+  console.log(url.pathname); // /search
+  console.log(url.searchParams.get('q')); // node
+
+  response.end('ok');
+});
+```
+
+```bash
+curl 'http://localhost:3000/search?q=node'
+```
+
+URLのホスト名は解析の基準としてだけ使っています。実際の待受先を変更する値ではありません。
+
+## パスとHTTPメソッドでルーティングする
+
+ルーティングは、URLとHTTPメソッドを処理関数へ対応付けることです。素の `node:http`では条件分岐を自分で書きます。
+
+```js
+const server = createServer((request, response) => {
+  const url = new URL(request.url, 'http://localhost');
+
+  if (request.method === 'GET' && url.pathname === '/health') {
+    sendJson(response, 200, { status: 'ok' });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/users') {
+    sendJson(response, 200, {
+      users: [{ id: 1, name: '太郎' }],
+    });
+    return;
+  }
+
+  sendJson(response, 404, {
+    error: { code: 'NOT_FOUND', message: 'ページが見つかりません' },
+  });
+});
+
+function sendJson(response, statusCode, data) {
+  const body = JSON.stringify(data);
+
+  response.statusCode = statusCode;
+  response.setHeader('Content-Type', 'application/json; charset=utf-8');
+  response.setHeader('Content-Length', Buffer.byteLength(body));
+  response.end(body);
+}
+```
+
+各分岐で `return` しないと、1つのリクエストへ複数回レスポンスを書こうとしてエラーになります。
+
+<Marker>HTTPレスポンスはステータス、ヘッダー、本文を設定し、最後に `response.end()` で完了させます。</Marker>
+
+## responseでステータス・ヘッダー・本文を返す
+
+### response.setHeader
+
+**構文：** `response.setHeader(name, value)`
+
+| 引数 | 説明 |
+|---|---|
+| `name`（第1引数） | HTTPヘッダー名 |
+| `value`（第2引数） | 文字列、数値、文字列配列のヘッダー値 |
+
+**戻り値：** 呼び出したServerResponse自身
+
+### response.end
+
+**構文：** `response.end(data?, encoding?, callback?)`
+
+| 引数 | 説明 |
+|---|---|
+| `data`（省略可） | 最後に送る文字列、Buffer、Uint8Array |
+| `encoding`（省略可） | 文字列データのエンコーディング |
+| `callback`（省略可） | データを送信処理へ渡した後に呼ぶ関数 |
+
+**戻り値：** 呼び出したServerResponse自身
+
+ヘッダーは本文の送信前に設定します。`response.write()`や `response.end()`で送信が始まった後は変更できません。
+
+```js
+response.statusCode = 201;
+response.setHeader('Content-Type', 'application/json; charset=utf-8');
+response.end(JSON.stringify({ id: 1 }));
+```
+
+`Content-Length`は文字数ではなくバイト数です。日本語を含む場合は `body.length`ではなく `Buffer.byteLength(body)`を使います。長さを省略すると、Node.jsが転送方法を決めます。
+
+## POSTのJSON本文を読む
+
+`request`はReadable Streamです。本文は分割して届くため、すべてのchunkを集めてからJSONとして解析します。
+
+```js
+async function readJson(request, limit = 1_000_000) {
+  const chunks = [];
+  let size = 0;
+
+  for await (const chunk of request) {
+    size += chunk.length;
+
+    if (size > limit) {
+      const error = new Error('リクエスト本文が大きすぎます');
+      error.statusCode = 413;
+      throw error;
+    }
+
+    chunks.push(chunk);
+  }
+
+  const text = Buffer.concat(chunks).toString('utf8');
+  return JSON.parse(text);
+}
+```
+
+**構文：** `readJson(request, limit?)`
+
+| 引数 | 説明 |
+|---|---|
+| `request`（第1引数） | 本文を読むIncomingMessage |
+| `limit`（第2引数、省略可） | 許可する最大バイト数 |
+
+**戻り値：** JSONを解析した値で解決するPromise。本文が不正ならreject
+
+ルートから呼び出します。
+
+```js
+if (request.method === 'POST' && url.pathname === '/users') {
+  try {
+    const input = await readJson(request);
+
+    if (typeof input.name !== 'string' || input.name.trim() === '') {
+      sendJson(response, 400, {
+        error: { code: 'INVALID_NAME', message: 'nameは必須です' },
+      });
+      return;
+    }
+
+    sendJson(response, 201, {
+      id: 2,
+      name: input.name,
+    });
+  } catch (error) {
+    const statusCode = error.statusCode ?? 400;
+    sendJson(response, statusCode, {
+      error: { code: 'INVALID_BODY', message: error.message },
+    });
+  }
+  return;
+}
+```
+
+本文サイズの上限を設けないと、大量データによってメモリを消費させられます。JSONとして解析できることと、必要なプロパティや型を満たすことは別なので、解析後の入力検証も必要です。
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="HTTPリクエストとレスポンスを確認する人のイラスト" maxWidth="270px" />
+
+## サーバーのエラーを処理する
+
+待受ポートが使用中など、サーバー自体の失敗は `error`イベントで通知されます。
+
+```js
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error('ポート3000はすでに使用されています');
+  } else {
+    console.error(error);
+  }
+
+  process.exitCode = 1;
+});
+```
+
+リクエスト処理内でthrowされたエラーを自動でHTTP 500へ変換する仕組みはありません。非同期処理を含むrequest listenerでは、自分でcatchして必ずレスポンスを完了させます。Expressはこのような共通処理をミドルウェアとエラーハンドラーとして整理します。
+
+## Expressが追加するもの
+
+素の `node:http`でAPIが増えると、同じ処理が繰り返されます。
+
+- パスパラメーターを含むルーティング
+- JSON本文の解析とサイズ制限
+- ミドルウェアの順番管理
+- 共通エラーハンドリング
+- CookieやCORSなどのヘッダー処理
+
+[Express入門](/books/node-js/express-basics)では、これらをExpressのAPIで書き直します。Expressの `req`と `res`は、Node.jsのIncomingMessageとServerResponseを拡張したものです。
+
+## よくあるハマりどころ
+
+### response.endを呼び忘れる
+
+クライアントはレスポンス完了を待ち続けます。すべての分岐が `end()`または終了まで行くことを確認します。
+
+### 分岐後にreturnしない
+
+404処理まで進み、ヘッダーを二重送信する原因になります。レスポンスを完了した直後に `return`します。
+
+### request.urlをそのまま文字列分割する
+
+クエリ文字列やURLエンコードを正しく扱うため、`new URL(request.url, base)`を使います。
+
+### 本文サイズを制限しない
+
+本文をメモリへ集める前にバイト数を数え、上限を超えたら413で終了します。本番ではタイムアウトやリバースプロキシ側の制限も組み合わせます。
+
+## ちゃんと使うためのポイント
+
+- `request.method`と `URL.pathname`で処理を分ける
+- ステータスとヘッダーを設定してから `response.end()`を呼ぶ
+- JSON本文はStreamとして読み、サイズと内容を検証する
+- 正常系だけでなく404、400、413、500の応答を用意する
+- Serverの `error`イベントを処理する
+- ルートが増えたらExpressなどのフレームワークで共通処理を整理する
+
+## 参考リンク
+
+- [Node.js公式 — HTTP](https://nodejs.org/api/http.html)
+- [Node.js公式 — Stream](https://nodejs.org/api/stream.html)
+- [MDN — HTTPの概要](https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/Overview)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

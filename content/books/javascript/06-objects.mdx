@@ -2,98 +2,327 @@
 title: 'オブジェクト操作 — プロパティアクセスとObjectの静的メソッド'
 description: 'プロパティアクセス・動的キー・プロパティの存在確認と、Object.keys/values/entries/assign/freezeなどObjectの静的メソッドの使い方を整理します。'
 order: 6
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+JavaScriptのオブジェクトは、名前付きの値をプロパティとしてまとめるデータ構造です。この章では、プロパティの読み書きから、キーの列挙、コピー、変更制限までを扱います。
 
-> **この章で扱う範囲**：プロパティアクセス（ドット記法・ブラケット記法）、動的キー、プロパティの存在確認（`in` / `hasOwn`）、`Object.keys` / `Object.values` / `Object.entries` / `Object.assign` / `Object.freeze` などの静的メソッド。
-> なお **分割代入・スプレッド構文** は[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)（第9章）にまとめて扱います。
+分割代入とスプレッド構文は[分割代入とスプレッド構文](/books/javascript/09-destructuring-and-spread)、プロトタイプによる継承は[プロトタイプとclass構文](/books/javascript/10-prototype-and-class)で扱います。
 
-<a id="section-1"></a>
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`user.name` と `user['name']` は同じ値になるけど、どう使い分けるの？
+</SpeechBubble>
 
 ## プロパティアクセス — ドット記法とブラケット記法
 
-オブジェクトのプロパティにアクセスする方法は、大きく分けて **ドット記法** と **ブラケット記法** の2つです。
+固定されたプロパティ名にはドット記法、変数や式からプロパティ名を決める場合にはブラケット記法を使います。
 
 ```js
 const user = {
   name: '太郎',
   age: 25,
+  'favorite-color': 'blue',
 };
 
 console.log(user.name); // "太郎"
-console.log(user['name']); // "太郎"
+console.log(user['age']); // 25
+console.log(user['favorite-color']); // "blue"
 ```
 
-ふつうの固定名なら `user.name` のようなドット記法が読みやすいです。一方で、プロパティ名を変数や式で組み立てたい場合は、`obj[key]` のように **ブラケット記法** を使います。
+ドット記法の右側は識別子として解釈されます。ブラケット記法の内側は式として評価されるため、変数に入ったキーを利用できます。
 
 ```js
-const user = {
-  name: '太郎',
-  age: 25,
-};
-
 const key = 'name';
 
 console.log(user[key]); // "太郎"
-console.log(user.key); // undefined（"key" という名前のプロパティを探してしまう）
+console.log(user.key); // undefined（"key" というプロパティを探す）
 ```
 
-<Marker>変数に入っている値をプロパティ名として使いたいときは、ドット記法ではなくブラケット記法を使います。</Marker>
+<Marker>変数の値をプロパティ名として使う場合は `object[key]` と書きます。</Marker>
 
-<a id="section-2"></a>
-
-## 動的キー — テンプレートリテラルをキーにする
-
-オブジェクトを作るときも、キー名を変数やテンプレートリテラルで組み立てられます。この場合は、オブジェクトリテラル内で **`[式]`** を使います。これは **算出プロパティ名** と呼ばれる書き方です。
+存在しないプロパティを読むと、通常はエラーではなく `undefined` が返ります。ただし、途中の値が `null` や `undefined` の場合は、[オプショナルチェーン](/books/javascript/03-operators-and-expressions)の `?.` を使います。
 
 ```js
-const id = 10;
+const profile = {};
 
-const scores = {
-  [`user_${id}`]: 80,
-};
-
-console.log(scores.user_10); // 80
-console.log(scores[`user_${id}`]); // 80
+console.log(profile.address); // undefined
+console.log(profile.address?.city); // undefined
 ```
 
-`user_${id}` のようなテンプレートリテラルは文字列を作る式です。その式を「キー名」として評価してほしいので、`[` と `]` で囲みます。
+## プロパティを追加・更新・削除する
+
+代入先のプロパティがなければ追加され、すでにあれば更新されます。`delete` 演算子はプロパティを削除します。
 
 ```js
-const id = 10;
+const user = { name: '太郎' };
 
-const bad = {
-  `user_${id}`: 80, // ❌ 構文エラー
-};
+user.age = 25; // 追加
+user.name = '次郎'; // 更新
+delete user.age; // 削除
 
-const good = {
-  [`user_${id}`]: 80, // ⭕ "user_10" というキーになる
-};
+console.log(user); // { name: "次郎" }
 ```
 
-読み出すときも同じです。キーを式で組み立てるなら `obj[式]`、固定名で書けるなら `obj.key` を使います。
+`const`で宣言した変数でも、オブジェクトの中身は変更できます。`const`が禁止するのは変数への再代入です。
+
+```js
+const settings = { theme: 'light' };
+settings.theme = 'dark'; // 可能
+
+// settings = {}; // 再代入はできない
+```
+
+## 算出プロパティ名で動的なキーを作る
+
+オブジェクトリテラルのキーを式から作る構文を **算出プロパティ名** と呼びます。キーにする式を角括弧で囲みます。
 
 ```js
 const userId = 10;
-const scores = {
-  user_10: 80,
-  user_11: 95,
+const field = 'email';
+
+const data = {
+  [`user_${userId}`]: '太郎',
+  [field]: 'taro@example.com',
 };
 
-console.log(scores[`user_${userId}`]); // 80
+console.log(data.user_10); // "太郎"
+console.log(data.email); // "taro@example.com"
 ```
 
-<Callout type="info" title="JSONでは使えない">
-  算出プロパティ名はJavaScriptのオブジェクトリテラルの構文です。JSONではキーを式で組み立てられず、キー名は文字列として直接書く必要があります。
+フォームの入力名をそのままキーにして状態を更新する場面でも使えます。
+
+```js
+function updateField(form, name, value) {
+  return {
+    ...form,
+    [name]: value,
+  };
+}
+
+const next = updateField({ name: '太郎' }, 'email', 'taro@example.com');
+```
+
+<Callout type="info" title="JSONでは式をキーにできない">
+  算出プロパティ名はJavaScriptのオブジェクトリテラル構文です。JSONではキーを二重引用符で囲んだ文字列として直接記述します。
 </Callout>
+
+## プロパティの存在を確認する
+
+値が `undefined` かどうかを見る方法では、「プロパティがない場合」と「値として `undefined` が入っている場合」を区別できません。
+
+```js
+const user = { nickname: undefined };
+
+console.log(user.nickname === undefined); // true
+console.log(user.missing === undefined); // true
+```
+
+存在そのものを確認する場合は、`in` 演算子か `Object.hasOwn()` を使います。
+
+| 書き方 | 自身のプロパティ | 継承したプロパティ |
+|---|---:|---:|
+| `'key' in object` | 含む | 含む |
+| `Object.hasOwn(object, 'key')` | 含む | 含まない |
+
+```js
+const user = { name: '太郎' };
+
+console.log('name' in user); // true
+console.log('toString' in user); // true（継承したプロパティ）
+
+console.log(Object.hasOwn(user, 'name')); // true
+console.log(Object.hasOwn(user, 'toString')); // false
+```
+
+**構文：** `Object.hasOwn(object, propertyKey)`
+
+| 引数 | 説明 |
+|---|---|
+| `object`（第1引数） | 調べるオブジェクト |
+| `propertyKey`（第2引数） | 存在を調べる文字列またはSymbolのキー |
+
+**戻り値：** オブジェクト自身がキーを持つ場合は `true`、持たない場合は `false`
+
+<Marker>入力データが特定のキーを自分自身に持つか調べる場合は、継承プロパティを除外できる `Object.hasOwn()` が適しています。</Marker>
+
+## Object.keys・values・entriesで列挙する
+
+`Object.keys()`、`Object.values()`、`Object.entries()`は、オブジェクト自身が持つ列挙可能な文字列キーを配列へ変換します。
+
+| メソッド | 引数 | 戻り値 |
+|---|---|---|
+| `Object.keys(object)` | 対象のオブジェクト | キーの配列 |
+| `Object.values(object)` | 対象のオブジェクト | 値の配列 |
+| `Object.entries(object)` | 対象のオブジェクト | `[キー, 値]`の配列 |
+
+```js
+const scores = {
+  alice: 80,
+  bob: 95,
+};
+
+console.log(Object.keys(scores));
+// ["alice", "bob"]
+
+console.log(Object.values(scores));
+// [80, 95]
+
+console.log(Object.entries(scores));
+// [["alice", 80], ["bob", 95]]
+```
+
+`Object.entries()`は、分割代入と組み合わせるとキーと値を同時に扱えます。
+
+```js
+for (const [name, score] of Object.entries(scores)) {
+  console.log(`${name}: ${score}点`);
+}
+```
+
+Symbolキーと継承したプロパティは、これら3つのメソッドの結果に含まれません。Symbolを含む自身のキーが必要なら `Reflect.ownKeys()` を使います。
+
+### Object.fromEntriesでオブジェクトへ戻す
+
+**構文：** `Object.fromEntries(iterable)`
+
+| 引数 | 説明 |
+|---|---|
+| `iterable`（第1引数） | `[キー, 値]`の組を返す反復可能オブジェクト |
+
+**戻り値：** 組から作られた新しいオブジェクト
+
+```js
+const prices = {
+  apple: 120,
+  orange: 150,
+};
+
+const discounted = Object.fromEntries(
+  Object.entries(prices).map(([name, price]) => [name, price * 0.9])
+);
+
+console.log(discounted);
+// { apple: 108, orange: 135 }
+```
+
+<Figure src="/images/pc-work-woman01.png" alt="オブジェクトのキーと値を整理する人のイラスト" maxWidth="280px" />
+
+## Object.assignでプロパティをコピーする
+
+**構文：** `Object.assign(target, ...sources)`
+
+| 引数 | 説明 |
+|---|---|
+| `target`（第1引数） | コピー先。直接変更される |
+| `sources`（第2引数以降） | コピー元。後のオブジェクトほど優先される |
+
+**戻り値：** 変更後の `target` と同じオブジェクト
+
+```js
+const defaults = { theme: 'light', pageSize: 20 };
+const userOptions = { pageSize: 50 };
+
+const options = Object.assign({}, defaults, userOptions);
+
+console.log(options);
+// { theme: "light", pageSize: 50 }
+```
+
+第1引数を空オブジェクトにすると、`defaults`を変更せずに新しいオブジェクトを作れます。第1引数に既存オブジェクトを渡すと、そのオブジェクト自体が変わります。
+
+```js
+const target = { a: 1 };
+const result = Object.assign(target, { b: 2 });
+
+console.log(target); // { a: 1, b: 2 }
+console.log(result === target); // true
+```
+
+`Object.assign()`のコピーは1階層だけの **浅いコピー** です。内側のオブジェクトは同じ参照を共有します。
+
+```js
+const original = { profile: { name: '太郎' } };
+const copied = Object.assign({}, original);
+
+copied.profile.name = '次郎';
+console.log(original.profile.name); // "次郎"
+```
+
+深いコピーが必要な場合は、値の種類を確認したうえで `structuredClone()` などを検討します。JSONによるコピーの制限は[JSONの基礎と実践](/books/javascript/23-json)で扱います。
+
+## Object.freezeで変更を防ぐ
+
+**構文：** `Object.freeze(object)`
+
+| 引数 | 説明 |
+|---|---|
+| `object`（第1引数） | 変更を制限するオブジェクト |
+
+**戻り値：** 引数に渡したものと同じオブジェクト
+
+`Object.freeze()`を使うと、新しいプロパティの追加、既存プロパティの削除、既存データプロパティの値変更を防げます。
+
+```js
+'use strict';
+
+const config = Object.freeze({ port: 3000 });
+
+config.port = 8080;
+// TypeError: Cannot assign to read only property 'port'
+```
+
+ただし、`freeze()`も1階層だけに作用します。内側のオブジェクトは自動では凍結されません。
+
+```js
+const config = Object.freeze({
+  database: { host: 'localhost' },
+});
+
+config.database.host = 'db.example.com'; // 変更できる
+```
+
+<Callout type="warning" title="freezeはセキュリティ境界ではない">
+  `Object.freeze()`は意図しない代入を防ぐ補助です。信頼できない入力の検証やアクセス制御の代わりにはなりません。
+</Callout>
+
+## よくあるハマりどころ
+
+### for...inで継承プロパティまで処理する
+
+`for...in`は列挙可能な継承プロパティも対象にします。自身のデータだけを処理したい場合は `Object.entries()` の方が意図を表しやすくなります。
+
+```js
+for (const [key, value] of Object.entries(data)) {
+  console.log(key, value);
+}
+```
+
+### undefinedだけで存在判定する
+
+値として `undefined` を持つプロパティがあるため、存在判定には `Object.hasOwn()` を使います。
+
+### Object.assignを深いコピーだと思う
+
+`Object.assign()`とオブジェクトスプレッドは浅いコピーです。ネストした値を変更する場合は参照共有を意識します。
+
+## ちゃんと使うためのポイント
+
+- 固定キーはドット記法、動的キーはブラケット記法で読む
+- 自身のプロパティだけを確認する場合は `Object.hasOwn()` を使う
+- 列挙には `Object.keys()`、`Object.values()`、`Object.entries()` を目的別に選ぶ
+- `Object.assign()`と `Object.freeze()` は1階層だけに作用する
+- 継承関係を調べる処理と、入力データのキーを調べる処理を分ける
+
+オブジェクトを配列と組み合わせて変換するときは、[配列メソッド早見表](/books/javascript/07-arrays)も参照してください。
 
 ## 参考リンク
 
 - [MDN — プロパティアクセサー](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Property_accessors)
-- [MDN — オブジェクト初期化子](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Operators/Object_initializer)
-- [MDN — Object.keys](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/keys)
-- [MDN — Object.entries](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/entries)
-- [MDN — Object.assign](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/assign)
+- [MDN — Object](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object)
 - [MDN — Object.hasOwn](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwn)
+- [MDN — Object.freeze](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Object/freeze)
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>

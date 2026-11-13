@@ -2,7 +2,326 @@
 title: 'Node.jsでCLIを作る — process.argv・標準入出力・終了コード'
 description: 'Node.jsでコマンドラインツールを作るために、process.argv、標準入力、標準出力、終了コード、shebangの基本を学びます。'
 order: 10
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsはWebサーバーだけでなく、ターミナルから実行するCLI（Command Line Interface）も作れます。この章では、引数を受け取り、結果とエラーを出力し、成功・失敗を終了コードで伝えるCLIを組み立てます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`node tool.js hello` の `hello` は、プログラムのどこから読めるの？
+</SpeechBubble>
+
+## process.argvでコマンドライン引数を読む
+
+`process.argv`は、Node.jsプロセスを起動したコマンドライン引数を文字列配列で返すプロパティです。
+
+```js
+// args.js
+console.log(process.argv);
+```
+
+```bash
+node args.js hello --upper
+```
+
+配列の位置は次のようになります。
+
+| 位置 | 内容 |
+|---:|---|
+| `process.argv[0]` | Node.js実行ファイルのパス |
+| `process.argv[1]` | 実行したスクリプトのパス |
+| `process.argv[2]`以降 | 利用者が渡した引数 |
+
+アプリケーション用の引数だけが必要なら `slice(2)` で取り出します。
+
+```js
+const args = process.argv.slice(2);
+const [name = 'ゲスト'] = args;
+
+console.log(`こんにちは、${name}さん`);
+```
+
+```bash
+node greet.js 太郎
+# こんにちは、太郎さん
+```
+
+シェルは空白で引数を区切ります。空白を含む1つの値は引用符で囲みます。
+
+```bash
+node greet.js "山田 太郎"
+```
+
+<Marker>`process.argv`の値はすべて文字列です。数値や真偽値として使う前に変換と検証が必要です。</Marker>
+
+```js
+const raw = process.argv[2];
+const count = Number(raw);
+
+if (!Number.isInteger(count) || count < 1) {
+  console.error('回数は1以上の整数で指定してください');
+  process.exitCode = 1;
+} else {
+  console.log('実行'.repeat(count));
+}
+```
+
+## util.parseArgsでオプションを解析する
+
+`node:util`の `parseArgs()`を使うと、`--name taro`や `--verbose`のようなオプションを宣言的に解析できます。
+
+**構文：** `parseArgs(config?)`
+
+| 引数 | 説明 |
+|---|---|
+| `config`（省略可） | `args`、`options`、`allowPositionals`などの解析ルール |
+
+**戻り値：** `values`、`positionals`などを持つ解析結果オブジェクト
+
+```js
+import { parseArgs } from 'node:util';
+
+const { values, positionals } = parseArgs({
+  options: {
+    name: {
+      type: 'string',
+      short: 'n',
+      default: 'ゲスト',
+    },
+    upper: {
+      type: 'boolean',
+      short: 'u',
+      default: false,
+    },
+  },
+  allowPositionals: true,
+});
+
+const message = `こんにちは、${values.name}さん`;
+
+console.log(values.upper ? message.toUpperCase() : message);
+console.log('位置引数:', positionals);
+```
+
+```bash
+node greet.js --name 太郎 --upper file.txt
+node greet.js -n 太郎 -u file.txt
+```
+
+引数が増えたら手作業の `if` 分岐を増やすより、解析ルールとヘルプ文を1か所にまとめます。
+
+## 標準入力・標準出力・標準エラー
+
+CLIは3つの標準ストリームを使って他のコマンドと連携します。
+
+| ストリーム | Node.js | ファイルディスクリプター | 用途 |
+|---|---|---:|---|
+| 標準入力 | `process.stdin` | 0 | 入力データを受け取る |
+| 標準出力 | `process.stdout` | 1 | 正常な結果を出す |
+| 標準エラー | `process.stderr` | 2 | 警告やエラーを出す |
+
+`console.log()`は通常stdout、`console.error()`はstderrへ書き込みます。正常なデータと診断メッセージを分けると、パイプやリダイレクトを壊しません。
+
+```js
+console.log(JSON.stringify({ status: 'ok' }));
+console.error('詳細ログ: 処理を開始しました');
+```
+
+```bash
+node tool.js > result.json
+# stdoutだけがresult.jsonへ入る
+```
+
+### stdinをまとめて読む
+
+stdinはReadable Streamです。[StreamとBuffer入門](/books/node-js/streams)で扱った `data` と `end` イベントを利用できます。
+
+```js
+let input = '';
+
+process.stdin.setEncoding('utf8');
+
+for await (const chunk of process.stdin) {
+  input += chunk;
+}
+
+console.log(input.toUpperCase());
+```
+
+```bash
+echo "hello" | node upper.js
+# HELLO
+```
+
+## readlineで対話形式の入力を受け取る
+
+`node:readline/promises`を使うと、質問を表示して1行の入力を待てます。
+
+**構文：** `createInterface(options)`
+
+| 引数 | 説明 |
+|---|---|
+| `options.input` | 入力に使うReadable Stream |
+| `options.output` | 質問文を出すWritable Stream |
+
+**戻り値：** 質問や終了操作を持つreadline interface
+
+```js
+import { createInterface } from 'node:readline/promises';
+import { stdin, stdout } from 'node:process';
+
+const rl = createInterface({
+  input: stdin,
+  output: stdout,
+});
+
+try {
+  const name = await rl.question('名前を入力してください: ');
+  console.log(`こんにちは、${name}さん`);
+} finally {
+  rl.close();
+}
+```
+
+`rl.close()`を忘れると入力ストリームが開いたままになり、プロセスが終了しないことがあります。後片付けは `finally` に置くと、途中でエラーが起きても実行できます。
+
+<Figure src="/images/pc-work-woman01.png" alt="ターミナルでCLIを操作する人のイラスト" maxWidth="280px" />
+
+## 終了コードで成功と失敗を伝える
+
+CLIを呼び出したシェルは、終了コードで結果を判定します。
+
+| 終了コード | 一般的な意味 |
+|---:|---|
+| `0` | 成功 |
+| `1`以上 | 失敗。詳しい意味はCLI側で定義する |
+
+Node.jsは処理がなくなると通常0で終了します。失敗を通知したい場合は `process.exitCode` を設定します。
+
+```js
+if (!process.env.API_TOKEN) {
+  console.error('API_TOKENが設定されていません');
+  process.exitCode = 1;
+}
+```
+
+`process.exit(code)`はプロセスを即座に終了させます。stdoutやstderrへの非同期書き込みが完了する前に呼ぶと、出力が途中で失われる可能性があります。
+
+<Callout type="warning" title="通常はprocess.exitCodeを使う">
+  直ちに強制終了する必要がなければ `process.exitCode`へ値を設定し、保留中の入出力と後片付けが終わってから自然に終了させます。
+</Callout>
+
+### シェルから終了コードを確認する
+
+```bash
+node tool.js
+echo $?
+```
+
+CIやnpm scriptsも終了コードを見て、後続処理を続けるか停止するか判断します。
+
+## shebangで直接実行できるCLIにする
+
+ファイルの先頭へshebangを置くと、Unix系OSで使用する実行プログラムを指定できます。
+
+```js
+#!/usr/bin/env node
+
+console.log('CLIを実行しました');
+```
+
+```bash
+chmod +x bin/my-cli.js
+./bin/my-cli.js
+```
+
+npmパッケージとして配布する場合は、`package.json`の `bin` へコマンド名とファイルを対応付けます。
+
+```json
+{
+  "name": "my-cli",
+  "type": "module",
+  "bin": {
+    "my-cli": "./bin/my-cli.js"
+  }
+}
+```
+
+パッケージ利用者がインストールすると、パッケージマネージャーが実行用リンクを作ります。
+
+## 小さなファイル検索CLIを作る
+
+`process.argv`、stderr、終了コードを組み合わせます。
+
+```js
+#!/usr/bin/env node
+
+import { readFile } from 'node:fs/promises';
+
+const [, , filePath, keyword] = process.argv;
+
+if (!filePath || !keyword) {
+  console.error('使い方: search-file <file> <keyword>');
+  process.exitCode = 1;
+} else {
+  try {
+    const content = await readFile(filePath, 'utf8');
+    const lines = content
+      .split('\n')
+      .filter((line) => line.includes(keyword));
+
+    for (const line of lines) {
+      console.log(line);
+    }
+
+    if (lines.length === 0) {
+      process.exitCode = 1;
+    }
+  } catch (error) {
+    console.error(`読み込み失敗: ${error.message}`);
+    process.exitCode = 2;
+  }
+}
+```
+
+正常な検索結果だけをstdoutへ出し、使い方やエラーはstderrへ出しています。別のコマンドはstdoutだけを安全に受け取れます。
+
+## よくあるハマりどころ
+
+### argvの添字を1つずらす
+
+利用者の引数は `process.argv[2]` から始まります。`process.argv.slice(2)`で先に切り出すと間違いを減らせます。
+
+### すべてconsole.logへ出す
+
+JSONや検索結果とエラー文がstdoutで混ざると、パイプ先が解析できません。正常結果と診断情報を分けます。
+
+### process.exitで出力を失う
+
+強制終了より `process.exitCode`を優先し、readlineやDB接続などのリソースを閉じます。
+
+### 引数を検証せずファイルやコマンドに渡す
+
+引数は外部入力です。数値の範囲、許可するパス、選択肢を検証します。シェルコマンド文字列へそのまま連結するとコマンドインジェクションにつながります。
+
+## ちゃんと使うためのポイント
+
+- 利用者の引数は `process.argv.slice(2)`から読む
+- オプションが増えたら `util.parseArgs()`などで解析ルールを明示する
+- 正常なデータはstdout、警告とエラーはstderrへ出す
+- 失敗時は0以外の終了コードを設定する
+- 強制終了より `process.exitCode`を優先する
+- readlineなどのリソースは処理後に閉じる
+- 配布するCLIにはshebangと `package.json`の `bin`を用意する
+
+## 参考リンク
+
+- [Node.js公式 — Process](https://nodejs.org/api/process.html)
+- [Node.js公式 — Util.parseArgs](https://nodejs.org/api/util.html#utilparseargsconfig)
+- [Node.js公式 — Readline](https://nodejs.org/api/readline.html)
+- [npm公式 — package.jsonのbin](https://docs.npmjs.com/cli/configuring-npm/package-json#bin)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

@@ -2,7 +2,343 @@
 title: 'Node.jsのテスト — node:testとVitestでユニットテストを書く'
 description: 'Node.js標準のnode:testとVitestを使い、ユニットテスト、非同期処理のテスト、モックの基本を学びます。'
 order: 14
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsには標準テストランナー `node:test` があり、追加パッケージなしでテストを実行できます。Vitestは、watchモード、モック、ViteやTypeScriptとの統合を備えたテストフレームワークです。
+
+良いテストの考え方やAAAパターンは[ユニットテストの考え方](/books/unit-testing)で扱います。この章ではNode.jsプロジェクトでの具体的な書き方に絞ります。
+
+## テストしやすい関数へ分ける
+
+入出力やデータベース操作と計算処理を分けると、計算部分を速く安定してテストできます。
+
+```js
+// price.js
+export function calculateTotal(items, taxRate) {
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  return Math.round(subtotal * (1 + taxRate));
+}
+```
+
+<Marker>テストツールより先に、入力を受け取り結果を返す小さな関数へロジックを分けることが重要です。</Marker>
+
+## node:testで最初のテストを書く
+
+```js
+// price.test.js
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { calculateTotal } from './price.js';
+
+test('商品合計へ消費税を加える', () => {
+  // Arrange
+  const items = [
+    { price: 1000, quantity: 2 },
+    { price: 500, quantity: 1 },
+  ];
+
+  // Act
+  const actual = calculateTotal(items, 0.1);
+
+  // Assert
+  assert.equal(actual, 2750);
+});
+```
+
+```bash
+node --test
+```
+
+Node.jsは規約に一致するテストファイルを探して実行します。対象を明示することもできます。
+
+```bash
+node --test price.test.js
+```
+
+### test関数
+
+**構文：** `test(name, options?, fn)`
+
+| 引数 | 説明 |
+|---|---|
+| `name`（第1引数） | テスト内容を表す名前 |
+| `options`（第2引数、省略可） | timeout、skip、onlyなどのオプション |
+| `fn`（最後の引数） | テスト本体。同期関数またはPromiseを返す関数 |
+
+**戻り値：** テスト完了時に解決するPromise
+
+テスト名には「何をしたとき、何が起きるか」を書くと、失敗結果だけで仕様を読み取れます。
+
+## node:assertで結果を検証する
+
+`node:assert/strict`は、期待した結果でなければAssertionErrorをスローします。
+
+| メソッド | 主な用途 |
+|---|---|
+| `assert.equal(actual, expected)` | プリミティブ値の厳密比較 |
+| `assert.deepEqual(actual, expected)` | オブジェクトや配列の構造比較 |
+| `assert.ok(value)` | 値がtruthyか確認 |
+| `assert.throws(fn, error?)` | 同期関数が例外を投げるか確認 |
+| `assert.rejects(asyncFn, error?)` | Promiseがrejectされるか確認 |
+
+```js
+test('空配列の合計は0', () => {
+  assert.equal(calculateTotal([], 0.1), 0);
+});
+
+test('商品一覧を整形する', () => {
+  const actual = [{ id: 1, name: '本' }];
+
+  assert.deepEqual(actual, [{ id: 1, name: '本' }]);
+});
+```
+
+期待値と実際値の順番を揃えると、失敗時の差分を読みやすくできます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+オブジェクトを `equal` で比べると、同じ中身でも失敗するのはなぜ？
+</SpeechBubble>
+
+`equal`は参照を比較します。別々に作ったオブジェクトや配列の中身を比べる場合は `deepEqual`を使います。
+
+## 非同期処理をテストする
+
+テスト関数を `async`にし、対象のPromiseを `await`します。
+
+```js
+// user-service.js
+export async function getUserName(id, repository) {
+  const user = await repository.findById(id);
+
+  if (!user) {
+    throw new Error('USER_NOT_FOUND');
+  }
+
+  return user.name;
+}
+```
+
+```js
+test('ユーザー名を返す', async () => {
+  const repository = {
+    async findById(id) {
+      return { id, name: '太郎' };
+    },
+  };
+
+  const actual = await getUserName(1, repository);
+
+  assert.equal(actual, '太郎');
+});
+```
+
+rejectを期待する場合は `assert.rejects()`をawaitします。
+
+**構文：** `assert.rejects(asyncFnOrPromise, error?, message?)`
+
+| 引数 | 説明 |
+|---|---|
+| `asyncFnOrPromise`（第1引数） | rejectを期待する非同期関数またはPromise |
+| `error`（第2引数、省略可） | エラーの型、正規表現、検証オブジェクトなど |
+| `message`（第3引数、省略可） | 失敗時に追加する説明 |
+
+**戻り値：** 期待どおりrejectされたとき解決するPromise
+
+```js
+test('存在しないユーザーでは失敗する', async () => {
+  const repository = {
+    async findById() {
+      return null;
+    },
+  };
+
+  await assert.rejects(
+    () => getUserName(999, repository),
+    /USER_NOT_FOUND/
+  );
+});
+```
+
+対象のPromiseをreturnもawaitもしないと、テストランナーが完了前にテストを成功扱いする可能性があります。
+
+## node:testのモックを使う
+
+モックは、依存関係を制御可能な偽物へ置き換える仕組みです。標準テストランナーの `mock.fn()`は、呼び出しを記録する関数を作ります。
+
+**構文：** `mock.fn(implementation?)`
+
+| 引数 | 説明 |
+|---|---|
+| `implementation`（省略可） | モック関数が実行する処理 |
+
+**戻り値：** 呼び出し履歴を `.mock`へ記録するモック関数
+
+```js
+import test, { mock } from 'node:test';
+import assert from 'node:assert/strict';
+
+test('repositoryへIDを渡す', async () => {
+  const findById = mock.fn(async (id) => {
+    return { id, name: '太郎' };
+  });
+
+  const repository = { findById };
+
+  await getUserName(7, repository);
+
+  assert.equal(findById.mock.callCount(), 1);
+  assert.equal(findById.mock.calls[0].arguments[0], 7);
+});
+```
+
+モックは、ネットワークやDBへ接続せず分岐を再現するときに役立ちます。ただし内部呼び出しを細かく検証しすぎると、動作を変えていないリファクタリングでもテストが壊れます。
+
+<Callout type="note" title="依存性を引数で渡す">
+  例ではrepositoryを引数で渡しています。この形ならモジュール全体を強制的に差し替えず、テストごとに小さな偽物を渡せます。
+</Callout>
+
+## describeとフックで整理する
+
+テストが増えたら `describe()`で対象ごとにまとめ、`beforeEach()`や `afterEach()`で共通の準備と後片付けを行います。
+
+```js
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  test,
+} from 'node:test';
+
+describe('UserService', () => {
+  beforeEach(() => {
+    // テストごとの準備
+  });
+
+  afterEach(() => {
+    // 接続や一時ファイルの後片付け
+  });
+
+  test('ユーザー名を返す', async () => {
+    // ...
+  });
+});
+```
+
+各テストが実行順に依存しないように、変更可能なデータをテスト間で共有しません。
+
+## Vitestを使う
+
+Vitestはnpmから追加します。
+
+```bash
+npm install -D vitest
+```
+
+```json
+{
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}
+```
+
+```js
+// price.test.js
+import { describe, expect, test } from 'vitest';
+import { calculateTotal } from './price.js';
+
+describe('calculateTotal', () => {
+  test('商品合計へ消費税を加える', () => {
+    const items = [{ price: 1000, quantity: 2 }];
+
+    expect(calculateTotal(items, 0.1)).toBe(2200);
+  });
+});
+```
+
+Vitestの `expect()`はmatcherを連結して結果を検証します。
+
+| matcher | 主な用途 |
+|---|---|
+| `toBe(expected)` | プリミティブ値や同一参照の比較 |
+| `toEqual(expected)` | オブジェクトや配列の構造比較 |
+| `toThrow(expected?)` | 同期関数の例外 |
+| `rejects.toThrow(expected?)` | Promiseのreject |
+| `toHaveBeenCalledWith(...args)` | モック関数へ渡された引数 |
+
+```js
+import { expect, test, vi } from 'vitest';
+
+test('repositoryへIDを渡す', async () => {
+  const findById = vi.fn().mockResolvedValue({
+    id: 7,
+    name: '太郎',
+  });
+
+  await getUserName(7, { findById });
+
+  expect(findById).toHaveBeenCalledWith(7);
+});
+```
+
+モックはテスト間で履歴を持ち越さないよう、設定で自動リセットするか `afterEach(() => vi.clearAllMocks())`などを使います。`vi.spyOn()`で置き換えた元の実装へ戻す場合は `vi.restoreAllMocks()`を使います。
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="テスト結果を確認する人のイラスト" maxWidth="270px" />
+
+## node:testとVitestの選び方
+
+| 観点 | node:test | Vitest |
+|---|---|---|
+| 導入 | Node.js標準 | 開発依存として追加 |
+| 基本的なテスト | 対応 | 対応 |
+| assertion | `node:assert`など | `expect`を内蔵 |
+| watch・開発体験 | 標準機能あり | Vite連携を含め充実 |
+| モック | `mock` API | `vi` API |
+| 向く場面 | 依存を増やしたくないNode.jsライブラリ | Vite、TypeScript、フロントエンドと共通化するプロジェクト |
+
+小規模なNode.jsライブラリなら `node:test`から始められます。すでにViteを使っている、チームが `expect`形式に慣れている、フロントエンドとテスト設定を揃えたい場合はVitestが有力です。
+
+## よくあるハマりどころ
+
+### 非同期処理をawaitしない
+
+テスト関数を `async`にし、対象Promiseと `assert.rejects()`を必ずawaitします。
+
+### テスト同士で状態を共有する
+
+前のテストが作ったデータやモック履歴へ依存すると、単独実行と全体実行で結果が変わります。各テストで準備し、後片付けします。
+
+### 実装の内部手順を固定する
+
+利用者から見える戻り値や副作用を優先して検証します。関数の呼び出し回数は、それ自体が要件である場合に絞ります。
+
+### 本物の外部サービスへ接続する
+
+ユニットテストでは依存関係を差し替えます。DBやHTTPまで含めるテストは、[結合テストとE2Eテストの実践](/books/integration-and-e2e-testing)として分けて管理します。
+
+## ちゃんと使うためのポイント
+
+- 計算ロジックと外部入出力を分ける
+- AAAパターンで準備・実行・検証を読み分けられるようにする
+- 非同期テストではPromiseを必ずawaitまたはreturnする
+- モックは外部依存を制御する目的に絞る
+- テスト間でデータとモック履歴を共有しない
+- Node.jsだけで完結するなら `node:test`、Vite連携などが必要ならVitestを検討する
+
+## 参考リンク
+
+- [Node.js公式 — Test runner](https://nodejs.org/api/test.html)
+- [Node.js公式 — Assert](https://nodejs.org/api/assert.html)
+- [Vitest公式 — Getting Started](https://vitest.dev/guide/)
+- [Vitest公式 — Mocking](https://vitest.dev/guide/mocking.html)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

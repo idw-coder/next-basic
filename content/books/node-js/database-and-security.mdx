@@ -2,7 +2,300 @@
 title: 'Node.jsとデータベース・セキュリティ — 接続管理・秘密情報・CORS'
 description: 'Node.jsアプリケーションでデータベースを扱う基本、接続管理、環境変数、秘密情報、CORSなど実務で必要な注意点を学びます。'
 order: 13
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsからデータベースへ接続するときは、SQLを書くだけでなく、接続数、秘密情報、入力値、権限をまとめて設計する必要があります。この章ではMySQL2を例に、Web APIで共通する安全な境界を整理します。
+
+SQLとテーブル設計は[SQLとリレーショナルデータベース](/books/sql-basics/sql-and-relational-database)、MySQL固有の接続方法は[Node.js＋mysql2接続とコネクションプール](/books/mysql/nodejs-mysql2-connection-pool)で詳しく扱います。
+
+## 接続はコネクションプールで再利用する
+
+データベース接続の確立には通信と認証が必要です。リクエストごとに新しい接続を作ると遅くなり、同時アクセス時に接続数が急増します。
+
+**コネクションプール**は、作成済みの接続を複数保持して再利用する仕組みです。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["APIリクエスト"] --> B["接続プール"]
+    B --> C["MySQL"]
+`}
+/>
+
+```bash
+npm install mysql2
+```
+
+```js
+// db.js
+import mysql from 'mysql2/promise';
+
+export const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT ?? 3306),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+```
+
+### createPool
+
+**構文：** `mysql.createPool(options)`
+
+| 主なオプション | 説明 |
+|---|---|
+| `host` / `port` | 接続先ホストとポート |
+| `user` / `password` | データベース認証情報 |
+| `database` | 既定のデータベース名 |
+| `connectionLimit` | プールが同時に保持する接続数 |
+| `waitForConnections` | 空き接続がないとき待機するか |
+| `queueLimit` | 待機キューの上限。0は無制限 |
+
+**戻り値：** クエリ実行と接続貸し出しを行うPoolオブジェクト
+
+接続上限はアプリケーション1プロセスあたりです。コンテナを5個動かし、各プールの上限が10なら、最大50接続になり得ます。DB側の上限とアプリの台数から逆算します。
+
+<Marker>プールの `connectionLimit`は、1プロセスの値ではなく全プロセスの合計でデータベース上限に収まるよう決めます。</Marker>
+
+## プレースホルダーでSQLインジェクションを防ぐ
+
+利用者の値をSQL文字列へ直接連結すると、値がSQL構文として解釈される **SQLインジェクション** につながります。
+
+```js
+// NG: 入力値をSQLへ連結している
+const sql = `SELECT * FROM users WHERE email = '${email}'`;
+```
+
+MySQL2の `execute()`でプレースホルダーへ値を渡します。
+
+**構文：** `pool.execute(sql, values?)`
+
+| 引数 | 説明 |
+|---|---|
+| `sql`（第1引数） | `?`を含むSQL文字列 |
+| `values`（第2引数、省略可） | 各 `?`へ対応する値の配列 |
+
+**戻り値：** `[rows, fields]`で解決するPromise
+
+```js
+export async function findUserByEmail(email) {
+  const [rows] = await pool.execute(
+    'SELECT id, name, email FROM users WHERE email = ?',
+    [email]
+  );
+
+  return rows[0] ?? null;
+}
+```
+
+値のプレースホルダーは、テーブル名や列名には使えません。並べ替え列などを入力から選ぶ場合は、許可リストで実際の識別子へ対応付けます。
+
+```js
+const sortColumns = {
+  newest: 'created_at',
+  name: 'name',
+};
+
+const sortColumn = sortColumns[inputSort];
+
+if (!sortColumn) {
+  throw new Error('不正な並べ替え条件です');
+}
+
+const [rows] = await pool.query(
+  `SELECT id, name FROM users ORDER BY ${sortColumn}`
+);
+```
+
+ここで文字列へ埋め込む値は利用者の入力そのものではなく、コード内の許可リストから選んだ固定文字列です。
+
+## トランザクションでは接続を1本借りる
+
+複数のSQLを1つのトランザクションとして実行する場合は、プールから接続を借り、その同じ接続で最後まで実行します。
+
+```js
+export async function transfer(fromId, toId, amount) {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    await connection.execute(
+      'UPDATE accounts SET balance = balance - ? WHERE id = ?',
+      [amount, fromId]
+    );
+
+    await connection.execute(
+      'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+      [amount, toId]
+    );
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+```
+
+`pool.execute()`を2回呼ぶと、それぞれ別の接続が選ばれる可能性があります。トランザクションの開始、SQL、commitまたはrollbackを同じconnectionで行います。
+
+<Callout type="warning" title="releaseをfinallyへ置く">
+  エラー時に接続を返却しないと、プールから利用可能な接続が減り続けます。`connection.release()`は `finally`で必ず実行します。
+</Callout>
+
+## 秘密情報は環境変数から読む
+
+パスワードやAPIキーをソースコードへ書くと、Git履歴、ログ、配布物へ残る危険があります。実行環境から `process.env`を通じて渡します。
+
+```dotenv
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=appuser
+DB_PASSWORD=change-me
+DB_NAME=myapp
+```
+
+Node.jsは `--env-file`で.envファイルを読み込めます。
+
+```bash
+node --env-file=.env server.js
+```
+
+`process.env`の値は文字列または `undefined`です。起動時に必須値を検証します。
+
+```js
+function requireEnv(name) {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`環境変数${name}が必要です`);
+  }
+
+  return value;
+}
+
+export const config = {
+  dbHost: requireEnv('DB_HOST'),
+  dbUser: requireEnv('DB_USER'),
+  dbPassword: requireEnv('DB_PASSWORD'),
+  dbName: requireEnv('DB_NAME'),
+};
+```
+
+ローカルの.envは `.gitignore`へ追加し、必要なキーだけをダミー値で示す `.env.example`を追跡します。本番ではホスティングサービスやシークレット管理サービスから注入します。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+環境変数に移しただけでは秘密になりません。ログへ出さない、クライアントへ返さない、閲覧権限を絞るところまでが秘密情報の管理です。
+</SpeechBubble>
+
+## データベース権限を最小化する
+
+アプリケーションからrootや管理者ユーザーで接続すると、SQLインジェクションや実装ミスの被害がデータベース全体へ広がります。
+
+アプリ用ユーザーには、必要なデータベースに対する必要な操作だけを付与します。
+
+| 用途 | 権限例 |
+|---|---|
+| 通常のWeb API | `SELECT`、`INSERT`、`UPDATE`、`DELETE` |
+| マイグレーション専用処理 | `CREATE`、`ALTER`など必要なDDL権限 |
+| バックアップ処理 | 読み取りとバックアップに必要な権限 |
+
+アプリ実行用とマイグレーション用の資格情報を分けると、通常運転中のプロセスからテーブル構造を変更できなくなります。
+
+## CORSは認証・認可ではない
+
+CORS（Cross-Origin Resource Sharing）は、あるオリジンのWebページ上のJavaScriptが、別オリジンのレスポンスを読んでよいかをブラウザへ伝えるHTTPヘッダーの仕組みです。
+
+Expressでは `cors`ミドルウェアで設定できます。
+
+```bash
+npm install cors
+```
+
+```js
+import cors from 'cors';
+import express from 'express';
+
+const app = express();
+
+app.use(cors({
+  origin: ['https://app.example.com'],
+  credentials: true,
+}));
+```
+
+`origin: '*'`はすべてのWebサイトから読み取りを許可します。Cookieなどの資格情報を使うAPIでは、許可するオリジンを具体的に指定します。
+
+<Marker>CORSはブラウザの読み取り制御であり、APIへのアクセス権を確認する認可機能ではありません。</Marker>
+
+`curl`、Postman、別サーバーなどはブラウザのCORS制約を受けません。保護するAPIでは、CORSとは別に認証と認可を実装します。
+
+## Node.js APIの基本的な防御
+
+データベースとCORS以外にも、公開APIでは次の境界を用意します。
+
+- リクエスト本文のサイズ上限を設ける
+- 文字列の長さ、数値の範囲、必須項目を検証する
+- パスワードは平文保存せず、scryptやArgon2などパスワード向けの方法でハッシュ化する
+- エラーのスタックトレースやSQL文をクライアントへ返さない
+- ログからパスワード、トークン、Cookieを除外する
+- 依存関係のlockファイルを追跡し、脆弱性情報を継続確認する
+- HTTPSはNode.jsの前段を含む本番構成で必ず有効にする
+- DB、ファイル、外部APIへタイムアウトを設定する
+
+入力検証はSQLインジェクション対策だけではありません。想定外の巨大値や不正な状態を、ビジネスロジックやDBへ到達する前に拒否します。
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="データベース接続とセキュリティ項目を確認する人のイラスト" maxWidth="270px" />
+
+## よくあるハマりどころ
+
+### リクエストごとにプールを作る
+
+`createPool()`はモジュール初期化時などに1回実行し、リクエスト間で共有します。リクエストごとに作ると接続再利用の意味がなくなります。
+
+### valuesのプレースホルダーで列名も置き換えようとする
+
+`?`は値用です。列名や `ASC`・`DESC`は許可リストから選びます。
+
+### 環境変数をconsole.logする
+
+動作確認で `process.env`全体を出力すると、ログ基盤へ秘密情報が保存されます。存在の有無だけを確認します。
+
+### CORSを有効にすればAPIが保護されると思う
+
+CORSはブラウザ向けの読み取りポリシーです。利用者の本人確認と操作権限は認証・認可で判断します。
+
+### connectionを返却しない
+
+トランザクション用に借りたconnectionは、成功・失敗にかかわらず `finally`でreleaseします。
+
+## ちゃんと使うためのポイント
+
+- 接続プールをアプリケーション内で共有する
+- 接続上限は全プロセスの合計で設計する
+- SQLの値は `execute(sql, values)`で渡す
+- トランザクションは同じconnectionで実行し、必ずreleaseする
+- 秘密情報は環境から注入し、Git・ログ・レスポンスへ出さない
+- アプリ用DBユーザーの権限を必要最小限にする
+- CORSと認証・認可を別の仕組みとして設計する
+- 外部入力、本文サイズ、処理時間へ上限を設ける
+
+## 参考リンク
+
+- [Node.js公式 — 環境変数と.envファイル](https://nodejs.org/api/environment_variables.html)
+- [MySQL2公式 — Documentation](https://sidorares.github.io/node-mysql2/docs/documentation)
+- [Express公式 — cors middleware](https://expressjs.com/en/resources/middleware/cors/)
+- [Node.js公式 — Security Best Practices](https://nodejs.org/learn/getting-started/security-best-practices)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

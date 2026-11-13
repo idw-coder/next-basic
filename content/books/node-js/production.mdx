@@ -2,7 +2,307 @@
 title: 'Node.jsを本番で動かす — プロセス管理・グレースフルシャットダウン・Docker'
 description: 'Node.jsを本番運用するために、プロセス管理、ログ、ヘルスチェック、グレースフルシャットダウン、Dockerの基本を学びます。'
 order: 15
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+開発環境で `node server.js`が動くことと、本番で継続運用できることは別です。本番では、起動失敗、プロセスクラッシュ、デプロイ時の終了、監視、ログ、依存サービスの障害まで扱います。
+
+この章ではNode.jsアプリケーション側の責務を整理します。Docker自体の仕組みとイメージ設計は[Docker入門](/books/docker)、CIは[GitHub Actions入門](/books/github-actions)で扱います。
+
+## 本番実行の全体像
+
+一般的な本番構成では、Node.jsプロセスをインターネットへ直接公開せず、ロードバランサーやリバースプロキシの後ろで動かします。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["利用者"] --> B["LB・Proxy"]
+    B --> C["Node.js"]
+    C --> D["DB・外部API"]
+`}
+/>
+
+各要素の役割は次のように分かれます。
+
+| 要素 | 主な役割 |
+|---|---|
+| ロードバランサー・リバースプロキシ | TLS終端、ルーティング、接続制限 |
+| Node.jsアプリケーション | HTTP処理、入力検証、業務ロジック |
+| プロセス管理・コンテナ基盤 | 起動、再起動、複製、終了シグナル |
+| 監視基盤 | ログ、メトリクス、アラート |
+
+<Marker>アプリケーションは「起動できる」だけでなく、「安全に停止できる」「外から状態を確認できる」必要があります。</Marker>
+
+## プロセスは外部から監視・再起動する
+
+Node.jsプロセスが例外やメモリ不足で終了した場合、systemd、Docker、Kubernetes、クラウドの実行基盤など、プロセス外部の仕組みが再起動します。
+
+アプリケーション自身が同じプロセス内で致命的エラーから復旧し続けようとすると、どの状態まで処理されたか分からないまま動き続ける危険があります。
+
+- 予期しない致命的エラーは記録してプロセスを終了させる
+- 外部の管理機構が新しいプロセスを起動する
+- 再起動回数が多い場合はアラートを出す
+- 再起動ループへ入り続けないようbackoffを設ける
+
+`uncaughtException`や `unhandledRejection`を記録する場合も、その後に通常運転へ戻す用途には使いません。
+
+```js
+process.on('uncaughtException', (error) => {
+  console.error('uncaughtException', error);
+  process.exitCode = 1;
+  shutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection', reason);
+  process.exitCode = 1;
+  shutdown('unhandledRejection');
+});
+```
+
+本来は各リクエストや非同期処理の境界でエラーを処理し、これらは最後の安全網として使います。[Node.jsのエラーハンドリング](/books/node-js/error-handling)も参照してください。
+
+## グレースフルシャットダウン
+
+グレースフルシャットダウンは、新しい受付を止め、進行中の処理と後片付けを終えてからプロセスを終了する方法です。
+
+デプロイやコンテナ停止では、Unix系環境で通常 `SIGTERM`が送られます。開発中のCtrl+Cは `SIGINT`です。
+
+```js
+import { createServer } from 'node:http';
+import { pool } from './db.js';
+
+const server = createServer(app);
+let shuttingDown = false;
+
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  console.log(JSON.stringify({
+    level: 'info',
+    message: 'shutdown started',
+    signal,
+  }));
+
+  server.close(async (serverError) => {
+    try {
+      await pool.end();
+
+      if (serverError) {
+        console.error(serverError);
+        process.exitCode = 1;
+      }
+    } catch (error) {
+      console.error(error);
+      process.exitCode = 1;
+    }
+  });
+
+  setTimeout(() => {
+    console.error('shutdown timeout');
+    server.closeAllConnections();
+    process.exitCode = 1;
+  }, 10_000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+```
+
+`server.close()`は新しい接続の受付を止め、処理中ではない接続を閉じます。コールバックはサーバーが閉じた後に呼ばれます。DBプールやメッセージキューの接続は、その中で終了します。
+
+### server.close
+
+**構文：** `server.close(callback?)`
+
+| 引数 | 説明 |
+|---|---|
+| `callback`（省略可） | サーバーが閉じた後に呼ぶ関数。エラーがあれば受け取る |
+
+**戻り値：** 呼び出したServer自身
+
+終了処理が永久に待ち続けないよう、実行基盤の猶予時間より短いタイムアウトを設けます。`closeAllConnections()`は進行中の接続も切る強制手段なので、猶予時間を過ぎた場合だけ使います。
+
+<Callout type="warning" title="シグナル処理を登録すると既定終了が変わる">
+  `SIGTERM`や `SIGINT`のリスナーを登録したら、後片付け後にイベントループが空になる設計と終了コードの設定を自分で行います。
+</Callout>
+
+## readinessとlivenessを分ける
+
+ヘルスチェックは、実行基盤がアプリケーションの状態を判断するHTTPエンドポイントです。
+
+| 種類 | 質問 | 失敗時の代表的な動作 |
+|---|---|---|
+| liveness | プロセスは動作可能か | プロセスを再起動 |
+| readiness | 新しいリクエストを受けてよいか | 負荷分散先から外す |
+
+```js
+app.get('/health/live', (request, response) => {
+  response.json({ status: 'ok' });
+});
+
+app.get('/health/ready', async (request, response) => {
+  if (shuttingDown) {
+    response.status(503).json({ status: 'shutting_down' });
+    return;
+  }
+
+  try {
+    await pool.query('SELECT 1');
+    response.json({ status: 'ready' });
+  } catch {
+    response.status(503).json({ status: 'not_ready' });
+  }
+});
+```
+
+livenessで毎回DBへ接続すると、一時的なDB障害で正常なNode.jsプロセスまで再起動されます。依存サービスを確認する処理はreadinessへ置きます。
+
+ヘルスチェックへ秘密情報、スタックトレース、依存サービスの接続文字列を含めません。
+
+## 構造化ログをstdoutへ出す
+
+コンテナ環境では、アプリケーションがstdoutとstderrへ出し、実行基盤がログを収集する構成が一般的です。JSONなど一定の構造にすると検索と集計ができます。
+
+```js
+function log(level, message, fields = {}) {
+  console.log(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...fields,
+  }));
+}
+
+log('info', 'request completed', {
+  requestId: 'req-123',
+  method: 'GET',
+  path: '/users',
+  statusCode: 200,
+  durationMs: 18,
+});
+```
+
+本番ログに残す主な情報は、時刻、level、request ID、HTTPメソッド、パス、ステータス、処理時間です。パスワード、アクセストークン、Cookie、個人情報をそのまま記録しません。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+エラーを見つけるだけでなく、同じrequest IDで入口からDB処理まで追えるログを作ると調査時間が短くなります。
+</SpeechBubble>
+
+## タイムアウトと上限を設定する
+
+外部からの接続や依存サービスの応答を無期限に待つと、接続やメモリが埋まります。
+
+- HTTPサーバーの `requestTimeout`と `headersTimeout`
+- HTTPクライアントの `AbortSignal.timeout()`
+- DBクエリや接続取得のタイムアウト
+- リクエスト本文のサイズ上限
+- 同時処理数やキュー長の上限
+
+```js
+server.requestTimeout = 30_000;
+server.headersTimeout = 10_000;
+```
+
+値は処理特性、リバースプロキシ、ロードバランサーのタイムアウトと整合させます。外側が先に切断する値だと、Node.jsは結果を返せない処理を続ける可能性があります。
+
+## Dockerで実行環境を固定する
+
+小さなNode.js APIのDockerfile例です。
+
+```dockerfile
+FROM node:24-alpine
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY --chown=node:node . .
+
+USER node
+EXPOSE 3000
+
+CMD ["node", "server.js"]
+```
+
+重要な点は次のとおりです。
+
+- サポート中のNode.js LTSイメージを選び、定期的に更新する
+- `npm ci`でlockファイルどおりにインストールする
+- 本番に不要なdevDependenciesを除く
+- rootではなく `node`ユーザーで実行する
+- exec形式の `CMD ["node", "server.js"]`でNode.jsへシグナルを届ける
+- `.dockerignore`で `node_modules`、`.git`、`.env`などを除外する
+
+```text
+node_modules
+.git
+.env*
+npm-debug.log
+coverage
+```
+
+ビルドが必要なTypeScriptやフロントエンドでは、ビルド用ステージと実行用ステージを分けるマルチステージビルドを使います。詳細は[本番向けDocker実践](/books/docker/production-practices)で扱います。
+
+<Figure src="/images/pc-work-woman01.png" alt="本番環境のログと稼働状態を確認する人のイラスト" maxWidth="280px" />
+
+## 本番リリース前のチェック
+
+| 観点 | 確認内容 |
+|---|---|
+| Node.js | サポート中のLTS、lockファイル固定 |
+| 起動 | 必須環境変数を起動時に検証 |
+| 終了 | SIGTERM、readiness切替、接続終了、タイムアウト |
+| HTTP | 本文サイズ、各種timeout、適切なエラー応答 |
+| DB | プール上限、最小権限、終了時のpool.end |
+| ログ | request ID、構造化、秘密情報の除外 |
+| 監視 | liveness、readiness、レイテンシ、エラー率 |
+| Docker | 非root、最小イメージ、.dockerignore |
+| セキュリティ | TLS、依存関係更新、脆弱性確認 |
+
+## よくあるハマりどころ
+
+### processを再起動すればすべて解決すると思う
+
+再起動は一時的な復旧手段です。クラッシュループ、メモリ増加、依存サービス障害の原因をログとメトリクスから調査します。
+
+### SIGTERMを受けて即時終了する
+
+処理中リクエストが切れ、トランザクションやジョブが途中になります。受付停止、処理完了、接続終了の順に進めます。
+
+### livenessでDB障害を判定する
+
+DB障害のたびにアプリを再起動すると負荷を増やします。依存サービスの確認はreadinessへ分けます。
+
+### コンテナ内へログファイルを保存する
+
+コンテナの置き換えで失われ、複数インスタンスの集約も難しくなります。stdout・stderrへ出し、基盤側で保存します。
+
+### latestタグだけで運用する
+
+同じDockerfileでも別バージョンが取得される可能性があります。メジャーまたはLTS系列を明示し、更新を管理します。再現性が特に重要ならdigestも固定します。
+
+## ちゃんと使うためのポイント
+
+- プロセスの再起動は外部の管理機構へ任せる
+- SIGTERMで受付を止め、進行中処理と接続を安全に終了する
+- livenessとreadinessの役割を分ける
+- stdout・stderrへ構造化ログを出し、秘密情報を除外する
+- HTTP、DB、外部APIへタイムアウトと上限を設ける
+- Dockerでは非root、lockファイル、exec形式CMDを使う
+- 再起動回数、エラー率、処理時間を監視する
+
+## 参考リンク
+
+- [Node.js公式 — Process](https://nodejs.org/api/process.html)
+- [Node.js公式 — HTTP server.close](https://nodejs.org/api/http.html#serverclosecallback)
+- [Node.js公式 — Security Best Practices](https://nodejs.org/learn/getting-started/security-best-practices)
+- [Docker公式 — Node.js guide](https://docs.docker.com/guides/nodejs/)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

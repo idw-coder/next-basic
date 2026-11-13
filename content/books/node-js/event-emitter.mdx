@@ -2,7 +2,266 @@
 title: 'EventEmitterの使い方 — Node.jsのイベント駆動を理解する'
 description: 'EventEmitterの基本、イベントリスナー、errorイベント、Node.jsのイベント駆動設計で注意すべき点を学びます。'
 order: 7
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+Node.jsの多くのAPIは、「接続された」「データを受け取った」「処理に失敗した」といった出来事をイベントとして通知します。その基本となるクラスが `node:events` モジュールの `EventEmitter` です。
+
+[Node.jsの非同期処理とイベントループ](/books/node-js/async-and-event-loop)で扱ったイベントループは実行の仕組み、EventEmitterは同じプロセス内のオブジェクト同士が出来事を通知する仕組みです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+Promiseも非同期の結果を受け取れるけど、EventEmitterとはどう使い分けるの？
+</SpeechBubble>
+
+Promiseは1回だけ成功または失敗する処理に向いています。EventEmitterは、接続中にデータを何度も受け取るなど、同じ種類の出来事が繰り返し発生する処理に向いています。
+
+## EventEmitterの基本
+
+```js
+import { EventEmitter } from 'node:events';
+
+const emitter = new EventEmitter();
+
+emitter.on('greet', (name) => {
+  console.log(`こんにちは、${name}さん`);
+});
+
+emitter.emit('greet', '太郎');
+// こんにちは、太郎さん
+```
+
+`on()`でリスナーを登録し、`emit()`でイベントを発生させます。リスナーは、イベントが起きたときに呼ばれる関数です。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["onで登録"] --> B["emitで発生"]
+    B --> C["リスナー実行"]
+`}
+/>
+
+## on・once・offを使い分ける
+
+### onで繰り返し受け取る
+
+**構文：** `emitter.on(eventName, listener)`
+
+| 引数 | 説明 |
+|---|---|
+| `eventName`（第1引数） | 監視する文字列またはSymbolのイベント名 |
+| `listener`（第2引数） | イベント発生時に呼ぶ関数 |
+
+**戻り値：** 呼び出したEventEmitter自身
+
+`on()`で登録したリスナーは、イベントが発生するたびに呼ばれます。
+
+```js
+const emitter = new EventEmitter();
+
+emitter.on('message', (text) => {
+  console.log(text);
+});
+
+emitter.emit('message', '1件目');
+emitter.emit('message', '2件目');
+```
+
+### onceで1回だけ受け取る
+
+**構文：** `emitter.once(eventName, listener)`
+
+| 引数 | 説明 |
+|---|---|
+| `eventName`（第1引数） | 監視するイベント名 |
+| `listener`（第2引数） | 最初の1回だけ呼ぶ関数 |
+
+**戻り値：** 呼び出したEventEmitter自身
+
+```js
+emitter.once('ready', () => {
+  console.log('準備完了');
+});
+
+emitter.emit('ready'); // 表示される
+emitter.emit('ready'); // 何も起きない
+```
+
+### offで解除する
+
+**構文：** `emitter.off(eventName, listener)`
+
+| 引数 | 説明 |
+|---|---|
+| `eventName`（第1引数） | 解除するイベント名 |
+| `listener`（第2引数） | 登録時と同じ関数参照 |
+
+**戻り値：** 呼び出したEventEmitter自身
+
+```js
+function handleMessage(text) {
+  console.log(text);
+}
+
+emitter.on('message', handleMessage);
+emitter.off('message', handleMessage);
+```
+
+解除するには登録時と同じ関数が必要です。無名関数をその場で書くと、後から同じ参照を渡せません。
+
+```js
+// 解除しにくい
+emitter.on('message', (text) => console.log(text));
+```
+
+## emitでイベントを発生させる
+
+**構文：** `emitter.emit(eventName, ...args)`
+
+| 引数 | 説明 |
+|---|---|
+| `eventName`（第1引数） | 発生させるイベント名 |
+| `args`（第2引数以降） | 各リスナーへ渡す値 |
+
+**戻り値：** 1つ以上のリスナーが呼ばれた場合は `true`、登録がない場合は `false`
+
+```js
+emitter.on('orderCreated', (orderId, total) => {
+  console.log(`注文${orderId}: ${total}円`);
+});
+
+const handled = emitter.emit('orderCreated', 101, 3200);
+console.log(handled); // true
+```
+
+リスナーは登録順に **同期的** に呼ばれます。リスナー内で重い同期処理を行うと、後続リスナーとイベントループを止めます。
+
+```js
+emitter.on('work', () => console.log('A'));
+emitter.on('work', () => console.log('B'));
+
+emitter.emit('work');
+console.log('C');
+
+// A → B → C
+```
+
+<Marker>`emit()`はリスナーの完了を待つ非同期APIではなく、登録されたリスナーをその場で順番に呼び出します。</Marker>
+
+## errorイベントは特別扱いされる
+
+EventEmitterが `'error'` イベントを発生させたとき、対応するリスナーが1つもないと、Node.jsはそのErrorをスローしてプロセスを終了させます。
+
+```js
+const emitter = new EventEmitter();
+
+emitter.on('error', (error) => {
+  console.error('処理に失敗しました:', error.message);
+});
+
+emitter.emit('error', new Error('接続できません'));
+```
+
+ストリームやソケットなど、EventEmitterを継承するAPIを使う場合は、ドキュメントで `error` イベントの有無を確認します。
+
+<Callout type="warning" title="try...catchでは後から発生するerrorを捕まえられない">
+  非同期処理の後で `error` イベントが発生する場合、EventEmitterを作った箇所の `try...catch` はすでに終了しています。`error` リスナーで処理してください。
+</Callout>
+
+## クラスをEventEmitterとして公開する
+
+独自クラスが複数回の状態変化を通知する場合は、`EventEmitter`を継承できます。
+
+```js
+import { EventEmitter } from 'node:events';
+
+class OrderService extends EventEmitter {
+  create(order) {
+    // 保存処理など
+    this.emit('created', order);
+  }
+}
+
+const orders = new OrderService();
+
+orders.on('created', (order) => {
+  console.log(`メール送信: ${order.id}`);
+});
+
+orders.on('created', (order) => {
+  console.log(`監査ログ: ${order.id}`);
+});
+
+orders.create({ id: 101, total: 3200 });
+```
+
+通知する側は、メール送信や監査ログの具体的な実装を知る必要がありません。この分離がイベント駆動設計の利点です。
+
+一方で、イベント名や引数は実行時まで間違いに気づきにくく、処理の流れも追いにくくなります。2つの関数を決まった順に呼ぶだけなら、通常の関数呼び出しの方が明確です。
+
+## イベントをPromiseとして1回待つ
+
+`node:events`の `once()`関数は、指定イベントを1回待つPromiseを返します。EventEmitterのインスタンスメソッド `emitter.once()`とは別のAPIです。
+
+**構文：** `once(emitter, eventName, options?)`
+
+| 引数 | 説明 |
+|---|---|
+| `emitter`（第1引数） | 待機するEventEmitterまたはEventTarget |
+| `eventName`（第2引数） | 待機するイベント名 |
+| `options`（第3引数、省略可） | 中断に使う `signal` など |
+
+**戻り値：** イベントに渡された引数の配列で解決するPromise
+
+```js
+import { EventEmitter, once } from 'node:events';
+
+const emitter = new EventEmitter();
+
+setTimeout(() => {
+  emitter.emit('ready', { port: 3000 });
+}, 100);
+
+const [info] = await once(emitter, 'ready');
+console.log(info.port); // 3000
+```
+
+待機中に `error` イベントが発生すると、通常はPromiseがrejectされます。
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="イベント通知を確認する人のイラスト" maxWidth="250px" />
+
+## よくあるハマりどころ
+
+### リスナーを解除せず増やし続ける
+
+長寿命のEventEmitterへリクエストごとにリスナーを追加し、解除しないとメモリリークにつながります。処理が1回なら `once()`、継続監視なら終了時の `off()` を組み込みます。
+
+### asyncリスナーをemitが待つと思う
+
+`emit()`はリスナーが返したPromiseを集約して待ちません。完了を待つ必要がある処理は、Promiseを返す関数として明示的に呼び出す設計も検討します。
+
+### イベント名のタイプミス
+
+`'order-created'`と `'orderCreated'`は別のイベントです。イベント名を定数へまとめるか、TypeScriptでイベント対応を型付けすると事故を減らせます。
+
+### errorリスナーを登録しない
+
+`error`イベントを使うEventEmitterでは、利用開始直後にエラー処理を登録します。
+
+## ちゃんと使うためのポイント
+
+- 1回の成功・失敗にはPromise、繰り返す通知にはEventEmitterを検討する
+- 継続監視は `on()`、1回だけなら `once()`を使う
+- 不要になったリスナーは登録時と同じ関数参照で `off()`する
+- `emit()`はリスナーを同期的に呼び、Promiseの完了を待たない
+- `error`イベントを発生させる設計では必ずリスナーを用意する
+- 単純な処理フローまでイベント化しない
+
+## 参考リンク
+
+- [Node.js公式 — Events](https://nodejs.org/api/events.html)
+- [Node.js公式 — Errors](https://nodejs.org/api/errors.html)
+
+<QuizLink
+  href="/quiz/nodejs-basic"
+  title="Node.jsクイズに挑戦する"
+  description="この章で学んだNode.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

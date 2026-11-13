@@ -2,14 +2,296 @@
 title: 'ProxyとReflect — メタプログラミング入門'
 description: 'Proxyによるオブジェクト操作のインターセプト、Reflectの役割、実務でのバリデーション・ロギング活用例を紹介します。'
 order: 19
-draft: true
 ---
 
-この章は現在執筆中です。公開までしばらくお待ちください。
+`Proxy`は、プロパティの読み書きや関数呼び出しなど、オブジェクトに対する操作へ割り込む仕組みです。プログラム自身の操作方法をプログラムで扱うため、**メタプログラミング**の機能に分類されます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+普通のgetterやsetterと、`Proxy`は何が違うの？
+</SpeechBubble>
+
+getterとsetterは宣言したプロパティだけを扱います。`Proxy`は未知のキーを含むオブジェクト全体の操作へ共通ルールを適用できます。
+
+## Proxyの基本構造
+
+**構文：** `new Proxy(target, handler)`
+
+| 引数 | 説明 |
+|---|---|
+| `target`（第1引数） | 操作を受ける元のオブジェクトまたは関数 |
+| `handler`（第2引数） | 操作へ割り込むtrapを定義したオブジェクト |
+
+**戻り値：** `target`への操作を `handler` で制御する新しいProxyオブジェクト
+
+trap（トラップ）は、`get`や`set`など特定の操作を捕まえるメソッドです。trapを定義しなかった操作は、通常どおりtargetへ転送されます。
+
+```js
+const user = {
+  name: '太郎',
+  age: 25,
+};
+
+const proxy = new Proxy(user, {
+  get(target, property, receiver) {
+    console.log(`読み取り: ${String(property)}`);
+    return Reflect.get(target, property, receiver);
+  },
+});
+
+console.log(proxy.name);
+// 読み取り: name
+// 太郎
+```
+
+<Marker>Proxyの処理を有効にするには、元のtargetではなくProxyオブジェクトを経由して操作します。</Marker>
+
+```js
+user.name; // trapは動かない
+proxy.name; // trapが動く
+```
+
+## get trapで読み取りへ割り込む
+
+**構文：**
+
+```js
+const handler = {
+  get(target, property, receiver) {
+    // 読み取り時の処理
+  },
+};
+```
+
+| 引数 | 説明 |
+|---|---|
+| `target` | Proxyが包んでいる元のオブジェクト |
+| `property` | 読み取られた文字列またはSymbolのキー |
+| `receiver` | 最初に読み取り操作を受けたオブジェクト。通常はProxy |
+
+**戻り値：** プロパティ読み取り結果として呼び出し側へ返す値
+
+存在しないプロパティへ既定値を返す例を見てみます。
+
+```js
+const messages = new Proxy(
+  { hello: 'こんにちは' },
+  {
+    get(target, property, receiver) {
+      if (Reflect.has(target, property)) {
+        return Reflect.get(target, property, receiver);
+      }
+      return `未登録: ${String(property)}`;
+    },
+  }
+);
+
+console.log(messages.hello); // "こんにちは"
+console.log(messages.goodbye); // "未登録: goodbye"
+```
+
+ただし、存在しない値をすべて補うとタイプミスに気づきにくくなります。既定値が仕様として必要な場面に絞ります。
+
+## set trapで書き込みを検証する
+
+**構文：**
+
+```js
+const handler = {
+  set(target, property, value, receiver) {
+    // 書き込み時の処理
+    return true;
+  },
+};
+```
+
+| 引数 | 説明 |
+|---|---|
+| `target` | Proxyが包んでいる元のオブジェクト |
+| `property` | 書き込まれる文字列またはSymbolのキー |
+| `value` | 新しく代入される値 |
+| `receiver` | 最初に書き込み操作を受けたオブジェクト |
+
+**戻り値：** 書き込みに成功した場合は `true`。厳格モードで `false` を返すと `TypeError`
+
+```js
+'use strict';
+
+const user = new Proxy(
+  { age: 20 },
+  {
+    set(target, property, value, receiver) {
+      if (property === 'age') {
+        if (!Number.isInteger(value) || value < 0) {
+          throw new RangeError('ageは0以上の整数にしてください');
+        }
+      }
+
+      return Reflect.set(target, property, value, receiver);
+    },
+  }
+);
+
+user.age = 30;
+console.log(user.age); // 30
+
+// user.age = -1; // RangeError
+```
+
+この検証はアプリケーション内部の不正代入を早く見つけるためのものです。外部入力はProxyへ届く前に、スキーマや明示的な検証関数で確認します。
+
+<Callout type="warning" title="Proxyは入力検証ライブラリの代わりではない">
+  Proxyを通らずtargetを操作すればルールを回避できます。APIリクエストやフォーム入力の検証には、検証結果とエラー内容を明示的に返せる仕組みを使います。
+</Callout>
+
+## Reflectで既定の操作を呼び出す
+
+`Reflect`は、オブジェクトの内部操作に対応する静的メソッドをまとめた名前空間オブジェクトです。`new Reflect()`のようには使いません。
+
+Proxyのtrapと同名のメソッドが用意されているため、「ログを追加してから、本来の動作を続ける」といった処理を書きやすくなります。
+
+| Reflectメソッド | 対応する操作 | 戻り値 |
+|---|---|---|
+| `Reflect.get(target, key, receiver?)` | `target[key]` | 取得した値 |
+| `Reflect.set(target, key, value, receiver?)` | `target[key] = value` | 成功したかを示す真偽値 |
+| `Reflect.has(target, key)` | `key in target` | 真偽値 |
+| `Reflect.deleteProperty(target, key)` | `delete target[key]` | 成功したかを示す真偽値 |
+| `Reflect.ownKeys(target)` | 自身の文字列・Symbolキーの列挙 | キーの配列 |
+| `Reflect.apply(fn, thisArg, args)` | 関数呼び出し | 関数の戻り値 |
+| `Reflect.construct(fn, args, newTarget?)` | `new fn(...args)` | 作成されたオブジェクト |
+
+`Reflect.get()`の第3引数 `receiver` は、getter内の `this` に関係します。Proxyから受け取ったreceiverをそのまま渡すと、継承やgetterを含む場合も通常のプロパティアクセスに近い動作を保てます。
+
+```js
+const target = {
+  firstName: '太郎',
+  get greeting() {
+    return `こんにちは、${this.firstName}です`;
+  },
+};
+
+const proxy = new Proxy(target, {
+  get(target, property, receiver) {
+    return Reflect.get(target, property, receiver);
+  },
+});
+
+console.log(proxy.greeting); // "こんにちは、太郎です"
+```
+
+## よく使うtrap
+
+Proxyは読み書き以外にも多くの操作へ割り込めます。
+
+| trap | 捕まえる代表的な操作 |
+|---|---|
+| `has` | `property in proxy` |
+| `deleteProperty` | `delete proxy.property` |
+| `ownKeys` | `Object.keys(proxy)`や `Reflect.ownKeys(proxy)` |
+| `apply` | Proxy化した関数の呼び出し |
+| `construct` | Proxy化した関数への `new` |
+
+### 関数呼び出しを計測する
+
+```js
+function add(a, b) {
+  return a + b;
+}
+
+const measuredAdd = new Proxy(add, {
+  apply(target, thisArg, argumentsList) {
+    const startedAt = performance.now();
+
+    try {
+      return Reflect.apply(target, thisArg, argumentsList);
+    } finally {
+      const elapsed = performance.now() - startedAt;
+      console.log(`実行時間: ${elapsed.toFixed(2)}ms`);
+    }
+  },
+});
+
+console.log(measuredAdd(2, 3)); // 5
+```
+
+### 削除をログへ残す
+
+```js
+const state = new Proxy(
+  { token: 'abc', theme: 'dark' },
+  {
+    deleteProperty(target, property) {
+      console.log(`削除: ${String(property)}`);
+      return Reflect.deleteProperty(target, property);
+    },
+  }
+);
+
+delete state.token;
+```
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="オブジェクト操作の記録を確認する人のイラスト" maxWidth="260px" />
+
+## Proxy.revocableで無効化できるProxyを作る
+
+**構文：** `Proxy.revocable(target, handler)`
+
+| 引数 | 説明 |
+|---|---|
+| `target`（第1引数） | 包むオブジェクトまたは関数 |
+| `handler`（第2引数） | trapを定義したオブジェクト |
+
+**戻り値：** `proxy`と `revoke`関数を持つオブジェクト
+
+```js
+const { proxy, revoke } = Proxy.revocable(
+  { value: 42 },
+  {}
+);
+
+console.log(proxy.value); // 42
+
+revoke();
+// console.log(proxy.value); // TypeError
+```
+
+一時的なアクセス権を渡し、処理後にすべての操作を無効化したい場面で使えます。
+
+## よくあるハマりどころ
+
+### targetを直接使ってtrapを迂回する
+
+Proxyを作ってもtargetは自動で隠れません。外部へ渡す参照をProxyだけに限定する設計が必要です。
+
+### trapから同じProxyを操作して再帰する
+
+`get` trapの中で `receiver[property]` を読むと、再び同じ `get` trapが呼ばれ、無限再帰になることがあります。既定動作には `Reflect.get(target, property, receiver)` を使います。
+
+### private要素や組み込みオブジェクトでthisが合わない
+
+`Map`など内部スロットを使う組み込みオブジェクトや、`#private`を読むクラスメソッドは、Proxyが `this` になると動作しない場合があります。すべてのオブジェクトを無条件にProxyで包めるわけではありません。
+
+### Proxyの不変条件に違反する
+
+変更不可のプロパティを実際と異なる値として報告するなど、JavaScriptが定める不変条件へtrapが違反すると `TypeError` になります。trapは `Reflect`で既定動作へ転送し、必要な部分だけ追加する方が安全です。
+
+## ちゃんと使うためのポイント
+
+- ProxyはtargetではなくProxy経由の操作だけを捕まえる
+- trapでは `Reflect`を使って既定動作へ転送する
+- `set` trapは成功時に `true`を返す
+- 入力検証やセキュリティ境界をProxyだけに任せない
+- getter、private要素、組み込みオブジェクトでは `this`の違いを確認する
+- 単純な1プロパティの制御ならgetter・setterや通常関数を優先する
 
 ## 参考リンク
 
 - [MDN — Proxy](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy)
 - [MDN — Proxy() コンストラクター](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy)
+- [MDN — Proxy.revocable](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Proxy/revocable)
 - [MDN — Reflect](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Reflect)
-- [MDN — Reflect.get](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Reflect/get)
+
+<QuizLink
+  href="/quiz/javascript-basic"
+  title="JavaScriptクイズに挑戦する"
+  description="この章で学んだJavaScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>
