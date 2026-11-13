@@ -1,6 +1,6 @@
 # 技術的な積み残し
 
-最終更新: 2026-08-13
+最終更新: 2026-11-13
 
 すぐに壊れるものではないが、放置すると効いてくる項目。着手順は上から。
 
@@ -240,3 +240,28 @@ WHERE deleted_at IS NULL
   AND explanation LIKE CONCAT('%', @s, '%')
 ORDER BY id;
 ```
+
+---
+
+## 9. `npm audit` に残っている脆弱性（2026-11-13時点で20件）
+
+2026-11-13 に `sharp` 0.35.5・`shadcn` 4.23.0・`@tiptap/*` 3.33.1 へ上げ、high は0件にした。
+残りは moderate 16件・low 4件で、`npm audit fix` では直らない。
+
+**メジャー更新で消えるもの**（破壊的変更を含むので、上げたら画面で確認する）
+
+- `uuid`: `@blocknote/core`・`@blocknote/react`・`@blocknote/mantine` を 0.46 → 0.57 に上げる。
+  確認先は管理画面のクイズ編集（`src/app/admin/quizzes/[id]/edit/page.tsx`）
+- `katex`: `mermaid` を 11 → 12 に上げる。確認先は教科書の Mermaid 図（`MermaidDiagram`）
+
+**修正版がまだ出ていないもの**（上流の更新待ち）
+
+- `deepmerge`: `shadcn` の依存
+- `postcss-selector-parser`: `@tailwindcss/typography` の依存
+- `minimatch`: `ts-morph`（`shadcn` の依存）と `@typescript-eslint/typescript-estree` の依存
+
+`npm audit fix --force` は使わない。`shadcn@1.0.0` や `@tailwindcss/typography@0.5.4` への
+ダウングレードを入れようとする。
+
+`package.json` の `overrides.sharp` は、`velite`（0.4.0 でも `sharp ^0.34.5` を要求）に
+0.35 系を使わせるためのもの。`velite` が 0.35 系に対応したら外せる。
