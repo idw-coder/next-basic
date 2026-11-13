@@ -325,7 +325,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'key',
   ],
 
-  'css-basics': ['Flexbox', 'Grid', 'レスポンシブ', '詳細度', 'CSS変数'],
+  'css-basics': ['Flexbox', 'Grid', 'レスポンシブ', '詳細度', 'CSS変数', 'rem'],
 
   'tailwind-css': ['flex', 'grid', 'レスポンシブ', 'dark', 'theme'],
 

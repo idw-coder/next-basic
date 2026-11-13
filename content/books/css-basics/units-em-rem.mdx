@@ -1,0 +1,339 @@
+---
+title: 'emとremの違い — CSSの単位は何を基準に計算されるか'
+description: 'CSSのem・rem・pxの違いを、基準になるfont-sizeと計算例で解説します。emが入れ子で大きくなる理由、font-sizeとpaddingで基準が変わる点、remとpxの換算表、使い分けの目安をまとめます。'
+order: 7.5
+chapterLabel: 'emとrem'
+---
+
+`em` と `rem` はどちらも「`font-size` の何倍か」で長さを表す単位です。違いは、<Marker>どの要素の `font-size` を基準にするか</Marker>の1点だけです。
+
+| 単位  | 基準になる値                                   | `1` が表す長さ（既定の状態）       |
+| ----- | ---------------------------------------------- | ---------------------------------- |
+| `px`  | なし（固定の長さ）                             | 1px                                |
+| `rem` | ルート要素（`html`）の `font-size`             | 16px                               |
+| `em`  | その要素の `font-size`（指定先で変わる。後述） | 親から継承した `font-size` と同じ |
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  `1.5em` と `1.5rem` を入れ替えても見た目が変わらないことがあって、違いが分からない…。
+</SpeechBubble>
+
+見た目が変わらないのは、その要素の `font-size` がルート要素と同じ16pxのままだからです。途中の要素で `font-size` を変えると、`em` だけが変わります。この章では、基準の決まり方を計算例で確認します。
+
+文字サイズや行間そのものの決め方は、[テキスト・フォント・改行制御](/books/css-basics/07-typography)で扱っています。
+
+## remはルート要素のfont-sizeを基準にする
+
+`rem` は root em の略で、<Marker>ルート要素（`html`）の `font-size` の倍数</Marker>です。どの要素に書いても、どれだけ入れ子になっていても、基準は `html` の `font-size` だけです。
+
+主要なブラウザは `html` の `font-size` の既定値を16pxにしています。CSSで `html` の `font-size` を変えていなければ、`1rem` は16pxです。
+
+```css
+h1 {
+  font-size: 2rem; /* 16px × 2 = 32px */
+}
+
+.card {
+  padding: 1.5rem; /* 16px × 1.5 = 24px */
+}
+
+.note {
+  font-size: 0.875rem; /* 16px × 0.875 = 14px */
+}
+```
+
+`html` の `font-size` を変えると、`rem` で書いた長さはすべて同じ比率で変わります。
+
+```css
+html {
+  font-size: 20px;
+}
+
+h1 {
+  font-size: 2rem; /* 20px × 2 = 40px */
+}
+```
+
+### remとpxの換算表
+
+`html` の `font-size` が16pxのときの換算です。計算式は `px ÷ 16 = rem` です。
+
+| px   | rem        |
+| ---- | ---------- |
+| 4px  | `0.25rem`  |
+| 8px  | `0.5rem`   |
+| 12px | `0.75rem`  |
+| 14px | `0.875rem` |
+| 16px | `1rem`     |
+| 18px | `1.125rem` |
+| 20px | `1.25rem`  |
+| 24px | `1.5rem`   |
+| 32px | `2rem`     |
+| 48px | `3rem`     |
+
+<Callout type="note" title="Tailwind CSSの数値もremで定義されている">
+  Tailwind CSSの `p-4` は `1rem`、`text-sm` は `0.875rem` です。既定の間隔は `0.25rem`
+  を1単位にしているので、`p-4` は `0.25rem × 4` で16px相当になります。クラスと長さの対応は
+  [Tailwind CSSのスペーシング](/books/tailwind-css/04-spacing)にまとめています。
+</Callout>
+
+## emはその要素のfont-sizeを基準にする
+
+`em` の基準は、<Marker>`em` を書いた要素自身の `font-size`</Marker>です。ただし、`font-size` プロパティに `em` を書いた場合だけは扱いが変わります。自分の `font-size` をこれから決めるところなので、自分の値は基準に使えません。このときは親要素の `font-size`（継承される値）が基準になります。
+
+| `em` を書いたプロパティ                   | 基準になる値             |
+| ----------------------------------------- | ------------------------ |
+| `font-size`                               | 親要素の `font-size`     |
+| `padding`・`margin`・`width`・`gap` など | その要素自身の `font-size` |
+
+次のCSSで、2つの基準を順に計算します。
+
+```css
+.parent {
+  font-size: 20px;
+}
+
+.child {
+  font-size: 1.5em; /* 親の 20px × 1.5 = 30px */
+  padding: 1em; /* 自分の 30px × 1 = 30px */
+  margin-bottom: 0.5em; /* 自分の 30px × 0.5 = 15px */
+}
+```
+
+`.child` の `padding: 1em` は20pxではなく30pxです。先に `font-size: 1.5em` で自分の `font-size` が30pxに決まり、`padding` はその30pxを基準にするからです。
+
+<Figure
+  src="/images/search_woman_color.png"
+  alt="どの要素のfont-sizeが基準になるかを調べているイメージ"
+  maxWidth="220px"
+/>
+
+<a id="em-nesting"></a>
+
+### emは入れ子にすると倍率が掛け合わされる
+
+`font-size` を `em` で指定した要素を入れ子にすると、内側の要素ほど倍率が掛け合わされます。内側の要素の基準が、すでに拡大された親の `font-size` になるためです。
+
+```html
+<ul class="list">
+  <li>
+    1階層目
+    <ul class="list">
+      <li>
+        2階層目
+        <ul class="list">
+          <li>3階層目</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+```
+
+```css
+.list {
+  font-size: 1.2em;
+}
+```
+
+ルートが16pxのとき、各階層の文字サイズは次のようになります。
+
+| 階層    | 計算                 | 文字サイズ |
+| ------- | -------------------- | ---------- |
+| 1階層目 | 16px × 1.2           | 19.2px     |
+| 2階層目 | 19.2px × 1.2         | 23.04px    |
+| 3階層目 | 23.04px × 1.2        | 27.648px   |
+
+実際に表示すると次のとおりです。左が `1.2em`、右が同じ構造を `1.2rem` にしたものです。
+
+<TailwindPreview title="font-size: 1.2em と 1.2rem を3階層入れ子にした表示">
+  <div className="grid gap-6 sm:grid-cols-2">
+    <div>
+      <p className="mb-2 text-xs font-bold text-slate-500">1.2em（階層ごとに大きくなる）</p>
+      <div style={{ fontSize: '16px' }}>
+        <div style={{ fontSize: '1.2em' }}>
+          1階層目
+          <div style={{ fontSize: '1.2em' }}>
+            2階層目
+            <div style={{ fontSize: '1.2em' }}>3階層目</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p className="mb-2 text-xs font-bold text-slate-500">1.2rem（どの階層も同じ）</p>
+      <div style={{ fontSize: '1.2rem' }}>
+        1階層目
+        <div style={{ fontSize: '1.2rem' }}>
+          2階層目
+          <div style={{ fontSize: '1.2rem' }}>3階層目</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</TailwindPreview>
+
+`rem` は基準が常に `html` なので、何階層入れ子にしても19.2pxのままです。<Marker>文字サイズを `em` で書くと、HTMLの入れ子の深さで結果が変わります。</Marker>文字サイズに `rem` を使うことが多いのはこのためです。
+
+## emとremの使い分け
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+  入れ子で大きくなるなら、`em` は使わずに全部 `rem` で書けばいいの？
+</SpeechBubble>
+
+文字サイズは `rem` で書くのが扱いやすいです。一方で、`em` には「その要素の文字サイズに連動する」という性質があり、これを使いたい場面があります。
+
+| 指定するもの                                   | 単位  | 理由                                                         |
+| ---------------------------------------------- | ----- | ------------------------------------------------------------ |
+| 文字サイズ                                     | `rem` | 入れ子の深さに影響されず、計算結果が1つに決まる              |
+| ページ全体でそろえる余白（セクション間など）   | `rem` | 文字サイズが違う要素の間でも同じ長さになる                   |
+| 文字サイズに比例させたい余白（ボタンの内側など） | `em`  | 文字サイズを変えると余白も同じ比率で変わる                   |
+| 枠線の太さ・影のずれ幅                         | `px`  | 文字サイズが変わっても太さを変えたくない                     |
+
+`em` が役に立つ例がボタンです。`padding` を `em` で書いておくと、`font-size` を変えるだけで、余白も同じ比率のボタンができます。
+
+```css
+.button {
+  font-size: 1rem;
+  padding: 0.5em 1em; /* 16px基準 → 上下8px・左右16px */
+  border: 1px solid currentColor;
+}
+
+.button-large {
+  font-size: 1.25rem; /* paddingは書き直していない */
+  /* 20px基準 → 上下10px・左右20px */
+}
+```
+
+<TailwindPreview title="paddingをemで書いたボタン">
+  <div className="flex flex-wrap items-center gap-4">
+    <button
+      type="button"
+      className="rounded-md border border-blue-600 font-semibold text-blue-700"
+      style={{ fontSize: '1rem', padding: '0.5em 1em' }}
+    >
+      font-size: 1rem
+    </button>
+    <button
+      type="button"
+      className="rounded-md border border-blue-600 font-semibold text-blue-700"
+      style={{ fontSize: '1.25rem', padding: '0.5em 1em' }}
+    >
+      font-size: 1.25rem
+    </button>
+  </div>
+</TailwindPreview>
+
+2つのボタンの `padding` はどちらも `0.5em 1em` です。`rem` で `padding: 0.5rem 1rem` と書いた場合は、文字だけが大きくなり、余白は8pxと16pxのまま変わりません。
+
+## pxではなくremで文字サイズを書く理由
+
+ブラウザには、既定の文字サイズを利用者が変更する設定があります（Chromeでは「設定」→「デザイン」→「フォントサイズ」）。この設定は `html` の `font-size` の既定値を変えます。
+
+- `font-size: 1rem` と書いた文字は、利用者が設定した文字サイズに合わせて変わる
+- `font-size: 16px` と書いた文字は、設定を変えても16pxのまま
+
+ページの拡大・縮小（Ctrl / Cmd と `+`）は `px` で書いた長さも含めて全体を拡大するので、こちらは単位に関係なく効きます。差が出るのは文字サイズの設定を変えている利用者です。
+
+WCAG 2.1 の達成基準 1.4.4「テキストのサイズ変更」は、支援技術なしでテキストを200%まで拡大しても内容や機能が失われないことを求めています。文字サイズを `rem` で書くことは、この基準を満たしやすくする書き方の1つです。
+
+<Callout type="warning" title="htmlのfont-sizeをpxで固定しない">
+  `html { font-size: 16px; }` と書くと、利用者がブラウザで設定した文字サイズが上書きされ、`rem`
+  で書いた部分も設定に追従しなくなります。`html` の `font-size`
+  を変えたいときは `100%` や `112.5%` のように `%` で書きます。`%`
+  は利用者の設定値に対する割合になります。
+</Callout>
+
+## よくあるハマりどころ
+
+### paddingのemが親ではなく自分のfont-sizeで計算される
+
+「`em` は親要素の文字サイズが基準」と覚えていると、`padding` や `margin` の計算が合いません。親が基準になるのは `font-size` プロパティに書いたときだけです。
+
+```css
+.parent {
+  font-size: 16px;
+}
+
+.title {
+  font-size: 2em; /* 親の 16px × 2 = 32px */
+  margin-bottom: 1em; /* 32px（16pxではない） */
+}
+```
+
+開発者ツールの「計算済み」（Computed）タブを開くと、`em` や `rem` がpxに換算された値を確認できます。
+
+### line-heightをemで書くと子要素の行間が詰まる
+
+`line-height` に `em` を付けると、計算後のpx値が子要素に継承されます。子要素の文字が大きいと、行の高さが文字より小さくなります。
+
+```css
+.article {
+  font-size: 16px;
+  line-height: 1.5em; /* 24px に確定し、子にも 24px が継承される */
+}
+
+.article h2 {
+  font-size: 32px; /* 行の高さは 24px のまま。文字が重なる */
+}
+```
+
+`line-height: 1.5` のように単位なしで書くと、倍率そのものが継承され、子要素では自分の `font-size`（32px）に対して計算されます（48px）。<Marker>`line-height` は単位なしの数値で書きます。</Marker>
+
+### メディアクエリのemとremはhtmlのfont-sizeを見ない
+
+メディアクエリの条件に書いた `em` と `rem` は、CSSで指定した `html` の `font-size` ではなく、ブラウザの初期値（利用者の設定値。既定では16px）を基準にします。
+
+```css
+html {
+  font-size: 20px;
+}
+
+/* 48rem は 20px × 48 = 960px ではなく、16px × 48 = 768px */
+@media (min-width: 48rem) {
+  .layout {
+    display: grid;
+  }
+}
+```
+
+メディアクエリの書き方は[レスポンシブデザイン入門](/books/css-basics/06-responsive)で扱っています。
+
+### `html { font-size: 62.5% }` を使うときの注意
+
+`html` の `font-size` を `62.5%` にして `1rem` を10pxにそろえる書き方があります。`1.6rem` が16pxになり、換算が10で割るだけになります。
+
+```css
+html {
+  font-size: 62.5%; /* 16px × 0.625 = 10px */
+}
+
+body {
+  font-size: 1.6rem; /* 16px に戻す */
+}
+```
+
+この方法を使うと、`rem` を前提にした外部のCSS（UIライブラリやTailwind CSSなど）の長さも、すべて62.5%に縮みます。外部のCSSを併用するプロジェクトでは使わず、換算表か `calc()` で計算するほうが安全です（これは筆者の判断です）。
+
+## ちゃんと使うためのポイント
+
+- `rem` の基準は `html` の `font-size`。どこに書いても同じ長さになる
+- `em` の基準は、その要素自身の `font-size`。`font-size` プロパティに書いたときだけ親の `font-size` になる
+- `font-size` を `em` で書いた要素を入れ子にすると、倍率が掛け合わされる
+- 文字サイズは `rem`、文字サイズに比例させたい余白は `em`、枠線は `px` を起点に使い分ける
+- `line-height` は単位なしの数値で書く
+- `html` の `font-size` は `px` で固定せず、変えるなら `%` で書く
+
+色の指定方法は[色と背景の指定方法](/books/css-basics/08-colors-and-backgrounds)に進んでください。
+
+## 参考リンク
+
+- [MDN — CSSの値と単位](https://developer.mozilla.org/ja/docs/Learn_web_development/Core/Styling_basics/Values_and_units) — 絶対単位と相対単位の一覧
+- [MDN — font-size](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/font-size) — `em` と `rem` の入れ子の例
+- [CSS Values and Units Module Level 4 — Font-relative Lengths](https://www.w3.org/TR/css-values-4/#font-relative-lengths)（英語） — `em` と `rem` の定義
+- [WCAG 2.1 解説書 — 達成基準 1.4.4 テキストのサイズ変更](https://waic.jp/translations/WCAG21/Understanding/resize-text.html)
+
+<QuizLink
+  href="/quiz/css-basic"
+  title="CSSクイズに挑戦する"
+  description="remとemの基準、Flexbox、詳細度などを4択クイズで確認しよう"
+/>
