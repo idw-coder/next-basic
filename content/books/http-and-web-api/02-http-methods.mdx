@@ -1,10 +1,10 @@
 ---
 title: 'HTTPメソッド — GET・POST・PUT・DELETEの使い分け'
-description: '主要なHTTPメソッドの意味と使い分け、べき等性と安全性の概念、実務でよくある誤用パターンを整理します。'
+description: 'GET・POST・PUT・PATCH・DELETEの意味と使い分けを整理します。安全性とべき等性の定義、2回目のDELETEが404でもべき等である理由、POSTの二重送信を防ぐべき等キーまで扱います。'
 order: 2
 ---
 
-HTTPリクエストには必ず **メソッド** が含まれます。メソッドは「このリクエストで何をしたいのか」をサーバーに伝える動詞のようなものです。
+HTTPリクエストには必ず **メソッド** が含まれます。メソッドは、URLで指定したリソースに対して行う操作の種類（取得・作成・更新・削除など）をサーバーに伝える値です。HTTP/1.1では、リクエストの1行目の先頭に `GET /api/users/1 HTTP/1.1` のように書かれます。
 
 この章では、Web APIで使う主要なHTTPメソッドの意味と使い分け、そして設計で重要になる **べき等性** と **安全性** の概念を整理します。
 
@@ -12,7 +12,9 @@ HTTPリクエストには必ず **メソッド** が含まれます。メソッ�
 データを送るのはとりあえず全部 POST でいい気がするけど…GET や PUT ってわざわざ使い分ける必要あるの？
 </SpeechBubble>
 
----
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+全部POSTでも動くよ。ただしメソッドごとに「再送してよいか」「キャッシュしてよいか」が決まっていて、ブラウザやプロキシ、HTTPクライアントはその前提で動く。使い分けないと、その仕組みに乗れなくなるんだ。
+</SpeechBubble>
 
 ---
 
@@ -37,6 +39,13 @@ POST   /api/users           → 新しいユーザーを作成
 PUT    /api/users/1        → ユーザー1の情報を全体更新
 DELETE /api/users/1        → ユーザー1を削除
 ```
+
+<Callout type="info">
+### HTMLのフォームが送れるのはGETとPOSTだけ
+
+`<form>` の `method` 属性でHTTPメソッドとして指定できるのは `get` と `post` の2つです（[MDN — form要素](https://developer.mozilla.org/ja/docs/Web/HTML/Reference/Elements/form)）。`PUT`・`PATCH`・`DELETE` は、JavaScriptの `fetch` などから送ります。
+
+</Callout>
 
 ---
 
@@ -81,7 +90,9 @@ HTTPメソッドには **安全性（Safe）** と **べき等性（Idempotent�
 
 **安全性** — そのリクエストがサーバーの状態を変更しないこと。GETは安全、POSTは安全ではない。
 
-**べき等性** — 同じリクエストを何回送っても結果が同じであること。GETやPUTはべき等、POSTはべき等ではない。
+**べき等性** — 同じリクエストを1回送った場合と複数回送った場合とで、**サーバーの状態が同じになる**こと。GETやPUTはべき等、POSTはべき等ではない。
+
+どちらも [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.1)（HTTPの仕様）の9.2.1節・9.2.2節で定義されています。日本語ではMDNの用語集の[安全](https://developer.mozilla.org/ja/docs/Glossary/Safe/HTTP)と[べき等](https://developer.mozilla.org/ja/docs/Glossary/Idempotent)で読めます。
 
 | メソッド | 安全 | べき等 |
 |---|---|---|
@@ -107,6 +118,25 @@ flowchart TD
     class B,C idempotent
     class D,E neither
 `} />
+
+### 同じなのは「サーバーの状態」で、レスポンスではない
+
+べき等性で誤解しやすいのがDELETEです。
+
+```
+DELETE /api/users/1   → 204 No Content（削除された）
+DELETE /api/users/1   → 404 Not Found（もう存在しない）
+```
+
+1回目と2回目でステータスコードは違いますが、どちらのあとも「ユーザー1が存在しない」というサーバーの状態は同じです。べき等性が見ているのはこの状態のほうなので、DELETEはべき等です。
+
+PUTも同じ考え方です。`PUT /api/users/1` に同じボディを3回送っても、ユーザー1は3回とも同じ内容で上書きされるだけで、状態は1回送ったときと変わりません。一方、`POST /api/users` を3回送るとユーザーが3件作られます。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+PATCHは「名前だけ変える」なら何回送っても同じ結果になりそうだけど、べき等じゃないの？
+</SpeechBubble>
+
+`{ "name": "Bob" }` のように値をそのまま指定するPATCHは、何回送っても状態が同じになります。しかしPATCHのボディの形式は決まっておらず、「在庫を1増やす」のような差分の指示も送れます。その場合は送るたびに状態が変わります。PATCHを定義している [RFC 5789](https://www.rfc-editor.org/rfc/rfc5789.html) が「PATCHは安全でもべき等でもない」としているのは、メソッドとしてべき等を保証できないためです。具体例は[システム設計の「API設計の基本」](/books/system-design/06-api-design)で扱っています。
 
 ### なぜべき等性が重要なのか
 
@@ -140,7 +170,7 @@ GETは検索エンジンのクローラーやブラウザのプリフェッチ�
 GET /api/users?page=2&limit=20&sort=name
 ```
 
-GETにはリクエストボディを含めないのが慣例です。技術的には可能ですが、多くのHTTPクライアントやプロキシがGETのボディを無視するため、実務では避けます。
+GETにはリクエストボディを含めません。[RFC 9110の9.3.1節](https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.1)は、GETリクエストのボディには一般に定義された意味がなく、実装によってはリクエストを拒否することがあるとしています。ブラウザの `fetch` も、`GET` に `body` を指定すると `TypeError` を投げます。
 
 **3. クエリパラメータはURLエンコードする**
 
@@ -274,37 +304,57 @@ await fetch('/api/users/42', {
 await fetch('/api/users/42', { method: 'DELETE' });
 ```
 
+`method` を省略するとGETになります。また、`fetch` はサーバーが404や500を返しても例外を投げません。失敗を検出するには `response.ok` を確認します。書き方は[HTTPステータスコードの章](/books/http-and-web-api/03-status-codes#section-6b)で扱っています。
+
 ### DevToolsで確認する
 
 Chrome DevToolsのNetworkタブでリクエストを選択すると、**Method** 列にHTTPメソッドが表示されます。「この操作はGETで飛んでいるのか、POSTで飛んでいるのか」を確認する習慣をつけると、APIの挙動をデバッグしやすくなります。
 
 Networkタブの **フィルター** で `method:POST` と入力すると、POSTリクエストだけを絞り込めます。「意図しないGETが飛んでいた」「POSTのはずがGETになっていた」といったバグの発見に役立ちます。
 
-<Callout type="info">
 ### POSTの二重送信を防ぐ
 
-フォームの送信ボタンを連打すると、POSTリクエストが複数回飛んでデータが重複する問題はよくあります。対策として、送信後にボタンを無効化する、またはサーバー側でべき等キー（idempotency key）を使って重複を弾く方法があります。
+POSTはべき等ではないので、同じリクエストが2回届くとデータが2件作られます。2回届く原因は2つあり、対策が別です。
+
+| 原因 | 対策 |
+|---|---|
+| 送信ボタンの連打 | 送信中はボタンを無効化する（フロント側） |
+| タイムアウト後の再送（1回目がサーバーに届いていた） | べき等キーで、サーバーが同じ操作だと判定する |
+
+**べき等キー**（idempotency key）は、クライアントが操作ごとに発行する一意な文字列です。サーバーは受け取ったキーを保存しておき、同じキーのリクエストがもう一度届いたら、処理をやり直さずに1回目の結果を返します。
 
 ```js
-// フロント側: 送信中はボタンを無効化
 const [isSubmitting, setIsSubmitting] = useState(false);
+// 1回の注文操作につきキーを1つ。再送しても同じ値を使う
+const idempotencyKeyRef = useRef(crypto.randomUUID());
 
 const handleSubmit = async () => {
-  setIsSubmitting(true);
+  setIsSubmitting(true); // 連打対策
   try {
-    await fetch('/api/orders', {
+    const response = await fetch('/api/orders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Idempotency-Key': crypto.randomUUID(),
+        'Idempotency-Key': idempotencyKeyRef.current, // 再送対策
       },
       body: JSON.stringify(orderData),
     });
+    if (response.ok) {
+      // 成功したら、次の注文のために新しいキーに替える
+      idempotencyKeyRef.current = crypto.randomUUID();
+    }
   } finally {
     setIsSubmitting(false);
   }
 };
 ```
+
+<Callout type="warning">
+### キーを送信のたびに作り直すと再送対策にならない
+
+`handleSubmit` の中で毎回 `crypto.randomUUID()` を呼ぶと、再送のたびにキーが変わり、サーバーは別の操作として処理します。キーは**操作の単位**で1つ作り、成功するまで同じ値を送ります。
+
+また、ヘッダーを付けるだけでは何も起きません。サーバー側にキーを保存して照合する実装が必要です。`Idempotency-Key` というヘッダー名は決済APIなどで広く使われていますが、執筆時点ではIETFで[標準化の途中](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)にあるドラフトで、確定した標準ではありません。
 
 </Callout>
 
@@ -319,5 +369,15 @@ const handleSubmit = async () => {
 - GETは **データを変更しない・クエリパラメータをエンコードする・クエリ文字列に機密情報を入れない** が原則
 - POSTは **べき等ではない** ため、リトライには注意が必要
 - メソッドを正しく使い分けることで、API全体の可読性と信頼性が上がる
+- べき等性が指すのは **サーバーの状態** で、レスポンスではない。2回目のDELETEが404でもDELETEはべき等
 
-次の章では、サーバーからの応答を読み解く **HTTPステータスコード** を詳しく見ていきます。
+サーバーからの応答の読み方は、[HTTPステータスコード一覧](/books/http-and-web-api/03-status-codes)で扱っています。
+
+---
+
+## 参考リンク
+
+- [RFC 9110 — HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html) — HTTPメソッド・安全性・べき等性を定義している仕様（英語）
+- [MDN — HTTPリクエストメソッド](https://developer.mozilla.org/ja/docs/Web/HTTP/Reference/Methods) — 各メソッドの日本語リファレンス
+- [MDN — べき等](https://developer.mozilla.org/ja/docs/Glossary/Idempotent) — べき等性の用語解説
+- [MDN — PATCH](https://developer.mozilla.org/ja/docs/Web/HTTP/Reference/Methods/PATCH) — PUTとの違いとべき等性についての記述

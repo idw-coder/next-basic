@@ -1,6 +1,6 @@
 ---
 title: 'MUIのレイアウト — Box・Stack・Container・Gridの使い分け'
-description: 'MUIで画面を組むときの4つのレイアウトコンポーネントを、それぞれの役割と選び方から整理します。v9で書き方が大きく変わったGridのsize propも扱います。'
+description: 'MUIのBox・Stack・Container・Gridの役割と選び方を整理します。v9で変わったGridのsize prop、Stackのspacingが効かない原因とuseFlexGap、4つを組み合わせた1ページの実装例まで扱います。'
 order: 4
 ---
 
@@ -78,6 +78,21 @@ MUIのコンポーネントはほぼすべてが `sx` を受け取るので、`<
 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
 ```
 
+### 揃え方はsxで指定する
+
+「タイトルを左、ボタンを右」「高さの違う要素を縦中央で揃える」といった揃え方は、`sx` にFlexboxのプロパティを書きます。
+
+```tsx
+<Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+  <Typography variant="h6">商品一覧</Typography>
+  <Button variant="contained">商品を追加</Button>
+</Stack>
+```
+
+<Callout type="warning" title="alignItemsをpropとして書くとv9では型エラー">
+古い記事には `<Stack direction="row" alignItems="center">` のように、CSSプロパティをそのままpropとして渡す書き方が出てきます。v9の `Stack` の型には `alignItems` も `justifyContent` も定義されておらず、型エラーになります。`sx` の中に移してください。
+</Callout>
+
 ### dividerで区切り線を入れる
 
 要素のあいだに区切り線を挟みたいときは、自分で `<Divider />` を並べる必要はありません。
@@ -93,6 +108,32 @@ MUIのコンポーネントはほぼすべてが `sx` を受け取るので、`<
 子要素の**あいだにだけ**挿入されるので、末尾に余計な線が残りません。
 
 <Figure src="/images/deta_man_color.png" alt="要素を並べて整えるイメージ" maxWidth="230px" />
+
+### spacingの実体はmargin。折り返すならuseFlexGap
+
+`Stack` の `spacing` は、既定ではCSSの `gap` ではなく**子要素の `margin`** で実装されています。`@mui/system` の `createStack.js` を読むと、次の2つのスタイルを出力しています。
+
+| セレクタ | 出力されるスタイル |
+| --- | --- |
+| すべての直下の子 | `margin: 0` |
+| 2つ目以降の子 | `margin-top`（横並びなら `margin-left`）に `spacing` の値 |
+
+この実装から、2つの挙動が生まれます。
+
+- **子要素に書いた `margin` が効かない。** `Stack` が直下の子の `margin` を0で上書きするためです。`<Button sx={{ mt: 4 }}>` と書いても間隔は変わりません
+- **折り返すと2行目の間隔が崩れる。** `margin-left` は横方向にしか付かないので、`flexWrap: 'wrap'` で折り返した行のあいだには間隔ができず、行頭の要素にも余白が付きます
+
+どちらも `useFlexGap` を付けると解消します。`spacing` が `gap` で出力されるようになり、子の `margin` を上書きしなくなります。
+
+```tsx
+<Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+  <Chip label="React" />
+  <Chip label="TypeScript" />
+  <Chip label="MUI" />
+</Stack>
+```
+
+タグの一覧のように、数が決まっておらず折り返す可能性がある横並びには `useFlexGap` を付けておきます。
 
 ---
 
@@ -171,6 +212,23 @@ v9では次のように書きます。
 </Grid>
 ```
 
+### offsetで左に空きを作る
+
+`offset` は、アイテムの左側に指定した列数ぶんの空きを作ります。`size` と同じく、ブレークポイントごとの指定もできます。
+
+```tsx
+<Grid container spacing={2}>
+  {/* 12列のうち、左4列を空けて中央の4列に置く */}
+  <Grid size={4} offset={4}>中央のカラム</Grid>
+</Grid>
+
+<Grid container spacing={2}>
+  <Grid size={3}>左端</Grid>
+  {/* 残りの空きをすべて左側に取り、右端に寄せる */}
+  <Grid size={3} offset="auto">右端</Grid>
+</Grid>
+```
+
 ### 縦積みにGridは使わない
 
 v9では `direction="column"` が使えなくなりました。型も `'row' | 'row-reverse'` だけを受け付けます。
@@ -196,6 +254,62 @@ v9では `direction="column"` が使えなくなりました。型も `'row' | '
 
 ---
 
+## 4つを組み合わせて1ページを作る
+
+実際の画面では、4つを入れ子にして使います。商品一覧ページを例に、それぞれの担当を確認します。
+
+```tsx
+import { Box, Button, Card, CardContent, Container, Grid, Stack, Typography } from '@mui/material';
+
+const products = [
+  { id: 1, name: 'ノート', price: 480 },
+  { id: 2, name: 'ペン', price: 120 },
+  { id: 3, name: '付箋', price: 300 },
+];
+
+export function ProductListPage() {
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Stack spacing={3}>
+        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h4" component="h1">
+            商品一覧
+          </Typography>
+          <Button variant="contained">商品を追加</Button>
+        </Stack>
+
+        <Grid container spacing={2}>
+          {products.map((product) => (
+            <Grid key={product.id} size={{ xs: 12, sm: 6, md: 4 }}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" component="h2">
+                    {product.name}
+                  </Typography>
+                  <Box sx={{ mt: 1, color: 'text.secondary' }}>{product.price}円</Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Stack>
+    </Container>
+  );
+}
+```
+
+| コンポーネント | このページでの担当 |
+| --- | --- |
+| `Container` | ページ全体を中央に寄せ、幅を最大1200pxに抑える |
+| 外側の `Stack` | 見出しの行とカード一覧を縦に並べ、あいだを24px空ける |
+| 内側の `Stack` | 見出しとボタンを横に並べ、左右の端に分ける |
+| `Grid` | カードを画面幅に応じて1列（`xs`）・2列（`sm`）・3列（`md`）に切り替える |
+| `Box` | MUIのコンポーネントではない価格の表示に、`sx` で余白と色を当てる |
+
+`xs`・`sm`・`md` が指す画面幅は[レスポンシブとブレークポイントの章](/books/mui/responsive-and-breakpoints)で扱っています。
+
+---
+
 ## よくあるハマりどころ
 
 ### `<Grid item>` が型エラーになる
@@ -208,7 +322,15 @@ v9の変更です。`item` を消して `size` に書き換えます。
 
 ### Stackのspacingが効かない
 
-子要素が1つしかない場合、間隔は生まれません。`spacing` は「あいだ」の指定です。要素の外側に余白が欲しいときは `sx={{ p: 2 }}` を使います。
+原因は3つあります。
+
+- **子要素が1つしかない。** `spacing` は「あいだ」の指定なので、間隔は生まれません。要素の外側に余白が欲しいときは `sx={{ p: 2 }}` を使います
+- **子を1つの `div` にまとめている。** `Stack` が間隔を付けるのは、DOM上の直下の子だけです。`<Stack><div>…複数の要素…</div></Stack>` では、`div` の中の要素どうしには間隔が付きません
+- **折り返している。** 既定の実装は `margin` なので、折り返した行のあいだには間隔ができません。`useFlexGap` を付けます
+
+### Stackの子に書いたmarginが効かない
+
+`Stack` が直下の子の `margin` を0にしているためです。その要素だけ間隔を変えたいなら、`useFlexGap` を付けたうえで子に `margin` を書くか、`Stack` を分けます。
 
 ---
 
@@ -219,8 +341,10 @@ v9の変更です。`item` を消して `size` に書き換えます。
 - `Container` はページの外枠。`maxWidth` のデフォルトは `lg`
 - <Marker>v9の `Grid` は `<Grid size={{ xs: 12, md: 6 }}>`。`item` と `xs` は廃止</Marker>
 - `Grid` で縦積みはできない。縦は `Stack`
+- `Stack` の `spacing` は既定で `margin`。折り返す横並びや、子に `margin` を書きたい場面では `useFlexGap`
+- 揃え方（`alignItems` / `justifyContent`）は `sx` に書く
 
-次の章では、文字を扱う[Typographyコンポーネント](/books/mui/typography)を扱います。見た目とHTMLタグを分けて指定する仕組みが中心です。
+文字の見た目とHTMLタグを分けて指定する仕組みは、[Typographyコンポーネントの章](/books/mui/typography)で扱っています。
 
 ---
 

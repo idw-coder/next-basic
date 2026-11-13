@@ -73,7 +73,109 @@ console.log(z.prettifyError(result.error));
 
 `fieldErrors` は「項目名 → メッセージ配列」なので、フォームの各入力欄の下に出すのがそのまま書けます。ネストの無いフォームなら `flattenError` が一番扱いやすいです。
 
+<Callout type="info" title="parseで受け取る場合">
+`parse` は失敗すると `ZodError` を throw します。`catch (e)` の中で `e instanceof z.ZodError` を確かめれば、同じ `z.flattenError(e)` に渡せます。書き方は[parseとsafeParseの章](/books/zod/parse-and-safeparse)にあります。
+</Callout>
+
 <Figure src="/images/marubatsu.png" alt="正誤を判定するイメージのイラスト" maxWidth="280px" />
+
+### ネストがあるとflattenErrorは位置の情報を落とす
+
+`flattenError` がキーにするのは `path` の**先頭の要素だけ**です。オブジェクトの入れ子や配列があると、どの階層・何番目の要素で失敗したのかが結果から消えます。
+
+```ts
+const schema = z.object({
+  user: z.object({ name: z.string() }),
+  tags: z.array(z.string()),
+});
+const result = schema.safeParse({ user: { name: 1 }, tags: ['a', 2] });
+
+result.error.issues.map((issue) => issue.path);
+// [['user', 'name'], ['tags', 1]]
+
+z.flattenError(result.error).fieldErrors;
+// {
+//   user: ['Invalid input: expected string, received number'],
+//   tags: ['Invalid input: expected string, received number']
+// }
+```
+
+`user.name` の失敗が `user` に、`tags[1]` の失敗が `tags` にまとめられました。`treeifyError` なら、オブジェクトは `properties`、配列は `items` を辿って元の位置まで降りられます。
+
+```ts
+const tree = z.treeifyError(result.error);
+
+tree.properties?.user?.properties?.name?.errors;
+// ['Invalid input: expected string, received number']
+
+tree.properties?.tags?.items?.[1]?.errors;
+// ['Invalid input: expected string, received number']
+```
+
+失敗していない位置には値が入りません（上の例では `items[0]` が空です）。そのため `?.` で辿ります。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+入力欄が1階層に並ぶフォームは `flattenError`、住所や明細行のように入れ子・配列があるフォームは `treeifyError`、と覚えておけば足りるよ。
+</SpeechBubble>
+
+---
+
+## フォームの入力欄の下にエラーを出す
+
+`fieldErrors` を state に入れ、項目名で引いて表示します。Reactで書くと次の形になります。
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import { z } from 'zod';
+
+const schema = z.object({
+  name: z.string().min(1, '名前を入力してください'),
+  email: z.email('メールアドレスの形式で入力してください'),
+});
+
+type FieldErrors = { name?: string[]; email?: string[] };
+
+export function SignupForm() {
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const result = schema.safeParse(values);
+
+    if (!result.success) {
+      setErrors(z.flattenError(result.error).fieldErrors);
+      return;
+    }
+    setErrors({});
+    // result.data を送信する
+  };
+
+  return (
+    <form onSubmit={handleSubmit} noValidate>
+      <label htmlFor="name">名前</label>
+      <input id="name" name="name" aria-invalid={Boolean(errors.name)} aria-describedby="name-error" />
+      {errors.name && <p id="name-error" role="alert">{errors.name[0]}</p>}
+
+      <label htmlFor="email">メールアドレス</label>
+      <input id="email" name="email" aria-invalid={Boolean(errors.email)} aria-describedby="email-error" />
+      {errors.email && <p id="email-error" role="alert">{errors.email[0]}</p>}
+
+      <button type="submit">登録</button>
+    </form>
+  );
+}
+```
+
+押さえる点は3つです。
+
+- `fieldErrors` の値は**配列**です。1つの項目に複数の検証が失敗すると複数入るので、1件だけ見せるなら `[0]` を取ります
+- 失敗していない項目は、キーそのものが存在しません。`errors.name` が `undefined` かどうかで表示を切り替えられます
+- `aria-invalid` と `aria-describedby` を付けると、スクリーンリーダーが入力欄とエラー文を結び付けて読み上げます
+
+入力のたびに検証したい、送信中の状態も管理したい、という段階になったら[React Hook Formと組み合わせる章](/books/zod/react-hook-form)の方法が向いています。
 
 ---
 
@@ -116,6 +218,23 @@ z.array(z.string()).min(1, 'タグを1つ以上選んでください');
 
 ```ts
 z.string({ error: '文字列で入力してください' });
+```
+
+`error` には関数も渡せます。引数の `issue` から入力値（`issue.input`）や制約の値（`issue.minimum` など）を読めるので、「未入力」と「型が違う」でメッセージを分けたり、上限・下限の数値を文言に埋め込んだりできます。
+
+```ts
+const name = z.string({
+  error: (issue) => (issue.input === undefined ? '必須です' : '文字列で入力してください'),
+});
+
+name.safeParse(undefined).error?.issues[0].message; // '必須です'
+name.safeParse(1).error?.issues[0].message; // '文字列で入力してください'
+
+const password = z.string().min(8, {
+  error: (issue) => `${issue.minimum}文字以上で入力してください`,
+});
+
+password.safeParse('abc').error?.issues[0].message; // '8文字以上で入力してください'
 ```
 
 <Callout type="warning" title="v3の `required_error` は v4では効きません">
@@ -167,23 +286,49 @@ v3の書き方です。v4では `error` を使います。
 
 ### エラーが画面に出ない
 
-`path` が空だと、どの入力欄にも紐づきません。オブジェクト全体に掛けた `refine` では `path` を指定してください。
+`path` が空のissueは `fieldErrors` ではなく `formErrors` に入ります。`fieldErrors` だけを表示しているフォームでは、どの入力欄にも出ません。オブジェクト全体に掛けた `refine` がこの形になります。
+
+```ts
+const schema = z
+  .object({ password: z.string(), confirm: z.string() })
+  .refine((v) => v.password === v.confirm, { error: 'パスワードが一致しません' });
+
+z.flattenError(schema.safeParse({ password: 'a', confirm: 'b' }).error!);
+// { formErrors: ['パスワードが一致しません'], fieldErrors: {} }
+```
+
+`path` を指定すると、その項目の `fieldErrors` に入ります。
+
+```ts
+.refine((v) => v.password === v.confirm, {
+  error: 'パスワードが一致しません',
+  path: ['confirm'],
+});
+// { formErrors: [], fieldErrors: { confirm: ['パスワードが一致しません'] } }
+```
+
+### `error.flatten()` や `error.format()` に取り消し線が付く
+
+Zod 3の書き方です。v4でもメソッドは残っていて動きますが、非推奨になりました。`error.flatten()` は `z.flattenError(error)` に、`error.format()` は `z.treeifyError(error)` に書き換えます。置き換えの一覧は[v3からv4への移行の章](/books/zod/zod-v4-migration)にまとめています。
 
 ## ちゃんと使うためのポイント
 
 - `ZodError` の本体は `issues` の配列。`code` / `path` / `message` を持つ
 - <Marker>1階層のフォームなら `z.flattenError()` の `fieldErrors` が一番扱いやすい</Marker>
+- 入れ子や配列があるなら `z.treeifyError()`。`flattenError` は `path` の先頭しか残さない
+- `path` が空のissueは `formErrors` に入る。入力欄に出したいなら `refine` に `path` を付ける
 - `z.config(z.locales.ja())` で既定メッセージを日本語化できるが、語彙は開発者向けのまま
 - ユーザーに見せる文言は、メソッドの第2引数か `{ error: '...' }` で個別に書く
 - v3の `required_error` はv4では無視される
 
 ---
 
-次の章では、フォームやURLクエリのように**すべてが文字列で届く**データを扱う **[z.coerceと環境変数の検証](/books/zod/coercion-and-env)** に進みます。ここには「空欄が0になる」という有名な落とし穴があります。
+フォームやURLクエリのように**すべてが文字列で届く**データの検証は **[z.coerceと環境変数の検証](/books/zod/coercion-and-env)** で扱います。ここには「空欄が0になる」という有名な落とし穴があります。
 
 ## 参考リンク
 
-- [Error handling - Zod](https://zod.dev/error-customization) — エラーのカスタマイズ方法の公式解説（英語）
+- [Customizing errors - Zod](https://zod.dev/error-customization) — メッセージの指定方法とロケールの公式解説（英語）
+- [Formatting errors - Zod](https://zod.dev/error-formatting) — `treeifyError` / `flattenError` / `prettifyError` の公式解説（英語）
 
 <QuizLink
   href="/quiz/ts-general"

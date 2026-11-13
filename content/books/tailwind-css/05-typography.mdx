@@ -93,6 +93,47 @@ Tailwindの文字系クラスは単体で覚えるより、UIの用途ごとに�
   </div>
 </TailwindPreview>
 
+### px換算は「ルートのfont-sizeが16px」のときの値
+
+`text-*` の実体は `rem` です。`rem` はルート要素（`html`）の `font-size` を基準にするので、上の表のpxは、ブラウザの既定値である16pxのままの場合の換算です。利用者がブラウザの設定で文字サイズを変えていたり、CSSで `html { font-size: 14px; }` と書いていたりすると、`text-base` は16pxになりません。`rem` の計算のしかたは[emとremの違い](/books/css-basics/units-em-rem)で扱っています。
+
+### text-* は行間も一緒に決める
+
+`text-lg` を付けると、`font-size` だけでなく `line-height` も設定されます。表の「デフォルトのline-height」がその値です。行間を変える方法は2つあります。
+
+```html
+<!-- leading-* を足す -->
+<p class="text-lg leading-relaxed">…</p>
+
+<!-- スラッシュで文字サイズと行間をまとめて書く -->
+<p class="text-base/7">font-size: 1rem、line-height: 1.75rem（28px）</p>
+```
+
+`text-base/7` の `7` は余白と同じ単位（1 = 0.25rem）なので、`7` は1.75remです。
+
+### 表にないサイズを使う
+
+15pxのように表にない値は、角括弧で直接書けます。
+
+```html
+<p class="text-[15px]">15pxの文字</p>
+```
+
+同じ値を何か所でも使うなら、CSSの `@theme` に変数を足してクラスとして使えるようにします。`--text-md` を定義すると `text-md` が使えるようになり、`--text-md--line-height` がその既定の行間になります。
+
+```css
+@import 'tailwindcss';
+
+@theme {
+  --text-md: 0.9375rem; /* 15px */
+  --text-md--line-height: 1.6;
+}
+```
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`text-[15px]` が画面のあちこちに増えてきたら、`@theme` に移す合図だよ。値を変えるときに1か所の修正で済むようになる。
+</SpeechBubble>
+
 Tailwindのタイポグラフィは、単体のクラスより**組み合わせ**で覚えると実務で使いやすくなります。本文は `text-base leading-relaxed text-slate-600`、見出しは `text-2xl font-bold leading-tight text-slate-900` がよく使う出発点です。
 
 ---
@@ -243,7 +284,7 @@ Tailwindはモバイルファーストです。`text-2xl md:text-4xl` は「ス�
 <p class="text-red-500">エラーや警告の赤</p>
 ```
 
-本文色は真っ黒にせず、`text-slate-700` や `text-slate-600` から始めると、画面全体が少し柔らかく見えます。色の考え方は次章の [カラーシステム](/books/tailwind-css/06-colors) で詳しく扱います。
+本文色は真っ黒にせず、`text-slate-700` や `text-slate-600` から始めると、画面全体が少し柔らかく見えます。色の考え方は [カラーシステム](/books/tailwind-css/06-colors) で詳しく扱います。
 
 ---
 
@@ -257,7 +298,8 @@ Tailwindはモバイルファーストです。`text-2xl md:text-4xl` は「ス�
 | `whitespace-nowrap` | 折り返さない | ボタン、短いラベル |
 | `whitespace-pre-line` | 改行文字を反映し、空白は通常扱い | 入力された複数行テキスト |
 | `break-normal` | 通常の改行ルール | 基本 |
-| `break-words` | 必要なら長い単語を折り返す | URL、長い英単語 |
+| `wrap-break-word` | 必要なら長い単語を折り返す（`overflow-wrap: break-word`） | URL、長い英単語 |
+| `wrap-anywhere` | 上と同じ折り返しに加え、要素の最小幅の計算でも折り返し位置を考慮する（`overflow-wrap: anywhere`） | flexの子でURLがはみ出すとき |
 | `break-all` | どこでも折り返す | 幅が厳しい表のセル |
 
 ```html
@@ -267,19 +309,23 @@ Tailwindはモバイルファーストです。`text-2xl md:text-4xl` は「ス�
 </button>
 
 <!-- 長いURLでカード幅が壊れないようにする -->
-<p class="break-words text-sm text-slate-600">
+<p class="wrap-break-word text-sm text-slate-600">
   https://example.com/very/long/path/that/should/wrap
 </p>
 ```
 
 <TailwindPreview title="長いテキストの折り返し">
   <div className="max-w-sm rounded-md border border-slate-200 p-4">
-    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">break-words</p>
-    <p className="break-words text-sm leading-6 text-slate-700">
+    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">wrap-break-word</p>
+    <p className="wrap-break-word text-sm leading-6 text-slate-700">
       https://example.com/articles/tailwind-css-text-lg-text-base-font-size-reference
     </p>
   </div>
 </TailwindPreview>
+
+<Callout type="info" title="break-words は wrap-break-word の旧名">
+v4.1で `overflow-wrap` 用のクラスが `wrap-*` という名前で追加されました。以前からある `break-words` も同じ `overflow-wrap: break-word` を出力し、v4でも動きます。既存のコードは書き換えなくても壊れません。新しく書くときは `wrap-break-word` を使います（[overflow-wrap — Tailwind CSS公式](https://tailwindcss.com/docs/overflow-wrap)）。
+</Callout>
 
 `whitespace-nowrap` は便利ですが、スマートフォンで横にはみ出しやすい指定です。短いラベルやボタンだけに使い、本文には基本的に使いません。
 
@@ -324,8 +370,19 @@ Tailwindはモバイルファーストです。`text-2xl md:text-4xl` は「ス�
 マークダウン・ブログ記事など長文コンテンツには `prose` クラスが便利です。
 
 ```bash
-npm install @tailwindcss/typography
+npm install -D @tailwindcss/typography
 ```
+
+インストールしただけでは `prose` は使えません。v4では、Tailwindを読み込んでいるCSSファイルに `@plugin` を1行足して有効にします。
+
+```css
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+```
+
+<Callout type="warning" title="proseを付けても見た目が変わらないとき">
+`@plugin` の行が無いと、`prose` というクラスはCSSに出力されず、何も起きません。v3の記事にある `tailwind.config.js` の `plugins: [require('@tailwindcss/typography')]` は、v4で設定ファイルを使っていない構成には当てはまりません。
+</Callout>
 
 ```html
 <article class="prose prose-lg max-w-none">
@@ -394,19 +451,22 @@ npm install @tailwindcss/typography
 - `text-base` は16px、`text-lg` は18px。迷ったら本文は `text-base` から始める
 - 画面幅で見出しを変えるなら `text-2xl md:text-4xl` のように書く
 - 小さなラベルは `text-xs font-semibold tracking-wide` にすると読みやすい
-- 長いURLや英単語で崩れるときは `break-words`、1行省略は `truncate`、複数行省略は `line-clamp-*`
-- 長文コンテンツには `@tailwindcss/typography` の `prose` が強力
+- 長いURLや英単語で崩れるときは `wrap-break-word`、1行省略は `truncate`、複数行省略は `line-clamp-*`
+- 長文コンテンツには `@tailwindcss/typography` の `prose` が強力。v4ではCSSに `@plugin` を書いて有効にする
+- px換算はルートの `font-size` が16pxのときの値。`text-*` の実体は `rem`
 
 ---
 
 ## 参考リンク
 
+- [font-size — Tailwind CSS公式](https://tailwindcss.com/docs/font-size) — `text-*` の値と行間の指定方法（英語）
+- [tailwindcss-typography — GitHub](https://github.com/tailwindlabs/tailwindcss-typography) — `prose` のインストール方法とカスタマイズ（英語）
 - [MDN — font-size](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/font-size) — 文字サイズ指定のCSSリファレンス
 - [MDN — font-family](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/font-family) — フォントファミリー指定のCSSリファレンス
 - [MDN — line-height](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/line-height) — 行間指定のCSSリファレンス
 - [MDN — white-space](https://developer.mozilla.org/ja/docs/Web/CSS/Reference/Properties/white-space) — 空白・改行の扱いを制御するCSSリファレンス
 
-次の章では、[**カラーシステム**](/books/tailwind-css/06-colors)を学びます。
+色の指定は[**カラーシステム**](/books/tailwind-css/06-colors)で扱っています。
 
 <QuizLink
   href="/quiz/tailwind-css"
