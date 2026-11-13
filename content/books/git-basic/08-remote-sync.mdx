@@ -16,9 +16,9 @@ GitHubで共同作業するときに毎日使うのが、リモートとの同�
 
 <MermaidDiagram chart={`
 flowchart LR
-    A["作業ディレクトリ"] <--> B["ローカルリポジトリ<br/>.git"]
-    B <-->|"fetch / push"| C["リモート追跡ブランチ<br/>origin/main"]
-    C <-->|"ネットワーク"| D["GitHub"]
+    A["作業ディレクトリ"] --- B["ローカルリポジトリ<br/>.git"]
+    B ---|"fetch / push"| C["リモート追跡ブランチ<br/>origin/main"]
+    C ---|"ネットワーク"| D["GitHub"]
 `} />
 
 ここで重要なのが **リモート追跡ブランチ**（`origin/main` のような名前のもの）です。これは「ローカルに保存されている、リモートの最新状態のコピー」です。

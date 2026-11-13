@@ -111,7 +111,7 @@ flowchart TB
     ENTRY --> REGION_B["Region B<br/>Active Application"]
     REGION_A --> DATA_A["Regional Data Store"]
     REGION_B --> DATA_B["Regional Data Store"]
-    DATA_A <-->|"Multi-Region Replication"| DATA_B
+    DATA_A ---|"双方向の Multi-Region Replication"| DATA_B
 `}
 />
 
@@ -198,7 +198,7 @@ flowchart TB
     ROUTING --> APP_B["Application<br/>Region B"]
     APP_A --> TABLE_A["DynamoDB Replica<br/>Region A"]
     APP_B --> TABLE_B["DynamoDB Replica<br/>Region B"]
-    TABLE_A <-->|"Global Tables Replication"| TABLE_B
+    TABLE_A ---|"双方向の Global Tables Replication"| TABLE_B
 `}
 />
 
