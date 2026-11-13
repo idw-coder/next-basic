@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import OriginLink from '@/components/OriginLink';
 import { ArrowRight } from 'lucide-react';
 
 interface QuizLinkProps {
@@ -9,6 +9,7 @@ interface QuizLinkProps {
   /**
    * 章ページが注入する流入元（`book:<bookSlug>/<chapterSlug>`）。
    * クイズ側で「教科書に戻る」を出すために URL で引き継ぐ。MDX 側の記述は変更不要。
+   * href には出さず、クリック時にだけ `?from=` を付ける（理由は OriginLink を参照）。
    */
   fromChapter?: string;
 }
@@ -20,13 +21,10 @@ export default function QuizLink({
   imageSrc = '/images/card-backgrounds/random-practice-card-bg-person-right.webp',
   fromChapter,
 }: QuizLinkProps) {
-  const targetHref = fromChapter
-    ? `${href}${href.includes('?') ? '&' : '?'}from=${encodeURIComponent(fromChapter)}`
-    : href;
-
   return (
-    <Link
-      href={targetHref}
+    <OriginLink
+      href={href}
+      from={fromChapter}
       className="group relative my-6 flex min-h-36 items-center gap-3 overflow-hidden rounded-lg border border-sky-300 bg-sky-700 px-4 py-5 no-underline shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md sm:min-h-40 sm:px-6 sm:py-5"
     >
       <span
@@ -51,6 +49,6 @@ export default function QuizLink({
         )}
       </div>
       <ArrowRight className="absolute right-4 size-6 shrink-0 text-white drop-shadow transition-transform group-hover:translate-x-1 sm:right-5" />
-    </Link>
+    </OriginLink>
   );
 }

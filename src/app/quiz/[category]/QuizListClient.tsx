@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useQuizBookmarks } from '@/hooks/useQuizBookmarks';
 import { useQuizHistory } from '@/hooks/useQuizHistory';
 import { saveQuizQueueSession, type QuizQueueItem } from '@/lib/quizQueueSession';
+import OriginLink from '@/components/OriginLink';
 import { cn } from '@/lib/utils';
 import {
   BookOpen,
@@ -113,8 +114,9 @@ function QuizCard({
   const isNew =
     quiz.createdAt && Date.now() - new Date(quiz.createdAt).getTime() < 14 * 24 * 60 * 60 * 1000;
   return (
-    <Link
-      href={`/quiz/${categorySlug}/${quiz.id}${originParam ? `?from=${encodeURIComponent(originParam)}` : ''}`}
+    <OriginLink
+      href={`/quiz/${categorySlug}/${quiz.id}`}
+      from={originParam}
       onClick={onOpen}
       className="flex min-h-11 items-start gap-2 border-b border-solid border-ink/20 px-0.5 py-2.5 last:border-b-0 active:bg-muted/50 sm:gap-3 sm:px-2 sm:py-2 sm:hover:bg-blue-400/5"
     >
@@ -166,7 +168,7 @@ function QuizCard({
         ) : null}
         <ChevronRight className="size-4 text-muted-foreground" />
       </div>
-    </Link>
+    </OriginLink>
   );
 }
 
