@@ -24,7 +24,7 @@
 | `operations/subscription-payment.md`       | サブスクリプション決済仕様                                      | 準備中機能。Feature Flag で動作確認可                                                     |
 | `operations/google-adsense.md`             | AdSense設定メモ                                                 | 現行                                                                                      |
 | `operations/x-account.md`                  | X運用メモ                                                       | 運用メモ。最新数値は要確認                                                                |
-| `db/auth-er.md`                            | ログイン関係のER図（ローカルDBの `SHOW CREATE TABLE` から作成） | 現行。`session` テーブルは未作成（予定）。`docs/db/` は `.gitignore` 済みで手元にしかない |
+| `db/auth-er.md`                            | ログイン関係のER図（ローカルDBの `SHOW CREATE TABLE` から作成） | 現行。`session` テーブルは作成済み。`docs/db/` は `.gitignore` 済みで手元にしかない |
 | `technical/known-issues.md`                | 技術的な積み残し（個別の不具合・タスク）                        | 現行。DB認証情報の直書きは完了済み。hydrationエラーとUI/UX指摘が未対応                    |
 | `technical/code-debt.md`                   | 横断的なコード負債と再発防止                                    | 現行。着手は「規約の明文化 → lint → 掃除」の順                                            |
 | `technical/express-to-nextjs-migration.md` | Express → Next.js API 移行メモ                                  | 移行完了済み（Express・mailserverは本番から削除）。経緯の記録として残す                   |
