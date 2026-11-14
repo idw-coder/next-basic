@@ -88,7 +88,7 @@ z.string().trim().parse('  hello  '); // "hello"
 z.string().toLowerCase().parse('ABC'); // "abc"
 ```
 
-元の入力ではなく**戻り値が変換済み**である点に注意してください。この性質は次の章でもう一度扱います。
+元の入力ではなく**戻り値が変換済み**である点に注意してください。この性質は[parseとsafeParseの章](/books/zod/parse-and-safeparse)でもう一度扱います。
 
 ### 書く順番で結果が変わる
 
@@ -115,7 +115,8 @@ z.string().min(1).trim().safeParse('   ');
 | スキーマ | 検証する形式 |
 | --- | --- |
 | `z.email()` | メールアドレス |
-| `z.url()` | URL |
+| `z.url()` | URL（スキームは問わない） |
+| `z.httpUrl()` | `http` / `https` のURL |
 | `z.uuid()` | UUID |
 | `z.iso.date()` | `2026-01-01` 形式の日付文字列 |
 | `z.iso.datetime()` | `2026-01-01T00:00:00Z` 形式 |
@@ -130,6 +131,21 @@ z.string().min(1).trim().safeParse('   ');
 ```ts
 const schema = z.email().max(255);
 ```
+
+### `z.url()` は `javascript:` も通す
+
+`z.url()` が確かめるのは「URLとして解析できるか」だけで、スキーム（`https:` の部分）は制限しません。
+
+| 入力 | `z.url()` | `z.httpUrl()` | `z.url({ protocol: /^https?$/ })` |
+| --- | --- | --- | --- |
+| `https://example.com/a?b=1` | 通る | 通る | 通る |
+| `http://localhost:3000` | 通る | ✗ | 通る |
+| `javascript:alert(1)` | **通る** | ✗ | ✗ |
+| `mailto:a@b.co` | **通る** | ✗ | ✗ |
+
+<Callout type="warning" title="リンク先に使うURLはスキームを制限する">
+ユーザーが入力したURLをそのまま `<a href>` に入れる場合、`javascript:alert(1)` が検証を通ると、クリックでスクリプトが実行されます（XSS）。プロフィールのWebサイト欄のような項目は、`z.httpUrl()` か `z.url({ protocol: /^https?$/ })` で `http` / `https` に限定します。`z.httpUrl()` はドメイン名の形式も確かめるので、`localhost` は通りません。開発環境のURLも受けたい場合は `protocol` の指定を使います。
+</Callout>
 
 <Callout type="warning" title="v3の書き方は `z.string().email()` でした">
 記事で `z.string().email()` を見かけたらv3の書き方です。Zod 4.4.3でも動きますが、型定義には「`z.email()` を使ってください」という非推奨の注記が付いています。新しく書くコードではトップレベル版を使ってください。
@@ -209,10 +225,11 @@ HTMLのフォームやURLクエリから届く値は文字列です。`"true"` �
 - `.nonempty()` は `.min(1)` と同じで、空白だけの入力は通る
 - 数値の `0` を許すかどうかで `.positive()` と `.nonnegative()` を使い分ける
 - メールやURLはZod 4ではトップレベルの `z.email()` / `z.url()`
+- `z.url()` は `javascript:` も通す。リンク先に使うなら `z.httpUrl()` でスキームを限定する
 
 ---
 
-次の章では、作ったスキーマを実際に使う **[parseとsafeParseの違い](/books/zod/parse-and-safeparse)** を扱います。例外で落とすか、結果を受け取って自分で分岐するか——実務ではほぼ後者を使うことになります。
+作ったスキーマを実際に使う方法は、**[parseとsafeParseの違い](/books/zod/parse-and-safeparse)** で扱っています。例外で落とすか、結果を受け取って自分で分岐するか——実務ではほぼ後者を使うことになります。
 
 ## 参考リンク
 

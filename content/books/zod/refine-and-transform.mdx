@@ -41,7 +41,7 @@ const password = z.string().min(8).refine((v) => /[0-9]/.test(v), '数字を1文
 const form = z
   .object({ password: z.string(), confirm: z.string() })
   .refine((d) => d.password === d.confirm, {
-    message: 'パスワードが一致しません',
+    error: 'パスワードが一致しません',
     path: ['confirm'], // 確認用の入力欄にエラーを出す
   });
 
@@ -50,6 +50,10 @@ form.safeParse({ password: 'a', confirm: 'b' }).error.issues[0];
 ```
 
 <Marker>`path` を指定しないと、フォームライブラリがどの欄にエラーを出せばよいか判断できません。</Marker>
+
+<Callout type="info" title="オプションのキーは error。message は非推奨">
+Zod 3の記事では `{ message: '...' }` と書かれています。v4でも動きますが、型定義で非推奨（`@deprecated`）とされていて、エディタで取り消し線が出ます。v4では `error` に統一されています。
+</Callout>
 
 ### 型が合わないときrefineは呼ばれない
 
@@ -62,6 +66,21 @@ z.object({ a: z.string() })
 ```
 
 `a` が数値なので `z.string()` の段階で失敗し、`refine` は呼ばれません。`d.a.length` で例外が飛ぶ心配をしなくてよい、ということです。
+
+止まるのは**型が違う**ときだけです。型は合っていて、`.min()` や `z.email()` のような条件に落ちただけなら、後ろの `refine` も実行され、エラーは両方返ります。
+
+```ts
+z.string()
+  .min(8, '8文字以上で入力してください')
+  .refine((v) => /[0-9]/.test(v), '数字を1文字以上含めてください')
+  .safeParse('abc')
+  .error.issues.map((issue) => issue.message);
+// ['8文字以上で入力してください', '数字を1文字以上含めてください']
+```
+
+<Callout type="warning" title="キーが欠けていると、オブジェクト全体のrefineは動かない">
+キーが無い（値が `undefined`）のも型の不一致です。パスワード一致のように**オブジェクト全体に掛けた `refine`** は、どれか1つでも必須キーが欠けていると実行されません。「未入力の欄を埋めたら、今度はパスワード不一致のエラーが出てきた」という2段階の表示になります。フォームの未入力を `undefined` ではなく空文字 `''` で送っていれば、型は合うので同時に検証されます。
+</Callout>
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 じゃあ refine の中では「型は正しい」前提で書いていいんだ。

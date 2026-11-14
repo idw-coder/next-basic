@@ -34,6 +34,7 @@ try {
 } catch (e) {
   if (e instanceof z.ZodError) {
     console.log(e.issues); // 何が不正だったかの配列
+    return; // 入力の不正として処理を終える
   }
   throw e; // Zod以外の例外は握りつぶさず投げ直す
 }
@@ -103,7 +104,7 @@ console.log(result.data.toUpperCase());
 
 ## 非同期版が必要になるのは
 
-`refine` に非同期の関数（DBへの重複チェックなど）を渡した場合です。この場合、同期の `parse` を呼ぶとエラーになります。
+`refine` や `transform` に非同期の関数（DBへの重複チェックなど）を渡した場合です。この場合、同期の `parse` を呼ぶとエラーになります。
 
 ```ts
 const schema = z.string().refine(async (v) => await isUnique(v));
@@ -112,7 +113,7 @@ schema.parse('abc');
 // $ZodAsyncError: Encountered Promise during synchronous parse. Use .parseAsync() instead.
 ```
 
-エラーメッセージが「`.parseAsync()` を使え」と教えてくれるので、出たら差し替えれば済みます。非同期の検証が必要になるのは、`refine` に `async` 関数を渡す場合だけです。同期の検証しか書いていないなら `parse` / `safeParse` のままで構いません。
+エラーメッセージが「`.parseAsync()` を使え」と教えてくれるので、出たら差し替えれば済みます。非同期版が必要になるのは、`refine` か `transform` に `async` 関数を渡した場合だけです。同期の処理しか書いていないなら `parse` / `safeParse` のままで構いません。
 
 ## 戻り値を使わないと変換が反映されない
 
@@ -151,12 +152,12 @@ input.name; // "  Alice  " — 元のまま
 - `parse` は失敗時に `ZodError` を throw、`safeParse` は結果オブジェクトを返す
 - <Marker>外から来たデータは `safeParse`、起動時の設定は `parse` が基本</Marker>
 - `try` / `catch` で受けるときは `e instanceof z.ZodError` で判定する
-- 非同期の `refine` を使うなら `parseAsync` / `safeParseAsync`
+- 非同期の `refine` や `transform` を使うなら `parseAsync` / `safeParseAsync`
 - 検証後は元の変数ではなく**戻り値**を使う。変換は戻り値にだけ反映される
 
 ---
 
-次の章では、ここまで何度か顔を出した「空文字は通るのか」「`null` と `undefined` はどちらが弾かれるのか」を **[デフォルト挙動の早見表](/books/zod/default-behavior)** としてまとめます。迷ったときに開く章です。
+「空文字は通るのか」「`null` と `undefined` はどちらが弾かれるのか」は、**[デフォルト挙動の早見表](/books/zod/default-behavior)** にまとめています。迷ったときに開く章です。
 
 ## 参考リンク
 

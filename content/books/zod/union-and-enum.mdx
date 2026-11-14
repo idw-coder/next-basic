@@ -86,7 +86,31 @@ z.union([z.string(), z.number()]).safeParse(true).error.issues[0];
 // { code: 'invalid_union', message: 'Invalid input' }
 ```
 
-「どれにも当てはまらなかった」としか分かりません。オブジェクト同士の union だと、これがかなり困ります。
+`message` から分かるのは「どれにも当てはまらなかった」ことだけです。候補ごとの失敗理由は、issueの `errors` プロパティに候補の順で入っています。
+
+```ts
+const issue = z.union([z.string(), z.number()]).safeParse(true).error.issues[0];
+
+issue.errors;
+// [
+//   [{ code: 'invalid_type', message: 'Invalid input: expected string, received boolean' }],
+//   [{ code: 'invalid_type', message: 'Invalid input: expected number, received boolean' }]
+// ]
+```
+
+ただし、`z.flattenError()` はこの `errors` を展開しません。オブジェクト同士の union を検証して整形すると、どの項目が悪いのかが消えます。
+
+```ts
+const shape = z.union([
+  z.object({ type: z.literal('click'), x: z.number(), y: z.number() }),
+  z.object({ type: z.literal('input'), value: z.string() }),
+]);
+
+z.flattenError(shape.safeParse({ type: 'input', value: 123 }).error);
+// { formErrors: ['Invalid input'], fieldErrors: {} }
+```
+
+`value` が数値だった、という情報は `fieldErrors` に出てきません。フォームの入力欄の下にエラーを出す、という使い方ができなくなります。
 
 ---
 
@@ -120,7 +144,7 @@ const event = z.discriminatedUnion('type', [
 
 | 使ったもの | 得られるエラー |
 | --- | --- |
-| `z.union()` | `invalid_union` / `Invalid input` の**1件だけ**。どこが悪いか不明 |
+| `z.union()` | `invalid_union` / `Invalid input` の**1件だけ**。`path` は空で、`fieldErrors` にも出ない |
 | `z.discriminatedUnion()` | `path: ['value']` / `expected string, received number` |
 
 <Marker>目印のキーがあるオブジェクトの選択肢なら、迷わず `discriminatedUnion` を使ってください。</Marker>ユーザーに返せるエラーになるかどうかが変わります。

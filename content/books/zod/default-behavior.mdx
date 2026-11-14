@@ -49,8 +49,8 @@ Zodを書いていると、必ずこの手の疑問に突き当たります。
 
 `z.number()` は `0` を通します。`0` は正当な数値だからです。一方 `NaN` は、JavaScriptの `typeof` 上は `"number"` ですが、Zodは弾きます。`Infinity` も弾かれます。
 
-<Callout type="warning" title="`Infinity` のエラーメッセージは分かりにくい">
-`Infinity` を渡したときのメッセージは `Invalid input: expected number, received number` です。「numberを期待したのにnumberが来た」と読めてしまいますが、有限の数値ではないという意味です。数値が謎に弾かれるときは `NaN` か `Infinity` を疑ってください。
+<Callout type="info" title="`NaN` と `Infinity` のエラーメッセージ">
+メッセージは `Invalid input: expected number, received NaN`、`Invalid input: expected number, received Infinity` です（Zod 4.6.7で確認）。古いバージョンでは `Infinity` のときに `expected number, received number` と表示されました。この文言を見かけたら、値が `Infinity` になっていないかを確認してください。
 </Callout>
 
 ## 日付は別枠で考える
@@ -67,6 +67,28 @@ Zodを書いていると、必ずこの手の疑問に突き当たります。
 | 文字列を受け取って `Date` に変換する | `z.coerce.date()` |
 
 `z.iso.date()` はハイフン区切りのISO形式だけを通します。`"2026/01/01"` はスラッシュ区切りなので弾かれます。
+
+### `z.iso.datetime()` は `+09:00` を既定で弾く
+
+`z.iso.datetime()` が既定で通すのは、末尾が `Z`（UTC）の形式だけです。日本時間のオフセットが付いた文字列や、タイムゾーンの無い文字列は弾かれます。
+
+| 入力 | `z.iso.datetime()` | `{ offset: true }` | `{ local: true }` |
+| --- | --- | --- | --- |
+| `"2026-01-01T00:00:00Z"` | 通る | 通る | 通る |
+| `"2026-01-01T09:00:00+09:00"` | ✗ | **通る** | ✗ |
+| `"2026-01-01T09:00:00"` | ✗ | ✗ | **通る** |
+
+```ts
+z.iso.datetime({ offset: true }).safeParse('2026-01-01T09:00:00+09:00').success; // true
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+バックエンドが `+09:00` 付きで返してくるAPIを検証したら、全部 `Invalid ISO datetime` で落ちた…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`{ offset: true }` を付ければ通るよ。日付の文字列が弾かれたら、まず末尾が `Z` か、`+09:00` か、何も付いていないかを見てみよう。
+</SpeechBubble>
 
 ---
 
@@ -178,10 +200,11 @@ APIやDBは「値なし」を `null` で返すことが多く、`.optional()` �
 - オブジェクトのキー欠落は `undefined` 扱いなので `.optional()` の担当
 - `.default()` は `undefined` のときだけ、`.catch()` は**失敗全部**を握りつぶす
 - `z.date()` は文字列を通さない。JSON由来の日付は `z.iso.date()` か `z.coerce.date()`
+- `z.iso.datetime()` は既定で末尾 `Z` だけ。`+09:00` を受けるなら `{ offset: true }`
 
 ---
 
-次の章では、ここまで単体で見てきたスキーマを組み合わせる **[z.objectでオブジェクトを検証する](/books/zod/object-schema)** に進みます。定義していないキーが来たときにZodが黙って捨てている、という挙動もそこで扱います。
+単体のスキーマを組み合わせる方法は、**[z.objectでオブジェクトを検証する](/books/zod/object-schema)** で扱っています。定義していないキーが来たときにZodが黙って捨てている、という挙動もそこで扱います。
 
 ## 参考リンク
 

@@ -36,6 +36,7 @@ z.coerce.string().parse(123); // '123'
 | --- | --- |
 | `'42'` | `42` |
 | `''`（空文字） | **`0`** |
+| `'  '`（空白のみ） | **`0`** |
 | `null` | **`0`** |
 | `[]` | **`0`** |
 | `true` | `1` |
@@ -48,16 +49,26 @@ z.coerce.string().parse(123); // '123'
 
 ### 対処
 
-空文字を先に弾いてから変換します。
+空文字と空白だけの入力を先に弾いてから変換します。
 
 ```ts
-const age = z.string().min(1, '入力してください').pipe(z.coerce.number());
+const age = z
+  .string()
+  .trim()
+  .min(1, '入力してください')
+  .pipe(z.coerce.number({ error: '数値で入力してください' }));
 
-age.safeParse('');   // ✗ 失敗（未入力として弾ける）
-age.safeParse('30'); // 30
+age.safeParse('');    // ✗ 失敗（入力してください）
+age.safeParse('  ');  // ✗ 失敗（入力してください）
+age.safeParse('30');  // 30
+age.safeParse('abc'); // ✗ 失敗（数値で入力してください）
 ```
 
-[前章までに見た](/books/zod/refine-and-transform) `pipe` で「まず文字列として検証 → それから数値に変換」の順に並べるのがポイントです。
+<Callout type="warning" title=".trim() を抜くと、空白だけの入力が0になる">
+`z.string().min(1).pipe(z.coerce.number())` と書くと、`'  '`（空白2文字）は長さ2なので `.min(1)` を通り、`Number('  ')` が `0` になって検証を通過します。`Number()` は前後の空白を無視し、空白だけなら `0` を返すためです。`.trim()` を `.min(1)` の前に置きます。
+</Callout>
+
+[refineとtransformの章](/books/zod/refine-and-transform)で扱った `pipe` で「まず文字列として検証 → それから数値に変換」の順に並べるのがポイントです。
 
 <Figure src="/images/boomerang_woman_color.png" alt="投げたものが戻ってくるイメージのイラスト" maxWidth="300px" />
 
@@ -80,7 +91,14 @@ z.coerce.boolean().parse('false'); // true
 | `'0'` | **`true`** | `false` |
 | `''` | `false` | ✗ 失敗 |
 
-文字列で来る真偽値には、**`z.stringbool()` を使ってください**。`'true'` / `'false'` / `'0'` / `'1'` などを正しく解釈します。
+文字列で来る真偽値には、**`z.stringbool()` を使ってください**。受け付ける文字列は決まっていて、大文字小文字は区別しません。
+
+| 結果 | 受け付ける文字列 |
+| --- | --- |
+| `true` | `true` / `1` / `yes` / `on` / `y` / `enabled` |
+| `false` | `false` / `0` / `no` / `off` / `n` / `disabled` |
+
+これ以外の文字列（空文字を含む）は検証に失敗します。
 
 ```ts
 z.stringbool().parse('false'); // false
@@ -130,8 +148,8 @@ env.DEBUG; // boolean 型
 
 ```
 [
-  { path: ['PORT'], message: 'Invalid input: expected number, received NaN' },
-  { path: ['API_BASE_URL'], message: 'Invalid input: expected string, received undefined' }
+  { path: ['API_BASE_URL'], message: 'Invalid input: expected string, received undefined' },
+  { path: ['PORT'], message: 'Invalid input: expected number, received NaN' }
 ]
 ```
 
@@ -161,7 +179,7 @@ const { page, keyword } = querySchema.parse(params);
 
 ### 未入力が0で保存される
 
-前述のとおりです。`z.string().min(1).pipe(z.coerce.number())` の形にします。
+前述のとおりです。`z.string().trim().min(1).pipe(z.coerce.number())` の形にします。
 
 ### `z.coerce.boolean()` を使ってしまう
 
@@ -174,14 +192,14 @@ const { page, keyword } = querySchema.parse(params);
 ## ちゃんと使うためのポイント
 
 - フォーム・クエリ・環境変数は**すべて文字列**で届く。素の `z.number()` では受けられない
-- <Marker>`z.coerce.number()` は空文字と `null` を `0` にする。未入力を弾くなら先に `z.string().min(1)`</Marker>
+- <Marker>`z.coerce.number()` は空文字と `null` を `0` にする。未入力を弾くなら先に `z.string().trim().min(1)`</Marker>
 - 文字列の真偽値は `z.coerce.boolean()` ではなく **`z.stringbool()`**
 - 環境変数は起動時に `parse` でまとめて検証し、壊れていれば起動させない
 - JSON経由のデータまで `coerce` にしない
 
 ---
 
-次の章では、ここまでのスキーマを画面につなぐ **[React Hook FormとZodの連携](/books/zod/react-hook-form)** を扱います。
+スキーマを画面のフォームにつなぐ方法は、**[React Hook FormとZodの連携](/books/zod/react-hook-form)** で扱っています。
 
 ## 参考リンク
 
