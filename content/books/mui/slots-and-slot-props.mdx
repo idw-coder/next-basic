@@ -173,7 +173,7 @@ v8以前の `TextField` は、slotごとに専用のpropを持っていました
 
 ## styleOverridesとの使い分け
 
-前章の `theme.components` にも `styleOverrides` という似た仕組みがありました。違いは目的です。
+[カスタマイズの4段階](/books/mui/customization-levels)で扱った `theme.components` にも `styleOverrides` という似た仕組みがありました。違いは目的です。
 
 | | `styleOverrides` | `slotProps` |
 | --- | --- | --- |
@@ -226,7 +226,7 @@ v9で削除されたpropです。TypeScriptを使っていれば型エラーで�
 - v9では `InputProps` / `inputProps` / `components` / `componentsProps` が廃止され、`slotProps` / `slots` に統合された
 - 全体の方針にしたいときは `theme.components` の `defaultProps` に `slotProps` を書く
 
-次の章では、v9で仕組みが変わった[ダークモード対応](/books/mui/dark-mode-and-css-variables)を扱います。
+v9で仕組みが変わったダークモードは、[ダークモード対応の章](/books/mui/dark-mode-and-css-variables)で扱っています。
 
 ---
 

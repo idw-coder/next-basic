@@ -63,7 +63,40 @@ colorSchemes: {
 
 ## 切り替えUIを作る — useColorScheme
 
-ユーザーが自分で選べるようにするには `useColorScheme` フックを使います。
+ユーザーが自分で選べるようにするには、設定を1か所変えたうえで `useColorScheme` フックを使います。
+
+### 先にcolorSchemeSelectorを変える
+
+冒頭の設定（`cssVariables: true`）のままでは、切り替えUIを作っても**色は変わりません**。この設定では、ダーク用のCSS変数が `@media (prefers-color-scheme: dark)` の中に出力されます。配色を決めるのはOSの設定だけで、JavaScriptから切り替える手段がありません。
+
+手動で切り替えるには、`colorSchemeSelector` を `'class'` か `'data'` にします。
+
+```tsx
+export const theme = createTheme({
+  cssVariables: { colorSchemeSelector: 'class' },
+  colorSchemes: { light: true, dark: true },
+});
+```
+
+実際に出力されるCSSのセレクタを、設定ごとに確認した結果です（`theme.generateStyleSheets()` の出力）。
+
+| `cssVariables` の設定 | ダーク用の変数が出力される場所 | 手動の切り替え |
+| --- | --- | --- |
+| `true`（既定の `'media'`） | `@media (prefers-color-scheme: dark)` の中の `:root` | できない |
+| `{ colorSchemeSelector: 'class' }` | `.dark` | できる |
+| `{ colorSchemeSelector: 'data' }` | `[data-dark]` | できる |
+
+<Callout type="warning" title="setModeを呼んでも何も起きないとき">
+`colorSchemeSelector` が既定の `'media'` のまま `setMode()` を呼ぶと、開発環境のコンソールに次のエラーが出ます。
+
+```
+MUI: The `setMode` function has no effect if `colorSchemeSelector` is `media` (`media` is the default value).
+```
+
+「トグルを押しても色が変わらない」ときは、まずコンソールにこの行が出ていないかを見てください。
+</Callout>
+
+### useColorSchemeで切り替える
 
 ```tsx
 'use client';
@@ -145,7 +178,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ja" suppressHydrationWarning>
       <body>
-        <InitColorSchemeScript attribute="data-mui-color-scheme" />
+        <InitColorSchemeScript attribute="class" />
         <AppRouterCacheProvider>
           <ThemeProvider theme={theme}>
             <CssBaseline />
@@ -164,9 +197,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 設定を省略したときの値は、型定義から確認できます。
 
+`attribute` には、テーマの `colorSchemeSelector` と**同じ値**を渡します。テーマが `'class'` なら `attribute="class"` です。食い違っていると、スクリプトが付ける合図（たとえば `data-mui-color-scheme` 属性）とCSSが見ている合図（`.dark` クラス）が別物になり、ちらつき対策が効きません。
+
 | 項目 | 既定値 |
 | --- | --- |
-| HTML属性 | `data-mui-color-scheme` |
+| `colorSchemeSelector`（`light` と `dark` の両方を用意した場合） | `'media'` |
+| `InitColorSchemeScript` の `attribute` | `data-mui-color-scheme` |
 | モードの保存キー | `mui-mode` |
 | 配色の保存キー | `mui-color-scheme` |
 | 初回訪問時のモード | `system` |
@@ -179,7 +215,7 @@ localStorageに `mui-mode` というキーが増えるのはこのためです�
 
 ## colorSchemeSelector — 切り替えの合図を変える
 
-MUIは既定で `data-mui-color-scheme` 属性を見て配色を決めます。この「合図」は変更できます。
+`light` と `dark` の両方を用意したとき、MUIは既定でOSの設定（`prefers-color-scheme`）を見て配色を決めます。何を見て決めるかは `colorSchemeSelector` で変更できます。
 
 ```tsx
 createTheme({
@@ -194,7 +230,7 @@ createTheme({
 | --- | --- |
 | `'media'` | OSの設定だけに従う。ユーザーによる切り替えはしない |
 | `'class'` | `<html class="dark">` のようなクラスで切り替える |
-| `'data'` | data属性で切り替える |
+| `'data'` | `<html data-dark>` のようなdata属性で切り替える |
 | 任意の文字列 | 独自のセレクタを指定する |
 
 <Callout type="info" title="Tailwind CSSと併用するとき">
@@ -225,6 +261,10 @@ Tailwindのダークモードはクラス（`dark:`）で制御されます。MU
 
 `<html>` に `suppressHydrationWarning` を付けているか確認してください。`InitColorSchemeScript` はサーバーが返したHTMLの属性を書き換えるため、Reactから見ると差分として検出されます。これは意図した動作なので、警告を抑止するのが正しい対処です。
 
+### 切り替えUIを操作しても色が変わらない
+
+`colorSchemeSelector` が既定の `'media'` のままです。`cssVariables: { colorSchemeSelector: 'class' }` に変え、`InitColorSchemeScript` の `attribute` も `"class"` に揃えます。
+
 ### 切り替えたのにリロードで元に戻る
 
 `InitColorSchemeScript` が無いか、置き場所が `<body>` の先頭でない可能性があります。保存自体はlocalStorageに効いているので、開発者ツールで `mui-mode` の値を確認すると切り分けられます。
@@ -235,17 +275,19 @@ Tailwindのダークモードはクラス（`dark:`）で制御されます。MU
 
 - <Marker>v9のダークモードは `cssVariables: true` と `colorSchemes` の2点セット</Marker>
 - 切り替えUIが不要なら、この2行だけでOSの設定に追従する
+- 切り替えUIを付けるなら `colorSchemeSelector` を `'class'` か `'data'` にする。既定の `'media'` では `setMode()` が効かない
 - `useColorScheme` の `mode` はサーバーで `undefined`。マウント後に描くこと
 - ちらつき対策の `InitColorSchemeScript` は `<body>` の先頭に置く
 - `<html>` には `suppressHydrationWarning` が必要
 - 色は生の値ではなくテーマのパスで参照する
 
-次の章では、[ブレークポイントとuseMediaQueryを使ったレスポンシブ対応](/books/mui/responsive-and-breakpoints)を扱います。
+画面幅ごとの出し分けは、[ブレークポイントとuseMediaQueryを使ったレスポンシブ対応](/books/mui/responsive-and-breakpoints)で扱っています。
 
 ---
 
 ## 参考リンク
 
 - [Dark mode — MUI公式](https://mui.com/material-ui/customization/dark-mode/)
+- [CSS theme variables: configuration — MUI公式](https://mui.com/material-ui/customization/css-theme-variables/configuration/) — `colorSchemeSelector` と手動切り替えの設定
 - [CSS theme variables: usage — MUI公式](https://mui.com/material-ui/customization/css-theme-variables/usage/)
 - [InitColorSchemeScript — MUI公式](https://mui.com/material-ui/react-init-color-scheme-script/)

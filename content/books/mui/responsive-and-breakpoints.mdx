@@ -24,7 +24,7 @@ MUIで画面幅に応じた表示を作る方法は3つあります。どれを�
 
 ## sxのオブジェクト記法（基本）
 
-3章で触れたとおり、値をオブジェクトにするとブレークポイントごとの指定になります。
+[sx propの章](/books/mui/sx-prop)で触れたとおり、値をオブジェクトにするとブレークポイントごとの指定になります。
 
 ```tsx
 <Box sx={{ p: { xs: 2, md: 4 }, flexDirection: { xs: 'column', md: 'row' } }} />
@@ -216,7 +216,7 @@ MUIのテーマには `containerQueries` が用意されており、ブレーク
 - 軽い要素はCSSで隠す、重いコンポーネントはJSで作らない
 - 親要素の幅で切り替えたいときは `containerQueries`
 
-次の章では、[TextField・Select・Autocompleteなどのフォーム部品](/books/mui/form-components)を扱います。
+入力欄まわりは、[TextField・Select・Autocompleteなどのフォーム部品](/books/mui/form-components)で扱っています。
 
 ---
 

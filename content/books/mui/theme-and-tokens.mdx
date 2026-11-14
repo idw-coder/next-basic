@@ -182,7 +182,7 @@ typography: {
 
 ## spacing — 余白の基準
 
-前の章で触れた8pxの基準値は、ここで変更できます。
+[sx propの章](/books/mui/sx-prop)で触れた8pxの基準値は、ここで変更できます。
 
 ```tsx
 const theme = createTheme({ spacing: 4 });
@@ -238,18 +238,40 @@ shape: { borderRadius: 12 },
 外側を土台にして一部だけ変えたいときは、`theme` に**関数**を渡します。
 
 ```tsx
-<ThemeProvider theme={(outerTheme) => ({
-  ...outerTheme,
-  palette: {
-    ...outerTheme.palette,
-    primary: { main: '#c2185b' },
-  },
-})}>
+import { ThemeProvider, createTheme, type Theme } from '@mui/material/styles';
+
+<ThemeProvider
+  theme={(outerTheme: Theme) =>
+    createTheme({
+      ...outerTheme,
+      palette: {
+        ...outerTheme.palette,
+        primary: { main: '#c2185b' },
+      },
+    })
+  }
+>
   <AdminPanel />
 </ThemeProvider>
 ```
 
 型定義上も `theme` は `Partial<Theme> | ((outerTheme: Theme) => Theme)` となっており、コメントに「外側のテーマを拡張するために関数を渡せる」と書かれています。
+
+この書き方には、省くと動かなくなる箇所が2つあります。
+
+| 書き方 | 省いたときに起きること |
+| --- | --- |
+| 引数の型注釈 `(outerTheme: Theme)` | `outerTheme` の型が中身の無い `DefaultTheme` になり、`outerTheme.palette` が型エラーになる |
+| `createTheme()` で包む | `primary` が `{ main: '#c2185b' }` だけになり、`light`・`dark`・`contrastText` が作られない |
+
+2つ目は型エラーにならないので気づきにくい点です。`createTheme` は `main` から残りの3色を計算します。スプレッドでオブジェクトを組み立てただけでは、その計算が走りません。実際に比べた結果です。
+
+| 作り方 | `palette.primary` の中身 |
+| --- | --- |
+| スプレッドだけ | `{ main: '#c2185b' }` |
+| `createTheme()` で包む | `{ main: '#c2185b', light: 'rgb(206, 70, 123)', dark: 'rgb(135, 16, 63)', contrastText: '#fff' }` |
+
+`variant="contained"` の `Button` はホバー時の背景に `primary.dark`、文字色に `primary.contrastText` を使うので、これらが無いとホバーしても色が変わらない、文字色が付かない、という表示になります。
 
 <SpeechBubble character="/images/toppa_suit_woman_color.png" name="学習者">
 `createTheme` で作り直すのと、関数で受け取るのって何が違うの？
@@ -337,7 +359,7 @@ v9では、単に `palette.mode` を切り替えるだけでなく、CSS変数�
 - テーマオブジェクトはモジュールのトップレベルで1回だけ作る
 - <Marker>`ThemeProvider` は入れ子にできる。一部だけ変えるなら `theme` に関数を渡して外側を引き継ぐ</Marker>
 
-次の章では、テーマを踏まえて[カスタマイズの4段階](/books/mui/customization-levels)を扱います。`sx` と `styled()` とテーマの上書きを、どう使い分けるかという話です。
+`sx` と `styled()` とテーマの上書きをどう使い分けるかは、[カスタマイズの4段階](/books/mui/customization-levels)で扱っています。
 
 ---
 
