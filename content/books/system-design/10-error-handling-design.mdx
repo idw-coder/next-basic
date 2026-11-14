@@ -34,7 +34,7 @@ order: 10
 <MermaidDiagram
   chart={`
 flowchart TB
-    A["エラー発生"] --> B["予期するエラー?"]
+    A["エラー発生"] --> B{"予期するエラー?"}
     B -->|はい| C["4xx + 解決方法を提示"]
     B -->|いいえ| D["500 + 汎用メッセージ"]
     C --> E["ログ: warn程度"]
@@ -73,9 +73,11 @@ class AppError extends Error {
   constructor(
     public readonly code: string, // 機械可読なエラーコード
     public readonly statusCode: number, // 対応するHTTPステータス
-    message: string // 開発者向けの説明（ログ用）
+    message: string, // 開発者向けの説明（ログ用）
+    options?: { cause?: unknown } // 元になったエラー
   ) {
-    super(message);
+    super(message, options);
+    this.name = new.target.name; // ログに 'StockShortageError' のようなクラス名を出す
   }
 }
 
@@ -90,6 +92,24 @@ if (stock < requested) {
   throw new StockShortageError(product.id);
 }
 ```
+
+### 元のエラーはcauseで残す
+
+DBのドライバや外部APIのクライアントが投げたエラーを、`AppError` に変換して投げ直す場面があります。このとき元のエラーを捨てると、ログに残るのは変換後のメッセージだけになり、本当の原因（どのSQLで、どの制約に違反したか）が分からなくなります。`Error` の第2引数の `cause` に元のエラーを渡すと、変換後のエラーから元のエラーをたどれます。
+
+```ts
+try {
+  await userRepo.insert(input);
+} catch (err) {
+  if (isDuplicateEntryError(err)) {
+    // 業務エラーに変換しつつ、元のエラーを cause に残す
+    throw new AppError('USER_EMAIL_TAKEN', 409, `email重複: ${input.email}`, { cause: err });
+  }
+  throw err; // 変換できないものは、そのまま上へ
+}
+```
+
+ログには `err.cause` も一緒に出力します（[MDN — Error: cause](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Error/cause)）。
 
 <Callout type="note">
 エラーレスポンスの形式には、RFC 9457「Problem Details for HTTP APIs」という標準仕様もあります。`type` / `title` / `status` / `detail` のフィールドでエラーを構造化するもので、社外に公開するAPIでは採用を検討する価値があります。社内APIなら、上記のような独自形式をプロジェクトで統一すれば十分です。
@@ -142,6 +162,17 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 ```
+
+<Callout type="warning" title="Express 4では、asyncハンドラのエラーがこのミドルウェアに届かない">
+上のミドルウェアにエラーが届く条件は、Expressのバージョンで違います。
+
+| バージョン | `async` のルートハンドラの中で `throw` したとき |
+| ---------- | ---------------------------------------------- |
+| Express 5 | 自動でエラーハンドリングミドルウェアに渡される |
+| Express 4 | 渡されない。未処理のPromise拒否になり、レスポンスが返らない |
+
+Express 4では、ハンドラの中で `try` / `catch` して `next(err)` を呼ぶか、ハンドラを包む関数を用意する必要があります。「ルートハンドラに `try-catch` を書かない」という方針が成り立つのはExpress 5からです（[Express — エラー処理](https://expressjs.com/ja/guide/error-handling.html)）。また、`req.id` はExpressの標準のプロパティではありません。リクエストごとにIDを発行して `req` に付けるミドルウェアを、先頭に置いておきます。
+</Callout>
 
 ## ログ戦略 — 何を・どのレベルで記録するか
 
@@ -210,7 +241,7 @@ try {
 
 一方で、意図的に完了を待たない処理（メール送信、通知、バッチ処理など）もあります。この場合は「エラーをどこで受けて、どうリカバリするか」を設計で決めておきます。
 
-- **失敗しても本処理を止めない**なら、その処理の中で必ずcatchしてログに残す（放置するとプロセスを落とす未処理のPromise拒否になる）
+- **失敗しても本処理を止めない**なら、その処理の中で必ずcatchしてログに残す。catchされないまま失敗したPromise（未処理のPromise拒否）があると、Node.jsは既定でエラーを出力してプロセスを終了コード1で終了する。メール送信1件の失敗でサーバーごと落ちる
 - **失敗したら後で再実行したい**なら、ジョブキューに積んで**リトライ**する。リトライ間隔は徐々に延ばし（エクスポネンシャルバックオフ）、上限回数を超えたものは失敗キュー（デッドレターキュー）に隔離して人が調査する
 - **リトライしてよいのは、再実行しても副作用が重複しない処理だけ**。決済のような処理を単純リトライすると二重課金の危険がある（べき等性の担保が必要）
 
@@ -254,4 +285,5 @@ try {
 
 - [Error - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Error) — Errorオブジェクトとカスタムエラークラスの作り方
 - [try...catch - MDN](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/try...catch) — 例外捕捉の基本構文リファレンス
+- [Express — エラー処理](https://expressjs.com/ja/guide/error-handling.html) — エラーハンドリングミドルウェアの書き方と、非同期のエラーの扱い
 - [RFC 9457: Problem Details for HTTP APIs](https://datatracker.ietf.org/doc/html/rfc9457) — HTTP APIのエラーレスポンス標準仕様（英語）

@@ -34,7 +34,7 @@ order: 9
 - 他のユーザーの操作によって変わりうるデータ
 - フロントはあくまで「取得して表示する」立場
 
-フロント側ではキャッシュとして一時的に保持するが、正のデータはサーバーにある。React QueryやSWRのようなライブラリはこのサーバー状態の取得・キャッシュ・再取得を管理するためのものである。
+フロント側ではキャッシュとして一時的に保持するが、正のデータはサーバーにある。TanStack Query（旧名React Query）やSWRのようなライブラリは、このサーバー状態の取得・キャッシュ・再取得を管理するためのものである。
 
 ### クライアント状態（Client State）
 
@@ -56,6 +56,70 @@ order: 9
 - **ページネーションの現在ページ**: UIの状態だが、URLに反映してサーバーへのリクエストパラメータにもなる
 
 こうした状態は「どちらが正か」を明確に決めておく必要がある。たとえば下書きなら「最後にサーバーに保存された値が正」とし、クライアント側は未保存の変更を持つ一時的な状態として扱う。
+
+---
+
+## 置き場所ごとに、残る範囲が違う
+
+クライアント側で状態を置ける場所は1つではない。場所によって、リロードしたとき・URLを他人に渡したとき・別の端末で開いたときに値が残るかどうかが違う。
+
+| 置き場所 | リロード後 | URLを共有した相手 | 別の端末 | 向いている状態 |
+| -------- | ---------- | ------------------ | -------- | -------------- |
+| `useState`（メモリ） | 消える | 伝わらない | 伝わらない | モーダルの開閉、入力途中の値 |
+| URLのクエリ | 残る | **伝わる** | 伝わる（URLを開けば） | 検索条件、並び順、現在ページ、選択中のタブ |
+| `localStorage` | 残る | 伝わらない | 伝わらない | テーマ、一覧の表示件数などの端末ごとの好み |
+| サーバー（DB） | 残る | 権限があれば見える | 残る | ユーザー設定、下書き、業務データ |
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+検索条件を `useState` で持っていたら、「この検索結果を見て」とURLを送っても、相手には条件なしの一覧が表示された…。
+</SpeechBubble>
+
+<Marker>判断の基準は「リロードや共有のあとも同じ画面になってほしいか」である。</Marker>なってほしい状態はURLに置く。
+
+### URLに置く状態の書き方
+
+検索条件をURLのクエリに置く例を、Next.js（App Router）で示す。状態の読み取りは `useSearchParams`、更新は `router.push` で行う。`useState` は使わない。
+
+```tsx
+'use client';
+
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+
+export function StatusFilter() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // 状態の読み取り: URLが唯一の置き場所
+  const status = searchParams.get('status') ?? 'all';
+
+  // 状態の更新: URLを書き換える
+  const handleChange = (next: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('status', next);
+    params.delete('page'); // 条件を変えたら1ページ目に戻す
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  return (
+    <select value={status} onChange={(event) => handleChange(event.target.value)}>
+      <option value="all">すべて</option>
+      <option value="paid">支払い済み</option>
+      <option value="cancelled">キャンセル</option>
+    </select>
+  );
+}
+```
+
+Next.jsでは、`useSearchParams` を使うコンポーネントを `<Suspense>` で囲んでおく。事前に生成されるページでは、クエリの値がリクエストを受けるまで決まらないためである（Next.js公式の `useSearchParams` のリファレンスに記載がある）。
+
+URLに置いた値は、ユーザーが手で書き換えられる。`?page=-5` や `?status=xxx` のような値が来る前提で、読み取った側で検証する。検証の書き方は[Zodの「z.coerce」の章](/books/zod/coercion-and-env)で扱っている。
+
+<Callout type="warning" title="同じ状態を2か所に持たない">
+URLのクエリと `useState` の両方に同じ検索条件を持つと、片方だけ更新されて食い違う。ブラウザの「戻る」を押したとき、URLは前の条件に戻るのに、画面の選択欄は新しい条件のまま、という不具合になる。置き場所は1つに決め、もう一方はそこから読み取る。
+</Callout>
+
+URLそのものの設計は[URL設計とルーティング](/books/system-design/07-url-and-routing)で扱っている。
 
 ---
 
@@ -85,7 +149,7 @@ BFFを置くことで、フロントの状態管理層は「整形済みのデ�
 
 ### Stale-While-Revalidate
 
-キャッシュされたデータをまず表示し、裏側で最新データを取得して置き換える手法。React Queryや[SWR](/books/react-learning/use-swr)が採用しているアプローチで、ユーザーには待ち時間なくデータが表示され、最新データが届いたら自動的に画面が更新される。
+キャッシュされたデータをまず表示し、裏側で最新データを取得して置き換える手法。TanStack Queryや[SWR](/books/react-learning/use-swr)が採用しているアプローチで、ユーザーには待ち時間なくデータが表示され、最新データが届いたら自動的に画面が更新される。
 
 ### キャッシュの無効化
 
@@ -114,3 +178,12 @@ BFFって要するに「フロント専用のAPI」を1枚かませるってこ�
 - **URLと状態の関係**: フィルター条件や現在ページなど、URLに反映すべき状態はどれか
 
 これらを事前に決めておくことで、実装時に「この値はどこに持つべきか」で迷うことが減り、コードの一貫性が保たれる。
+
+エラーが起きたときに、状態をどう扱い、誰に何を伝えるかは、[エラー設計](/books/system-design/10-error-handling-design)で扱っている。
+
+## 参考リンク
+
+- [TanStack Query — Overview](https://tanstack.com/query/latest/docs/framework/react/overview) — サーバー状態の取得とキャッシュを扱うライブラリの公式解説（英語）
+- [SWR 公式ドキュメント](https://swr.vercel.app/ja) — stale-while-revalidate方式のデータ取得ライブラリ（日本語）
+- [MDN — URLSearchParams](https://developer.mozilla.org/ja/docs/Web/API/URLSearchParams) — クエリ文字列の読み書き
+- [RFC 5861 — HTTP Cache-Control Extensions for Stale Content](https://www.rfc-editor.org/rfc/rfc5861.html) — stale-while-revalidateの元になったHTTPの仕様（英語）

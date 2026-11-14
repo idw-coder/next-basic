@@ -94,7 +94,7 @@ src/
 <MermaidDiagram
   chart={`
 flowchart TB
-    A["プロジェクトの規模は?"] --> B["小規模・数画面"]
+    A{"プロジェクトの規模は?"} --> B["小規模・数画面"]
     A --> C["中規模以上・成長する"]
     B --> D["レイヤー別で十分"]
     C --> E["機能別 + shared"]
@@ -130,12 +130,55 @@ shared         → features/order  # 共通部品が特定機能に依存する�
 ```
 
 - **feature同士は直接importしない** — `order` が `user` の内部ファイルに依存すると、`user` の変更が `order` を壊すようになり、フォルダを分けた意味が消えます。複数の機能で必要になったものは `shared` へ昇格させます
-- **sharedはfeatureに依存しない** — 依存の方向は常に `features → shared` の一方通行にします。これは[SOLID原則](/books/system-design/15-solid-principles)で扱った「安定したものに依存する」という考え方のディレクトリ版です
+- **sharedはfeatureに依存しない** — 依存の方向は常に `features → shared` の一方通行にします。これは[SOLID原則](/books/system-design/15-solid-principles)の章で扱っている「安定したものに依存する」という考え方のディレクトリ版です
 - **feature内部への直接アクセスを制限する** — 各featureの入り口となる `index.ts` で公開するものを明示し、外部からは `features/order` 経由でのみimportさせる形にすると、機能の内部構造を自由に変更できます
 
 <Callout type="info">
 importルールは口約束ではなくツールで強制します。ESLintの `import` 系プラグイン（`eslint-plugin-boundaries` や `import/no-restricted-paths` など）で「`features/A` から `features/B` へのimportをエラーにする」設定が書けます。ルール違反をレビューで人間が見つける運用は、いつか必ず見逃します。
 </Callout>
+
+### ESLintで強制する設定例
+
+`eslint-plugin-import` の `import/no-restricted-paths` で、上の2つの禁止ルールを書いた例です。`zones` の1件が「`target` の中のファイルから、`from` の中のファイルをimportしたらエラー」という意味になります。
+
+```js
+// eslint.config.mjs
+import importPlugin from 'eslint-plugin-import';
+
+const noCrossFeature = '機能同士を直接importしない。共通で使うものは shared に移す';
+
+export default [
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    plugins: { import: importPlugin },
+    rules: {
+      'import/no-restricted-paths': [
+        'error',
+        {
+          zones: [
+            // order の中から、order 以外の features をimportしたらエラー
+            { target: './src/features/order', from: './src/features', except: ['./order'], message: noCrossFeature },
+            { target: './src/features/user', from: './src/features', except: ['./user'], message: noCrossFeature },
+            // shared の中から features をimportしたらエラー
+            { target: './src/shared', from: './src/features', message: 'shared から features をimportしない' },
+          ],
+        },
+      ],
+    },
+  },
+];
+```
+
+4つのファイルで試した結果です（ESLint 9.39、eslint-plugin-import 2.32）。
+
+| importの向き | 結果 |
+| ------------ | ---- |
+| `features/order` → `features/user` | エラー: `Unexpected path "../user/api.js" imported in restricted zone.` |
+| `shared` → `features/order` | エラー: `Unexpected path "../features/order/api.js" imported in restricted zone.` |
+| `features/order` → `shared` | 通る |
+| `features/order` の中どうし | 通る |
+
+機能が増えるたびに `zones` へ1行足す必要があります。機能の数が多いプロジェクトでは、フォルダの種類ごとにルールを書ける `eslint-plugin-boundaries` のほうが設定が短くなります。
 
 ## よくあるハマりどころ
 
@@ -178,4 +221,5 @@ importルールは口約束ではなくツールで強制します。ESLintの `
 
 - [Bulletproof React - GitHub](https://github.com/alan2207/bulletproof-react) — 機能別構成の代表的なリファレンス実装（英語）
 - [Feature-Sliced Design](https://feature-sliced.design/) — フロントエンド向けの体系的なディレクトリ設計方法論（英語）
+- [import/no-restricted-paths — eslint-plugin-import](https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-restricted-paths.md) — importの向きを制限するルールの設定方法（英語）
 - [Next.js: Project Structure](https://nextjs.org/docs/app/getting-started/project-structure) — App Routerのディレクトリ規約公式ガイド（英語）

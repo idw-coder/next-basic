@@ -4,7 +4,7 @@ description: 'リソース指向のパス設計、ネストの深さ、クエリ
 order: 7
 ---
 
-URLはAPIやWebアプリの「住所」です。一度公開したURLは、外部サービスからのリンク・ブックマーク・検索エンジンのインデックスに刻まれ、後から変更するコストが非常に高くなります。
+URLは、APIやWebアプリの中の1つのリソースを指し示す文字列です。一度公開したURLは、外部サービスからのリンク・ブックマーク・検索エンジンのインデックスに刻まれ、後から変更するコストが非常に高くなります。
 
 つまりURLは、**最初の設計がそのまま長く残る**部類の成果物です。この章では、[API設計の基本](/books/system-design/06-api-design)で扱ったREST原則を前提に、URLそのものの設計——パスの構造、ネストの深さ、パラメータの使い分け——を掘り下げます。
 
@@ -112,9 +112,9 @@ GET /items/789           — 明細も直接参照可能にする
 <MermaidDiagram
   chart={`
 flowchart TB
-    A["渡したい値がある"] --> B["無いと対象が決まらない?"]
+    A["渡したい値がある"] --> B{"無いと対象が決まらない?"}
     B -->|はい| C["パスパラメータ"]
-    B -->|いいえ| D["絞り込み・並び替え・表示制御?"]
+    B -->|いいえ| D{"絞り込み・並び替え・表示制御?"}
     D -->|はい| E["クエリパラメータ"]
 `}
 />
@@ -145,17 +145,36 @@ flowchart TB
 | 識別子 | 例 | 長所 | 短所 |
 | ------ | -- | ---- | ---- |
 | 連番ID | `/users/123` | 短い・DBの主キーをそのまま使える | 総数や登録順が推測できる。連番を辿る攻撃の足がかりになる |
-| UUID / ULID | `/users/01J5X…` | 推測不可能。分散環境でも衝突しない | 長くて人間が読めない |
+| UUID / ULID | `/users/01J5X…` | 総数が分からない。複数のサーバーで別々に発行しても衝突しない | 長くて人間が読めない。推測のしにくさは種類による（下の表） |
 | スラッグ | `/articles/how-to-design-url` | 人間が読める。SEOに有利 | 一意性の管理とリネーム時のリダイレクトが必要 |
 
 使い分けの目安は次のとおりです。
 
 - **管理画面・内部API** — 連番IDかUUID。人間が読む必要が薄いため
 - **公開コンテンツ（記事・商品ページなど）** — スラッグ。URLから内容が想像でき、検索結果でもクリックされやすい
-- **推測されると困るリソース（請求書・招待リンクなど）** — UUIDなどの推測不可能な識別子
+- **推測されると困るリソース（請求書・招待リンクなど）** — 全体が乱数でできた識別子
+
+「UUIDなら推測できない」とは限りません。種類によって、中身のどこまでが乱数かが違います。
+
+| 識別子 | 中身 | 他の値を推測できるか |
+| ------ | ---- | -------------------- |
+| UUID v4 | 122ビットの乱数 | できない |
+| UUID v7 / ULID | 先頭が発行時刻（ミリ秒）、残りが乱数 | 発行時刻は読み取れる。乱数部分は推測できない |
+| 暗号論的乱数のトークン | 全体が乱数（例: 32バイト） | できない |
+
+UUID v7やULIDは、発行順に並ぶのでDBの主キーとして扱いやすい一方、値から「いつ作られたか」が分かります。招待リンクやパスワード再設定のURLのように、**そのURLを知っていること自体が権限になる**ものには、時刻を含まない乱数を使います。
+
+```ts
+import { randomBytes, randomUUID } from 'node:crypto';
+
+randomUUID(); // UUID v4: '6e3b958c-8c2a-469c-992f-6289bfe9e45f'
+randomBytes(32).toString('base64url'); // 32バイトの乱数: 'CbWkXt1QusdY03kRtuq_qHBt-Lwq16G2Qu7P-aOTJFE'
+```
+
+`Math.random()` は暗号用の乱数ではないので、この用途には使いません。UUIDの各バージョンの構造は [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562.html)（英語）で定義されています。
 
 <Callout type="warning">
-「URLが推測できない」ことはアクセス制御の代わりになりません。連番IDのURLを他人が辿れてしまう問題（IDOR: Insecure Direct Object Reference）の本質は、ID形式ではなく**認可チェックの欠如**です。識別子をUUIDにしても、サーバー側で「このユーザーがこのリソースを見てよいか」の検証（次章の[認証・認可](/books/system-design/08-authentication-authorization)で扱います）は必須です。
+「URLが推測できない」ことはアクセス制御の代わりになりません。連番IDのURLを他人が辿れてしまう問題（IDOR: Insecure Direct Object Reference）の本質は、ID形式ではなく**認可チェックの欠如**です。識別子をUUIDにしても、サーバー側で「このユーザーがこのリソースを見てよいか」の検証（[認証と認可の設計](/books/system-design/08-authentication-authorization)で扱っています）は必須です。対策の考え方は [OWASPのチートシート](https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html)（英語）にまとまっています。
 </Callout>
 
 ## CRUDに収まらない操作をどう表すか
@@ -223,7 +242,7 @@ GETで削除って、リンクを開いただけでデータが消えるって�
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-起きる。GETリンクで削除を実装していたWebアプリで、クローラーやブラウザのリンク先読み機能がリンクを片っ端から辿って、コンテンツが大量に消えた事例は昔から繰り返し報告されているよ。「GETは安全（副作用なし）」というHTTPの約束は、ブラウザや検索エンジンがその前提で動くから破ってはいけないんだ。
+起きる。2005年にGoogleが出した「Google Web Accelerator」は、ページ内のリンク先を先読みする仕組みだった。その結果、「削除」リンクをGETで実装していたWebアプリで、ユーザーが押していないのに削除が実行された。JavaScriptの確認ダイアログも、先読みには効かなかった。[37signalsが当時の報告](https://signalvnoise.com/archives2/google_web_accelerator_hey_not_so_fast_an_alert_for_web_app_designers)を残しているよ（英語）。「GETは安全（副作用なし）」というHTTPの約束は、ブラウザや検索エンジンがその前提で動くから破ってはいけないんだ。
 </SpeechBubble>
 
 ## ちゃんと使うためのポイント
@@ -242,4 +261,5 @@ URLで特定したリソースを「誰に・どこまで見せるか」の決�
 
 - [URLとは何か - MDN](https://developer.mozilla.org/ja/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_URL) — URLの構成要素の基礎解説
 - [URI（Uniform Resource Identifier） - MDN](https://developer.mozilla.org/ja/docs/Web/URI) — スキーム・パス・クエリなど各構成要素のリファレンス
+- [RFC 9562 — Universally Unique IDentifiers (UUIDs)](https://www.rfc-editor.org/rfc/rfc9562.html) — UUIDの各バージョンの構造（英語）
 - [Google検索セントラル: URL構造のベストプラクティス](https://developers.google.com/search/docs/crawling-indexing/url-structure?hl=ja) — SEO観点でのURL設計ガイドライン

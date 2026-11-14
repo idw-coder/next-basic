@@ -15,7 +15,117 @@ order: 12
 変数名って、短い方が楽だしタイプも速いけど…チームで書くときは困るよね？
 </SpeechBubble>
 
-> 命名規則の具体的なパターン（ケーシング、プレフィックス、用語集の運用など）は現在執筆中です。
+## 命名規則 — 書き方を揃える
+
+命名で決めることは2つあります。**表記**（大文字・小文字と区切り方）と、**語の選び方**です。表記は機械的に決められるので、先に規則として固定します。
+
+### 表記は対象の種類で決める
+
+TypeScriptでは、次の3つの表記を使い分けるのが一般的です。[Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)（英語）の分類に沿っています。
+
+| 表記 | 見た目 | 使う対象 |
+|---|---|---|
+| パスカルケース | `OrderItem` | クラス、インターフェース、型、Reactコンポーネント |
+| キャメルケース | `orderItem` | 変数、引数、関数、メソッド、プロパティ |
+| 大文字のスネークケース | `MAX_RETRY_COUNT` | モジュールの先頭で定義する、変わらない定数 |
+
+Reactには、表記が動作に影響する決まりが2つあります。慣習ではなく、守らないと動きません。
+
+| 対象 | 決まり | 守らないと |
+|---|---|---|
+| コンポーネント | 大文字で始める | `<userCard />` と書くと、HTMLのタグとして扱われ、コンポーネントが呼ばれない |
+| カスタムフック | `use` で始める | フックのルールの検査（ESLint）が、その関数をフックとして認識しない |
+
+出典は、React公式の[初めてのコンポーネント](https://ja.react.dev/learn/your-first-component)と[カスタムフックでロジックを再利用する](https://ja.react.dev/learn/reusing-logic-with-custom-hooks)です。
+
+言語や層が変わると、表記の慣習も変わります。境界でどちらに揃えるかを決めておきます。
+
+| 場所 | よく使われる表記 | 例 |
+|---|---|---|
+| TypeScriptの変数・JSONのキー | キャメルケース | `createdAt` |
+| DBのテーブル名・カラム名 | スネークケース | `created_at` |
+| URLのパス | ケバブケース | `/blog-posts` |
+
+DBの `created_at` をそのままAPIのレスポンスに出すと、フロントエンドのコードにスネークケースとキャメルケースが混ざります。変換する場所（DBから読み出した直後など）を1か所に決めます。APIのキーの決め方は[API設計の基本](/books/system-design/06-api-design)で扱っています。
+
+### 語の選び方 — 名前から中身が分かるようにする
+
+表記と違って、語の選び方は機械的には決まりません。ここからは筆者がレビューで見ている目安です。
+
+| 対象 | 目安 | 良い例 | 避けたい例 |
+|---|---|---|---|
+| 真偽値 | `is` / `has` / `can` / `should` で始める | `isActive`、`hasError` | `active`、`flag` |
+| 真偽値 | 否定形にしない | `isEnabled` | `isNotDisabled` |
+| 関数 | 動詞で始める | `calculateTotal()` | `total()` |
+| 配列 | 複数形にする | `users` | `userList`、`data` |
+| 数値 | 単位を名前に入れる | `timeoutMs`、`priceYen` | `timeout`、`price` |
+| 略語 | 一般的でないものは使わない | `customerAddress` | `custAddr` |
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`timeout = 3000` って書いてあって、秒だと思って `3` を渡したら3ミリ秒で切れた…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`timeoutMs` という名前なら起きなかった間違いだね。単位は型では区別できないから、名前に入れておくのが確実だよ。
+</SpeechBubble>
+
+関数名の動詞は、**同じ動作に同じ語**を使います。動詞が違えば動作も違う、と読み手が期待するためです。プロジェクトで次のような対応を決めておくと、名前から動作が読めるようになります（対応の中身は一例です）。
+
+| 動詞 | このプロジェクトでの意味 |
+|---|---|
+| `get` | 手元の値を返す。通信しない |
+| `fetch` | APIやDBへ問い合わせる。`Promise` を返す |
+| `find` | 探す。見つからなければ `null` を返す |
+| `create` / `update` / `delete` | データを変更する |
+
+### 用語集 — 同じものを同じ名前で呼ぶ
+
+「ユーザー」を、ある画面では `user`、DBでは `member`、APIでは `account` と呼んでいると、それが同じものなのか別のものなのかを、読むたびに確かめることになります。
+
+| 業務での呼び方 | コードでの名前 | 意味 | 使わない呼び方 |
+|---|---|---|---|
+| 会員 | `member` | 登録を完了した利用者 | `user`、`account` |
+| 注文 | `order` | 支払いが確定した購入 | `purchase` |
+| カート | `cart` | 支払い前の商品の集まり | `basket` |
+
+このような対応表（用語集）を1つ作り、画面名・API・テーブル名・変数名で同じ語を使います。「使わない呼び方」の列を作っておくと、レビューで指摘しやすくなります。
+
+### 表記はESLintで検査する
+
+表記の規則は、人がレビューで見るより、ツールに検査させるほうが漏れません。`typescript-eslint` の `naming-convention` で、上の表記の規則を書いた例です。
+
+```js
+// eslint.config.mjs
+import tseslint from 'typescript-eslint';
+
+export default [
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      '@typescript-eslint/naming-convention': [
+        'error',
+        { selector: 'variable', format: ['camelCase', 'UPPER_CASE'] },
+        { selector: 'function', format: ['camelCase', 'PascalCase'] }, // PascalCaseはコンポーネント用
+        { selector: 'typeLike', format: ['PascalCase'] },
+      ],
+    },
+  },
+];
+```
+
+この設定で検査した結果です（ESLint 9.39）。
+
+| 書いたコード | 結果 |
+|---|---|
+| `const user_name = 'a';` | エラー: ``Variable name `user_name` must match one of the following formats: camelCase, UPPER_CASE`` |
+| `const MAX_RETRY_COUNT = 3;` | 通る |
+| `function Fetch_user() {}` | エラー: ``Function name `Fetch_user` must match one of the following formats: camelCase, PascalCase`` |
+| `type order_item = { id: number };` | エラー: ``Type Alias name `order_item` must match one of the following formats: PascalCase`` |
+| `class userService {}` | エラー: ``Class name `userService` must match one of the following formats: PascalCase`` |
+
+検査できるのは表記だけです。`data` や `flag` のような「中身が分からない語」は通ります。語の選び方は、レビューと用語集で揃えます。
 
 ## コードは自己文書化される？ — 賛否を整理する
 
@@ -31,7 +141,7 @@ order: 12
 
 ```ts
 const activeUsers = users.filter(user => user.isActive);
-const sortedByLastLogin = activeUsers.sort(
+const sortedByLastLogin = activeUsers.toSorted(
   (a, b) => b.lastLoginAt.getTime() - a.lastLoginAt.getTime()
 );
 ```
@@ -232,6 +342,8 @@ class UserService {
 ## ちゃんと使うためのポイント
 
 - <Marker>命名はコードの可読性を決める最も基本的な要素——省略より明確さを優先する</Marker>
+- 表記（パスカルケース・キャメルケースなど）は規則として固定し、ESLintで検査する
+- 同じ動作には同じ動詞、同じものには同じ名前を使う。対応を用語集に書いておく
 - コードの可読性を最大化したうえで、コードだけでは伝わらない情報をドキュメントに書く
 - コメントは what（何をしているか）ではなく why（なぜそうしたか）を書く
 - コメントアウトコードは残さない——Gitの履歴から復元できる
@@ -239,3 +351,9 @@ class UserService {
 - サンプルコードは「実行可能」と「説明用」を使い分け、省略時は何を省いたか明記する
 
 コードの整理に直結するディレクトリ構成は、[ディレクトリ構成の章](/books/system-design/13-directory-structure)で扱っています。
+
+## 参考リンク
+
+- [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html) — 識別子の種類ごとの表記の規則（英語）
+- [naming-convention — typescript-eslint](https://typescript-eslint.io/rules/naming-convention/) — 表記を検査するルールの設定方法（英語）
+- [初めてのコンポーネント — React公式](https://ja.react.dev/learn/your-first-component) — コンポーネント名を大文字で始める理由
