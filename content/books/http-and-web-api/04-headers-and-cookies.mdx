@@ -14,8 +14,6 @@ HTTPリクエストとレスポンスは、**ボディ**（本文）だけでな
 
 ---
 
----
-
 <a id="section-1"></a>
 
 ## HTTPメッセージの構造
@@ -76,7 +74,9 @@ Content-Type: multipart/form-data
 <Callout type="warning">
 ### Content-Typeの付け忘れ
 
-`fetch` でPOSTリクエストを送る際、`Content-Type: application/json` を付け忘れてサーバーが `{}` を受け取れない、というのはよくあるミスです。リクエストライブラリ（axios等）は自動で付けてくれることが多いですが、素の `fetch` では明示的に指定が必要です。
+`fetch` の `body` に `JSON.stringify()` した文字列を渡すと、`Content-Type` を指定しなかった場合は `text/plain;charset=UTF-8` が付きます。サーバー側のJSONパーサーは `application/json` のときだけボディを解析するものが多く、送ったJSONが読まれずにボディが空として扱われます。axiosはオブジェクトを渡すと自動で `application/json` を付けますが、素の `fetch` では自分で指定します。
+
+逆に、`FormData` を送るときは **`Content-Type` を自分で書きません**。`multipart/form-data` には各項目の区切りを示す `boundary` という値が必要で、ブラウザが `multipart/form-data; boundary=...` の形で自動的に付けます。手で `multipart/form-data` とだけ書くと `boundary` が欠け、サーバーがボディを分割できなくなります。
 
 </Callout>
 
@@ -143,9 +143,9 @@ Cache-Control: no-cache
 
 そうならないように、確認の段階では「中身が変わったかどうか」だけをやりとりします。変わっていなければ、ボディ（本文）は送られません。
 
-### ETagは「中身の指紋」
+### ETagは中身が変わると値が変わる識別子
 
-**ETag**（Entity Tag）は、サーバーがレスポンスに付ける識別子です。中身が変われば別の値になるので、指紋のような役割を果たします。
+**ETag**（Entity Tag）は、サーバーがレスポンスに付ける識別子です。レスポンスの中身が変われば別の値になるので、2つの値を比べるだけで中身が同じかどうかを判定できます。
 
 ```
 HTTP/1.1 200 OK
@@ -180,7 +180,7 @@ sequenceDiagram
 - **ETagが一致した**：サーバーは **`304 Not Modified`** を返し、ボディは送りません。ブラウザは手元のキャッシュを使います
 - **ETagが一致しなかった**：通常どおり `200 OK` で新しいボディと新しいETagを返します
 
-このように「条件を付けて、満たしたときだけ処理してもらう」リクエストを **条件付きリクエスト** と呼びます。[3章](/books/http-and-web-api/03-status-codes)で出てきた `304` は、この仕組みで返されるステータスコードです。
+このように「条件を付けて、満たしたときだけ処理してもらう」リクエストを **条件付きリクエスト** と呼びます。[HTTPステータスコードの章](/books/http-and-web-api/03-status-codes)に出てくる `304` は、この仕組みで返されるステータスコードです。
 
 ### Last-Modifiedとの違い
 
@@ -272,6 +272,19 @@ sequenceDiagram
 2. ブラウザがその値を保存する
 3. 以降、同じドメインへのリクエストに `Cookie` ヘッダーとして自動送信する
 
+<Callout type="info">
+### fetchで別オリジンにCookieを送るには指定が要る
+
+`fetch` がCookieを自動で送るのは、既定では**同一オリジン**へのリクエストだけです。フロントエンドとAPIのオリジンが違う構成（`localhost:3000` から `localhost:8080` など）では、`credentials: 'include'` を付けないとCookieは送られず、レスポンスの `Set-Cookie` も保存されません。
+
+```js
+await fetch('http://localhost:8080/api/me', { credentials: 'include' });
+```
+
+サーバー側も、`Access-Control-Allow-Credentials: true` と、`*` ではない具体的なオリジンを指定した `Access-Control-Allow-Origin` を返す必要があります。
+
+</Callout>
+
 ---
 
 <a id="section-6"></a>
@@ -290,6 +303,7 @@ Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=8640
 | `Secure` | HTTPS接続でのみ送信 | 平文HTTP経由で盗聴される |
 | `SameSite` | クロスサイトリクエストでの送信を制御 | CSRF攻撃を受けやすい |
 | `Path` | 指定パス以下でのみ送信 | 不要な範囲にCookieが飛ぶ |
+| `Domain` | 送信先にサブドメインを含める | （省略時は発行したホストだけに送られ、サブドメインには送られない） |
 | `Max-Age` | 有効期限（秒数） | ブラウザ終了時に消える |
 
 ### SameSiteの3つの値
@@ -297,8 +311,10 @@ Set-Cookie: session=abc123; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=8640
 | 値 | 挙動 |
 |---|---|
 | `Strict` | 他サイトからのリクエストにはCookieを送らない |
-| `Lax` | 他サイトからのGETリクエスト（リンククリック）には送る |
+| `Lax` | 他サイトからのリクエストのうち、リンクのクリックなどページ全体を移動するGETにだけ送る。他サイトに埋め込まれた画像や `fetch`、フォームのPOSTには送らない |
 | `None` | 常に送る（`Secure` 属性が必須） |
+
+`SameSite` を書かなかった場合の扱いはブラウザによって違います。ChromeとEdgeは `Lax` として扱います（[MDN — Set-Cookie](https://developer.mozilla.org/ja/docs/Web/HTTP/Reference/Headers/Set-Cookie)のブラウザー互換性の表で確認できます）。ブラウザ任せにせず、明示的に書いておきます。
 
 <Callout type="warning">
 ### セッションCookieには必ずHttpOnly + Secure
@@ -399,4 +415,12 @@ curl -I https://api.example.com/users
 - **Cookie** はサーバーがブラウザに状態を保持させる仕組み。セッション管理の基盤
 - セッションCookieには **HttpOnly + Secure + SameSite** を必ず設定する
 
-次の章では、Web APIの設計パターンとして最も普及している **REST API** の考え方と命名規則を見ていきます。
+Web APIの設計パターンとして最も普及しているRESTの考え方と命名規則は、[REST APIの設計の章](/books/http-and-web-api/05-rest-api-design)で扱っています。
+
+---
+
+## 参考リンク
+
+- [MDN — HTTP Cookieの使用](https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/Cookies) — Cookieの仕組みと属性の日本語解説
+- [MDN — Set-Cookie](https://developer.mozilla.org/ja/docs/Web/HTTP/Reference/Headers/Set-Cookie) — 各属性の仕様とブラウザーごとの対応状況
+- [MDN — Cache-Control](https://developer.mozilla.org/ja/docs/Web/HTTP/Reference/Headers/Cache-Control) — ディレクティブの一覧

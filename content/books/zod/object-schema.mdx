@@ -36,6 +36,32 @@ const postSchema = z.object({
 });
 ```
 
+### キーは書いただけで必須になる
+
+`z.object()` に書いたキーは、すべて必須です。キーが無い入力は `expected string, received undefined` で失敗します。「無くてもよい」「`null` でもよい」は、値のスキーマに付けるメソッドで決めます。
+
+| 値のスキーマ | キーが無い | `undefined` | `null` |
+| --- | --- | --- | --- |
+| `z.string()` | ✗ | ✗ | ✗ |
+| `z.string().optional()` | ○ | ○ | ✗ |
+| `z.string().nullable()` | ✗ | ✗ | ○ |
+| `z.string().nullish()` | ○ | ○ | ○ |
+
+```ts
+const schema = z.object({ nickname: z.string().optional() });
+
+schema.safeParse({}).success; // true
+schema.safeParse({ nickname: null }).success; // false — optional は null を通さない
+```
+
+<Callout type="warning" title="DBのNULLを受けるのは nullable">
+`optional()` が通すのは「キーが無い」と `undefined` だけです。DBのNULL許容カラムをそのままJSONにしたAPIは、値が無いとき `null` を返します。そのレスポンスを `optional()` で受けると検証に失敗します。`null` が来るなら `nullable()`、どちらも来うるなら `nullish()` を使います。
+</Callout>
+
+それぞれの型がどう推論されるかは、[デフォルト挙動の早見表](/books/zod/default-behavior)にまとめています。
+
+### オブジェクト以外は弾かれる
+
 オブジェクト以外を渡すと弾かれます。`null` は `expected object, received null`、配列は `expected object, received array` というメッセージになります。JavaScriptでは `typeof null === 'object'` ですが、Zodは区別してくれます。
 
 ---
@@ -174,11 +200,31 @@ const userWithTime = userSchema.extend(timestamps.shape);
 
 ### `.partial()` を使うと空オブジェクトが通る
 
-`.partial()` は全キーを任意にするため、`{}` が検証を通ります。部分更新のAPIでは「1項目以上必須」を別途チェックする必要があります。
+`.partial()` は全キーを任意にするため、`{}` が検証を通ります。
 
 ```ts
 updateUserSchema.safeParse({}).success; // true — 何も更新しない更新リクエスト
 ```
+
+部分更新のAPIで「1項目以上必須」にするには、`refine` でキーの数を確かめます。
+
+```ts
+const updateUserSchema = createUserSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, {
+    error: '更新する項目を1つ以上指定してください',
+  });
+
+updateUserSchema.safeParse({}).success; // false
+updateUserSchema.safeParse({ name: 'A' }).success; // true
+updateUserSchema.safeParse({ unknownKey: 1 }).success; // false
+```
+
+3つ目が失敗するのは、スキーマに無い `unknownKey` が先に取り除かれ、`refine` に渡る時点で `{}` になっているためです。`refine` の書き方は[refineとtransformの章](/books/zod/refine-and-transform)で扱っています。
+
+### `.merge()` に取り消し線が付く
+
+Zod 3で2つのオブジェクトスキーマを合成していた `.merge()` は、v4で非推奨になりました。`a.merge(b)` は `a.extend(b.shape)` に書き換えます。`.passthrough()` も非推奨で、`z.looseObject()` を使います。ほかの置き換えは[v3からv4への移行の章](/books/zod/zod-v4-migration)にまとめています。
 
 ### 配列を渡したのにobjectエラーが出る
 
@@ -191,6 +237,7 @@ updateUserSchema.safeParse({}).success; // true — 何も更新しない更新�
 - `strictObject` を外部APIのレスポンスに使うと、相手の項目追加で壊れる
 - エラーは `path` でどのキーかが分かり、**全項目分がまとめて返る**
 - `.omit()` や `.partial()` で、1つのスキーマから作成用・更新用を派生させる
+- キーは書いただけで必須。無くてもよいなら `optional()`、`null` を受けるなら `nullable()`
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: 'MUIのTypography — 文字の見た目と意味を分けて指定する'
-description: 'Typographyコンポーネントのvariantとcomponentの役割の違い、variantごとに描画されるHTMLタグ、noWrapやgutterBottomの挙動を整理します。v9で削除されたparagraph propも扱います。'
+description: 'Typographyコンポーネントのvariantとcomponentの役割の違い、variantごとに描画されるHTMLタグ、noWrapやgutterBottomの挙動を整理します。画面幅ごとの文字サイズ（responsiveFontSizes）、複数行の省略、v9で削除されたparagraph propも扱います。'
 order: 4.5
 chapterLabel: 'Typography'
 ---
@@ -115,6 +115,26 @@ MUIで文字を書くとき、素の `<p>` や `<h2>` を置いてもかまい�
 
 結果として、はみ出した部分が `…` で省略されます。
 
+### 2行・3行で省略したいとき
+
+`noWrap` は `white-space: nowrap` を含むので、**1行での省略専用**です。カードの説明文を2行で止めたい、という用途には使えません。複数行での省略には専用のpropがなく、`sx` にCSSの `-webkit-line-clamp` を書きます。
+
+```tsx
+<Typography
+  variant="body2"
+  sx={{
+    display: '-webkit-box',
+    WebkitBoxOrient: 'vertical',
+    WebkitLineClamp: 2,
+    overflow: 'hidden',
+  }}
+>
+  カードの説明文など、長くなる可能性があるテキスト。2行を超えた分は省略記号になります。
+</Typography>
+```
+
+4つのプロパティはセットで必要です。`WebkitLineClamp` の数値が、表示する行数です。
+
 <Callout type="info" title="効かないときは幅を見る">
 `noWrap` は「決まった幅からはみ出した分」を省略する仕組みです。親要素に幅の制限がないと、そもそもはみ出さないので何も起きません。Flexboxの中では `min-width: 0` が必要になることもあります。
 </Callout>
@@ -143,6 +163,69 @@ MUIで文字を書くとき、素の `<p>` や `<h2>` を置いてもかまい�
 ```
 
 `'inherit'`（既定）/ `'left'` / `'center'` / `'right'` / `'justify'` から選びます。
+
+---
+
+## 画面幅で文字サイズを変える
+
+スマートフォンでは見出しを小さく、PCでは大きくしたい場面です。方法は3つあり、変えたい範囲で選びます。
+
+| 方法 | 変わる範囲 |
+| --- | --- |
+| `sx` の `fontSize` にブレークポイントを書く | その1か所の文字サイズだけ |
+| `sx` の `typography` にブレークポイントを書く | その1か所のvariantごと（サイズ・太さ・行間） |
+| テーマを `responsiveFontSizes()` で包む | アプリ全体の見出し |
+
+```tsx
+// 文字サイズだけ変える
+<Typography variant="h4" component="h1" sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
+  ページタイトル
+</Typography>
+
+// variantごと切り替える（狭い画面はh5、md以上はh3の見た目）
+<Typography component="h1" sx={{ typography: { xs: 'h5', md: 'h3' } }}>
+  ページタイトル
+</Typography>
+```
+
+2つ目の書き方では `variant` propを使わず、`sx` の `typography` キーにvariantの名前を渡します。`variant` propは既定の `body1` のままなので、`component` を書かないと `<p>` で描画されます。見出しにするなら `component` でHTMLタグを指定します。
+
+アプリ全体で一括して対応するなら、テーマを `responsiveFontSizes()` に通します。
+
+```tsx
+import { createTheme, responsiveFontSizes } from '@mui/material/styles';
+
+const theme = responsiveFontSizes(createTheme());
+```
+
+既定のテーマに適用すると、`h3` は次のように変わります。
+
+| | `h3` の `font-size` |
+| --- | --- |
+| 適用前 | 常に `3rem` |
+| 適用後 | `2rem` → 600px以上で `2.5707rem` → 900px以上で `2.7849rem` → 1200px以上で `3rem` |
+
+<Marker>大きい画面でのサイズは元のまま、狭い画面で小さくなる方向に調整されます</Marker>。`body1` などの本文は変わりません（適用後も `1rem` のまま）。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ページごとに `fontSize` を書いて回るより、先に `responsiveFontSizes()` を入れて、それでも合わない箇所だけ `sx` で調整するほうが、書く量も揃い方も良くなるよ。
+</SpeechBubble>
+
+---
+
+## リンクやNext.jsのLinkとして描画する
+
+`component` にはHTMLタグの名前だけでなく、コンポーネントも渡せます。渡したコンポーネントのpropsは、そのまま `Typography` に書けます。
+
+```tsx
+import Link from 'next/link';
+
+<Typography component={Link} href="/about" variant="body2" color="primary">
+  このサイトについて
+</Typography>
+```
+
+`href` は `Link` のpropですが、`Typography` に書いて型エラーになりません。見た目は `body2`、動作はNext.jsのクライアント側遷移になります。
 
 ---
 
@@ -186,7 +269,7 @@ createTheme({
 <Typography variant="body1" gutterBottom>段落テキスト</Typography>
 ```
 
-また3章で触れたとおり、`Typography` からは **system propsも削除**されています。`<Typography mt={2}>` は動かないので、`sx` に移してください。
+また、[sx propの章](/books/mui/sx-prop)で扱ったとおり、`Typography` からは **system propsも削除**されています。`<Typography mt={2}>` は動かないので、`sx` に移してください。
 
 ---
 
@@ -223,8 +306,10 @@ v9でsystem propsが削除されました。`sx={{ mt: 2 }}` に書き換えま�
 - `noWrap` は幅が決まっていて初めて効く
 - 色はテーマのパスで指定するとダークモードに追従する
 - v9では `paragraph` prop とsystem propsが削除された
+- `noWrap` は1行専用。複数行の省略は `sx` に `WebkitLineClamp` を書く
+- 画面幅で文字サイズを変えるなら、まずテーマを `responsiveFontSizes()` に通す
 
-次の章では、色やフォントをまとめて管理する[テーマの構造](/books/mui/theme-and-tokens)を扱います。
+色やフォントをまとめて管理する方法は、[テーマの章](/books/mui/theme-and-tokens)で扱っています。
 
 ---
 

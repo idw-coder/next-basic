@@ -1,6 +1,6 @@
 ---
 title: 'JSONとデータ形式 — APIでやりとりするデータの基本'
-description: 'JSONの構文ルール、データ型、フロントエンドでの扱い方、よくあるハマりどころを整理します。'
+description: 'JSONの構文とデータ型、fetchでの送受信を整理します。response.json()で出る「Unexpected token <」エラーの原因と調べ方、大きな整数やBigIntの扱い、タイムアウトとリトライの実装まで扱います。'
 order: 6
 ---
 
@@ -71,13 +71,34 @@ JSONで使えるデータ型は6つだけです。
 | **配列** | `[1, 2, 3]` | 順序付きリスト |
 | **オブジェクト** | `{"key": "value"}` | キーと値のペア |
 
-JSONに **存在しない型** として、`undefined`、`Date`、`関数`、`BigInt`、`NaN`、`Infinity` があります。これらを `JSON.stringify()` すると消えたり `null` に変換されたりします。
+JSONに **存在しない型** として、`undefined`、`Date`、関数、`BigInt`、`NaN`、`Infinity` があります。これらを `JSON.stringify()` に渡したときの結果は、型によって違います。
+
+| 渡した値 | `JSON.stringify()` の結果 |
+|---|---|
+| `undefined`・関数（オブジェクトの値） | キーごと消える |
+| `undefined`・関数（配列の要素） | `null` になる |
+| `NaN`・`Infinity` | `null` になる |
+| `Date` | ISO 8601形式の文字列になる |
+| `BigInt` | **例外が投げられる**（`TypeError: Do not know how to serialize a BigInt`） |
 
 ```js
 JSON.stringify({ a: undefined, b: NaN, c: new Date() })
 // '{"b":null,"c":"2024-01-15T09:00:00.000Z"}'
 // ← undefinedは消え、NaNはnull、Dateは文字列に
+
+JSON.stringify([undefined, () => 1])
+// '[null,null]'
+
+JSON.stringify({ id: 1n })
+// TypeError: Do not know how to serialize a BigInt
 ```
+
+<Callout type="warning">
+### 値が消えても、nullになっても、エラーは出ない
+
+`BigInt` 以外は例外にならず、黙って消えるか `null` になります。「送ったはずの項目がサーバーに届いていない」ときは、その値が `undefined` になっていないかを確認します。`BigInt` を送りたいときは、`String(value)` で文字列にしてから渡します。
+
+</Callout>
 
 ---
 
@@ -138,13 +159,15 @@ const created = await response.json();
 <Callout type="warning">
 ### response.json() は一度しか呼べない
 
-`response.json()` は内部でストリームを消費するため、2回呼ぶとエラーになります。デバッグでレスポンスを確認したい場合は、一度変数に入れてから使います。
+`response.json()` はレスポンスボディのストリームを読み切るため、2回呼ぶと `TypeError`（Chromeでは `body stream already read`）になります。`response.text()` のあとに `response.json()` を呼んだ場合も同じです。デバッグでレスポンスを確認したい場合は、一度変数に入れてから使います。
 
 ```js
 const data = await response.json();
 console.log(data);      // デバッグ
 processUser(data);       // 処理
 ```
+
+ボディを2通りの方法で読む必要があるときは、読む前に [`response.clone()`](https://developer.mozilla.org/ja/docs/Web/API/Response/clone) で複製します。
 
 </Callout>
 
@@ -158,7 +181,7 @@ JSONが主流ですが、場面によっては他の形式も使われます。
 |---|---|---|
 | **JSON** | 軽量・人間にも読みやすい | Web APIの標準 |
 | **XML** | タグベース・冗長だが表現力が高い | SOAP API、設定ファイル、レガシーAPI |
-| **FormData** | フォーム送信の形式 | ファイルアップロード |
+| **フォームデータ** | HTMLのフォーム送信で使われる形式。2種類ある | フォーム送信、ファイルアップロード |
 | **Protocol Buffers** | バイナリ形式・高速・型安全 | gRPC、マイクロサービス間通信 |
 | **CSV** | カンマ区切りテキスト | データエクスポート、バッチ処理 |
 
@@ -169,14 +192,21 @@ JSONが主流ですが、場面によっては他の形式も使われます。
 // XML
 <user><name>Alice</name><age>28</age></user>
 
-// URL-encoded (FormData)
+// URLエンコード形式（application/x-www-form-urlencoded）
 name=Alice&age=28
 ```
+
+フォームデータの2種類は、`fetch` の `body` に渡すオブジェクトで決まります。どちらも `Content-Type` はブラウザが自動で付けます。
+
+| `body` に渡すもの | 自動で付く `Content-Type` | 向いている内容 |
+|---|---|---|
+| `new URLSearchParams({ name: 'Alice' })` | `application/x-www-form-urlencoded;charset=UTF-8` | テキストだけのフォーム |
+| `new FormData(form)` | `multipart/form-data; boundary=...` | ファイルを含むフォーム |
 
 <Callout type="column">
 ### なぜJSONが勝ったのか
 
-2000年代はXMLベースのSOAP APIが主流でしたが、JSONはXMLに比べて構文がシンプルで、JavaScriptとの相性が良く、データサイズも小さいため、REST APIの普及とともにWeb APIの標準フォーマットになりました。現在、新規のWeb APIでXMLを採用することはほぼありません。
+2000年代はXMLベースのSOAP APIが主流でしたが、JSONはXMLに比べて構文がシンプルで、JavaScriptでは `JSON.parse()` だけでオブジェクトとして扱え、同じデータを表したときのサイズも小さくなります。REST APIの普及とともに、Web APIで最も使われる形式になりました。筆者の見る範囲では、新規のWeb APIでXMLを採用する例はほとんどありません。
 
 </Callout>
 
@@ -204,18 +234,60 @@ const createdAt = new Date(data.createdAt);
 
 ### 2. 数値の精度
 
-JSONの数値は浮動小数点で表現されるため、非常に大きな整数は精度が落ちます。
+JSONの仕様（[RFC 8259](https://www.rfc-editor.org/rfc/rfc8259.html)）は数値の桁数に上限を設けていません。精度が落ちるのは、JavaScriptが `JSON.parse()` で数値を `Number`（64ビット浮動小数点数）に変換するためです。`Number` が正確に表せる整数は `Number.MAX_SAFE_INTEGER`（9007199254740991）までで、それを超えると近い値に丸められます。
 
 ```js
 JSON.parse('{"id": 9007199254740993}');
 // → { id: 9007199254740992 } ← 1ずれる
 ```
 
-IDに大きな整数を使うAPIでは、文字列として返すことがあります。
+エラーにはならず、値だけが変わります。そのため、IDに大きな整数を使うAPIは `"id": "9007199254740993"` のように文字列で返すことがあります。
 
-### 3. Content-Typeの不一致
+### 3. Content-Typeを付けずにJSONを送る
 
-サーバーが `Content-Type: text/html` でJSONを返す、またはクライアントが `Content-Type` を付けずにJSONを送る、という不一致でパースが失敗するケースがあります。送信側と受信側でContent-Typeを揃えることが基本です。
+`fetch` の `body` に `JSON.stringify()` の結果（文字列）を渡すと、`Content-Type` を指定しなかった場合は `text/plain;charset=UTF-8` が付きます。サーバー側のJSONパーサーの多くは `Content-Type` が `application/json` のときだけボディを解析するので、送ったJSONが読まれず、サーバーではボディが空として扱われます。送る側で `Content-Type: application/json` を明示します。
+
+受け取る側は事情が違います。`response.json()` はレスポンスの `Content-Type` を見ず、ボディをJSONとして解析できるかだけで成否が決まります。
+
+### 4. `Unexpected token '<', "<!DOCTYPE "... is not valid JSON`
+
+`response.json()` で出るエラーのうち、特によく見るものです。
+
+```
+SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+JSONを返すAPIを呼んでいるのに、`<` なんてどこから出てきたの？
+</SpeechBubble>
+
+`<!DOCTYPE` はHTMLの先頭です。つまり、**サーバーがJSONではなくHTMLを返しています**。JSONの構文が間違っているわけではありません。HTMLが返る主な原因は次の4つです。
+
+| 原因 | 返ってきているHTML |
+|---|---|
+| URLの間違い（パスのtypo、`/api` の付け忘れ） | 404ページ |
+| サーバー側で例外が発生した | 500のエラーページ |
+| 未ログインでログイン画面にリダイレクトされた | ログインページ |
+| 開発サーバーのプロキシ設定が効いていない | フロントエンドの `index.html` |
+
+調べるときは、DevToolsのNetworkタブでそのリクエストを選び、**ステータスコード**と **Response** タブの中身を見ます。コードで確かめるなら、`response.json()` の代わりに `response.text()` で読むと、返ってきた内容をそのまま表示できます。
+
+```js
+const response = await fetch('/api/users');
+console.log(response.status, response.headers.get('content-type'));
+console.log(await response.text()); // 返ってきた内容をそのまま表示
+```
+
+同じ系統のエラーに `Unexpected end of JSON input` があります。こちらは**ボディが空**のときに出ます。`204 No Content` のレスポンスに `response.json()` を呼んだ場合が代表例です。
+
+| エラーメッセージ | ボディの状態 |
+|---|---|
+| `Unexpected token '<', "<!DOCTYPE "... is not valid JSON` | HTMLが返っている |
+| `Unexpected end of JSON input` | 空 |
+| `Expected property name or '}' in JSON at position 1` | キーがダブルクォートで囲まれていない |
+| `Expected double-quoted property name in JSON at position N` | 末尾にカンマがある |
+
+メッセージの文言はNode.js 24で確認したものです。ChromeもNode.jsと同じJavaScriptエンジン（V8）を使っています。FirefoxやSafariでは表現が変わります。
 
 ---
 
@@ -230,11 +302,12 @@ IDに大きな整数を使うAPIでは、文字列として返すことがあり
 ```js
 async function apiFetch(url, options = {}) {
   const response = await fetch(url, {
+    ...options,
+    // headers は ...options より後ろに書く
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
-    ...options,
   });
 
   if (!response.ok) {
@@ -258,9 +331,28 @@ try {
 }
 ```
 
+<Callout type="warning">
+### `...options` を後ろに書くとContent-Typeが消える
+
+`headers` を先に、`...options` を後ろに書くと、呼び出し側が `headers` を渡したときに `headers` プロパティごと上書きされます。`apiFetch(url, { headers: { Authorization: '...' } })` と呼ぶと、マージしたはずの `Content-Type` が無くなります。オブジェクトのスプレッドは後ろに書いたものが勝つので、`...options` を先に書きます。
+
+</Callout>
+
 ### タイムアウトの設定
 
-`fetch` にはデフォルトのタイムアウトがありません。`AbortController` を使って設定します。
+`fetch` にはデフォルトのタイムアウトがありません。時間だけで打ち切るなら、[`AbortSignal.timeout()`](https://developer.mozilla.org/ja/docs/Web/API/AbortSignal/timeout_static) を `signal` に渡すのが最も短い書き方です。
+
+```js
+try {
+  const response = await fetch('/api/users', { signal: AbortSignal.timeout(10000) });
+} catch (err) {
+  if (err.name === 'TimeoutError') {
+    console.error('10秒でタイムアウトしました');
+  }
+}
+```
+
+タイムアウトに加えて、「キャンセル」ボタンや画面遷移でも中断したい場合は、`AbortController` を使います。`controller.abort()` を好きなタイミングで呼べます。投げられるエラーの名前が、`AbortSignal.timeout()` は `TimeoutError`、`controller.abort()` は `AbortError` と異なる点に注意してください。
 
 ```js
 async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
@@ -317,7 +409,20 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
 }
 ```
 
-`Math.pow(2, attempt)` で **指数バックオフ**（1秒 → 2秒 → 4秒）を実装しています。固定間隔でリトライすると、サーバーが回復する前に大量のリクエストが殺到する「サンダーリングハード」問題が起きます。
+`Math.pow(2, attempt)` で **指数バックオフ**（1秒 → 2秒 → 4秒）を実装しています。待ち時間を伸ばしていくことで、回復途中のサーバーに届くリクエストの数を減らします。
+
+ただし、多数のクライアントが同じ瞬間に失敗した場合、全員が同じ1秒後・2秒後に再送するので、リクエストの集中は残ります。これを避けるには、待ち時間に乱数を足して再送のタイミングをばらけさせます（**ジッター**）。
+
+```js
+const delay = 1000 * Math.pow(2, attempt) + Math.random() * 1000;
+```
+
+<Callout type="warning">
+### POSTをそのままリトライしない
+
+この関数はメソッドを見ずに再送します。`POST` は[べき等ではない](/books/http-and-web-api/02-http-methods#section-3)ので、1回目がサーバーに届いていた場合、再送でデータが2件作られます。リトライの対象は `GET` などのべき等なメソッドに限るか、べき等キーを併用します。
+
+</Callout>
 
 ---
 
@@ -349,5 +454,17 @@ console.table(data); // テーブル形式で見やすく表示
 - `JSON.parse()` で文字列→オブジェクト、`JSON.stringify()` でオブジェクト→文字列
 - `fetch` でJSONを送る際は **`Content-Type: application/json`** を明示する
 - JSONには日付型がないため、**ISO 8601文字列** で表現するのが標準
+
+- `Unexpected token '<'` は、サーバーがJSONではなくHTMLを返しているときのエラー。`response.text()` で中身を確認する
+- 大きな整数は `JSON.parse()` で丸められる。`BigInt` は `JSON.stringify()` で例外になる
+
+---
+
+## 参考リンク
+
+- [RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259.html) — JSONの仕様（英語）
+- [MDN — JSON](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/JSON) — `JSON.parse()` と `JSON.stringify()` の日本語リファレンス
+- [MDN — JSON.stringify()](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify) — `undefined`・`BigInt` などの変換ルール
+- [MDN — フェッチAPIの使用](https://developer.mozilla.org/ja/docs/Web/API/Fetch_API/Using_Fetch) — `fetch` でのJSONの送受信
 
 この本の後半（準備中）では、認証と認可、CORSとセキュリティ、APIのテストとツール、GraphQLなどを扱う予定です。
