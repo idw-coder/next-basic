@@ -205,10 +205,13 @@ z.config(z.locales.ja());
 const schema = z.object({
   name: z.string().trim().min(1, '名前を入力してください'),
   email: z.email('メールアドレスの形式が正しくありません'),
-  age: z.string().min(1, '入力してください').pipe(z.coerce.number().int().min(0)),
+  age: z.string().trim().min(1, '入力してください').pipe(z.coerce.number().int().min(0)),
 });
 
-type FormValues = z.input<typeof schema>; // infer ではない
+// 入力と出力の型がずれるので、型引数は3つ書く
+useForm<z.input<typeof schema>, unknown, z.output<typeof schema>>({
+  resolver: zodResolver(schema),
+});
 ```
 
 ### パスワード確認
@@ -216,7 +219,7 @@ type FormValues = z.input<typeof schema>; // infer ではない
 ```ts
 z.object({ password: z.string().min(8), confirm: z.string() }).refine(
   (d) => d.password === d.confirm,
-  { message: 'パスワードが一致しません', path: ['confirm'] },
+  { error: 'パスワードが一致しません', path: ['confirm'] },
 );
 ```
 
@@ -261,7 +264,9 @@ export const updateUserSchema = createUserSchema.partial();
 | 空文字が通ってしまう | `.trim().min(1)` にする |
 | `null` で落ちる | `.nullable()` か `.nullish()` |
 | 送った項目が消える | `z.object()` が未知のキーを削除している |
-| 空欄が `0` になる | `z.coerce.number()` の前に `z.string().min(1)` |
+| 空欄が `0` になる | `z.coerce.number()` の前に `z.string().trim().min(1)` |
+| `+09:00` 付きの日時が弾かれる | `z.iso.datetime({ offset: true })` |
+| `javascript:` のURLが通る | `z.url()` ではなく `z.httpUrl()` |
 | `false` が `true` になる | `z.stringbool()` を使う |
 | メッセージが英語のまま | v3のオプションが残っていないか |
 | エラーが画面に出ない | `refine` の `path` 指定 |
@@ -272,7 +277,7 @@ export const updateUserSchema = createUserSchema.partial();
 
 ---
 
-本書はここまでです。[第1章](/books/zod/what-is-zod)で見たとおり、TypeScriptの型はビルド時に消えます。外から届くデータを守れるのは、実行時に動く検証だけです。境界で1回止める——それだけで防げる不具合が、驚くほどたくさんあります。
+本書はここまでです。[Zodとは何かの章](/books/zod/what-is-zod)で見たとおり、TypeScriptの型はビルド時に消えます。外から届くデータを守れるのは、実行時に動く検証だけです。境界で1回止める——それだけで防げる不具合が、驚くほどたくさんあります。
 
 ## 参考リンク
 

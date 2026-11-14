@@ -128,7 +128,7 @@ const status = z.enum(['draft', 'published']);
 | 必須項目が空文字で通る | `z.string()` は `""` を通す。`.trim().min(1)` にする |
 | 送った項目が保存されない | `z.object()` が未知のキーを黙って捨てている |
 | `.optional()` なのに `null` で落ちる | `null` は `.nullable()` の担当。両方なら `.nullish()` |
-| フォームの空欄が `0` になる | `z.coerce.number()` が `""` を `0` にする |
+| フォームの空欄が `0` になる | `z.coerce.number()` が `""` や空白だけの文字列を `0` にする。先に `z.string().trim().min(1)` |
 | `FLAG=false` が効かない | `z.coerce.boolean()` は `"false"` を `true` にする。`z.stringbool()` を使う |
 | 日本語にしたのに英語のまま | v3の `required_error` などは無視される |
 | エラーが画面に出ない | `refine` に `path` を指定していない |
@@ -143,7 +143,7 @@ const status = z.enum(['draft', 'published']);
 
 ---
 
-次の章は、本書の内容を引ける形に圧縮した **[Zodチートシート](/books/zod/cheatsheet)** です。作業中に開く前提でまとめています。
+本書の内容を引ける形に圧縮したものが **[Zodチートシート](/books/zod/cheatsheet)** です。作業中に開く前提でまとめています。
 
 ## 参考リンク
 

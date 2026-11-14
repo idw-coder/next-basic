@@ -64,7 +64,7 @@ try {
 
 ## レスポンスを信用しない
 
-[第1章](/books/zod/what-is-zod)で見たとおり、`await res.json() as User` は「そういうことにする」だけで、何も確かめていません。外部APIが仕様変更したり、エラー時に別の形を返したりすれば、そのまま壊れたデータが画面まで届きます。
+[Zodとは何かの章](/books/zod/what-is-zod)で見たとおり、`await res.json() as User` は「そういうことにする」だけで、何も確かめていません。外部APIが仕様変更したり、エラー時に別の形を返したりすれば、そのまま壊れたデータが画面まで届きます。
 
 ```ts
 const userSchema = z.object({ id: z.number(), name: z.string() });
@@ -145,7 +145,7 @@ export const updateUserSchema = createUserSchema.partial(); // 部分更新
 
 ### 日付が `z.date()` で弾かれる
 
-JSONにDate型は存在しません。`z.iso.datetime()` で文字列として検証するか、`z.coerce.date()` で変換します（[デフォルト挙動の章](/books/zod/default-behavior)を参照）。
+JSONにDate型は存在しません。`z.iso.datetime()` で文字列として検証するか、`z.coerce.date()` で変換します。`+09:00` のようなオフセット付きの文字列は、`z.iso.datetime({ offset: true })` でないと通りません（[デフォルト挙動の章](/books/zod/default-behavior)を参照）。
 
 ## ちゃんと使うためのポイント
 
@@ -157,7 +157,7 @@ JSONにDate型は存在しません。`z.iso.datetime()` で文字列として�
 
 ---
 
-次の章では、記事やIssueで見かける古い書き方を読み解くための **[Zod 3から4への移行](/books/zod/zod-v4-migration)** を扱います。
+記事やIssueで見かける古い書き方の読み解き方は、**[Zod 3から4への移行](/books/zod/zod-v4-migration)** で扱っています。
 
 ## 参考リンク
 

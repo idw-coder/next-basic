@@ -37,14 +37,15 @@ const schema = z.object({
   age: z.coerce.number().int().min(0, '0以上で入力してください'),
 });
 
-type FormValues = z.input<typeof schema>;
+type FormInput = z.input<typeof schema>; // 検証前（入力欄の値）
+type FormOutput = z.output<typeof schema>; // 検証後（handleSubmitに渡る値）
 
 export function ProfileForm() {
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
+  } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
   });
 
@@ -73,7 +74,7 @@ export function ProfileForm() {
 
 ## フォームの型には `z.input` を使う
 
-`useForm<FormValues>` に渡す型は、[型推論の章](/books/zod/type-inference)で扱った `z.input` です。`z.infer` ではありません。
+`useForm` の1つ目の型引数は、[型推論の章](/books/zod/type-inference)で扱った `z.input` です。`z.infer` ではありません。
 
 理由は、フォームが扱うのが**検証を通す前の値**だからです。
 
@@ -91,12 +92,32 @@ const schema = z.object({
 
 `z.infer` を使うと、`<input>` が返す文字列と型が噛み合わず、初期値も入れられません。**フォームは input、送信後の処理は infer**——と覚えてください。
 
+### useFormの型引数は3つ書く
+
+`useForm` の型引数は `useForm<入力の型, コンテキストの型, 出力の型>` の3つです。入力と出力がずれるスキーマでは、1つ目に `z.input`、3つ目に `z.output` を渡します。
+
+```ts
+useForm<z.input<typeof schema>, unknown, z.output<typeof schema>>({
+  resolver: zodResolver(schema),
+});
+```
+
+| 型引数 | 渡す型 | どこの型になるか |
+| --- | --- | --- |
+| 1つ目 | `z.input<typeof schema>` | `register`・`defaultValues`・`watch` で扱う値 |
+| 2つ目 | `unknown` | resolverに渡すコンテキスト（使わなければ `unknown`） |
+| 3つ目 | `z.output<typeof schema>` | `handleSubmit` のコールバックに渡る値 |
+
+<Callout type="warning" title="型引数を1つだけ書くと、resolverと型が合わない">
+`useForm<FormValues>({ resolver: zodResolver(schema) })` のように1つだけ渡すと、入力と出力が同じ型に固定されます。`z.coerce` や `.default()`・`transform` を使ったスキーマでは入力と出力が違うので、`zodResolver` が推論する型と食い違います。`@hookform/resolvers` のREADMEは、型引数を省略して `resolver` から推論させるか、3つすべて書くかのどちらかにするよう案内しています（[react-hook-form/resolvers](https://github.com/react-hook-form/resolvers)）。
+</Callout>
+
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 `handleSubmit` に渡ってくる値はどっちの型なの？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-検証を通った後だから、実体は**変換後の値**だよ。`age` は数値になっている。型注釈と実体がずれて気持ち悪ければ、`handleSubmit` の中でもう一度 `schema.parse(values)` を通して、`z.infer` の型で受け直すのが確実だね。
+検証を通った後の値だから、**出力の型**だよ。`age` は数値になっている。3つ目の型引数に `z.output` を渡しておけば、型のうえでも `number` として受け取れる。
 </SpeechBubble>
 
 <Figure src="/images/pc-work-woman01.png" alt="パソコンで作業している人のイラスト" maxWidth="300px" />
@@ -158,7 +179,7 @@ Server Actionは公開されたエンドポイントと同じで、クライア�
 
 ### チェックボックスやセレクトの初期値で型が合わない
 
-`z.input` を使っているか確認してください。`.default()` を使っているスキーマで `z.infer` を指定すると、初期値を省略できません。
+`useForm` の1つ目の型引数に `z.input` を使っているか確認してください。`.default()` を使っているスキーマで `z.infer` を指定すると、初期値を省略できません。
 
 ### パスワード確認のエラーが表示されない
 
@@ -168,17 +189,19 @@ Server Actionは公開されたエンドポイントと同じで、クライア�
 
 - `zodResolver(schema)` を `useForm` に渡すだけで、検証とエラーの振り分けが繋がる
 - <Marker>フォームの型は `z.input`。`z.infer` だと入力前の値と型が噛み合わない</Marker>
+- 入力と出力がずれるスキーマでは `useForm<z.input<…>, unknown, z.output<…>>` と3つ書く
 - エラーメッセージはスキーマ側に書く。画面は表示だけを担当する
 - **フロントの検証はUXのため、サーバーの検証は安全のため。後者は省略できない**
 - スキーマは共通ファイルに置き、クライアントとサーバーで共有する
 
 ---
 
-次の章では、フォーム以外の入り口——**[APIの入力とレスポンスの検証](/books/zod/api-validation)** を扱います。
+フォーム以外の入り口は、**[APIの入力とレスポンスの検証](/books/zod/api-validation)** で扱っています。
 
 ## 参考リンク
 
 - [React Hook Form 公式](https://react-hook-form.com/) — `useForm` と `register` の詳細（英語）
+- [react-hook-form/resolvers - GitHub](https://github.com/react-hook-form/resolvers) — `zodResolver` の使い方と、入力・出力の型引数の書き方（英語）
 - [Schema Validation - React Hook Form](https://react-hook-form.com/get-started#SchemaValidation) — resolverを使った検証の公式ガイド（英語）
 
 <QuizLink
