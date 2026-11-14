@@ -1,6 +1,6 @@
 ---
 title: '認証と認可の設計 — セッション・JWT・OAuth'
-description: '認証と認可の違い、セッション・JWT・OAuthの仕組みと選定基準を整理します。'
+description: '認証と認可の違い、セッション・JWT・OAuth 2.0の仕組みと選定基準を整理します。セッションIDの再生成、JWTの検証とトークンの保存場所、OAuthのstateとPKCE、OpenID Connectとの関係も扱います。'
 order: 8
 ---
 
@@ -66,8 +66,12 @@ app.post('/login', async (req, res) => {
   if (!user || !await bcrypt.compare(req.body.password, user.passwordHash)) {
     return res.status(401).json({ error: '認証失敗' });
   }
-  req.session.userId = user.id;
-  res.json({ message: 'ログイン成功' });
+  // ログイン成功時にセッションIDを作り直す（セッション固定攻撃の対策）
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).json({ error: 'ログインに失敗しました' });
+    req.session.userId = user.id;
+    res.json({ message: 'ログイン成功' });
+  });
 });
 
 app.get('/profile', (req, res) => {
@@ -77,6 +81,12 @@ app.get('/profile', (req, res) => {
   // req.session.userId でユーザー情報を取得
 });
 ```
+
+<Callout type="warning" title="ログイン時にセッションIDを作り直す">
+ログイン前から使っているセッションIDをログイン後もそのまま使うと、攻撃者が事前に用意したセッションIDを被害者に使わせ、ログイン後にそのIDでなりすます攻撃（セッション固定攻撃）が成立します。ログインに成功した時点でIDを新しく発行します。`express-session` では `req.session.regenerate()` がこれに当たります（[OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)、英語）。
+</Callout>
+
+セッションIDを入れるCookieには `HttpOnly`・`Secure`・`SameSite` を付けます。各属性の意味は[ヘッダーとCookieの章](/books/http-and-web-api/04-headers-and-cookies#section-6)で扱っています。
 
 <Callout type="warning" title="CSRF対策が必須">
 セッション方式ではCookieが自動送信されるため、CSRF（クロスサイトリクエストフォージェリ）対策が必須です。CSRFトークンの埋め込みや、`SameSite=Lax` / `SameSite=Strict` の設定で防御します。
@@ -91,15 +101,17 @@ JWT（JSON Web Token）はトークンにユーザー情報を含め、サーバ
 JWTは3つのパートをドット（`.`）で繋いだ文字列です。
 
 ```text
-eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjQyLCJleHAiOjE3MTk5MH0.署名
- ↑ Header              ↑ Payload                               ↑ Signature
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQyLCJleHAiOjE3MTk5MDAwMDB9.ccouJpQD9Ib7oVUwyHpQ7QgPDFmo_o-mCjNIdl2i9Hc
+ ↑ Header                             ↑ Payload                                  ↑ Signature
 ```
 
-| パート | 内容 | Base64デコードすると |
+| パート | 内容 | Base64URLデコードすると |
 |---|---|---|
-| Header | アルゴリズム情報 | `{"alg":"HS256"}` |
+| Header | 署名アルゴリズムとトークンの種類 | `{"alg":"HS256","typ":"JWT"}` |
 | Payload | ユーザー情報・有効期限 | `{"userId":42,"exp":1719900000}` |
-| Signature | 改ざん検知用の署名 | サーバーの秘密鍵で生成 |
+| Signature | 改ざん検知用の署名 | HeaderとPayloadを、サーバーの秘密鍵で署名した値 |
+
+上のトークンは、秘密鍵を `secret` という文字列にして実際に生成したものです。HeaderとPayloadは、ブラウザのコンソールで `atob('eyJ1c2VySWQiOjQyLCJleHAiOjE3MTk5MDAwMDB9')` を実行すると読めます。エンコードは通常のBase64ではなく、`+` と `/` を `-` と `_` に置き換え、末尾の `=` を省いた **Base64URL** です。`exp` は有効期限で、1970年1月1日からの秒数です（`1719900000` は2024年7月2日 06:00 UTC）。
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
 Payloadは暗号化されていないので、Base64デコードすれば誰でも中身を読める。パスワードやクレジットカード番号を入れてはいけないよ。
@@ -117,9 +129,43 @@ const token = jwt.sign(
 );
 
 // トークン検証（リクエストごと）
-const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+const decoded = jwt.verify(token, process.env.JWT_SECRET!, {
+  algorithms: ['HS256'], // 受け付ける署名アルゴリズムを固定する
+});
 // decoded.userId でユーザーを特定
 ```
+
+`jwt.verify()` は、署名が正しいことと、有効期限が切れていないことの両方を確かめます。上のサンプルトークンで試した結果です。
+
+| 渡したもの | 結果 |
+|---|---|
+| 期限切れのトークン | `TokenExpiredError: jwt expired` |
+| 署名を1文字書き換えたトークン | `JsonWebTokenError: invalid signature` |
+| `algorithms: ['RS256']` を指定してHS256のトークンを検証 | `JsonWebTokenError: invalid algorithm` |
+
+<Callout type="warning" title="jwt.decode() は検証しない">
+`jsonwebtoken` には `jwt.decode()` もありますが、これはPayloadを読むだけで、署名も有効期限も確かめません。誰でも作れる偽のトークンがそのまま通ります。認証の判定には必ず `jwt.verify()` を使います。`algorithms` で受け付けるアルゴリズムを固定するのは、トークンのHeaderに書かれた `alg` を攻撃者が書き換える手口を防ぐためです（[RFC 8725 — JSON Web Token Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725.html)、英語）。
+</Callout>
+
+### トークンをどこに保存するか
+
+JWTをブラウザのどこに置くかで、盗まれ方が変わります。
+
+| 保存場所 | JavaScriptから読めるか | 主なリスク |
+|---|---|---|
+| `localStorage` | 読める | XSSがあると、攻撃者のスクリプトがトークンを読み出して外部へ送れる |
+| `HttpOnly` 属性付きのCookie | 読めない | Cookieは自動送信されるので、CSRF対策が要る |
+| メモリ（JavaScriptの変数） | 読める | リロードで消える。リフレッシュトークンを別に持つ必要がある |
+
+OWASPは、セッションの識別子を `localStorage` に保存しないよう勧めています。JavaScriptから常に読めるためです（[OWASP HTML5 Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html)、英語）。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+JWTを `HttpOnly` のCookieに入れるなら、セッション方式と何が違うの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ブラウザから見た動きはほぼ同じになるよ。違いはサーバー側で、セッション方式はリクエストのたびにセッションストアを引く、JWTは署名の検証だけで済む。その代わり、JWTは発行したあとに個別に無効化できない。
+</SpeechBubble>
 
 ### リフレッシュトークンの設計
 
@@ -142,7 +188,11 @@ sequenceDiagram
 
 ## OAuth 2.0 — 認可コードフロー
 
-OAuth 2.0は、ユーザーのパスワードを預からずに外部サービスの認証を利用する仕組みです。「Googleでログイン」「GitHubでログイン」がこれにあたります。
+OAuth 2.0は、ユーザーのパスワードを預からずに、外部サービス上のデータへのアクセス権を受け取る仕組みです。「Googleでログイン」「GitHubでログイン」は、この仕組みを土台にしています。
+
+<Callout type="info" title="OAuth 2.0は認可、ログインはOpenID Connect">
+OAuth 2.0そのものが定めているのは「このアプリに、Googleカレンダーの読み取りを許可する」といった**認可**です。「このユーザーは誰か」を伝える仕様は含まれていません。ログインに使う場合は、OAuth 2.0の上に本人情報の受け渡し（IDトークン）を足した **OpenID Connect**（OIDC）を使います。Googleのログインは、OIDCに準拠しています（[OpenID Connect — Google for Developers](https://developers.google.com/identity/openid-connect/openid-connect?hl=ja)）。
+</Callout>
 
 <YouTubeShort id="L8jKdZOtytk" title="「アクセスを許可しますか？」の正体【OAuth】" caption="パスワードを渡さずにアプリ連携できる仕組み（81秒）" />
 
@@ -152,9 +202,11 @@ sequenceDiagram
     participant A as あなたのアプリ
     participant G as Google
     U->>A: 「Googleでログイン」をクリック
-    A->>G: 認可画面にリダイレクト
+    Note over A: ランダムな state を生成して保存
+    A->>G: 認可画面にリダイレクト（state を付ける）
     U->>G: アクセスを許可
-    G->>A: 認可コードを返す
+    G->>A: 認可コードと state を返す
+    Note over A: state が保存した値と一致するか確認
     A->>G: 認可コード + クライアントシークレットでトークン取得
     G-->>A: アクセストークン
     A->>G: アクセストークンでユーザー情報取得
@@ -163,6 +215,19 @@ sequenceDiagram
 `} />
 
 <Figure src="/images/search_woman_color.png" alt="OAuth認証の仕組みを学ぶ" caption="OAuth 2.0 では、ユーザーのパスワードを自分のサーバーに保存しなくて済む" maxWidth="260px" />
+
+図の中の `state` は、省略すると攻撃が成立する部分です。
+
+| パラメータ | 役割 | 省略すると |
+|---|---|---|
+| `state` | アプリが生成したランダムな値。戻ってきた値と照合する | 攻撃者が自分の認可コードを被害者のブラウザに送り込み、被害者を攻撃者のアカウントでログインさせられる（CSRF） |
+| `code_verifier` / `code_challenge`（PKCE） | 認可コードを要求した本人だけがトークンに交換できるようにする | 認可コードを横取りされたとき、攻撃者がトークンに交換できる |
+
+PKCEは [RFC 7636](https://www.rfc-editor.org/rfc/rfc7636.html) で定義されている拡張です。クライアントシークレットを安全に持てないSPAやモバイルアプリでは必須で、サーバー側のアプリでも併用が勧められています。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+このあたりを自分で実装すると、照合を1つ忘れただけで穴になる。実務では、各サービスが出している公式のライブラリや、認証用のライブラリに任せるのが基本だよ。
+</SpeechBubble>
 
 ## ロールベースアクセス制御（RBAC）
 
@@ -201,12 +266,14 @@ app.delete('/posts/:id', requirePermission('delete'), deletePost);
 flowchart TB
     A["ログイン機能が必要"] --> B{"ソーシャルログインが必要?"}
     B -->|はい| C["OAuth 2.0"]
-    B -->|いいえ| D{"SPAまたはモバイル?"}
-    D -->|はい| E["JWT + リフレッシュトークン"]
-    D -->|いいえ| F{"SSR中心のWebアプリ?"}
-    F -->|はい| G["セッション方式"]
+    B -->|いいえ| D{"クライアントはブラウザだけで、APIも同じサイトにある?"}
+    D -->|はい| G["セッション方式（HttpOnlyのCookie）"]
+    D -->|いいえ| F{"モバイルアプリ、または別ドメインのAPI?"}
+    F -->|はい| E["JWT + リフレッシュトークン"]
     F -->|いいえ| H["JWT（マイクロサービス間通信など）"]
 `} />
+
+この分岐は筆者の判断です。SPAであっても、APIが同じサイトにあるならセッション方式を先に検討します。`HttpOnly` のCookieはJavaScriptから読めず、ログアウトや強制失効もサーバー側でセッションを消すだけで済むためです。JWTが向くのは、Cookieを使いにくいモバイルアプリや、複数のサービスが同じトークンを検証する構成です。
 
 ## ちゃんと使うためのポイント
 
@@ -217,4 +284,16 @@ flowchart TB
 - OAuth 2.0はパスワードを預からずに済む。ソーシャルログインに適する
 - 「どの方式が正解か」ではなく、要件（SPA？SSR？モバイル？）で選ぶ
 
-次の章では、認証後のアプリケーション内部の**状態管理の設計**を見ていきます。
+- JWTの検証は `jwt.verify()` で行い、`algorithms` を固定する。`jwt.decode()` は検証しない
+- トークンやセッションIDを `localStorage` に置かない。`HttpOnly` のCookieを使う
+- OAuth 2.0の `state` は必ず照合する。ログイン用途はOpenID Connect
+
+認証後のアプリケーション内部の状態の持ち方は、[状態管理の設計](/books/system-design/09-state-management)で扱っています。
+
+## 参考リンク
+
+- [RFC 6749 — The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html) — OAuth 2.0の仕様（英語）
+- [RFC 7519 — JSON Web Token (JWT)](https://www.rfc-editor.org/rfc/rfc7519.html) — JWTの仕様（英語）
+- [RFC 8725 — JSON Web Token Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725.html) — JWTを安全に使うための推奨事項（英語）
+- [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) — セッションIDの発行・再生成・Cookie属性（英語）
+- [OpenID Connect — Google for Developers](https://developers.google.com/identity/openid-connect/openid-connect?hl=ja) — Googleでのログインの実装手順（日本語）

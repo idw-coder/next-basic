@@ -88,7 +88,7 @@ TypeScriptでは、Zodのようなスキーマバリデーションライブラ�
 import { z } from 'zod';
 
 const createUserSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   name: z.string().min(1).max(50),
   age: z.number().int().min(0).max(120),
 });
@@ -98,12 +98,14 @@ const result = createUserSchema.safeParse(req.body);
 if (!result.success) {
   // どの項目が・なぜ不正かを 400 で返す
   return res.status(400).json({
-    error: { code: 'VALIDATION_ERROR', details: result.error.issues },
+    error: { code: 'VALIDATION_ERROR', details: z.flattenError(result.error).fieldErrors },
   });
 }
 // ここから先、result.data は検証済み + 型付きで使える
 const user: { email: string; name: string; age: number } = result.data;
 ```
+
+`z.flattenError()` は、エラーを「項目名 → メッセージの配列」の形に整えます。`result.error` をそのまま返さないのは、内部のスキーマ構造が分かる情報まで含まれるためです。書き方は[Zodの「ZodErrorの中身」の章](/books/zod/error-handling)で扱っています。
 
 スキーマ方式の利点は、<Marker>バリデーションと型定義が一体化し、「検証を通ったデータには正しい型が付いている」ことをコンパイラが保証してくれる</Marker>点です。検証ロジックがif文の羅列で散らばることもなくなります。
 
@@ -120,7 +122,7 @@ const user: { email: string; name: string; age: number } = result.data;
 - クーポンの有効期限は切れていないか
 - このユーザーはこの操作をする権限があるか
 
-形式チェックと違い、**DBや他のデータとの照合が必要**なのが特徴です。ここで弾かれるエラーは前章の[エラー設計](/books/system-design/10-error-handling-design)でいう「予期するエラー」なので、エラーコードを付けて「何が・なぜダメか」をフロントに返します。
+形式チェックと違い、**DBや他のデータとの照合が必要**なのが特徴です。ここで弾かれるエラーは[エラー設計](/books/system-design/10-error-handling-design)でいう「予期するエラー」なので、エラーコードを付けて「何が・なぜダメか」をフロントに返します。
 
 ```ts
 // 業務ルールチェックの例: 形式チェックを通った後に行う
@@ -201,7 +203,7 @@ UNIQUE制約違反はDBドライバの例外として飛んでくるため、何
 - 一意性・参照整合性は同時実行に耐えられるDB制約で守る。アプリのチェックは親切、DBの制約が最終判定
 - フロントとバックエンドのルールのズレはスキーマ共有か「バックエンドが正」ルールで防ぐ
 
-ここまでで、データの入口を守る設計が揃いました。次の章では、設計を「伝える」技術——[命名・コメント・ドキュメントの書き方](/books/system-design/12-naming-conventions)を扱います。
+ここまでで、データの入口を守る設計が揃いました。設計を「伝える」技術は、[命名・コメント・ドキュメントの書き方](/books/system-design/12-naming-conventions)で扱っています。
 
 ## 参考リンク
 

@@ -6,7 +6,7 @@ order: 7
 
 URLはAPIやWebアプリの「住所」です。一度公開したURLは、外部サービスからのリンク・ブックマーク・検索エンジンのインデックスに刻まれ、後から変更するコストが非常に高くなります。
 
-つまりURLは、**最初の設計がそのまま長く残る**部類の成果物です。この章では、前章の[API設計の基本](/books/system-design/06-api-design)で扱ったREST原則を前提に、URLそのものの設計——パスの構造、ネストの深さ、パラメータの使い分け——を掘り下げます。
+つまりURLは、**最初の設計がそのまま長く残る**部類の成果物です。この章では、[API設計の基本](/books/system-design/06-api-design)で扱ったREST原則を前提に、URLそのものの設計——パスの構造、ネストの深さ、パラメータの使い分け——を掘り下げます。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 URLって、動けば何でもいい気がしちゃう…。`/getUserOrders?type=2` でもデータは取れるよね？
@@ -236,7 +236,7 @@ GETで削除って、リンクを開いただけでデータが消えるって�
 - CRUDに収まらない操作は「POST + サブパス」で統一的に例外扱いする
 - ページURLも設計対象。共有・リロードで復元したい状態はURLに載せる
 
-次の章では、URLで特定したリソースを「誰に・どこまで見せるか」を決める**認証と認可の設計**（[認証・認可の設計](/books/system-design/08-authentication-authorization)）を解説します。
+URLで特定したリソースを「誰に・どこまで見せるか」の決め方は、[認証と認可の設計](/books/system-design/08-authentication-authorization)で扱っています。
 
 ## 参考リンク
 
