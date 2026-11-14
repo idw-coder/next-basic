@@ -161,11 +161,31 @@ Reactを使う場合は、コンポーネント化の方がより推奨されま
 
 | プラグイン | 用途 |
 |---|---|
-| `@tailwindcss/typography` | `prose` クラスで長文を美しく整形 |
-| `@tailwindcss/forms` | フォーム要素のデフォルトスタイルをリセット |
-| `@tailwindcss/aspect-ratio` | アスペクト比を維持するユーティリティ |
-| `tailwind-merge` (twMerge) | クラスの重複・競合を解決するライブラリ |
-| `clsx` / `cva` | 条件付きクラス結合ライブラリ |
+| `@tailwindcss/typography` | `prose` クラスで長文の見出し・段落・リストをまとめて整形する |
+| `@tailwindcss/forms` | フォーム要素のブラウザ既定スタイルをリセットし、ユーティリティで上書きしやすくする |
+
+v4では、インストールしたうえで、CSSファイルに `@plugin` を書いて有効にします（[Functions and directives — Tailwind CSS公式](https://tailwindcss.com/docs/functions-and-directives)）。v3の `plugins: [require(...)]` に当たる指定です。
+
+```bash
+npm install -D @tailwindcss/typography @tailwindcss/forms
+```
+
+```css
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+@plugin '@tailwindcss/forms';
+```
+
+<Callout type="info" title="@tailwindcss/aspect-ratio は不要">
+古い記事で紹介されている `@tailwindcss/aspect-ratio` は、入れる必要がありません。`aspect-video` や `aspect-square`、`aspect-[4/3]` は本体に含まれています（[aspect-ratio — Tailwind CSS公式](https://tailwindcss.com/docs/aspect-ratio)）。
+</Callout>
+
+プラグインではありませんが、Tailwindと一緒によく使うライブラリが2種類あります。使い方は[Reactとの組み合わせ](/books/tailwind-css/12-react-patterns)で扱っています。
+
+| ライブラリ | 用途 |
+|---|---|
+| `tailwind-merge`（`twMerge`） | `p-2 p-4` のように競合するクラスを、後ろに書いたほうだけ残して1つにまとめる |
+| `clsx` / `cva` | 条件によってクラスを付け外しする。`cva` はバリアント（サイズ・色の組み合わせ）を定義する |
 
 ---
 
@@ -175,7 +195,9 @@ Reactを使う場合は、コンポーネント化の方がより推奨されま
 - `@apply` は使いすぎないこと。コンポーネント化の方がメンテナンスしやすい
 - v3の `extend` vs ルートキー：`extend` は追加、ルートキーへの直接定義はデフォルトを**全置換**するので注意
 
-次の章では、[Reactとの組み合わせ](/books/tailwind-css/12-react-patterns)で実践的なTailwindの使い方を学びます。
+- v4のプラグインは、CSSに `@plugin` を書いて有効にする
+
+コンポーネントでの実践的な使い方は、[Reactとの組み合わせ](/books/tailwind-css/12-react-patterns)で扱っています。
 
 <QuizLink
   href="/quiz/tailwind-css"
