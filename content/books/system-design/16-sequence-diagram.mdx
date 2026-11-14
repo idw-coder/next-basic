@@ -1,6 +1,6 @@
 ---
 title: 'シーケンス図の書き方 — 処理の流れを可視化する'
-description: 'シーケンス図の基本記法、フローチャートとスイムレーン図の使い分け、Mermaidでの書き方を解説します。'
+description: 'シーケンス図の読み方と書き方を、Mermaidのコード例つきで解説します。同期と非同期の矢印、alt・opt・loop・par・break・refの使い分け、フローチャートやスイムレーン図との違いを扱います。'
 order: 16
 ---
 
@@ -346,7 +346,77 @@ sequenceDiagram
 
 この例では、APIの活性区間を選択肢ごとに閉じず、`alt` の枠を抜けたあとの `deactivate A` で閉じています。
 
-Mermaidには、処理を並行に実行する範囲を表す `par` / `and` もあります。
+### 並行・中断・別の図の参照 — par / break / ref
+
+`alt`・`opt`・`loop` のほかに、設計書でよく見る枠が3つあります。
+
+| 枠 | 意味 | 使う場面の例 | Mermaid |
+|---|---|---|---|
+| `par` | 枠の中の各区画を並行に実行する | 注文の保存とメール送信の依頼を同時に進める | `par` / `and` / `end` |
+| `break` | 条件に合ったら枠の中を実行し、**そこで残りの処理を打ち切る** | 在庫不足ならエラーを返して終わる | `break` / `end` |
+| `ref` | 別のシーケンス図に書いたやり取りを、ここで行う | 複数の図に共通する認証の流れを1つの図にまとめる | 専用の構文なし |
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`break` は、`alt` で「在庫不足」の選択肢を書くのと何が違うの？
+</SpeechBubble>
+
+`alt` で書くと、正常系の処理がすべて `alt` の枠の中に入ります。エラーの条件が3つあれば、枠が3重になります。`break` は「この条件なら、ここで終わり」だけを枠にするので、正常系は枠の外に残り、上から下へそのまま読めます。入力チェックや在庫不足のような、早い段階で処理を打ち切る失敗に向いています。
+
+`break` と `par` を使って、注文処理を書き直した図です。
+
+<MermaidDiagram chart={`
+sequenceDiagram
+    participant B as ブラウザ
+    participant A as API
+    participant D as DB
+    participant M as メール処理
+
+    B->>+A: POST /orders
+    A->>+D: 在庫を確認
+    D-->>-A: 在庫数
+
+    break 在庫不足
+        A-->>B: 409 Conflict
+    end
+
+    par 注文の保存
+        A->>+D: 注文を保存
+        D-->>-A: 保存結果
+    and 通知の依頼
+        A-)M: メール送信を依頼
+    end
+
+    Note over A,D: ref: 在庫の引き当て（別の図）
+    A-->>-B: 201 Created
+`} />
+
+```mermaid
+sequenceDiagram
+    participant B as ブラウザ
+    participant A as API
+    participant D as DB
+    participant M as メール処理
+
+    B->>+A: POST /orders
+    A->>+D: 在庫を確認
+    D-->>-A: 在庫数
+
+    break 在庫不足
+        A-->>B: 409 Conflict
+    end
+
+    par 注文の保存
+        A->>+D: 注文を保存
+        D-->>-A: 保存結果
+    and 通知の依頼
+        A-)M: メール送信を依頼
+    end
+
+    Note over A,D: ref: 在庫の引き当て（別の図）
+    A-->>-B: 201 Created
+```
+
+`ref` はUMLでは `InteractionUse` と呼ばれ、枠の左上に `ref` と書き、中に参照先の図の名前を書きます。Mermaidには `ref` に当たる構文がありません（[公式ドキュメント](https://mermaid.js.org/syntax/sequenceDiagram.html)に記載がなく、バージョン11.17で確認）。上の例では、`Note over A,D:` で参加者にまたがる注記を置き、文言を `ref:` で始めて代用しています。これは筆者の書き方で、決まった記法ではありません。
 
 ### 書くときに気をつけること
 
@@ -379,12 +449,13 @@ Mermaidには、処理を並行に実行する範囲を表す `par` / `and` も�
 - シーケンス図はリクエスト→レスポンスの往復を時系列で示したいときに使う
 - シーケンス図の矢印は、応答を待つなら同期（`->>`）、待たないなら非同期（`-)`）で書き分ける
 - 条件で変わる範囲は `alt`、`opt`、`loop` の枠で囲む
+- 早い段階で打ち切る失敗は `break`、並行に進める処理は `par` で書く
 - すべての処理を図にする必要はない——**分岐が多い処理**や**複数システムが連携する処理**に絞る
 
 ## 参考リンク
 
 - [Mermaid公式 — Flowcharts Syntax](https://mermaid.js.org/syntax/flowchart.html) — ノードの形、矢印、ラベル、サブグラフなどの公式記法
 - [Mermaid公式 — Sequence diagrams（英語）](https://mermaid.js.org/syntax/sequenceDiagram.html) — 矢印の種類、活性区間、`loop`、`alt`、`opt`、`par` の公式記法
-- [UML 2.5.1仕様（英語・PDF）](https://www.omg.org/spec/UML/2.5.1/PDF) — 17.4.4.1 Messageに矢印の表記、17.6.3にCombinedFragmentの各演算子の定義
+- [UML 2.5.1仕様（英語・PDF）](https://www.omg.org/spec/UML/2.5.1/PDF) — 17.4.4.1 Messageに矢印の表記、17.6.3にCombinedFragmentの各演算子（`alt`・`opt`・`loop`・`par`・`break`）の定義、17.7にInteractionUse（`ref`）の定義
 
-次の章では、ユーザーの操作に伴うページ間の移動を設計する**画面遷移図**を解説します。
+ユーザーの操作に伴うページ間の移動は、[画面遷移図の章](/books/system-design/17-screen-transition)で扱っています。
