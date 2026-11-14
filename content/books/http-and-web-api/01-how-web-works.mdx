@@ -24,7 +24,7 @@ sequenceDiagram
     participant D as DNSサーバー
     participant S as Webサーバー
     B->>D: example.com のIPは?
-    D-->>B: 93.184.216.34
+    D-->>B: 192.0.2.1
     B->>S: TCP接続要求
     S-->>B: 接続OK
     B->>S: HTTP GET /index.html
@@ -47,13 +47,15 @@ sequenceDiagram
 
 <Figure src="/images/question_woman_04_color.png" alt="疑問を持つ女性のイラスト" maxWidth="300px" />
 
-ブラウザは `example.com` という文字列のままでは通信できません。実際に通信するには、サーバーの **IPアドレス**（例: `93.184.216.34`）が必要です。
+ブラウザは `example.com` という文字列のままでは通信できません。実際に通信するには、サーバーの **IPアドレス**（例: `192.0.2.1`）が必要です。
 
-この「ドメイン名 → IPアドレス」の変換を行うのが **DNS（Domain Name System）** です。電話帳で名前から電話番号を調べるようなものです。
+この「ドメイン名 → IPアドレス」の変換を行うのが **DNS（Domain Name System）** です。ブラウザ（実際にはOS）がDNSサーバーにドメイン名を送ると、DNSサーバーはそのドメイン名に登録されているIPアドレスを返します。
 
 ```
-example.com → DNSに問い合わせ → 93.184.216.34
+example.com → DNSに問い合わせ → 192.0.2.1
 ```
+
+この章の `192.0.2.1` は、説明用に予約されているIPアドレスです（[RFC 5737](https://www.rfc-editor.org/rfc/rfc5737.html)）。実際のIPアドレスは `nslookup example.com` で調べられ、時期や場所によって変わります。
 
 DNSの結果は一定時間 **キャッシュ** されます。ブラウザ、OS、ルーターなど複数のレイヤーにキャッシュが存在し、毎回DNSサーバーまで問い合わせるわけではありません。
 
@@ -82,12 +84,16 @@ sequenceDiagram
     Note over C,S: 接続確立
 `} />
 
-このハンドシェイクによって、**データが確実に、正しい順序で届く** ことが保証されます。Webページは1バイトでも欠けるとHTMLやCSSが壊れるため、この信頼性が重要です。
+このハンドシェイクで、両者は通信を始める準備ができたことと、データに付ける通し番号（シーケンス番号）の初期値を確認し合います。
+
+接続したあとのTCPは、送るデータに通し番号を付け、受け取った側は「何番まで受け取ったか」を返信します（ACK）。返信が来なければ、送信側は同じデータを送り直します。この仕組みによって、**データが欠けずに、送った順序のまま届きます**。Webページは1バイトでも欠けるとHTMLやCSSが壊れるため、この性質が必要です。
+
+`https://` のURLでは、TCPの接続のあとに **TLSハンドシェイク** が入ります。ここで暗号化に使う鍵を決め、サーバーの証明書を確認してから、HTTPのやりとりに進みます。つまり実際の順番は「DNS → TCP → TLS → HTTP」です。
 
 <Callout type="column">
 ### HTTP/3とQUIC
 
-HTTP/1.1とHTTP/2はTCP上で動きますが、**HTTP/3** はUDPベースの **QUIC** というプロトコル上で動きます。TCPのハンドシェイクを省略して接続を高速化する仕組みで、Googleのサービスなどで広く使われています。
+HTTP/1.1とHTTP/2はTCP上で動きますが、**HTTP/3** はUDPベースの **QUIC** というプロトコル上で動きます。TCPとTLSで別々に行っていた接続の手順を、QUICでは1回のやりとりにまとめているので、接続にかかる往復の回数が減ります。データが欠けないようにする再送の仕組みは、QUIC自身が持っています。
 
 </Callout>
 
@@ -137,9 +143,11 @@ Web APIの設計ではこの中の **パス** と **クエリ** を特によく�
 |---|---|---|
 | 通信 | 平文（暗号化なし） | TLSで暗号化 |
 | ポート | 80 | 443 |
-| ブラウザ表示 | 「保護されていない通信」と警告 | 鍵マーク表示 |
+| ブラウザ表示（Chrome） | アドレスバーに「保護されていない通信」と表示 | 警告なし |
 
-HTTPSがないと、通信経路上の第三者がリクエストの中身（パスワード、Cookie、APIレスポンスなど）を盗聴・改ざんできてしまいます。開発環境でもHTTPS化が推奨されるのはそのためです。
+HTTPSがないと、通信経路上の第三者がリクエストの中身（パスワード、Cookie、APIレスポンスなど）を盗聴・改ざんできてしまいます。
+
+開発中の `http://localhost` は例外で、ブラウザはこれをHTTPSと同等に安全な接続元として扱います（[MDN — 安全なコンテキスト](https://developer.mozilla.org/ja/docs/Web/Security/Defenses/Secure_Contexts)）。そのため、HTTPSが必要なブラウザの機能も `localhost` では動きます。
 
 <Callout type="warning">
 ### HTTPのままだと何が起きるか
@@ -200,7 +208,7 @@ Networkタブでリクエストを選択し、**Timing** タブを見ると、�
 <Callout type="info">
 ### TTFBが遅いときの切り分け
 
-**TTFB（Time to First Byte）** はサーバーの処理時間を反映します。DNS LookupやInitial Connectionは正常なのにTTFBだけ遅い場合、問題はサーバー側（遅いクエリ、重い処理など）にあります。逆にDNS Lookupが遅い場合は、DNSサーバーの応答やキャッシュの問題です。
+**TTFB（Time to First Byte）** は、リクエストを送ってからレスポンスの最初の1バイトが届くまでの時間で、サーバーの処理時間と通信の往復時間を合わせたものです。DNS LookupやInitial Connectionは正常なのにTTFBだけ遅い場合、問題はサーバー側（遅いクエリ、重い処理など）にあります。逆にDNS Lookupが遅い場合は、DNSサーバーの応答やキャッシュの問題です。
 
 </Callout>
 
@@ -248,6 +256,13 @@ curl -v https://example.com 2>&1 | head -20
 
 `curl -v` の出力を見れば、DNS解決、TCP接続、TLSハンドシェイク、HTTPレスポンスのどこまで進んだかがわかります。
 
+<Callout type="warning">
+### pingが通らなくても、サーバーが止まっているとは限らない
+
+`ping` はICMPという、HTTPとは別のプロトコルを使います。クラウドのサーバーやファイアウォールは、ICMPだけを遮断する設定になっていることがよくあります。その場合、`ping` は失敗するのに、ブラウザや `curl` ではふつうにつながります。`ping` が通らないときは、そこで結論を出さずに `curl -v` まで進めて確かめます。
+
+</Callout>
+
 ---
 
 ## まとめ
@@ -262,4 +277,13 @@ Webの通信は **DNS → TCP → HTTP** の3段階で進みます。
 
 この全体像を押さえておくと、「サーバーに繋がらない」「レスポンスがおかしい」といったトラブルのとき、どの層で問題が起きているかを切り分けられるようになります。
 
-次の章では、HTTPの中核である **HTTPメソッド**（GET・POST・PUT・DELETE）の使い分けを詳しく見ていきます。
+HTTPのリクエストで使うメソッド（GET・POST・PUT・DELETE）の使い分けは、[HTTPメソッドの章](/books/http-and-web-api/02-http-methods)で扱っています。
+
+---
+
+## 参考リンク
+
+- [MDN — ウェブのしくみ](https://developer.mozilla.org/ja/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works) — ブラウザがページを表示するまでの流れの日本語解説
+- [MDN — HTTPの概要](https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/Overview) — HTTPのリクエストとレスポンスの基本
+- [MDN — URLとは何か](https://developer.mozilla.org/ja/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_URL) — URLの各部分の意味
+- [Chrome DevTools — ネットワーク機能のリファレンス](https://developer.chrome.com/docs/devtools/network/reference?hl=ja) — Timingタブの各項目の説明

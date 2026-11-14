@@ -14,8 +14,6 @@ HTTPレスポンスの先頭には、3桁の **ステータスコード** が必
 
 ---
 
----
-
 <a id="section-1"></a>
 
 ## ステータスコードの5つのカテゴリ
@@ -72,7 +70,7 @@ flowchart LR
 | **404 Not Found** | 見つからない | URLやリソースIDが存在しない |
 | **405 Method Not Allowed** | メソッド不許可 | GETしかないURLにPOSTした |
 | **409 Conflict** | 競合 | 既に存在するメールアドレス、更新競合 |
-| **422 Unprocessable Entity** | 入力値エラー | 形式は正しいがバリデーションに失敗 |
+| **422 Unprocessable Content** | 入力値エラー | 形式は正しいがバリデーションに失敗 |
 | **429 Too Many Requests** | 回数制限 | 短時間にAPIを呼びすぎた |
 | **500 Internal Server Error** | サーバー内部エラー | 未処理例外、アプリケーションのバグ |
 | **502 Bad Gateway** | 上流サーバー異常 | プロキシがアプリサーバーへ接続できない |
@@ -121,6 +119,35 @@ GETで取得した場合は200、POSTで新しいリソースを作った場合�
 - **301**: 「このURLは永遠に使わない。新しいURLをブックマークして」 → 検索エンジンもインデックスを書き換える
 - **302**: 「今だけ別の場所に行って。元のURLはまた使う」 → 検索エンジンのインデックスは変えない
 
+### 301・302・303・307・308の違い
+
+リダイレクトには、恒久的か一時的かのほかに、もう1つ違いがあります。**リダイレクト先へ、元と同じメソッドで送り直すかどうか**です。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+POSTのリクエストが302でリダイレクトされたら、リダイレクト先でGETになってボディが消えた…。
+</SpeechBubble>
+
+`fetch` で5種類のリダイレクトにPOST（ボディ5バイト）を送り、リダイレクト先に届いたリクエストを確かめた結果です（Node.js 24で実行）。
+
+| コード | 恒久・一時 | リダイレクト先に届いたリクエスト |
+|---|---|---|
+| **301** Moved Permanently | 恒久 | `GET`、ボディなし |
+| **302** Found | 一時 | `GET`、ボディなし |
+| **303** See Other | 一時 | `GET`、ボディなし |
+| **307** Temporary Redirect | 一時 | `POST`、ボディあり |
+| **308** Permanent Redirect | 恒久 | `POST`、ボディあり |
+
+301と302は、仕様上は「POSTをGETに変えてもよい」という扱いで、ブラウザや `fetch` は実際にGETに変えます。メソッドとボディを保ったまま転送したい場合は、307（一時）か308（恒久）を使います。
+
+| やりたいこと | 使うコード |
+|---|---|
+| フォーム送信（POST）のあと、完了ページをGETで表示させる | 303 |
+| APIのURLを恒久的に変更し、POSTやPUTもそのまま転送する | 308 |
+| ページのURLを恒久的に変更する（GETのみ） | 301 |
+| メンテナンス中だけ別のURLへ流す | 307 |
+
+詳しい一覧は [MDN — HTTPのリダイレクト](https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/Redirections)にあります。
+
 <Callout type="warning">
 ### 301と302の取り違えに注意
 
@@ -146,7 +173,7 @@ GETで取得した場合は200、POSTで新しいリソースを作った場合�
 | **404** | Not Found | リソースが存在しない |
 | **405** | Method Not Allowed | そのメソッドは許可されていない |
 | **409** | Conflict | 現在の状態と矛盾する操作 |
-| **422** | Unprocessable Entity | バリデーションエラー |
+| **422** | Unprocessable Content | バリデーションエラー |
 | **429** | Too Many Requests | レートリミット超過 |
 
 ### 401と403の違い
@@ -171,12 +198,28 @@ Authorization: Bearer <一般ユーザーのトークン>
 | 意味 | ログインしてください | 権限がありません |
 | 対処 | 認証情報を付けて再送 | 別の権限を持つユーザーで試す |
 
+401の名前は「Unauthorized（権限がない）」ですが、意味は「認証されていない」です。名前と意味がずれていることが、403と混同される原因です。[RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#status.401)は、401を返すサーバーは `WWW-Authenticate` ヘッダーで認証方式を伝えなければならないと定めています。
+
+```
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer
+```
+
+<Callout type="info">
+### 存在を知られたくないリソースには404を返す
+
+権限のないユーザーに403を返すと、「そのリソースは存在する」ことが伝わります。他人の非公開データのように、存在自体を知らせたくない場合は、403の代わりに404を返す設計が使われます。RFC 9110も、403の節でこの扱いを認めています。
+
+</Callout>
+
 ### 400と422の使い分け
 
-| | 400 Bad Request | 422 Unprocessable Entity |
+| | 400 Bad Request | 422 Unprocessable Content |
 |---|---|---|
 | 問題 | リクエストの構文が壊れている | 構文は正しいがバリデーションに失敗 |
 | 例 | JSONが不正、必須ヘッダーがない | メールアドレスの形式が不正、文字数超過 |
+
+422の名前は、以前は「Unprocessable Entity」でした。現行のHTTP仕様（[RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html#status.422)）で「Unprocessable Content」に変わっています。古い記事やライブラリの定数名には旧称が残っていますが、同じコードです。
 
 実務では400で統一しているAPIも多いですが、フロントエンドがエラーの種類を判別してUIに出し分ける必要がある場合、422を使うと便利です。
 
@@ -205,6 +248,17 @@ Authorization: Bearer <一般ユーザーのトークン>
 ```
 
 502と504は **リバースプロキシ（NginxやCloudflare）が返す** ことが多いです。アプリサーバーのプロセスが落ちていれば502、処理に時間がかかりすぎれば504が出ます。
+
+### 429と503は「いつ再試行してよいか」を伝えられる
+
+429（回数制限）と503（一時的に利用不可）は、どちらも「時間を置けば成功する可能性がある」エラーです。サーバーは `Retry-After` ヘッダーで、次に試してよいまでの秒数か日時を伝えられます。
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 30
+```
+
+クライアント側でリトライを実装するときは、固定の待ち時間よりも、このヘッダーの値を優先します。リトライの実装は[JSONとデータ形式の章](/books/http-and-web-api/06-json-and-data-format)で扱っています。
 
 <Callout type="note">
 ### 5xxが出たらまず何を見るか
@@ -247,13 +301,7 @@ Next.jsで実際にJSONレスポンスやエラーレスポンスを返す実装
 
 ## DevToolsでステータスコードを確認する
 
-Chrome DevToolsのNetworkタブを開くと、各リクエストの **Status** 列にステータスコードが表示されます。色分けされているので、一目でエラーの有無がわかります。
-
-| 色 | 意味 |
-|---|---|
-| 緑/黒 | 2xx成功、3xxリダイレクト |
-| 赤 | 4xxクライアントエラー、5xxサーバーエラー |
-| 灰色 | キャンセルされたリクエスト |
+Chrome DevToolsのNetworkタブを開くと、各リクエストの **Status** 列にステータスコードが表示されます。4xx・5xxのリクエストと、サーバーに届かなかったリクエスト（`(failed)` と表示されます）は、行が赤い文字で表示されるので、一覧の中から見つけられます。
 
 ### 実務でよくある調査フロー
 
@@ -301,6 +349,8 @@ if (!response.ok) {
 const user = await response.json();
 ```
 
+`204 No Content` のレスポンスにはボディがありません。`response.json()` を呼ぶと `Unexpected end of JSON input` で例外になるので、204のときは呼ばないようにします。このエラーの読み方は[JSONとデータ形式の章](/books/http-and-web-api/06-json-and-data-format)にまとめています。
+
 <Callout type="warning">
 ### axiosとfetchのエラーハンドリングの違い
 
@@ -319,4 +369,14 @@ axiosは4xx・5xxで自動的に例外を投げるため、`try/catch` で拾え
 - **4xxはリクエスト側の問題、5xxはサーバー側の問題** — この切り分けがデバッグの起点
 - エラーレスポンスには **ステータスコード + ボディの詳細** の2層で情報を返す
 
-次の章では、リクエストとレスポンスに含まれる **ヘッダーとCookie** の仕組みを見ていきます。
+- POSTをそのまま転送するリダイレクトは **307・308**。301・302・303ではGETに変わる
+
+リクエストとレスポンスに含まれるヘッダーの仕組みは、[ヘッダーとCookieの章](/books/http-and-web-api/04-headers-and-cookies)で扱っています。
+
+---
+
+## 参考リンク
+
+- [MDN — HTTPレスポンスステータスコード](https://developer.mozilla.org/ja/docs/Web/HTTP/Reference/Status) — 全コードの日本語リファレンス
+- [MDN — HTTPのリダイレクト](https://developer.mozilla.org/ja/docs/Web/HTTP/Guides/Redirections) — リダイレクトの種類とメソッドの扱い
+- [RFC 9110 — 15. Status Codes](https://www.rfc-editor.org/rfc/rfc9110.html#name-status-codes) — ステータスコードを定義している仕様（英語）
