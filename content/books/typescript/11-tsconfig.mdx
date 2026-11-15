@@ -112,7 +112,7 @@ npx tsc -p tsconfig.dev.json
 }
 ```
 
-`strict: true` が有効にする主要オプション：
+`strict: true` が有効にするオプションは、TypeScript 5.9では次の8つです。
 
 | オプション | 何をチェックするか |
 |---|---|
@@ -120,11 +120,17 @@ npx tsc -p tsconfig.dev.json
 | `noImplicitAny` | 型推論できないものに暗黙の `any` を禁止する |
 | `strictFunctionTypes` | 関数の引数型を厳密にチェックする |
 | `strictPropertyInitialization` | classプロパティの初期化漏れを検出する |
+| `strictBindCallApply` | `bind` / `call` / `apply` に渡す引数の型をチェックする |
+| `noImplicitThis` | 型が決まらない `this` を禁止する |
+| `useUnknownInCatchVariables` | `catch (e)` の `e` を `any` ではなく `unknown` にする |
+| `alwaysStrict` | 出力するJavaScriptを厳格モード（`"use strict"`）にする |
+
+これに加えて、5.6で追加された `strictBuiltinIteratorReturn` も含まれます。`strict` に含まれるオプションは、TypeScriptのバージョンが上がると増えることがあります。自分の環境で実際に何が有効になっているかは、後述の `--showConfig` で確認できます。
 
 ```typescript
 // strictNullChecks: true の場合
 function greet(name: string | null) {
-  // ❌ name.toUpperCase(); // Object is possibly 'null'
+  // ❌ name.toUpperCase(); // error TS18047: 'name' is possibly 'null'.
   // ✅
   if (name) {
     name.toUpperCase();
@@ -132,7 +138,7 @@ function greet(name: string | null) {
 }
 
 // noImplicitAny: true の場合
-// ❌ function process(data) {} // Parameter 'data' implicitly has an 'any' type
+// ❌ function process(data) {} // error TS7006: Parameter 'data' implicitly has an 'any' type.
 // ✅
 function process(data: unknown) {}
 ```
@@ -181,7 +187,7 @@ function process(data: unknown) {}
 
 | 値 | 使う場面 |
 |---|---|
-| `node` | 従来のNode.js（CommonJS中心） |
+| `node10`（旧名 `node`） | 従来のNode.js（CommonJS中心）。新規のプロジェクトでは選ばない |
 | `node16` / `nodenext` | Node.js 16+のESM対応 |
 | `bundler` | Vite, Next.js, webpackなどバンドラー経由 |
 
@@ -192,7 +198,6 @@ function process(data: unknown) {}
 ```json
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
@@ -200,7 +205,13 @@ function process(data: unknown) {}
 }
 ```
 
-これで `import { Button } from '@/components/Button'` のようなエイリアスが使えます。
+これで `import { Button } from '@/components/Button'` のようなエイリアスが使えます。`./src/*` の起点は、この `tsconfig.json` が置かれているフォルダです。
+
+<Callout type="info">
+### baseUrlは書かなくてよい
+
+古い記事では `"baseUrl": "."` を一緒に書いています。以前は `paths` を使うのに `baseUrl` が必須でしたが、現在は不要です。TypeScript 5.9で、`baseUrl` を書かずに上の設定だけで `@/lib/helper` のimportが解決されることを確認しました。`baseUrl` を書くと、`import 'components/Button'` のような `./` も `@/` も付かない書き方まで解決されるようになり、npmパッケージ名との区別がつきにくくなります。
+</Callout>
 
 <Callout type="info">
 ### パスエイリアスの解決はTypeScriptだけでは完結しない
@@ -217,7 +228,52 @@ function process(data: unknown) {}
 }
 ```
 
-`include` に指定したパターンに一致するファイルだけがコンパイル対象になります。`exclude` は `include` の結果からさらに除外するファイルを指定します。
+`include` に指定したパターンに一致するファイルが、コンパイルの起点になります。`exclude` は `include` の結果から除外するファイルを指定します。
+
+<Callout type="warning">
+### excludeに書いても、importされていればチェックされる
+
+`exclude` が効くのは「`include` で拾うファイルの一覧」に対してだけです。除外したファイルを、対象のファイルが `import` していれば、そのファイルもコンパイル対象に入り、型エラーも報告されます。
+
+`"exclude": ["src/excluded.ts"]` を指定したうえで、`src/main.ts` からそのファイルをimportして `tsc` を実行した結果です。
+
+```
+src/excluded.ts(1,14): error TS2322: Type 'string' is not assignable to type 'number'.
+```
+
+「`exclude` に書いたのにエラーが消えない」ときは、どこかからimportされていないかを確認します。仕様は[TSConfigリファレンスのexclude](https://www.typescriptlang.org/ja/tsconfig/#exclude)に記載があります。
+</Callout>
+
+## 実際に適用されている設定を確認する — --showConfig
+
+`extends` で他のファイルを読み込んでいたり、`strict` のようにまとめて有効にするフラグを使っていたりすると、`tsconfig.json` を読んだだけでは最終的な設定が分かりません。`--showConfig` を付けると、すべてを展開した結果が表示されます。型チェックは実行されません。
+
+```bash
+npx tsc --showConfig
+```
+
+`"strict": true` と `paths` だけを書いた設定で実行した結果（抜粋）です。
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "paths": { "@/*": ["./src/*"] },
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "strictBuiltinIteratorReturn": true,
+    "alwaysStrict": true,
+    "useUnknownInCatchVariables": true
+  },
+  "files": ["./src/main.ts", "./src/lib/helper.ts"]
+}
+```
+
+`files` には、`include` と `exclude` を適用したあとの対象ファイルが並びます。「このファイルが対象に入っているか」も、ここで確かめられます。
 
 ## フレームワークのtsconfig
 
@@ -231,7 +287,7 @@ Next.jsやViteは、プロジェクト作成時にtsconfigを自動生成しま�
     "lib": ["dom", "dom.iterable", "esnext"],
     "module": "esnext",
     "moduleResolution": "bundler",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "strict": true,
     "paths": {
       "@/*": ["./src/*"]
@@ -253,7 +309,7 @@ Next.jsやViteは、プロジェクト作成時にtsconfigを自動生成しま�
 | `paths` | パスエイリアス | `@/*` を追加 |
 | `skipLibCheck` | `.d.ts` のチェック省略 | ビルド高速化のため `true` |
 | `noUncheckedIndexedAccess` | 配列・オブジェクトのアクセスに `undefined` を含める | 安全性を上げるなら `true` |
-| `verbatimModuleSyntax` | `import type` の明示を強制 | バンドルサイズ最適化 |
+| `verbatimModuleSyntax` | 型だけのimportに `import type` を書かせる | 型のimportが出力から確実に消えるようにする |
 
 ## ちゃんと使うためのポイント
 
@@ -262,6 +318,8 @@ Next.jsやViteは、プロジェクト作成時にtsconfigを自動生成しま�
 - `moduleResolution: "bundler"` がフロントエンド開発の現在の推奨
 - `paths` の設定はTypeScriptだけでなくバンドラー側も合わせる
 - 困ったときは公式ドキュメントのTSConfig Referenceを確認する
+- 最終的に適用されている設定は `npx tsc --showConfig` で確認する
+- `exclude` したファイルも、importされていれば型チェックされる
 
 ## 参考リンク
 

@@ -96,6 +96,8 @@ npm run dev
 
 ブラウザで `http://localhost:3000` にアクセスすると、Next.jsのウェルカムページが表示されます。
 
+<a id="strict-mode-double-log"></a>
+
 ## ログが2回出るのはStrict Modeの仕様
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
@@ -111,7 +113,7 @@ Strict Modeが有効だと、Reactは開発環境でだけ次の処理を余分�
 
 そのため、Client Componentに書いた `console.log` や `useEffect` のログが2回出ます。`npm run build` で作る本番ビルドでは、余分な実行は起きません。
 
-なぜわざと2回実行するのか、2回実行されて困るときに何を見直せばよいかは、Reactの本の「[Strict Modeで2回実行されるのはなぜ](/books/react-learning/03-react-lifecycle#strict-modeで2回実行されるのはなぜ)」で説明しています。
+なぜわざと2回実行するのか、2回実行されて困るときに何を見直せばよいかは、Reactの本の「[Strict Modeで2回実行されるのはなぜ](/books/react-learning/03-react-lifecycle#strict-mode-twice)」で説明しています。
 
 ### reactStrictModeで切り替える
 

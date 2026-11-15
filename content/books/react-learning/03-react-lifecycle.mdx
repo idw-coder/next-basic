@@ -21,7 +21,7 @@ Reactで「レンダーされた」と「マウントされた」は同じ意味
 |---|---|
 | 初めて画面に出る | 初回レンダー → DOMに挿入 → マウント後の `useEffect` |
 | stateが変わる | 再レンダー → DOMの差分更新 |
-| propsが変わる | 再レンダー → DOMの差分更新 |
+| 親が再レンダーされる | 再レンダー → DOMの差分更新 |
 | 条件分岐で消える | アンマウント → `useEffect` のクリーンアップ |
 
 この区別が分かると、`useEffect(..., [])` がなぜ初回だけ実行されるのか、state更新でなぜ関数全体が再実行されるのかを説明できます。
@@ -56,6 +56,7 @@ function Greeting({ name }: { name: string }) {
 
 - **自身のstateが変わったとき**（`useState` の更新関数を呼んだとき）
 - **親コンポーネントが再レンダーされたとき**（子も連動して再実行される）
+- **読み取っているコンテキストの値が変わったとき**（`useContext` で読んでいる値）
 
 ```tsx
 function Counter() {
@@ -68,6 +69,58 @@ function Counter() {
 ```
 
 ボタンを押すたびに `Counter` 関数が再実行され、`console.log('rendered')` が出力されます。
+
+### 「propsが変わったら再レンダーされる」は正確ではない
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+親から渡すpropsを変えていないのに、子コンポーネントが毎回レンダーされているんだけど…。
+</SpeechBubble>
+
+子が再レンダーされるきっかけは、propsの変化ではなく、**親の再レンダー**です。親が再レンダーされると、Reactは親が返したJSXの中のコンポーネントを順に呼び出します。このとき、propsが前回と同じかどうかは調べません（[レンダーとコミット — React公式](https://ja.react.dev/learn/render-and-commit)）。
+
+```tsx
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setCount((c) => c + 1)}>{count}</button>
+      <Child label="固定の文字列" />
+    </>
+  );
+}
+
+function Child({ label }: { label: string }) {
+  console.log('Child rendered'); // ボタンを押すたびに出力される
+  return <p>{label}</p>;
+}
+```
+
+`Child` に渡している `label` は毎回同じ文字列ですが、ボタンを押すたびに `Child rendered` が出力されます。
+
+| よくある理解 | 実際の動作 |
+|---|---|
+| propsが変わると子が再レンダーされる | 親が再レンダーされると、propsが同じでも子は再レンダーされる |
+| propsが同じなら子は再レンダーされない | propsが同じときにレンダーを省くのは、`memo` で包んだコンポーネントだけ |
+
+再レンダーされても、レンダー結果が前回と同じならDOMは書き換えられません。そのため、多くの場合は問題になりません。計算の重いコンポーネントで実際に遅さが出たときに、`memo` を検討します。
+
+### 同じ値をセットしたときは再レンダーされない
+
+`setCount(0)` のように、現在のstateと同じ値をセットした場合、Reactは再レンダーを省きます。同じかどうかは `Object.is` で比べます（[useState — React公式リファレンス](https://ja.react.dev/reference/react/useState)）。
+
+オブジェクトや配列は、中身ではなく参照で比べられます。中身を書き換えて同じオブジェクトをセットしても、「同じ値」と判定されて画面が更新されません。
+
+```tsx
+const [user, setUser] = useState({ name: '田中' });
+
+// ❌ 同じオブジェクトを書き換えてセット → 再レンダーされない
+user.name = '佐藤';
+setUser(user);
+
+// ⭕ 新しいオブジェクトを作ってセット → 再レンダーされる
+setUser({ ...user, name: '佐藤' });
+```
 
 ---
 
@@ -237,9 +290,11 @@ rendered   ← 再レンダー（3回目）
 
 ---
 
+<a id="strict-mode-twice"></a>
+
 ## Strict Modeで2回実行されるのはなぜ
 
-Strict Modeは、バグの原因になりやすい書き方を開発中に見つけるためのReactの機能です。有効にすると、Reactは**開発環境でだけ**、次の処理をわざと余分に1回ずつ実行します（[StrictMode — React公式リファレンス](https://react.dev/reference/react/StrictMode)）。
+Strict Modeは、バグの原因になりやすい書き方を開発中に見つけるためのReactの機能です。有効にすると、Reactは**開発環境でだけ**、次の処理をわざと余分に1回ずつ実行します（[StrictMode — React公式リファレンス](https://ja.react.dev/reference/react/StrictMode)）。
 
 | 余分に実行されるもの | 見つけたいバグ |
 |---|---|
@@ -281,8 +336,8 @@ mounted
 
 ### Strict Modeを有効にする場所
 
-- **Reactだけで作ったアプリ** — ルートを `<StrictMode>` で囲むと有効になります（[StrictMode — React公式リファレンス](https://react.dev/reference/react/StrictMode)）
-- **Next.js（App Router）** — 何も書かなくても既定で有効です。`next.config.ts` の `reactStrictMode` で切り替えられます。詳しくは「[Next.jsの開発環境のセットアップ](/books/next-js/02-setup#ログが2回出るのはstrict-modeの仕様)」で扱います
+- **Reactだけで作ったアプリ** — ルートを `<StrictMode>` で囲むと有効になります（[StrictMode — React公式リファレンス](https://ja.react.dev/reference/react/StrictMode)）
+- **Next.js（App Router）** — 何も書かなくても既定で有効です。`next.config.ts` の `reactStrictMode` で切り替えられます。詳しくは「[Next.jsの開発環境のセットアップ](/books/next-js/02-setup#strict-mode-double-log)」で扱います
 
 ---
 
@@ -312,7 +367,7 @@ useEffect(() => {
 
 - <Marker>**レンダー** — コンポーネント関数の実行。stateやpropsの変化のたびに何度でも起きる。</Marker>
 - **マウント** — 初回レンダー + DOMへの挿入。ライフサイクル中に1回だけ。
-- **再レンダー** — 2回目以降のレンダー。DOMは差分だけ更新される。
+- **再レンダー** — 2回目以降のレンダー。DOMは差分だけ更新される。親が再レンダーされると、propsが同じでも子は再レンダーされる。
 - **アンマウント** — コンポーネントがDOMから取り除かれるとき。
 - **Strict Mode** — 開発環境でだけ、レンダーと `useEffect` をわざと余分に実行してバグを見つける。本番ビルドには影響しない。
 
@@ -322,10 +377,10 @@ useEffect(() => {
 
 ## 参考
 
-- [Render and Commit — React公式](https://react.dev/learn/render-and-commit) — レンダーからDOMへの反映までの3ステップ
-- [Lifecycle of Reactive Effects — React公式](https://react.dev/learn/lifecycle-of-reactive-effects) — Effectの開始・停止サイクルと依存配列の仕組み
-- [useEffect — React公式リファレンス](https://react.dev/reference/react/useEffect) — useEffectのAPI仕様・依存配列の挙動
-- [StrictMode — React公式リファレンス](https://react.dev/reference/react/StrictMode) — 開発時だけ余分に実行される処理とその目的
+- [Render and Commit — React公式](https://ja.react.dev/learn/render-and-commit) — レンダーからDOMへの反映までの3ステップ
+- [Lifecycle of Reactive Effects — React公式](https://ja.react.dev/learn/lifecycle-of-reactive-effects) — Effectの開始・停止サイクルと依存配列の仕組み
+- [useEffect — React公式リファレンス](https://ja.react.dev/reference/react/useEffect) — useEffectのAPI仕様・依存配列の挙動
+- [StrictMode — React公式リファレンス](https://ja.react.dev/reference/react/StrictMode) — 開発時だけ余分に実行される処理とその目的
 
 <QuizLink
   href="/quiz/react-basic"
