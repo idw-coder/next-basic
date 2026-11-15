@@ -230,12 +230,23 @@ git rebase --abort
 - 最悪、ファイルごとに「片方を完全に採用」する
 
 ```bash
-# featureの内容を丸ごと採用
+# featureの内容を丸ごと採用（mainでfeatureをmergeしている場合）
 git checkout --theirs path/to/file
 
 # HEADの内容を丸ごと採用
 git checkout --ours path/to/file
 ```
+
+<Callout type="warning" title="rebase中は、oursとtheirsが指すものが入れ替わる">
+`--ours` を「自分の変更」、`--theirs` を「相手の変更」と覚えていると、rebaseのときに逆のファイルを選んでしまいます。`main` に「MAIN」、`feature` に「FEATURE」と書いたファイルをぶつけて、それぞれの操作で確かめた結果です（Git 2.50）。
+
+| 操作 | `--ours` で残る内容 | `--theirs` で残る内容 |
+| ---- | ------------------- | --------------------- |
+| `main` にいて `git merge feature` | MAIN（いまいるブランチ） | FEATURE（取り込む側） |
+| `feature` にいて `git rebase main` | MAIN（付け直す先） | **FEATURE（自分のコミット）** |
+
+rebaseは、`main` の先端に移動してから、自分のコミットを1つずつ付け直す操作です。その最中の「いまいる場所」は `main` 側なので、`--ours` が `main`、`--theirs` が自分のコミットになります。rebase中に自分の変更を残したいときは `--theirs` です。
+</Callout>
 
 **3. コンフリクトしたファイルを誤って削除してしまった**
 
@@ -249,7 +260,7 @@ git checkout --ours path/to/file
 - 迷ったら **`git merge --abort`** / **`git rebase --abort`** でやり直せる
 - **こまめに取り込む**ことでコンフリクトの規模を小さく保つ
 
-次の章では、コミットしたあとに「取り消したい」「修正したい」となったときの方法、**reset・revert・restore** の使い分けを学びます。
+コミットしたあとに「取り消したい」「修正したい」となったときの方法は、[取り消し操作の章](/books/git-basic/07-undo)で扱っています。
 
 <QuizLink
   href="/quiz/git-basic"
