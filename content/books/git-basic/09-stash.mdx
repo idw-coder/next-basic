@@ -113,23 +113,39 @@ git stash pop
 `git stash` があれば、途中の作業を捨てずに別の仕事を挟めます。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
-stash って要するに「引き出しにしまう」みたいなイメージ？何個もしまえるの？
+stash は1個しか退避できないの？何回も `git stash` したらどうなる？
 </SpeechBubble>
 
 <SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
-まさにそのイメージです。何個でもしまえますし、メッセージ付きで保存すれば後から探しやすくなります。ただし長期保存には向かないので、1日以上残りそうならブランチを切ってコミットしましょう。
+何個でも退避できます。`git stash` を実行するたびに1件ずつ積まれ、新しいものが `stash@{0}` になります。メッセージ付きで保存すれば後から探しやすくなります。ただし長期保存には向かないので、1日以上残りそうならブランチを切ってコミットしましょう。
 </SpeechBubble>
 
 ### ブランチを間違えた
 
-作業ブランチを切り忘れて `main` に直接編集してしまった、というときも `stash` が便利です。
+作業ブランチを切り忘れて `main` に直接編集してしまった場合、**新しいブランチを作るだけなら `stash` は要りません**。コミット前の変更は、ブランチを作って切り替えても作業ツリーに残ります。
+
+```bash
+git switch -c feature/new-feature
+# 書きかけの変更は、そのまま新しいブランチに持ち越される
+```
+
+`stash` が必要になるのは、**すでにあるブランチ**へ切り替えたいのに、Gitが切り替えを中止したときです。
+
+```
+error: Your local changes to the following files would be overwritten by checkout:
+	app.txt
+Please commit your changes or stash them before you switch branches.
+Aborting
+```
+
+この場合は、退避してから切り替えます。
 
 ```bash
 # 1. 変更を退避
 git stash
 
-# 2. 正しいブランチを切る
-git switch -c feature/new-feature
+# 2. 作業するはずだったブランチへ切り替える
+git switch feature/existing-branch
 
 # 3. 退避していた変更を復元
 git stash pop
@@ -147,7 +163,7 @@ git pull
 git stash pop
 ```
 
-<Figure src="/images/boomerang_woman_color.png" alt="ブーメランのように戻ってくるstash" caption="stash は「一時退避して、後で戻す」ブーメランのような機能。緊急対応が入ったときの強い味方です。" maxWidth="180px" />
+<Figure src="/images/boomerang_woman_color.png" alt="作業中の変更を一時的に退避するイメージ" caption="stash は、作業中の変更を一時的に退避して、あとで戻す機能。緊急対応が入ったときに使います。" maxWidth="180px" />
 
 ## 部分的に退避する
 
@@ -218,6 +234,12 @@ git stash -a
 
 新規ファイルは `-u` を付けないと退避されません。`git stash -u` を使ってください。
 
+変更が新規ファイルだけのときに `-u` なしで実行すると、何も退避されず、次のメッセージが出ます（Git 2.50で確認）。
+
+```
+No local changes to save
+```
+
 **2. stash popでコンフリクト**
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
@@ -225,12 +247,38 @@ stash pop したらコンフリクトした…。退避した変更は消えち�
 </SpeechBubble>
 
 <SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
-`pop` でコンフリクトしても、stash自体は消えずに残る場合があります。心配なら `apply` で復元してから確認し、問題なければ `drop` で削除する2段階方式が安全です。
+消えていません。`pop` でコンフリクトしたとき、Gitはstashを削除せずに残します。出力の最後にも、そう書かれています。
 </SpeechBubble>
 
 別のブランチに切り替えてから `stash pop` した場合、そのブランチの状態と退避内容がコンフリクトすることがあります。普通のマージコンフリクトと同じ手順（編集 → `git add`）で解決できます。
 
-ただし、**コンフリクトしても pop は成功扱い**になり、stashから削除されてしまうことがあるので注意してください。心配なら `apply` を使って、うまくいったのを確認してから `drop` するのが安全です。
+コンフリクトした `git stash pop` の出力です（Git 2.50で確認）。
+
+```
+Auto-merging app.txt
+CONFLICT (content): Merge conflict in app.txt
+（中略）
+The stash entry is kept in case you need it again.
+```
+
+最後の行のとおり、**コンフリクトしたときはstashは削除されません**。`pop` がstashを削除するのは、復元が問題なく終わったときだけです。
+
+| `git stash pop` の結果 | stash |
+| ---------------------- | ----- |
+| 問題なく復元できた | 削除される |
+| コンフリクトした | **残る** |
+
+そのため、コンフリクトを解決したあとは、残ったstashを自分で削除します。削除しないと、同じ内容がいつまでも `git stash list` に残ります。
+
+```bash
+# 1. コンフリクトしたファイルを編集して解決する
+git add app.txt
+
+# 2. 残っているstashを削除する
+git stash drop
+```
+
+復元がうまくいくかを先に確かめたいときは、`apply` で復元し、問題なければ `drop` で削除する2段階にします。
 
 ```bash
 git stash apply
@@ -254,7 +302,15 @@ git stash drop
 - **メッセージ付き退避**で複数の退避を管理できる
 - stashは一時的なもの、**長期保存するならブランチを切る**
 
-次の章ではいよいよ、GitHubを使ったチーム開発の実践編です。Pull Request、コードレビュー、マージ戦略について学びます。
+- `pop` でコンフリクトしたとき、stashは削除されずに残る。解決したあとに `git stash drop` で消す
+- `main` で書き始めてしまっただけなら、`git switch -c` でそのまま新しいブランチに移れる
+
+Pull Request、コードレビュー、マージ戦略は、[GitHubを使ったチーム開発の章](/books/git-basic/10-team-development)で扱っています。
+
+## 参考リンク
+
+- [git-stash — Git公式ドキュメント](https://git-scm.com/docs/git-stash) — `stash` のサブコマンドとオプションの一覧（英語）
+- [作業の隠しかたと消しかた — Pro Git](https://git-scm.com/book/ja/v2/Git-%E3%81%AE%E3%81%95%E3%81%BE%E3%81%96%E3%81%BE%E3%81%AA%E3%83%84%E3%83%BC%E3%83%AB-%E4%BD%9C%E6%A5%AD%E3%81%AE%E9%9A%A0%E3%81%97%E3%81%8B%E3%81%9F%E3%81%A8%E6%B6%88%E3%81%97%E3%81%8B%E3%81%9F) — stashの使い方の解説（日本語）
 
 <QuizLink
   href="/quiz/git-basic"

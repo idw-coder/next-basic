@@ -152,6 +152,22 @@ nvm use
 
 `engines` は宣言だけではデフォルトで強制されませんが、プロジェクトに `.npmrc` ファイルを置いて `engine-strict=true` を設定すると、条件を満たさないNode.jsで `npm install` した際にエラーで止められます。「気づかずに違うバージョンで作業していた」を仕組みで防げるわけです。
 
+`engines` を満たさないNode.jsで `npm install` を実行した結果を、設定の有無で比べます（npm 11で確認）。
+
+| `.npmrc` | 結果 |
+| -------- | ---- |
+| 設定なし | `npm warn EBADENGINE Unsupported engine` という警告が出るだけで、インストールは成功する |
+| `engine-strict=true` | `npm error code EBADENGINE` でインストールが失敗する |
+
+```
+npm error code EBADENGINE
+npm error engine Unsupported engine
+npm error notsup Required: {"node":">=26.0.0"}
+npm error notsup Actual:   {"node":"v24.13.1","npm":"11.8.0"}
+```
+
+`Required` がプロジェクトの要求、`Actual` が今使っているバージョンです。このエラーが出たら、`nvm use` でバージョンを切り替えます。
+
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
   `.nvmrc` と `engines`、両方書くんですか？どっちかでいい気がしますが…
 </SpeechBubble>

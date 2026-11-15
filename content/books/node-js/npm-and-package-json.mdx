@@ -52,7 +52,7 @@ npm以外にも pnpm や Yarn がありますが、`package.json` の基本的�
     "vitest": "^3.2.0"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=26"
   }
 }
 ```
@@ -70,7 +70,7 @@ npm以外にも pnpm や Yarn がありますが、`package.json` の基本的�
 | `engines` | 想定するNode.jsやnpmのバージョン |
 
 <Callout type="note">
-`type` はモジュール方式に影響します。`"type": "module"` があると `.js` はES Modulesとして扱われ、ない場合はCommonJSとして扱われます。詳しくは次章で扱います。
+`type` はモジュール方式に影響します。`"type": "module"` があると `.js` はES Modulesとして扱われ、ない場合はCommonJSとして扱われます。詳しくは[CommonJSとES Modulesの章](/books/node-js/modules-cjs-esm)で扱っています。
 </Callout>
 
 ## scripts — npm runで実行するコマンド
@@ -145,19 +145,35 @@ npm install -D vitest
 {
   "dependencies": {
     "express": "^5.1.0",
-    "zod": "~3.25.0"
+    "zod": "~4.1.0"
   }
 }
 ```
 
 代表的な記号は次の通りです。
 
-| 書き方 | 意味 |
-| ------ | ---- |
-| `1.2.3` | ちょうど `1.2.3` |
-| `^1.2.3` | 互換性がある範囲で新しいバージョンを許可する。多くの場合 `1.x.x` の範囲 |
-| `~1.2.3` | パッチ更新を中心に許可する。多くの場合 `1.2.x` の範囲 |
-| `latest` | 最新版。アプリの依存として固定的に使うには避けたい |
+| 書き方 | 許可される範囲 | 例（入るもの／入らないもの） |
+| ------ | -------------- | ---------------------------- |
+| `1.2.3` | ちょうど `1.2.3` | `1.2.3` だけ |
+| `^1.2.3` | `1.2.3` 以上、`2.0.0` 未満 | `1.2.9`・`1.3.0` は入る／`2.0.0` は入らない |
+| `~1.2.3` | `1.2.3` 以上、`1.3.0` 未満 | `1.2.9` は入る／`1.3.0` は入らない |
+| `latest` | 最新版 | アプリの依存として固定的に使うには避けたい |
+
+`^` は「いちばん左の、0でない数字を変えない範囲」を許可します。メジャーバージョンが `0` のパッケージでは、範囲が狭くなります。npmが内部で使っている `semver` で実際に展開した結果です。
+
+| 書き方 | 展開される範囲 |
+| ------ | -------------- |
+| `^1.2.3` | `>=1.2.3 <2.0.0` |
+| `^0.2.3` | `>=0.2.3 <0.3.0` |
+| `^0.0.3` | `>=0.0.3 <0.0.4`（`0.0.3` だけ） |
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`^0.2.3` と書いたのに、`0.3.0` が出ても更新されないのはなぜ？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+バージョンが `0.x` の間は、マイナーバージョンが上がるだけでも互換性のない変更が入りうる、という決まりなんだ。だから `^` は `0.2.x` の中だけを許可する。`1.0.0` より前のライブラリを使うときは覚えておこう。
+</SpeechBubble>
 
 実際にインストールされた厳密なバージョンは、次の `package-lock.json` に記録されます。
 
@@ -190,6 +206,23 @@ npm install -D vitest
 
 `npm ci` は `package-lock.json` があることを前提に、より再現性の高いインストールを行います。CIで「手元では動くのにCIで依存が違う」を減らすためのコマンドです。
 
+2つのコマンドの動きの違いを、npm 11で確かめた結果です。
+
+| 状況 | `npm install` | `npm ci` |
+| ---- | ------------- | -------- |
+| `package.json` とlockファイルが食い違っている | lockファイルを書き換えて、インストールを続ける | **エラーで止まる**。lockファイルは書き換えない |
+| すでに `node_modules/` がある | 差分だけを更新する | `node_modules/` を削除してから、入れ直す |
+
+食い違っているときの `npm ci` は、次のエラーになります。
+
+```
+npm error code EUSAGE
+npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.
+npm error Missing: local-b@1.0.0 from lock file
+```
+
+`package.json` に依存を足したのに、lockファイルをコミットし忘れたときに、CIで出るエラーです。手元で `npm install` を実行し、更新された `package-lock.json` をコミットすれば直ります。
+
 ## この章のまとめ
 
 `package.json` は、Node.jsプロジェクトの入口です。
@@ -199,15 +232,18 @@ npm install -D vitest
 - `dependencies` は本番実行に必要な依存
 - `devDependencies` は開発・テスト・ビルド用の依存
 - `package-lock.json` は実際に解決された依存バージョンを固定する
-- CIでは `npm ci` がよく使われる
+- CIでは `npm ci` がよく使われる。lockファイルが食い違っているとエラーで止まる
+- `^` は、メジャーバージョンが `0` のときは範囲が狭くなる
 
-次章では、`package.json` の `"type"` と深く関係する、CommonJSとES Modulesの違いを見ていきます。
+`package.json` の `"type"` と深く関係するモジュール方式の違いは、[CommonJSとES Modulesの章](/books/node-js/modules-cjs-esm)で扱っています。
 
 ## 参考リンク
 
-- [npm Docs: package.json](https://docs.npmjs.com/cli/v10/configuring-npm/package-json/)
-- [npm Docs: npm install](https://docs.npmjs.com/cli/v10/commands/npm-install/)
-- [npm Docs: package-lock.json](https://docs.npmjs.com/cli/v10/configuring-npm/package-lock-json/)
+- [npm Docs: package.json](https://docs.npmjs.com/cli/v11/configuring-npm/package-json)
+- [npm Docs: npm install](https://docs.npmjs.com/cli/v11/commands/npm-install)
+- [npm Docs: package-lock.json](https://docs.npmjs.com/cli/v11/configuring-npm/package-lock-json)
+- [npm Docs: npm ci](https://docs.npmjs.com/cli/v11/commands/npm-ci)
+- [npm Docs: About semantic versioning](https://docs.npmjs.com/about-semantic-versioning)
 - [Node.js API: Packages（英語）](https://nodejs.org/api/packages.html)
 
 <QuizLink

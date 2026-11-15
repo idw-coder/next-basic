@@ -138,6 +138,21 @@ git branch -D feature/login
 
 大文字の `-D` は「マージされていなくても強制的に削除」なので、誤って使うと未マージの作業を失います。基本は小文字の `-d` を使い、Gitが「マージされていないので削除できません」と止めてくれる安全側に倒しましょう。
 
+マージしていないブランチを `-d` で消そうとすると、次のように止まります（Git 2.50で確認）。
+
+```
+error: the branch 'feature/login' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D feature/login'
+```
+
+このメッセージが出たら、`-D` で消す前に、そのブランチの変更がもう要らないものかを確かめます。
+
+いま自分がいるブランチは削除できません。別のブランチに切り替えてから削除します。
+
+```
+error: cannot delete branch 'main' used by worktree at '/path/to/project'
+```
+
 リモートのブランチを削除するには以下のコマンドです。
 
 ```bash
@@ -173,10 +188,42 @@ git config --global alias.graph "log --oneline --graph --all --decorate"
 </SpeechBubble>
 
 <SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
-まだコミットしていなければ大丈夫。`git stash` で変更を退避して、正しいブランチに切り替えてから `git stash pop` で戻せます。9章で詳しく学びますよ。
+まだコミットしていなければ大丈夫。そのまま `git switch -c` で新しいブランチを作れば、書きかけの変更ごと新しいブランチに移れますよ。
 </SpeechBubble>
 
-`git switch` を忘れて `main` で作業を始めてしまった場合、まだコミットしていなければ `git stash` で退避してからブランチを切り替え、`git stash pop` で戻せます（stashの詳細は9章で扱います）。
+`git switch` を忘れて `main` で作業を始めてしまった場合、まだコミットしていなければ、**そのまま新しいブランチを作る**だけで済みます。コミット前の変更は、ブランチを作って切り替えても作業ツリーに残ります。
+
+```bash
+git switch -c feature/login
+# Switched to a new branch 'feature/login'
+
+git status --short
+#  M app.txt   ← mainで書いた変更がそのまま残っている
+```
+
+`git stash` が必要になるのは、切り替え先が**すでにあるブランチ**で、そのブランチと手元の変更が同じファイルの同じ箇所を触っているときです。この場合、Gitは切り替えを中止します。
+
+```
+error: Your local changes to the following files would be overwritten by checkout:
+	app.txt
+Please commit your changes or stash them before you switch branches.
+Aborting
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`switch` を使ったのに、エラーには `checkout` って出てくるんだけど…？
+</SpeechBubble>
+
+`git switch` でも、このメッセージの文言は `overwritten by checkout` のままです。コマンドを間違えたわけではありません。
+
+対処は、メッセージのとおり2つあります。
+
+| 方法 | コマンド | 向いている場面 |
+| ---- | -------- | -------------- |
+| 退避する | `git stash` → `git switch 切り替え先` → `git stash pop` | 変更を切り替え先のブランチに持っていきたい |
+| コミットする | `git commit` してから切り替える | 変更をいまのブランチに残したい |
+
+`git stash pop` のとき、退避した変更と切り替え先の内容がぶつかると、コンフリクトになります。stashの使い方は[stashで作業を一時退避する](/books/git-basic/09-stash)、コンフリクトの直し方は[コンフリクトの章](/books/git-basic/06-conflict)で扱っています。
 
 **2. ブランチ名を間違えた**
 
@@ -204,7 +251,16 @@ git branch --merged | grep -v "main" | xargs git branch -d
 - 削除は **`-d`（安全）** を基本、`-D`（強制）は慎重に
 - `git log --oneline --graph --all` で全体像を把握する
 
-次の章では、ブランチで作業した内容を `main` に取り込む2つの方法、**merge と rebase** の違いを学びます。
+- `main` で書き始めてしまったら、コミット前なら `git switch -c` でそのまま新しいブランチに移れる
+- `would be overwritten by checkout` は、手元の変更と切り替え先がぶつかっている。stashするかコミットする
+
+ブランチで作業した内容を `main` に取り込む方法は、[mergeとrebaseの違いと使い分け](/books/git-basic/05-merge-vs-rebase)で扱っています。
+
+## 参考リンク
+
+- [git-switch — Git公式ドキュメント](https://git-scm.com/docs/git-switch) — `switch` のオプション一覧（英語）
+- [git-branch — Git公式ドキュメント](https://git-scm.com/docs/git-branch) — ブランチの作成・削除・名前変更（英語）
+- [Git のブランチ機能 — Pro Git](https://git-scm.com/book/ja/v2/Git-%E3%81%AE%E3%83%96%E3%83%A9%E3%83%B3%E3%83%81%E6%A9%9F%E8%83%BD-%E3%83%96%E3%83%A9%E3%83%B3%E3%83%81%E3%81%A8%E3%81%AF) — ブランチの仕組みの解説（日本語）
 
 <QuizLink
   href="/quiz/git-basic"
