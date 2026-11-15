@@ -52,7 +52,7 @@ export default function Figure({
           <span
             key={`${highlight.top}-${highlight.left}-${index}`}
             aria-hidden="true"
-            className="pointer-events-none absolute rounded-md border-[3px]"
+            className="pointer-events-none absolute rounded-md border-2 sm:border-[3px]"
             style={{
               top: `${highlight.top}%`,
               left: `${highlight.left}%`,
