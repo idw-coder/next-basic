@@ -35,7 +35,7 @@ flowchart TB
 
 ## git restore — 未コミットの変更を取り消す
 
-`git restore` は、**まだコミットしていない変更を元に戻す**コマンドです。前章で出てきた `git checkout -- file` の新しい書き方です。
+`git restore` は、**まだコミットしていない変更を元に戻す**コマンドです。[ブランチの章](/books/git-basic/04-branches)で出てきた `git checkout -- file` の新しい書き方です。
 
 ### 作業ディレクトリの変更を捨てる
 
@@ -122,7 +122,16 @@ git reset HEAD~1
 git reset --hard HEAD~1
 ```
 
-`--hard` は**編集内容も完全に消えます**。一度使うと戻せないので慎重に。
+`--hard` は**編集内容も消します**。何が消えて、何があとから戻せるかは、コミット済みかどうかで決まります。Git 2.50で、4種類の変更がある状態から `git reset --hard HEAD~1` を実行して確かめた結果です。
+
+| 実行前にあったもの | `reset --hard` のあと | reflogで戻せるか |
+| ------------------ | --------------------- | ---------------- |
+| コミット済みの変更（直前のコミット） | 履歴から消える | **戻せる** |
+| コミットしていない編集 | 消える | 戻せない |
+| `git add` しただけの新規ファイル | 消える | 戻せない |
+| `git add` していない新規ファイル | 残る | — |
+
+<Marker>コミットしてあったものは戻せる。コミットしていなかった編集は戻せない。</Marker>`reset --hard` の前に、`git status` でコミットしていない変更が無いかを確かめます。
 
 ### HEAD~1 と HEAD^ の違い
 
@@ -220,18 +229,31 @@ git reflog
 git reset --hard def5678
 ```
 
-reflogは通常90日程度保存されるので、**慌ててreset --hardをしても、当日や翌日なら復元できる**可能性が高いです。「やらかしたらreflog」と覚えておきましょう。
+reflogで戻せるのは、**一度コミットしたもの**だけです。コミットしていなかった編集は、reflogにも記録されていません。
+
+記録が残る期間には、2つの既定値があります（`git help config` の `gc.reflogExpire` と `gc.reflogExpireUnreachable`）。
+
+| 記録の種類 | 既定の保存期間 |
+| ---------- | -------------- |
+| いまのブランチの先端からたどれるコミットの記録 | 90日 |
+| たどれなくなったコミットの記録（`reset` や `rebase` で外れたもの） | **30日** |
+
+`reset --hard` で外したコミットは、後者に当たります。当日や翌日なら復元できますが、1か月を過ぎると消えている可能性があります。「やらかしたら、早めにreflog」と覚えておきましょう。
 
 ## よくあるハマりどころ
 
 **1. `git reset --hard` で変更が消えた**
 
-reflogを使って復元を試みてください。
+消えたのがコミット済みの変更なら、reflogで復元できます。
 
 ```bash
 git reflog
 git reset --hard HEAD@{1}
 ```
+
+`HEAD@{1}` は「1つ前にHEADが指していたコミット」です。`reset` の直後なら、`reset` する前のコミットを指します。ほかの操作を挟んだあとは番号がずれるので、`git reflog` の出力で戻したいコミットのハッシュを確かめ、ハッシュで指定します。
+
+消えたのがコミットしていなかった編集なら、Gitからは復元できません。エディタの「元に戻す」やローカル履歴の機能に残っていないかを確認します。
 
 **2. コミットメッセージだけ直したい**
 
@@ -253,17 +275,23 @@ pushする前なら安全、pushした後はrebaseと同じく履歴書き換え
 
 **3. `git revert` でコンフリクトした**
 
-revertも通常のマージと同様にコンフリクトすることがあります。解決方法は前章と同じです（編集 → `git add` → `git revert --continue`）。
+revertも通常のマージと同様にコンフリクトすることがあります。解決方法は[コンフリクトの章](/books/git-basic/06-conflict)と同じです（編集 → `git add` → `git revert --continue`）。
 
 ## ちゃんと使うためのポイント
 
 - <Marker>**未コミットの変更を戻すなら `restore`**</Marker>
 - **ローカルのコミットを消すなら `reset`**
 - **共有済みのコミットを取り消すなら `revert`**
-- `reset --hard` は強力だが危険、**reflogで救済できる**と覚える
+- `reset --hard` で消えたコミットは**reflogで戻せる**。コミットしていなかった編集は戻せない
 - pushする前なら割と自由、pushした後は慎重に
 
-次の章では、ローカルとリモートの同期について、**fetch・pull・push** を正しく使い分ける方法を学びます。
+ローカルとリモートの同期は、[fetch・pull・pushを正しく使う](/books/git-basic/08-remote-sync)で扱っています。
+
+## 参考リンク
+
+- [git-reset — Git公式ドキュメント](https://git-scm.com/docs/git-reset) — `--soft`・`--mixed`・`--hard` の動作（英語）
+- [git-reflog — Git公式ドキュメント](https://git-scm.com/docs/git-reflog) — reflogの見方と保存期間（英語）
+- [作業のやり直し — Pro Git](https://git-scm.com/book/ja/v2/Git-%E3%81%AE%E5%9F%BA%E6%9C%AC-%E4%BD%9C%E6%A5%AD%E3%81%AE%E3%82%84%E3%82%8A%E7%9B%B4%E3%81%97) — 取り消し操作の解説（日本語）
 
 <QuizLink
   href="/quiz/git-basic"

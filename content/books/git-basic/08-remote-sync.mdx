@@ -105,7 +105,34 @@ gitGraph
     commit id: "D (他人)"
 `} />
 
-この状態で `git pull` すると、mergeコミットが自動で作られます。小さな変更なのに無駄なマージコミットが挟まって、履歴が汚れがちです。
+この状態で `git pull` したときの動作は、設定によって変わります。
+
+| `pull.rebase` の設定 | `git pull` の動作 |
+| -------------------- | ----------------- |
+| 何も設定していない | **エラーで止まる**。どう取り込むかを指定するよう求められる |
+| `false` | mergeコミットを作って取り込む |
+| `true` | rebaseして取り込む（次の節） |
+
+何も設定していない場合の出力です（Git 2.50で確認）。
+
+```
+hint: You have divergent branches and need to specify how to reconcile them.
+hint: You can do so by running one of the following commands sometime before
+hint: your next pull:
+hint:
+hint:   git config pull.rebase false  # merge
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
+fatal: Need to specify how to reconcile divergent branches.
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+古い記事には「`git pull` すると勝手にマージされる」って書いてあるけど、エラーになったよ？
+</SpeechBubble>
+
+以前のGitは、設定が無ければmergeで取り込んでいました。現在は、ローカルとリモートの両方にコミットがあって食い違っているとき、方法を指定しないと取り込みません。`git pull --rebase` や `git pull --no-rebase` のように、その場でオプションを付けて指定することもできます。
+
+`pull.rebase false`（merge）で取り込むと、小さな変更なのにマージコミットが挟まって、履歴が読みにくくなりがちです。
 
 ## git pull --rebase — 一直線を保つ
 
@@ -122,6 +149,41 @@ git config --global pull.rebase true
 ```
 
 この設定を入れておくと、`git pull` が自動でrebase動作になります。個人プロジェクトやチームの方針がrebase寄りなら設定しておくと便利です。
+
+### cannot pull with rebase: You have unstaged changes
+
+コミットしていない変更がある状態で `git pull --rebase` を実行すると、次のエラーで止まります。
+
+```
+error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+```
+
+rebaseは、自分のコミットをいったん外して、リモートの最新の上に付け直す操作です。作業ツリーに書きかけの変更が残っていると、付け直す途中でその変更を上書きしてしまうおそれがあるので、Gitは始める前に止めます。
+
+対処は3つあります。
+
+| 方法 | コマンド |
+| ---- | -------- |
+| コミットしてからpullする | `git commit -am "..."` → `git pull --rebase` |
+| 手で退避する | `git stash` → `git pull --rebase` → `git stash pop` |
+| 退避と復元をGitに任せる | `git pull --rebase --autostash` |
+
+`--autostash` を付けると、Gitが変更を退避し、rebaseのあとに元に戻します。実行した出力です。
+
+```
+Created autostash: 57fea95
+Applied autostash.
+Successfully rebased and updated refs/heads/main.
+```
+
+毎回付けるのが面倒なら、設定にしておけます。
+
+```bash
+git config --global rebase.autoStash true
+```
+
+戻すときに書きかけの変更とリモートの変更がぶつかると、コンフリクトになります。直し方は[コンフリクトの章](/books/git-basic/06-conflict)、stashの動作は[stashの章](/books/git-basic/09-stash)で扱っています。
 
 ### pull / pull --rebase の比較
 
@@ -329,7 +391,15 @@ git push -u origin feature/new-feature
 - `push -u` は**初回だけ、追跡関係を作るため**
 - force pushは必ず **`--force-with-lease`** を使う
 
-次の章では、作業の途中で別のブランチに切り替えたいときに使う `git stash` を学びます。
+- ローカルとリモートが食い違っているとき、設定の無い `git pull` はエラーで止まる。`--rebase` か `--no-rebase` で取り込み方を指定する
+- `cannot pull with rebase: You have unstaged changes` は、コミットしていない変更がある。`--autostash` を付けるか、先にコミットかstashをする
+
+作業の途中で別のブランチに切り替えたいときに使う `git stash` は、[stashで作業を一時退避する](/books/git-basic/09-stash)で扱っています。
+
+## 参考リンク
+
+- [git-pull — Git公式ドキュメント](https://git-scm.com/docs/git-pull) — `--rebase`・`--autostash`・`--ff-only` などのオプション（英語）
+- [リモートでの作業 — Pro Git](https://git-scm.com/book/ja/v2/Git-%E3%81%AE%E5%9F%BA%E6%9C%AC-%E3%83%AA%E3%83%A2%E3%83%BC%E3%83%88%E3%81%A7%E3%81%AE%E4%BD%9C%E6%A5%AD) — fetch・pull・pushの解説（日本語）
 
 <QuizLink
   href="/quiz/git-basic"
