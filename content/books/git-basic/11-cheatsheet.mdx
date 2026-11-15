@@ -1,6 +1,6 @@
 ---
 title: 'Gitコマンドチートシート — よく使うコマンドを目的別に逆引き'
-description: '日常的に使うGitコマンドを「やりたいこと」から逆引きできるチートシート。add/commit/push、ブランチ、取り消し、リモート同期、stash、タグ、履歴調整までを目的別の表で一覧化します。'
+description: '日常的に使うGitコマンドを「やりたいこと」から逆引きできるチートシート。add/commit/push、ブランチ、取り消し、リモート同期、stash、GitHub CLI（gh）でのPR操作、タグ、履歴調整までを目的別の表で一覧化します。'
 order: 11
 ---
 
@@ -151,6 +151,26 @@ git merge feature/login
 | リモートのブランチを削除する               | `git push origin --delete ブランチ名` | `--delete` はリモート側のブランチを消す                  |
 
 > 詳しくは[第8章 リモートとの同期](/books/git-basic/08-remote-sync)へ。
+
+<a id="section-5-gh"></a>
+
+## Pull Request（GitHub CLI・gh）
+
+`gh` はGitではなく、GitHubが提供する別のツールです。最初に `gh auth login` でログインしておきます。
+
+| やりたいこと                           | コマンド                               | オプション・補足                                                 |
+| -------------------------------------- | -------------------------------------- | ---------------------------------------------------------------- |
+| GitHubにログインする（初回のみ）       | `gh auth login`                        | 対話形式。第2章でSSH鍵を設定したなら通信方式は `SSH` を選ぶ      |
+| <Pick />PRを作る                       | `gh pr create --fill`                  | `--fill` はコミットのメッセージからタイトルと本文を埋める        |
+| PRをブラウザの作成画面で作る           | `gh pr create --web`                   | `--web` はブラウザを開く                                         |
+| 下書きのPRを作る                       | `gh pr create --draft`                 | `--draft` はレビュー依頼前の下書きにする                         |
+| 自分に関係するPRの状況を見る           | `gh pr status`                         | 自分が作ったPR、レビューを頼まれているPRが出る                   |
+| 今のブランチのPRをブラウザで開く       | `gh pr view --web`                     | `--web` を外すとターミナルに表示する                             |
+| <Pick />他人のPRを手元に持ってくる     | `gh pr checkout 番号`                  | PRのブランチを取ってきて切り替える                               |
+| CIの結果を見る                         | `gh pr checks`                         | `--watch` を付けると終わるまで待つ                               |
+| Squashでマージして作業ブランチを消す   | `gh pr merge --squash --delete-branch` | ローカルとリモートのブランチを削除する。承認とCIを確認してから |
+
+> 詳しくは[第10章 GitHubでのチーム開発](/books/git-basic/10-team-development#gh-cli)へ。
 
 <a id="section-6"></a>
 

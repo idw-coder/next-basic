@@ -79,7 +79,7 @@ remote: Create a pull request for 'feature/user-login' on GitHub by visiting:
 remote:      https://github.com/username/repo/pull/new/feature/user-login
 ```
 
-このURLをブラウザで開くとPR作成画面になります。
+このURLをブラウザで開くとPR作成画面になります。ブラウザに移らず、ターミナルのままPRを作ることもできます（後述の「[ターミナルでPRを操作する — GitHub CLI（gh）](#gh-cli)」）。
 
 ### 3. PRの本文を書く
 
@@ -257,6 +257,72 @@ git branch -d feature/user-login
 git branch --merged | grep -v "main" | xargs git branch -d
 ```
 
+<a id="gh-cli"></a>
+
+## ターミナルでPRを操作する — GitHub CLI（gh）
+
+ここまで、PRの作成やマージはGitHubのブラウザ画面で行ってきました。同じ操作は、**GitHub CLI**（コマンド名は `gh`）を使えばターミナルからもできます。
+
+`gh` はGitの一部ではなく、GitHubが提供している別のツールです。`git` が「手元の履歴」を扱うのに対して、`gh` は「GitHub上のPRやIssue」を扱います。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+ブラウザでできるなら、わざわざコマンドを覚えなくてもいいんじゃない？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+ブラウザで十分ですよ。ただ、push してからPRを作るまでターミナルを離れずに済むので、慣れると手数が減ります。AIエージェントにPRを作らせるときも、使うのはこの `gh` です。
+</SpeechBubble>
+
+### インストールとログイン
+
+macOSならHomebrewで入ります。Windowsなど他の環境は[GitHub CLIの公式サイト](https://cli.github.com/)の手順に従ってください。
+
+```bash
+brew install gh
+```
+
+入れたら、最初に一度だけログインします。
+
+```bash
+gh auth login
+```
+
+対話形式で質問されるので、`GitHub.com` を選び、通信方式は第2章でSSH鍵を設定したなら `SSH` を選びます。最後にブラウザが開き、GitHubで承認すればログイン完了です。
+
+### PRを作る
+
+作業ブランチをpushしたあと、そのブランチにいる状態で実行します。
+
+```bash
+git push -u origin feature/user-login
+gh pr create --fill
+```
+
+`--fill` は、コミットのメッセージからPRのタイトルと本文を自動で埋めるオプションです。付けなければ、タイトルと本文を対話形式で聞かれます。PRテンプレートがあるリポジトリでは、本文を書く段階でテンプレートを選べます。
+
+本文をしっかり書きたいときは、`--web` を付けるとブラウザのPR作成画面が開きます。ブランチ名を打ち込んでURLを探す手間だけが省けます。
+
+### よく使うコマンド
+
+PRを作ってからマージするまでに使うコマンドを、流れの順に並べました。
+
+| やりたいこと | コマンド | 補足 |
+|---|---|---|
+| PRを作る | `gh pr create --fill` | `--web` でブラウザの作成画面を開く。`--draft` で下書きPRにする |
+| 自分に関係するPRの状況を見る | `gh pr status` | 自分が作ったPR、レビューを頼まれているPRが一覧で出る |
+| 今のブランチのPRをブラウザで開く | `gh pr view --web` | `--web` を外すとターミナルに表示する |
+| レビューのために他人のPRを手元に持ってくる | `gh pr checkout 番号` | PRのブランチを取ってきて切り替える。ブランチ名を調べなくてよい |
+| CIの結果を見る | `gh pr checks` | `--watch` を付けると、終わるまで待って結果を更新し続ける |
+| Squashでマージしてブランチを消す | `gh pr merge --squash --delete-branch` | ローカルとリモートの作業ブランチをまとめて削除する |
+
+最後の `gh pr merge` は、この章の「迷ったらSquash」と「マージ後の後片付け」を1行で済ませるコマンドです。マージしたら、いつもどおり `git switch main` と `git pull` で手元のmainを最新にしておきます。
+
+<Callout type="warning" title="マージは承認とCIを確認してから">
+  `gh pr merge` はブラウザのマージボタンと同じ操作です。ターミナルから打てるぶん、確認を飛ばしがちになります。実行する前に `gh pr checks` でCIが通っていること、レビューで承認されていることを確かめてください。ブランチ保護ルールが入っていれば、条件を満たさないPRはマージできません。
+</Callout>
+
+- [GitHub CLI マニュアル](https://cli.github.com/manual/)
+
 ## よくあるハマりどころ
 
 **1. PRを出したあとにmainが進んだ**
@@ -298,6 +364,7 @@ git push
 - mainブランチは**保護ルール**でpush禁止にする
 - **CIが落ちているPRはマージしない**
 - 1 PRは小さく、**1つの目的に絞る**
+- PRの作成からマージまでは、**GitHub CLI**（`gh`）でターミナルからも操作できる
 
 ## 最後に
 
