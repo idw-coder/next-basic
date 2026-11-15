@@ -1,10 +1,10 @@
 ---
 title: 'Playwrightの導入と基本操作'
-description: 'Playwrightのインストール、設定ファイル、基本的なテストの書き方、UIモードによるデバッグ方法を整理します。'
+description: 'Playwrightのインストール、設定ファイル、テストの書き方、UIモードでのデバッグを整理します。Executable doesn''t exist や strict mode violation など、導入直後によく出るエラーの原因と直し方も扱います。'
 order: 6
 ---
 
-前章でE2Eテストのツールとして **Playwright** を選んだ理由を整理しました。この章では、実際にPlaywrightをプロジェクトに導入し、テストを書いて動かすまでの流れを実践します。
+[E2Eテストの基本](/books/integration-and-e2e-testing/05-e2e-testing-basics)で、E2Eテストのツールとして **Playwright** を選んだ理由を整理しました。この章では、実際にPlaywrightをプロジェクトに導入し、テストを書いて動かすまでの流れを実践します。
 
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 E2Eツールって設定が大変そう…。Playwrightって最初の導入でつまずかない？
@@ -21,9 +21,11 @@ npm init playwright@latest
 このコマンドで以下が自動的にセットアップされます。
 
 - `playwright.config.ts` — 設定ファイル
-- `tests/` — テストディレクトリ
-- `tests-examples/` — サンプルテスト
+- `tests/example.spec.ts` — 最小構成のサンプルテスト
+- `package.json` への `@playwright/test` の追加
 - ブラウザのダウンロード（Chromium, Firefox, WebKit）
+
+作られるファイルは、[Playwright公式のインストール手順](https://playwright.dev/docs/intro)（英語）に記載されているものです。古いバージョンでは `tests-examples/` というフォルダも作られましたが、現在の手順には含まれていません。
 
 <Callout type="info">
 ### 既存プロジェクトへの追加
@@ -31,6 +33,36 @@ npm init playwright@latest
 既存のプロジェクトに追加する場合も同じコマンドです。TypeScript、テストディレクトリの場所、GitHub Actions の設定を対話的に選べます。
 
 </Callout>
+
+### ブラウザだけを入れ直す
+
+Playwrightは、テストに使うブラウザを自分でダウンロードして使います。PCに入っているChromeは使いません。`@playwright/test` を更新したあとや、CIのように毎回まっさらな環境で動かすときは、ブラウザのダウンロードを別に実行します。
+
+```bash
+# ブラウザをダウンロードする
+npx playwright install
+
+# Linux（CIやWSL）では、ブラウザが使うOSのライブラリも一緒に入れる
+npx playwright install --with-deps
+```
+
+ブラウザが入っていない状態でテストを実行すると、次のエラーで止まります。
+
+```
+Error: browserType.launch: Executable doesn't exist at /…/chromium-1234/chrome-linux/chrome
+Looks like Playwright was just installed or updated.
+Please run the following command to download new browsers:
+
+    npx playwright install
+```
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+昨日まで動いていたのに、`npm install` し直したら急にこのエラーが出るようになった…。
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+`@playwright/test` のバージョンが上がると、対応するブラウザのバージョンも変わるんだ。パッケージは新しくなったのに、ブラウザは古いまま、という状態になっている。メッセージのとおり `npx playwright install` を実行すれば直るよ。
+</SpeechBubble>
 
 ---
 
@@ -182,13 +214,20 @@ await expect(page.getByRole('listitem')).toHaveCount(5);
 Playwrightの大きな特徴が **自動待機** です。操作対象の要素が準備できるまで自動で待ちます。
 
 ```ts
-// Playwrightが自動で待つこと:
-// 1. 要素がDOMに存在する
-// 2. 要素が表示されている（visible）
-// 3. 要素が安定している（アニメーション中でない）
-// 4. 要素がクリック可能（他の要素に覆われていない）
 await page.getByRole('button', { name: '送信' }).click();
 ```
+
+`click()` の場合、Playwrightは次の条件がすべて満たされるまで待ってからクリックします（[公式ドキュメントのActionability](https://playwright.dev/docs/actionability)、英語）。
+
+| 待つ条件 | 意味 |
+|---|---|
+| ロケーターが1つの要素に定まる | 一致する要素がちょうど1つある |
+| Visible | 表示されている |
+| Stable | アニメーション中でない、またはアニメーションが終わっている |
+| Receives Events | 他の要素に覆われていない |
+| Enabled | `disabled` になっていない |
+
+条件が満たされないまま待ち続けると、テスト1件あたりの制限時間（既定は30秒）に達して `Test timeout of 30000ms exceeded.` で失敗します。「送信ボタンが `disabled` のまま」「読み込み中の表示がボタンを覆ったまま」といった不具合は、このタイムアウトとして現れます。
 
 この自動待機があるため、`sleep` や `waitForTimeout` を使う必要がほとんどありません。テストが安定し、かつ不要な待ち時間がなくなります。
 
@@ -241,9 +280,68 @@ npx playwright codegen http://localhost:3000
 <Callout type="info">
 ### Codegenの活用法
 
-Codegenが生成するコードはセレクタが冗長になりがちです。生成後にロケーターを `getByRole` や `getByLabel` に書き換え、不要な操作を削除するのが実践的な使い方です。
+Codegenは、ロール・テキスト・テストIDの順に優先してロケーターを選びます（[公式ドキュメントのTest generator](https://playwright.dev/docs/codegen-intro)、英語）。`getByRole` で書かれたコードがそのまま出てくるので、ロケーターを書き直す必要はあまりありません。手を入れるのは、確認用に押しただけの余計な操作の削除と、「何を確かめるテストか」が伝わるアサーションの追加です。
 
 </Callout>
+
+---
+
+## 導入直後によく出るエラー
+
+### strict mode violation
+
+```
+Error: locator.click: Error: strict mode violation: getByRole('button', { name: '削除' }) resolved to 3 elements
+```
+
+ロケーターに一致する要素が複数あるときに出ます。Playwrightのロケーターは、操作の対象が1つに定まらないとエラーにします（[公式ドキュメントのStrictness](https://playwright.dev/docs/locators#strictness)、英語）。一覧の各行に「削除」ボタンがある画面が典型例です。
+
+対処は、対象を1つに絞ることです。
+
+```ts
+// 行を先に特定してから、その中のボタンを探す
+await page
+  .getByRole('row', { name: '田中太郎' })
+  .getByRole('button', { name: '削除' })
+  .click();
+
+// 名前の一部が一致して複数になるなら、完全一致にする
+await page.getByRole('button', { name: '削除', exact: true }).click();
+```
+
+`.first()` を付ければエラーは消えますが、「何番目か」に頼るテストは、並び順が変わると別の要素を操作します。上のように、意味で絞るほうが壊れにくくなります。
+
+### Playwright Test did not expect test() to be called here
+
+```
+Error: Playwright Test did not expect test() to be called here.
+Most common reasons include:
+- You are calling test() in a configuration file.
+- You are calling test() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test.
+```
+
+VitestやJestを使っているプロジェクトにPlaywrightを足したときに、`npm test` で出ることがあります。原因は、単体テストのランナーが、Playwrightのテストファイル（`*.spec.ts`）まで拾って実行していることです。
+
+対処は、どちらのランナーがどのファイルを担当するかを分けることです。
+
+| 方法 | 設定 |
+|---|---|
+| フォルダで分ける | Playwrightのテストを `e2e/` に置き、`playwright.config.ts` の `testDir` を `./e2e` にする |
+| 単体テスト側で除外する | Vitestなら `test.exclude` に `e2e/**` を足す |
+
+```ts
+// vitest.config.ts
+import { configDefaults, defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    exclude: [...configDefaults.exclude, 'e2e/**'],
+  },
+});
+```
+
+`configDefaults.exclude` を展開しているのは、`exclude` を自分で書くと、`node_modules` などの既定の除外設定が上書きされて消えるためです。
 
 ---
 
@@ -302,5 +400,16 @@ CIで失敗したテストのトレースをダウンロードして確認する
 - **自動待機** により `sleep` が不要。テストが安定し高速
 - **UIモード** でテストの実行を視覚的に確認。タイムトラベルでデバッグ
 - **Codegen** でブラウザ操作からテストの骨組みを自動生成
+- `Executable doesn't exist` は、ブラウザが入っていない。`npx playwright install` を実行する
+- `strict mode violation` は、ロケーターに一致する要素が複数ある。行やラベルで絞り込む
 
-次の章では、E2Eテストの **シナリオ設計** — 何をどの粒度でテストするかの考え方を整理します。
+何をどの粒度でテストするかの考え方は、[E2Eテストのシナリオ設計](/books/integration-and-e2e-testing/07-scenario-design)で扱っています。
+
+---
+
+## 参考リンク
+
+- [Installation — Playwright公式](https://playwright.dev/docs/intro) — インストール手順と動作環境（英語）
+- [Auto-waiting — Playwright公式](https://playwright.dev/docs/actionability) — 操作ごとに待つ条件の一覧（英語）
+- [Locators — Playwright公式](https://playwright.dev/docs/locators) — ロケーターの種類と絞り込み方（英語）
+- [Browsers — Playwright公式](https://playwright.dev/docs/browsers) — ブラウザのインストールと更新（英語）

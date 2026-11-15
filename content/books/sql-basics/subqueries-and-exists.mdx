@@ -1,6 +1,6 @@
 ---
 title: 'サブクエリとEXISTS — IN・相関サブクエリ・派生テーブル'
-description: 'クエリの中に別のクエリを書くサブクエリを、IN、EXISTS、相関サブクエリ、FROM句の派生テーブル、JOINとの使い分けまで整理します。'
+description: 'サブクエリの書き方を、IN、EXISTS、相関サブクエリ、派生テーブル、CTEまで実行結果つきで整理します。NOT INにNULLが混ざると0行になる理由と、JOINとの使い分けも扱います。'
 order: 6
 ---
 
@@ -12,6 +12,30 @@ order: 6
 <SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
 JOINでも書けるし、サブクエリでも書ける場面があるよね。どう使い分ければいいの？
 </SpeechBubble>
+
+## この章で使うデータ
+
+結果を確かめながら読めるように、2つのテーブルを使います。掲載している結果は、すべてMySQL 8.4で実行したものです。
+
+`users`
+
+| id | name |
+| --- | --- |
+| 1 | 田中 |
+| 2 | 佐藤 |
+| 3 | 鈴木 |
+| 4 | 高橋 |
+
+`orders`
+
+| id | user_id | status | total_amount |
+| --- | --- | --- | --- |
+| 1 | 1 | paid | 12000 |
+| 2 | 1 | paid | 3000 |
+| 3 | 2 | pending | 5000 |
+| 4 | 3 | paid | 8000 |
+
+田中は支払い済みの注文が2件、佐藤は未払いの注文が1件、鈴木は支払い済みが1件、高橋は注文がありません。
 
 ## サブクエリとは
 
@@ -30,6 +54,13 @@ WHERE id IN (
 
 このSQLは、支払い済み注文を持つユーザーを取得します。
 内側のクエリで `orders` から `user_id` を取り出し、外側のクエリでそのIDに一致するユーザーを取得しています。
+
+| id | name |
+| --- | --- |
+| 1 | 田中 |
+| 3 | 鈴木 |
+
+内側のクエリだけを実行すると `1, 1, 3` が返ります。外側のクエリは `WHERE id IN (1, 1, 3)` と同じ意味になり、田中と鈴木が1行ずつ返ります。田中は注文が2件ありますが、結果は1行です。
 
 <Marker>サブクエリは、SQLの一部として使うための中間結果を別の `SELECT` で作る書き方です。</Marker>
 
@@ -177,6 +208,20 @@ WHERE EXISTS (
 
 結果は似ていますが、読み方が違います。
 
+JOINのほうに `DISTINCT` が付いているのは、付けないと同じユーザーが注文の数だけ返るためです。`DISTINCT` を外して実行した結果です。
+
+| id | name |
+| --- | --- |
+| 1 | 田中 |
+| 1 | 田中 |
+| 3 | 鈴木 |
+
+JOINは「ユーザーと注文の組み合わせ」を1行ずつ返します。田中には支払い済みの注文が2件あるので、2行になります。`EXISTS` と `IN` は「条件に合う注文があるか」だけを見るので、注文が何件あってもユーザーは1行です。
+
+<Callout type="warning" title="件数を数えるときにJOINを使うと、多く数えてしまう">
+「支払い済みの注文があるユーザーは何人か」を、JOINして `COUNT(*)` で数えると3になります。正しくは2人です。存在を確かめたいだけの場面でJOINを使うと、この重複に気づかないまま集計がずれます。
+</Callout>
+
 | 書き方 | 向いている意図 |
 | --- | --- |
 | `JOIN` | 関連テーブルの列も一緒に取得したい |
@@ -212,6 +257,25 @@ FROM users;
 ```
 
 ユーザーごとの注文数を列として出しています。
+| id | name | order_count |
+| --- | --- | --- |
+| 1 | 田中 | 2 |
+| 2 | 佐藤 | 1 |
+| 3 | 鈴木 | 1 |
+| 4 | 高橋 | 0 |
+
+スカラーサブクエリは、**1行・1列だけ**を返す必要があります。2行以上返るサブクエリを書くと、エラーになります。
+
+```sql
+SELECT
+  id,
+  (SELECT total_amount FROM orders WHERE orders.user_id = users.id) AS amount
+FROM users;
+-- ERROR 1242 (21000): Subquery returns more than 1 row
+```
+
+田中には注文が2件あるので、`total_amount` が2つ返ってしまいます。`COUNT(*)` や `MAX()` のように、必ず1つの値になる集計関数を使うか、`LIMIT 1` で1行に絞ります。
+
 読みやすい場面もありますが、行数が多いと重くなることがあります。
 JOINと集計で書いた方がよい場合もあります。
 
@@ -241,8 +305,41 @@ WHERE id NOT IN (
 );
 ```
 
-`orders.user_id` に `NULL` があると、結果が返らないことがあります。
-存在しない関連行を探す場合は、`NOT EXISTS` の方が安全なことが多いです。
+`orders.user_id` に `NULL` が1つでもあると、**結果が0行になります**。この章のデータに、`user_id` が `NULL` の注文を1件足して確かめます。
+
+```sql
+INSERT INTO orders VALUES (5, NULL, 'paid', 1000);
+```
+
+| 書き方 | `NULL` を足す前 | `NULL` を足したあと |
+| --- | --- | --- |
+| `NOT IN (SELECT user_id FROM orders)` | 高橋 | **0行** |
+| `NOT EXISTS (...)` | 高橋 | 高橋 |
+
+注文のない高橋が、`NOT IN` では返らなくなりました。エラーも警告も出ません。
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+`NULL` の行が1つ増えただけで、どうして全部消えるの？
+</SpeechBubble>
+
+`NOT IN` は、候補の1つ1つと「等しくない」を比べて、すべてが真のときだけ真になります。`id NOT IN (1, 1, 2, 3, NULL)` は、次の式と同じです。
+
+```sql
+id <> 1 AND id <> 1 AND id <> 2 AND id <> 3 AND id <> NULL
+```
+
+SQLでは、`NULL` との比較は真でも偽でもなく `NULL`（不明）になります。高橋（`id` が4）で実際に計算した結果です。
+
+| 式 | 結果 |
+| --- | --- |
+| `4 <> 1` | 1（真） |
+| `4 <> NULL` | `NULL`（不明） |
+| `(4 <> 1) AND (4 <> NULL)` | `NULL`（不明） |
+| `4 NOT IN (1, NULL)` | `NULL`（不明） |
+
+`WHERE` は、条件が真になった行だけを返します。不明の行は返しません。そのため、候補に `NULL` が混ざると、どの行も真にならず、結果が0行になります。
+
+`NOT EXISTS` は、サブクエリが行を返したかどうかだけを見ます。値どうしを比べないので、`NULL` の影響を受けません。存在しない関連行を探す場合は、`NOT EXISTS` を使います。
 
 ```sql
 SELECT id, name
@@ -257,8 +354,26 @@ WHERE NOT EXISTS (
 ### サブクエリを深くネストしすぎる
 
 サブクエリを何重にも入れると、読みづらくなります。
-段階的に整理したい場合は、CTE（`WITH`）を使う方法もあります。
-この本では発展トピックとして扱いますが、考え方は「途中結果に名前を付ける」です。
+段階的に整理したい場合は、CTE（`WITH`）を使う方法があります。途中結果に名前を付けて、そのあとのクエリからテーブルのように使う書き方です。
+
+```sql
+WITH user_order_counts AS (
+  SELECT user_id, COUNT(*) AS order_count
+  FROM orders
+  GROUP BY user_id
+)
+SELECT users.name, user_order_counts.order_count
+FROM users
+INNER JOIN user_order_counts
+  ON users.id = user_order_counts.user_id
+WHERE user_order_counts.order_count >= 2;
+```
+
+| name | order_count |
+| --- | --- |
+| 田中 | 2 |
+
+派生テーブルと同じ結果を作れますが、集計の部分が先に書かれ、名前が付いているので、上から順に読めます。MySQLでは8.0から使えます。
 
 ## ちゃんと使うためのポイント
 
@@ -268,8 +383,17 @@ WHERE NOT EXISTS (
 - 関連行がないものを探すなら `NOT EXISTS` が読みやすい
 - 関連テーブルの列も取りたいなら `JOIN` が自然
 - サブクエリが深くなりすぎたら、クエリを分解して考える
+- `NOT IN` は、候補に `NULL` が1つあるだけで結果が0行になる。`NOT EXISTS` を使う
+- JOINは関連行の数だけ行が増える。存在を確かめるだけなら `EXISTS`
 
-次の章では、SQLを書く前提となるテーブル設計、正規化、制約について学びます。
+SQLを書く前提となるテーブル設計は、[テーブル設計・正規化・制約の基本](/books/sql-basics/table-design-normalization-and-constraints)で扱っています。
+
+## 参考リンク
+
+- [サブクエリー — MySQL 8.0 リファレンスマニュアル](https://dev.mysql.com/doc/refman/8.0/ja/subqueries.html) — サブクエリの種類と書き方（日本語）
+- [EXISTS または NOT EXISTS を使用したサブクエリー — MySQL 8.0 リファレンスマニュアル](https://dev.mysql.com/doc/refman/8.0/ja/exists-and-not-exists-subqueries.html) — `EXISTS` の動作（日本語）
+- [NULL 値の操作 — MySQL 8.0 リファレンスマニュアル](https://dev.mysql.com/doc/refman/8.0/ja/working-with-null.html) — `NULL` との比較が不明になる理由（日本語）
+- [WITH (共通テーブル式) — MySQL 8.0 リファレンスマニュアル](https://dev.mysql.com/doc/refman/8.0/ja/with.html) — CTEの書き方（日本語）
 
 <QuizLink
   href="/quiz/sql-basic"
