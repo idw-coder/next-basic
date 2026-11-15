@@ -66,6 +66,22 @@ S3 Intelligent-Tieringはアクセスパターンを監視し、アクセス階�
 
 次の例は、`logs/` プレフィックスの現行オブジェクトを30日後にStandard-IA、90日後にGlacier Flexible Retrievalへ移し、365日後に期限切れにします。非現行バージョンは90日後に削除します。
 
+AWSマネジメントコンソールでは、ライフサイクルルールのスコープをプレフィックスで限定できます。次の画面は、`logs/` 配下だけをルールの適用範囲にした例です。
+
+<Figure
+  src="/images/books/aws-saa-c03/s3-lifecycle-rule-scope.webp"
+  alt="S3ライフサイクルルールの適用範囲をlogsプレフィックスに限定した画面"
+  maxWidth="960px"
+  maxHeight="none"
+  width={2398}
+  height={1016}
+  highlights={[
+    { top: 25.8, left: 1.4, width: 29.4, height: 7.2 },
+    { top: 52.9, left: 1.4, width: 14.5, height: 7.2 },
+  ]}
+  caption="S3ライフサイクルルールのスコープ設定（2026年11月撮影）"
+/>
+
 ```json
 {
   "Rules": [
@@ -90,6 +106,38 @@ S3 Intelligent-Tieringはアクセスパターンを監視し、アクセス階�
 | `Transitions` | 現行バージョンを指定日数後に別クラスへ移す |
 | `Expiration` | 現行バージョンを期限切れにする |
 | `NoncurrentVersionExpiration` | バージョニングで非現行になった版を削除する |
+
+コンソールでは、現行バージョンの移行先と日数、有効期限を別々の入力欄で指定します。
+
+<Figure
+  src="/images/books/aws-saa-c03/s3-lifecycle-current-actions.webp"
+  alt="S3ライフサイクルルールでStandard-IAへ30日後、Glacier Flexible Retrievalへ90日後に移行し、365日後に期限切れにする画面"
+  maxWidth="960px"
+  maxHeight="none"
+  width={1900}
+  height={710}
+  highlights={[
+    { top: 25.8, left: 1.4, width: 97, height: 8.4 },
+    { top: 35.4, left: 1.4, width: 97, height: 8.4 },
+    { top: 86.8, left: 1.4, width: 82, height: 9.2 },
+  ]}
+  caption="現行バージョンの移行と有効期限の設定（2026年11月撮影）"
+/>
+
+バージョニングを有効にしたバケットでは、非現行バージョンの完全削除までの日数も指定できます。
+
+<Figure
+  src="/images/books/aws-saa-c03/s3-lifecycle-noncurrent-expiration.webp"
+  alt="S3ライフサイクルルールで非現行バージョンを90日後に完全削除する画面"
+  maxWidth="960px"
+  maxHeight="none"
+  width={1960}
+  height={285}
+  highlights={[
+    { top: 53.5, left: 1.4, width: 39.5, height: 21 },
+  ]}
+  caption="非現行バージョンを完全削除する日数の設定（2026年11月撮影）"
+/>
 
 日数は例であり、業務上の保持期間、復元時間、最小保存期間、削除要件へ合わせます。設定形式はAWS公式の[S3 Lifecycle設定例](https://docs.aws.amazon.com/ja_jp/AmazonS3/latest/userguide/lifecycle-configuration-examples.html)で確認できます。
 
