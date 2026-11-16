@@ -68,17 +68,24 @@ function shuffleChoices(choices: readonly Choice[]): Choice[] {
   return shuffled;
 }
 
-async function getQuiz(quizId: string): Promise<QuizDetail> {
+/** 問題を取得する。存在しないIDや不正なIDは null。DB障害などは例外のまま投げる。 */
+async function findQuiz(quizId: string): Promise<QuizDetail | null> {
   try {
     const { quiz } = await getQuizDetail(quizId);
     return quiz;
   } catch (error) {
     if (error instanceof QuizDetailNotFoundError || error instanceof QuizDetailParamsError) {
-      notFound();
+      return null;
     }
 
     throw error;
   }
+}
+
+async function getQuiz(quizId: string): Promise<QuizDetail> {
+  const quiz = await findQuiz(quizId);
+  if (!quiz) notFound();
+  return quiz;
 }
 
 async function getCategoryQuizzes(categoryId: number): Promise<QuizCategoryQuiz[]> {
@@ -297,7 +304,12 @@ export async function generateMetadata({
   params: Promise<{ category: string; quizId: string }>;
 }): Promise<Metadata> {
   const { category, quizId } = await params;
-  const quiz = await getQuiz(quizId);
+  // ここで notFound() を呼ぶと title がサイト共通のものになる。
+  // 404 はページ本体の notFound() が返すので、メタデータは title だけ返す。
+  const quiz = await findQuiz(quizId);
+  if (!quiz) {
+    return { title: 'クイズが見つかりません' };
+  }
   // テーマ未登録のカテゴリは label が「クイズ」になるので、技術名としては使わない
   const theme = getCategoryTheme(category);
   const label = theme.slug === 'default' ? '' : theme.label;
