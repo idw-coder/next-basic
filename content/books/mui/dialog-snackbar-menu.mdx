@@ -76,7 +76,7 @@ Dialogで渡ってくる理由は2つです。
 | `'escapeKeyDown'` | Escキーを押した |
 
 <Callout type="warning" title="v9でdisableEscapeKeyDownが削除された">
-v8以前は `disableEscapeKeyDown` というpropでEscキーを無効化できました。v9では `Dialog` と `Modal` の両方から削除されています（型定義を検索しても存在しません）。
+v7以前は `disableEscapeKeyDown` というpropでEscキーを無効化できました。v9では `Dialog` と `Modal` の両方から削除されています（型定義を検索しても存在しません）。
 
 代わりに `onClose` の `reason` を見て判断します。
 

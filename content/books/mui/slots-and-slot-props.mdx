@@ -134,7 +134,7 @@ const WidePaper = styled(Paper)({
 
 ### `InputProps` / `inputProps` は無くなった
 
-v8以前の `TextField` は、slotごとに専用のpropを持っていました。
+v7以前の `TextField` は、slotごとに専用のpropを持っていました。
 
 ```tsx
 // 古い書き方。v9では型エラーになる
@@ -201,7 +201,7 @@ MuiTextField: {
 
 ### `InputProps` を書いても何も起きない
 
-v9で削除されたpropです。TypeScriptを使っていれば型エラーで気づけますが、JavaScriptのままだと**エラーも出ず、ただ無視されます**。アイコンが出ないときは、まずここを疑ってください。
+v9で削除されたpropです。TypeScriptを使っていれば型エラーで気づけますが、JavaScriptのままだと例外は投げられず、`InputProps` はHTML要素の属性としてそのまま出力されるだけです。ブラウザのコンソールにReactの警告は出ますが、画面上はアイコンが表示されないだけに見えます。アイコンが出ないときは、まずここを疑ってください。ほかの廃止propも含めた直し方の一覧は、[v7からv9への移行手順](/books/mui/v9-migration)にまとめています。
 
 ### `input` に `maxLength` を渡したのに効かない
 

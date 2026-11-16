@@ -309,7 +309,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'useMediaQuery',
     'Autocomplete',
     'AppRouterCacheProvider',
-    'enableCssLayer',
+    'codemod',
   ],
 
   'react-learning': [

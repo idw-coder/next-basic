@@ -1,0 +1,497 @@
+---
+title: 'MUI v7からv9への移行手順 — 型エラーの原因とcodemodでの書き換え'
+description: 'MUI（Material UI）をv7からv9へ上げる手順を、パッケージ更新・公式codemod・残った型エラーの直し方の順に整理します。Grid・system props・TextFieldのInputProps・Dialogなど、エラーメッセージから直し方を引けるようにしています。'
+order: 14
+---
+
+`@mui/material` をv9に上げると、それまで通っていたコードに大量の型エラーが出ます。この章では、v7からv9へ上げる作業を順番どおりに並べ、<Marker>出てきたエラーメッセージから直し方を引ける</Marker>ようにまとめます。
+
+個々の変更の背景は、それぞれの章で扱っています。この章は移行作業の手順書として使ってください。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`npm install @mui/material@latest` したら、エディタが赤線だらけになった…。どこから手を付ければいいの？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+手で1つずつ直す前に、公式の変換ツール（codemod）を先に実行しよう。それで消えなかったエラーだけを、この章の一覧で引いて直せばいい。
+</SpeechBubble>
+
+この章のエラーメッセージは、`@mui/material` 9.1.1 と TypeScript 5.9.3 で、v7時代の書き方をコンパイルして出力されたものです。直し方のコードも、同じ環境で型エラーが消えることを確認しています。
+
+---
+
+## v8は存在しない — v7の次がv9
+
+最初に、バージョン番号の前提を確認します。<Marker>Material UIにv8はありません。v7の次のメジャーバージョンがv9です</Marker>。
+
+npmに公開されているバージョンを見ても、7.3.x の次は 9.0.0 で、8.x は1つもありません。理由は公式ブログに書かれています。データグリッドや日付ピッカーを提供するMUI Xは、Material UIとは別にメジャーバージョンを進めており、番号がずれていました。v9でこの2つの番号を揃えるために、Material UIはv7からv9へ直接進んでいます（[Introducing MUI v9](https://mui.com/blog/introducing-mui-v9/)）。
+
+このため、公式の移行ガイドも「v7からv9へ」の1本です。v5やv6から上げる場合は、先にv7までの移行ガイドを済ませてから、この章の手順に進みます。
+
+| いまのバージョン | 進め方 |
+| --- | --- |
+| v7 | この章の手順をそのまま実行する |
+| v6 | [Upgrade to v7](https://mui.com/material-ui/migration/upgrade-to-v7/) を済ませてから、この章へ |
+| v5以前 | 公式の各バージョンの移行ガイドを順に済ませてから、この章へ |
+
+---
+
+## 移行の全体像
+
+作業は4段階です。順番に意味があります。
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["1. パッケージ更新"] --> B["2. codemod実行"]
+    B --> C["3. 型エラーを直す"]
+    C --> D["4. 動作の変化を確認"]
+`}
+/>
+
+1. **パッケージを更新する**: `@mui/*` のパッケージをまとめてv9に上げます
+2. **codemodを実行する**: 機械的に書き換えられる変更を、公式ツールで一括変換します
+3. **残った型エラーを直す**: `npx tsc --noEmit` を実行し、codemodが変換しなかった箇所を手で直します
+4. **動作の変化を確認する**: 型エラーにならない変更（HTML構造や既定値の変更）を、画面で確認します
+
+codemodを型エラーの修正より先に実行するのは、手作業の量を減らすためです。逆の順番にすると、ツールで変換できた箇所まで手で直すことになります。
+
+<Callout type="warning" title="移行は専用のブランチで、作業前にコミットしておく">
+codemodはソースファイルを直接書き換えます。実行前の状態をコミットしておけば、変換結果を `git diff` で確認でき、意図しない変換があっても `git checkout` で戻せます。
+</Callout>
+
+---
+
+## 手順1 — パッケージをv9に揃える
+
+`@mui/material` だけを上げて、関連パッケージを古いままにしないでください。公式の移行ガイドは、次のパッケージを使っている場合はv9に揃えるよう指示しています。
+
+| パッケージ | 上げる先 |
+| --- | --- |
+| `@mui/material` | 9系 |
+| `@mui/icons-material` | 9系 |
+| `@mui/system` | 9系 |
+| `@mui/material-nextjs` | 9系 |
+| `@mui/styled-engine` / `@mui/styled-engine-sc` | 9系 |
+| `@mui/utils` | 9系 |
+| `@mui/lab` | v9向けの最新ベータ版 |
+
+`package.json` に書かれているものだけを指定します。Next.jsのApp Routerで使っている構成なら、次のようになります。
+
+```bash
+npm install @mui/material@^9 @mui/material-nextjs@^9 @mui/icons-material@^9
+```
+
+`@mui/system` や `@mui/utils` は `@mui/material` の依存として自動で入ります。`package.json` に直接書いていなければ、指定は不要です。
+
+対応ブラウザの下限も上がっています。公式ガイドによると、v9の既定のビルド対象は Chrome 117、Firefox 121、Safari 17.0（macOS・iOS）、Edge 121 です。これより古いブラウザを対象にしているプロジェクトは、上げる前に確認が必要です。
+
+---
+
+## 手順2 — 公式codemodで一括変換する
+
+MUIは `@mui/codemod` という変換ツールを配布しています。v9への移行で使うのは次の3つです。
+
+| コマンド | 変換する内容 |
+| --- | --- |
+| `npx @mui/codemod@latest deprecations/all <パス>` | 非推奨だったpropとCSSクラス名をまとめて変換する。`InputProps` → `slotProps.input`、`PaperProps` → `slotProps.paper`、`paragraph` の置き換えなど |
+| `npx @mui/codemod@latest v9.0.0/system-props <パス>` | `Box`・`Stack`・`Typography`・`Link`・`Grid`・`DialogContentText` のsystem propsを `sx` の中へ移す |
+| `npx @mui/codemod@latest v7.0.0/grid-props <パス>` | `Grid` の `xs`・`sm` などを `size` にまとめる |
+
+`<パス>` には、変換したいディレクトリを渡します。
+
+```bash
+npx @mui/codemod@latest deprecations/all src
+npx @mui/codemod@latest v9.0.0/system-props src
+npx @mui/codemod@latest v7.0.0/grid-props src
+```
+
+書き換えずに結果だけ確認したいときは、`--dry` を付けます。
+
+```bash
+npx @mui/codemod@latest v9.0.0/system-props src --dry
+```
+
+<Callout type="note" title="この節のコマンドは公式ドキュメントの記載に基づく">
+3つのコマンドと変換内容は、公式の[移行ガイド](https://mui.com/material-ui/migration/upgrade-to-v9/)と[@mui/codemodのREADME](https://github.com/mui/material-ui/blob/master/packages/mui-codemod/README.md)の記載をまとめたものです。この節だけは、筆者の環境で実行した結果ではありません。変換結果は必ず `git diff` で確認してください。
+</Callout>
+
+実行が終わったら、整形ツール（Prettierなど）をかけ直します。codemodが出力するコードは、プロジェクトの整形ルールに合っていないことがあるためです。
+
+<Figure src="/images/running_man_color-1.png" alt="作業を一気に進めるイメージ" maxWidth="220px" />
+
+---
+
+## 手順3 — 残った型エラーを直す
+
+codemodの後に `npx tsc --noEmit` を実行し、残ったエラーを直します。エラーメッセージは長いので、この節では原因を示している行だけを抜粋しています。
+
+まず、メッセージの一部から該当する項目を探してください。
+
+| エラーメッセージに含まれる文字列 | 原因 | 詳しく扱っている章 |
+| --- | --- | --- |
+| `Property 'item' does not exist` | `Grid` の `item`・`xs` の廃止 | [レイアウト](/books/mui/layout-box-stack-grid) |
+| `Cannot find module '@mui/material/GridLegacy'` | `GridLegacy` の削除 | [レイアウト](/books/mui/layout-box-stack-grid) |
+| `Type '"column"' is not assignable` | `Grid` の縦方向の廃止 | [レイアウト](/books/mui/layout-box-stack-grid) |
+| `Property 'mt' does not exist`、`Property 'alignItems' does not exist` | system propsの削除 | [sx prop](/books/mui/sx-prop) |
+| `Property 'InputProps' does not exist` | `TextField` のprop廃止 | [slotsとslotProps](/books/mui/slots-and-slot-props) |
+| `Property 'inputProps' does not exist on type 'AutocompleteRenderInputParams'` | `Autocomplete` の `params` の形の変更 | [フォーム部品](/books/mui/form-components) |
+| `Property 'componentsProps' does not exist` | `components`・`componentsProps` の削除 | [slotsとslotProps](/books/mui/slots-and-slot-props) |
+| `Property 'disableEscapeKeyDown' does not exist` | `Dialog`・`Modal` のprop削除 | [Dialog・Snackbar・Menu](/books/mui/dialog-snackbar-menu) |
+| `Property 'paragraph' does not exist` | `Typography` のprop削除 | [Typography](/books/mui/typography) |
+
+### Grid — `Property 'item' does not exist`
+
+```text
+error TS2769: No overload matches this call.
+  ...
+      Property 'item' does not exist on type 'IntrinsicAttributes & GridBaseProps & ...
+```
+
+v9の `Grid` には `item` も `xs` もありません。`item` を消し、画面幅ごとの列数は `size` にまとめます。
+
+```tsx
+// 変更前
+<Grid container spacing={2}>
+  <Grid item xs={12} sm={6}>左</Grid>
+  <Grid item xs={12} sm={6}>右</Grid>
+</Grid>
+
+// 変更後
+<Grid container spacing={2}>
+  <Grid size={{ xs: 12, sm: 6 }}>左</Grid>
+  <Grid size={{ xs: 12, sm: 6 }}>右</Grid>
+</Grid>
+```
+
+エラーコードが TS2769（`No overload matches this call`）になるのは、`Grid` が `component` propの有無で2通りの型定義を持っているためです。どちらの定義にも当てはまらなかった、という報告なので、<Marker>読むべき行は最後の `Property '...' does not exist` です</Marker>。`Box`・`Stack`・`Typography` のエラーも同じ形で出ます。
+
+### GridLegacy — `Cannot find module`
+
+```text
+error TS2307: Cannot find module '@mui/material/GridLegacy' or its corresponding type declarations.
+```
+
+v7では、旧APIの `Grid` が `GridLegacy` という名前で残されていました。v9ではこれが削除されています。importを `@mui/material/Grid` に変え、上の `size` の書き方に直します。
+
+```tsx
+// 変更前
+import Grid from '@mui/material/GridLegacy';
+
+// 変更後
+import Grid from '@mui/material/Grid';
+```
+
+### Gridの縦方向 — `Type '"column"' is not assignable`
+
+```text
+    Type '"column"' is not assignable to type 'ResponsiveStyleValue<GridDirection> | undefined'.
+```
+
+`Grid` の `direction` は `'row'` と `'row-reverse'` だけになりました。縦に並べる箇所は `Stack` に置き換えます。
+
+```tsx
+// 変更前
+<Grid container direction="column" spacing={2}>
+  <Grid size={12}>1つ目</Grid>
+  <Grid size={12}>2つ目</Grid>
+</Grid>
+
+// 変更後
+<Stack spacing={2}>
+  <div>1つ目</div>
+  <div>2つ目</div>
+</Stack>
+```
+
+### system props — `Property 'mt' does not exist`
+
+```text
+      Property 'mt' does not exist on type 'IntrinsicAttributes & BoxOwnProps<Theme> & ...
+      Property 'alignItems' does not exist on type 'IntrinsicAttributes & StackOwnProps & ...
+      Property 'fontWeight' does not exist on type 'IntrinsicAttributes & TypographyOwnProps & ...
+```
+
+`mt` や `alignItems` のように、CSSプロパティをpropとして直接渡す書き方（system props）が削除されました。対象は `Box`・`Stack`・`Typography`・`Link`・`Grid`・`DialogContentText` です。propを `sx` の中へ移します。
+
+```tsx
+// 変更前
+<Box mt={2} p={3}>
+  <Stack direction="row" alignItems="center" justifyContent="space-between">
+    <Typography fontWeight="bold" mb={1}>タイトル</Typography>
+  </Stack>
+</Box>
+
+// 変更後
+<Box sx={{ mt: 2, p: 3 }}>
+  <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+    <Typography sx={{ fontWeight: 'bold', mb: 1 }}>タイトル</Typography>
+  </Stack>
+</Box>
+```
+
+`Stack` の `direction` と `spacing` は、system propsではなく `Stack` 自身のpropです。これらは `sx` に移さず、そのまま残します。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`sx` に移すpropと、残すpropの見分けがつかない…。
+</SpeechBubble>
+
+型エラーが出たpropだけを `sx` に移せば足ります。`direction` や `spacing` のように、そのコンポーネントの型定義に残っているpropにはエラーが出ません。
+
+### TextField — `Property 'InputProps' does not exist`
+
+```text
+error TS2322: Type '{ label: string; InputProps: { startAdornment: Element; }; ... }' is not assignable to type ...
+  Property 'InputProps' does not exist on type ...
+```
+
+`TextField` が持っていた、内部の部品ごとの専用propが削除されました。すべて `slotProps` にまとめます。
+
+| 削除されたprop | v9での書き方 |
+| --- | --- |
+| `InputProps` | `slotProps.input` |
+| `inputProps` | `slotProps.htmlInput` |
+| `InputLabelProps` | `slotProps.inputLabel` |
+| `FormHelperTextProps` | `slotProps.formHelperText` |
+| `SelectProps` | `slotProps.select` |
+
+```tsx
+// 変更前
+<TextField
+  label="金額"
+  InputProps={{ startAdornment: <InputAdornment position="start">¥</InputAdornment> }}
+  inputProps={{ maxLength: 10 }}
+  InputLabelProps={{ shrink: true }}
+/>
+
+// 変更後
+<TextField
+  label="金額"
+  slotProps={{
+    input: { startAdornment: <InputAdornment position="start">¥</InputAdornment> },
+    htmlInput: { maxLength: 10 },
+    inputLabel: { shrink: true },
+  }}
+/>
+```
+
+型エラーには、最初に見つかった1つ（上の例では `InputProps`）しか表示されません。1つ直すと次のpropのエラーが出るので、同じ `TextField` に書かれている古いpropはまとめて移してください。
+
+### Autocomplete — `Property 'inputProps' does not exist on type 'AutocompleteRenderInputParams'`
+
+```text
+error TS2339: Property 'inputProps' does not exist on type 'AutocompleteRenderInputParams'.
+```
+
+`Autocomplete` の `renderInput` が受け取る `params` も、`TextField` の新しい形に合わせて変わりました。`params.inputProps` は無くなり、`params.slotProps.htmlInput` になっています。
+
+```tsx
+// 変更前
+<Autocomplete
+  options={options}
+  renderInput={(params) => (
+    <TextField {...params} inputProps={{ ...params.inputProps, autoComplete: 'new-password' }} />
+  )}
+/>
+
+// 変更後
+<Autocomplete
+  options={options}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      slotProps={{
+        ...params.slotProps,
+        htmlInput: { ...params.slotProps.htmlInput, autoComplete: 'new-password' },
+      }}
+    />
+  )}
+/>
+```
+
+<Callout type="warning" title="params.slotPropsの展開を省かない">
+`slotProps={{ htmlInput: { autoComplete: 'new-password' } }}` とだけ書くと、`Autocomplete` が `params.slotProps` で渡している設定を上書きして消してしまいます。型エラーにはならないので、`...params.slotProps` と `...params.slotProps.htmlInput` の2か所の展開を必ず残してください。
+</Callout>
+
+### components / componentsProps — `Property 'componentsProps' does not exist`
+
+```text
+  Property 'componentsProps' does not exist on type 'IntrinsicAttributes & TooltipProps'.
+```
+
+`slots`・`slotProps` の前身だった `components`・`componentsProps` が削除されました。`PaperProps` や `TransitionComponent` のような「部品名 + Props」形式のpropも、同じく削除されています。
+
+```tsx
+// 変更前
+<Tooltip title="説明" componentsProps={{ tooltip: { sx: { fontSize: 14 } } }}>
+<Dialog open={open} PaperProps={{ elevation: 3 }}>
+
+// 変更後
+<Tooltip title="説明" slotProps={{ tooltip: { sx: { fontSize: 14 } } }}>
+<Dialog open={open} slotProps={{ paper: { elevation: 3 } }}>
+```
+
+`components` を `slots` に書き換えるときは、キー名が大文字始まりから小文字始まりに変わる点に注意します（`{ Paper: MyPaper }` → `{ paper: MyPaper }`）。
+
+### Dialog・Modal — `Property 'disableEscapeKeyDown' does not exist`
+
+```text
+  Property 'disableEscapeKeyDown' does not exist on type 'IntrinsicAttributes & DialogProps'.
+```
+
+Escキーで閉じないようにする `disableEscapeKeyDown` が削除されました。このpropには置き換え先のpropがありません。`onClose` の第2引数 `reason` で、閉じる理由を判定します。
+
+```tsx
+// 変更前
+<Dialog open={open} onClose={() => setOpen(false)} disableEscapeKeyDown>
+
+// 変更後
+const handleClose = (_event: React.SyntheticEvent<unknown>, reason: string) => {
+  if (reason !== 'escapeKeyDown') {
+    setOpen(false);
+  }
+};
+
+<Dialog open={open} onClose={handleClose}>
+```
+
+`reason` には `'escapeKeyDown'` のほかに `'backdropClick'`（背景のクリック）が入ります。
+
+### Typography — `Property 'paragraph' does not exist`
+
+```text
+      Property 'paragraph' does not exist on type 'IntrinsicAttributes & TypographyOwnProps & ...
+```
+
+下余白を付ける `paragraph` が削除されました。公式ガイドの置き換えは、`sx` で下余白を指定する形です。
+
+```tsx
+// 変更前
+<Typography paragraph>本文</Typography>
+
+// 変更後
+<Typography sx={{ marginBottom: '16px' }}>本文</Typography>
+```
+
+---
+
+## 手順4 — 型エラーにならない変更を確認する
+
+ここまでで型エラーは消えますが、v9には型に表れない変更もあります。該当するコンポーネントを使っている画面は、目で確認してください。次の表は、公式の移行ガイドに書かれている変更から、見た目や挙動に影響するものを抜き出したものです。
+
+| コンポーネント | 変わったこと | 確認すること |
+| --- | --- | --- |
+| `ListItemIcon` | 既定の最小幅が56pxから36pxに | リストのアイコンと文字の間隔 |
+| `Stepper`・`Step` | 描画される要素が `<div>` から `<ol>`・`<li>` に | `ol`・`li` 向けの共通CSSが当たっていないか |
+| `TablePagination` | 件数が `Intl.NumberFormat` で整形される（`103177` → `103,177`） | 件数表示、表示文字列を検証しているテスト |
+| `Menu`・`Tabs` | 矢印キーでの移動時に `tabindex` が更新される | キーボード操作を検証しているテスト |
+| `MenuItem`・`Tab` | `Menu`・`Tabs` の外に置くとエラーを投げる | 単体で使っている箇所がないか |
+| `Slider` | マウスイベントではなくポインターイベントを使う | `onMouseDown` でドラッグを止めている処理 |
+| `TextField`（`select` 指定時） | ラベルが `<label>` ではなく `<div>` で描画される | `label` 要素を前提にしたテストやCSS |
+| `Backdrop` | `aria-hidden="true"` を既定で付けなくなった | 属性を前提にしたテスト |
+
+`Stepper` と `Menu`・`Tabs` の変更は、[アクセシビリティの章](/books/mui/accessibility)で背景を扱っています。
+
+### アイコンのimport
+
+`@mui/icons-material` を使っている場合は、名前が `Outline` で終わる古いアイコン23個が削除されています。`ErrorOutline` や `DeleteOutline` などで、importがエラーになります。
+
+```tsx
+// 変更前
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+
+// 変更後。同じ見た目を保つ場合
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
+```
+
+公式ガイドによると、末尾に `d` を足しただけの `ErrorOutlined` は別のデザイン（塗りつぶしの円）です。同じ見た目を保つには `Outlined` を足した `ErrorOutlineOutlined` にします。アイコンごとに置き換え先が異なるものがあるので、該当する場合は[公式ガイドのMaterial Iconsの節](https://mui.com/material-ui/migration/upgrade-to-v9/)で確認してください。
+
+### 動くが非推奨のもの — CssVarsProvider
+
+`CssVarsProvider` と `extendTheme()` は、v9でも削除されておらず動きます。ただし型定義には `@deprecated` と書かれており、`ThemeProvider` と `createTheme({ cssVariables: true })` への移行が案内されています。型エラーにならないため残りやすい箇所です。書き換え方は[ダークモード対応の章](/books/mui/dark-mode-and-css-variables)で扱っています。
+
+<Figure src="/images/walking_woman_color.png" alt="1つずつ確認しながら進めるイメージ" maxWidth="220px" />
+
+---
+
+## TypeScriptを使っていないプロジェクトの場合
+
+ここまでの手順3は、型エラーを手がかりにしていました。JavaScriptのプロジェクトでは型エラーが出ないため、古い書き方が残っていても気づきにくくなります。
+
+v9で古いpropを渡すと、MUIはそれをスタイルとして処理せず、HTML要素の属性としてそのまま出力します。`@mui/material` 9.1.1 でサーバー側の描画結果を確認すると、次のようになりました。
+
+| 書いたコード | 出力されたHTML | Reactの警告 |
+| --- | --- | --- |
+| `<Box mt={2}>` | `<div class="MuiBox-root css-0" mt="2">` | 出ない |
+| `<Stack alignItems="center">` | `<div class="MuiStack-root ..." alignItems="center">` | 出る |
+| `<Grid item xs={6}>` | `<div class="MuiGrid-root ..." xs="6">` | 出る |
+| `<TextField InputProps={...}>` | `<div class="MuiFormControl-root ..." InputProps="[object Object]">` | 出る |
+
+余白も列幅も付かず、アイコンも表示されません。画面は崩れますが、例外は投げられないため、処理は止まりません。
+
+警告が出る場合は、ブラウザのコンソールに次のようなメッセージが表示されます。
+
+```text
+React does not recognize the `alignItems` prop on a DOM element.
+```
+
+<Marker>`mt` のように小文字だけのpropは、警告すら出ません</Marker>。Reactは小文字だけの未知の属性を、独自属性としてそのまま出力するためです。
+
+このため、JavaScriptのプロジェクトではcodemodの実行が特に重要です。実行後は、次のような検索で残りを探します。
+
+```bash
+# Gridの古い書き方
+grep -rnE "<Grid[^>]* (item|xs=|sm=|md=)" src
+
+# TextFieldなどの古いprop
+grep -rnE "(InputProps|inputProps|InputLabelProps|PaperProps|componentsProps)=" src
+
+# 削除されたprop
+grep -rnE "(disableEscapeKeyDown|paragraph)" src
+```
+
+---
+
+## よくあるハマりどころ
+
+### `@mui/material` だけ上げて、他のパッケージがv7のまま
+
+`@mui/material-nextjs` や `@mui/icons-material` を古いままにすると、バージョンの組み合わせによる不具合の原因になります。`npm ls @mui/material` を実行して、複数のバージョンが入っていないか確認してください。
+
+### エラーが多すぎて、どれが原因か読めない
+
+`Box`・`Stack`・`Typography`・`Grid` のエラーは TS2769 で出力され、1件あたり6行以上あります。原因が書かれているのは最後の `Property '...' does not exist` の行だけです。この行だけを抜き出すと、件数と種類を把握できます。
+
+```bash
+npx tsc --noEmit | grep "does not exist" | sort | uniq -c | sort -rn
+```
+
+### codemodを実行したのに型エラーが残る
+
+codemodが変換するのは、決まった形の書き換えだけです。`disableEscapeKeyDown` のように置き換え先のpropが無いもの、`Grid` の `direction="column"` のように別のコンポーネントへの置き換えが必要なものは、手で直します。propをオブジェクトにまとめて `{...props}` で渡している箇所も、変換の対象になりません。
+
+### 古い記事のコードを貼ったら、また型エラーが出た
+
+移行が終わった後も、v7以前の書き方で書かれた記事は残り続けます。貼ったコードで型エラーが出たら、この章の「手順3」の表でメッセージを引いてください。
+
+---
+
+## ちゃんと使うためのポイント
+
+- Material UIにv8は無い。v7の次がv9で、公式の移行ガイドも「v7からv9へ」の1本
+- <Marker>順番は、パッケージ更新 → codemod → 型エラーの修正 → 動作確認</Marker>
+- `@mui/*` のパッケージは、まとめてv9に揃える
+- codemodは `deprecations/all`、`v9.0.0/system-props`、`v7.0.0/grid-props` の3つ。実行前にコミットし、結果は `git diff` で確認する
+- TS2769のエラーは、最後の `Property '...' does not exist` の行を読む
+- `disableEscapeKeyDown` と `Grid` の縦方向は、置き換え先のpropが無いので手で直す
+- 型エラーにならない変更（`ListItemIcon` の幅、`Stepper` のHTML構造、`TablePagination` の数値整形など）は画面で確認する
+- JavaScriptのプロジェクトでは、古いpropはエラーにならずHTML属性として出力される
+
+---
+
+## 参考リンク
+
+- [Upgrade to v9 — 公式マイグレーションガイド](https://mui.com/material-ui/migration/upgrade-to-v9/)
+- [@mui/codemod README — codemodの一覧とオプション](https://github.com/mui/material-ui/blob/master/packages/mui-codemod/README.md)
+- [Introducing MUI v9 — v8を飛ばした理由が書かれている公式ブログ](https://mui.com/blog/introducing-mui-v9/)
+- [Upgrade to Grid v2 — Gridの新しいAPIへの移行ガイド](https://mui.com/material-ui/migration/upgrade-to-grid-v2/)
