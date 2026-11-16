@@ -1,0 +1,836 @@
+---
+title: 'TS2339・TS2769・TS2591の原因と直し方 — TypeScriptのエラーコード別リファレンス'
+description: 'TS2339・TS2769・TS2591・TS2304・TS2322・TS2345・TS7006・TS18048・TS7053を、エラーが出る最小のコード・tscの出力・原因・直し方の順で整理します。エラー文はすべてtscを実行して得た出力です。'
+order: 15
+---
+
+TypeScriptのエラーには `TS2339` のような番号が付いています。この章は、よく出るエラーを番号から引いて、原因と直し方を確認するためのページです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+VS Codeの赤い波線にカーソルを当てたら `ts(2339)` って出てきた。この番号は何？
+</SpeechBubble>
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+TypeScriptがエラーの種類ごとに付けている番号だよ。`tsc` の出力では `error TS2339` と表示される。番号が同じなら原因の種類も同じだから、番号で調べるのが早い。
+</SpeechBubble>
+
+この章のエラー出力は、<Marker>TypeScript 5.9.3 で `tsc --strict --pretty false` を実行した結果をそのまま貼っています。</Marker>TS2591の節だけは、6.0.3でも実行して確認しました。バージョンが違うと、エラー文の細部や型名（DOMのイベント型など）が変わることがあります。
+
+## エラーコードの早見表
+
+| コード | エラー文 | 主な原因 |
+|---|---|---|
+| TS2339 | Property 'x' does not exist on type 'Y'. | その型に存在しないプロパティを読んでいる |
+| TS2769 | No overload matches this call. | 複数ある呼び出し方のどれにも引数が合わない |
+| TS2591 | Cannot find name 'process'. | Node.jsの型定義が読み込まれていない |
+| TS2304 | Cannot find name 'x'. | 宣言もimportもされていない名前を使っている |
+| TS2322 | Type 'A' is not assignable to type 'B'. | 代入先の型と値の型が合わない |
+| TS2345 | Argument of type 'A' is not assignable to parameter of type 'B'. | 引数の型と渡した値の型が合わない |
+| TS7006 | Parameter 'x' implicitly has an 'any' type. | 引数に型注釈がなく、推論もできない |
+| TS18048 | 'x' is possibly 'undefined'. | `undefined` かもしれない値をそのまま使っている |
+| TS7053 | Element implicitly has an 'any' type because… | `string` 型のキーでオブジェクトを引いている |
+
+各節は「エラーが出る最小のコード → `tsc` の出力 → 原因 → 直し方」の順に並んでいます。
+
+<Figure src="/images/search_woman_color.png" alt="エラーコードを調べる" caption="エラー文を読むより先に、番号で原因の種類を特定する" maxWidth="240px" />
+
+## TS2339: Property 'x' does not exist on type 'Y'
+
+```typescript
+type User = { id: number; name: string };
+
+const user: User = { id: 1, name: 'Alice' };
+console.log(user.email);
+```
+
+```text
+e2339a.ts(4,18): error TS2339: Property 'email' does not exist on type 'User'.
+```
+
+<Marker>TS2339は「`Y` 型の定義に `x` というプロパティがない」というエラーです。</Marker>実行時にその値が `email` を持っているかどうかは関係なく、型の定義だけを見て判定されます。
+
+上の例の直し方は単純で、型に `email` を足すか、プロパティ名の書き間違いを直します。ただし、TS2339は原因が見えにくい形でも出ます。よくある4つを順に見ます。
+
+### 原因1: ユニオン型の一部にしかないプロパティを読んでいる
+
+```typescript
+type Circle = { kind: 'circle'; radius: number };
+type Square = { kind: 'square'; size: number };
+
+function area(shape: Circle | Square) {
+  return shape.radius ** 2 * Math.PI;
+}
+```
+
+```text
+e2339b.ts(5,16): error TS2339: Property 'radius' does not exist on type 'Circle | Square'.
+  Property 'radius' does not exist on type 'Square'.
+```
+
+2行目に理由が書かれています。`shape` は `Square` の可能性があり、`Square` には `radius` がありません。ユニオン型の値でそのまま使えるのは、すべてのメンバーに共通するプロパティだけです。
+
+直し方は、プロパティを読む前に型を絞り込むことです。
+
+```typescript
+function area(shape: Circle | Square) {
+  if (shape.kind === 'circle') {
+    return shape.radius ** 2 * Math.PI; // ここでは shape は Circle
+  }
+  return shape.size ** 2; // ここでは shape は Square
+}
+```
+
+絞り込みの方法は[型の絞り込み（Narrowing）](/books/typescript/05-narrowing)で扱っています。
+
+### 原因2: DOM要素の型が広すぎる
+
+```typescript
+const input = document.querySelector('#email');
+if (input) {
+  console.log(input.value);
+}
+```
+
+```text
+q2339.ts(3,21): error TS2339: Property 'value' does not exist on type 'Element'.
+```
+
+`querySelector('#email')` の戻り値の型は `Element | null` です。セレクタの文字列から、それが `input` 要素だとはTypeScriptには分かりません。`value` は `HTMLInputElement` のプロパティで、`Element` にはありません。
+
+直し方は2つあります。
+
+```typescript
+// 方法1: instanceof で実行時に確認する
+const el = document.querySelector('#email');
+if (el instanceof HTMLInputElement) {
+  console.log(el.value);
+}
+
+// 方法2: 型引数で要素の型を指定する
+const input = document.querySelector<HTMLInputElement>('#email');
+if (input) {
+  console.log(input.value);
+}
+```
+
+| 方法 | 実行時の確認 | 使う場面 |
+|---|---|---|
+| `instanceof` | する | 要素の種類が確実でないとき |
+| 型引数 | しない | HTMLを自分で書いていて、要素の種類が確実なとき |
+
+方法2は、実際の要素が `input` でなくてもエラーになりません。型引数は「この型として扱う」という指定で、検査ではないためです。この違いは[型アサーションと型ガード](/books/typescript/08-assertion-and-guard)で扱っています。
+
+### 原因3: 空のオブジェクトにあとからプロパティを足している
+
+```typescript
+const result = {};
+result.total = 100;
+```
+
+```text
+e2339d.ts(2,8): error TS2339: Property 'total' does not exist on type '{}'.
+```
+
+`const result = {}` と書いた時点で、`result` の型は `{}`（プロパティを1つも持たない型）に決まります。JavaScriptでは動くコードですが、TypeScriptでは型が宣言時に確定するため、あとから足すことはできません。
+
+```typescript
+// 方法1: 最初からプロパティを書く
+const result = { total: 100 };
+
+// 方法2: あとから足すなら、型を先に宣言する
+type Result = { total?: number };
+const result2: Result = {};
+result2.total = 100;
+```
+
+### 原因4: windowに独自のプロパティを足している
+
+```typescript
+window.dataLayer.push({ event: 'click' });
+```
+
+```text
+e2339e.ts(1,8): error TS2339: Property 'dataLayer' does not exist on type 'Window & typeof globalThis'.
+```
+
+外部のスクリプトが `window` に追加するプロパティは、TypeScriptの標準の型定義に入っていません。`Window` インターフェースに宣言を足します。
+
+```typescript
+export {};
+
+declare global {
+  interface Window {
+    dataLayer: Record<string, unknown>[];
+  }
+}
+
+window.dataLayer.push({ event: 'click' });
+```
+
+同じ名前の `interface` は宣言が統合されるので、既存の `Window` にプロパティが追加されます。`declare global` はモジュール（`import` か `export` を含むファイル）の中でしか書けないため、先頭に `export {};` を置いています。型定義ファイルに分ける方法は[型定義ファイル（.d.ts）と@types](/books/typescript/12-type-definitions)を参照してください。
+
+<Callout type="warning">
+### as any で消さない
+
+`(user as any).email` と書けばTS2339は消えます。ただし、その式に対する型チェックがすべて無効になり、プロパティ名を書き間違えても検出されません。型の定義を直すか、絞り込みで対応します。
+</Callout>
+
+## TS2769: No overload matches this call
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+エラー文が10行以上あって、どこを読めばいいのか分からない…。
+</SpeechBubble>
+
+TS2769は出力が長くなりますが、構造は決まっています。まず短い例で読み方を確認します。
+
+```typescript
+function toLabel(value: string): string;
+function toLabel(value: number): string;
+function toLabel(value: string | number): string {
+  return typeof value === 'number' ? value.toFixed(1) : value.trim();
+}
+
+toLabel(true);
+```
+
+```text
+o1.ts(7,9): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: string): string', gave the following error.
+    Argument of type 'boolean' is not assignable to parameter of type 'string'.
+  Overload 2 of 2, '(value: number): string', gave the following error.
+    Argument of type 'boolean' is not assignable to parameter of type 'number'.
+```
+
+`toLabel` には呼び出し方（オーバーロード）が2つ宣言されています。TypeScriptは引数をそれぞれと照合し、<Marker>どれにも合わなかったときにTS2769を出します。</Marker>出力は次の形です。
+
+| 行 | 内容 |
+|---|---|
+| 1行目 | `No overload matches this call.`（どの呼び出し方にも合わない） |
+| `Overload 1 of 2, '…'` | 1つ目の呼び出し方のシグネチャ |
+| その下の字下げされた行 | 1つ目に合わなかった理由 |
+| `Overload 2 of 2, '…'` 以降 | 2つ目について同じ内容 |
+
+読む順番は、まず自分が使いたかった呼び出し方の `Overload N of M` を探し、その下の理由だけを読みます。ほかのオーバーロードの理由は読まなくて構いません。
+
+オーバーロードの書き方は[関数と型](/books/typescript/06-functions)で扱っています。
+
+### 原因1: ユニオン型の値をそのまま渡している
+
+```typescript
+function show(value: string | number) {
+  return toLabel(value);
+}
+```
+
+```text
+o2.ts(8,18): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: string): string', gave the following error.
+    Argument of type 'string | number' is not assignable to parameter of type 'string'.
+      Type 'number' is not assignable to type 'string'.
+  Overload 2 of 2, '(value: number): string', gave the following error.
+    Argument of type 'string | number' is not assignable to parameter of type 'number'.
+      Type 'string' is not assignable to type 'number'.
+```
+
+`string` も `number` も受け付ける関数に `string | number` を渡しているのに、エラーになります。TypeScriptは引数をオーバーロード1つずつと照合するためです。`string | number` は `(value: string)` にも `(value: number)` にも単独では合いません。
+
+実装のシグネチャ `(value: string | number)` には合いますが、これは呼び出し側からは見えません。呼び出せるのは、実装より上に書いたオーバーロードだけです。
+
+```typescript
+// 方法1: 呼び出す前に絞り込む
+function show(value: string | number) {
+  return typeof value === 'number' ? toLabel(value) : toLabel(value);
+}
+
+// 方法2: ユニオン型を受け取るオーバーロードを足す（自分で定義した関数の場合）
+function toLabel(value: string): string;
+function toLabel(value: number): string;
+function toLabel(value: string | number): string;
+function toLabel(value: string | number): string {
+  return typeof value === 'number' ? value.toFixed(1) : value.trim();
+}
+```
+
+### 原因2: undefinedかもしれない値を渡している
+
+```typescript
+function toDate(timestamp: string | undefined) {
+  return new Date(timestamp);
+}
+```
+
+```text
+o4.ts(2,19): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+```
+
+いちばん深く字下げされた行に `Type 'undefined' is not assignable to …` とあります。`Date` のコンストラクタには呼び出し方が4つありますが、`undefined` を受け取るものはありません。
+
+```typescript
+// undefined の場合を先に処理する
+function toDate(timestamp: string | undefined) {
+  if (timestamp === undefined) return null;
+  return new Date(timestamp);
+}
+
+// または、代わりの値を決める
+function toDate2(timestamp: string | undefined) {
+  return new Date(timestamp ?? Date.now());
+}
+```
+
+### 原因3: コールバックの引数に付けた型が合っていない
+
+```typescript
+const button = document.createElement('button');
+button.addEventListener('click', (event: KeyboardEvent) => {
+  console.log(event.key);
+});
+```
+
+```text
+e2769c.ts(2,34): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(type: "click", listener: (this: HTMLButtonElement, ev: PointerEvent) => any, options?: boolean | AddEventListenerOptions | undefined): void', gave the following error.
+    Argument of type '(event: KeyboardEvent) => void' is not assignable to parameter of type '(this: HTMLButtonElement, ev: PointerEvent) => any'.
+      Types of parameters 'event' and 'ev' are incompatible.
+        Type 'PointerEvent' is missing the following properties from type 'KeyboardEvent': charCode, code, isComposing, key, and 8 more.
+  Overload 2 of 2, '(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): void', gave the following error.
+    Argument of type '(event: KeyboardEvent) => void' is not assignable to parameter of type 'EventListenerOrEventListenerObject'.
+      Type '(event: KeyboardEvent) => void' is not assignable to type 'EventListener'.
+        Types of parameters 'event' and 'evt' are incompatible.
+          Type 'Event' is missing the following properties from type 'KeyboardEvent': altKey, charCode, code, ctrlKey, and 17 more.
+```
+
+使いたかったのは `Overload 1 of 2`（`type: "click"`）です。その下を読むと、`'click'` のリスナーが受け取るのは `PointerEvent` で、自分で書いた `KeyboardEvent` と合わないことが分かります。
+
+直し方は、引数の型注釈を消すことです。`addEventListener` に直接渡した関数の引数は、イベント名から型が推論されます。
+
+```typescript
+button.addEventListener('click', (event) => {
+  console.log(event.clientX); // event は PointerEvent
+});
+```
+
+<Callout type="info">
+### ライブラリの関数でTS2769が出たとき
+
+Reactのコンポーネントやライブラリの関数でも、同じ形で出ます。読み方は変わりません。使いたかった呼び出し方の `Overload N of M` を探し、その下のいちばん深く字下げされた行を読むと、合わなかった引数やプロパティが書かれています。
+</Callout>
+
+## TS2591: Cannot find name 'process'
+
+```typescript
+const port = process.env.PORT;
+```
+
+```text
+e2591.ts(1,14): error TS2591: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+```
+
+`process` はNode.jsが実行時に用意する変数で、TypeScript本体の型定義には入っていません。型は `@types/node` パッケージが提供します。<Marker>TS2591は「`@types/node` が読み込まれていない」ことを示します。</Marker>
+
+同じコードで、番号が `TS2580` になることがあります。
+
+```text
+e2591.ts(1,14): error TS2580: Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+```
+
+違いは、`tsconfig.json` に `types` の指定があるかどうかです。TypeScript 5.9.3で実行して確かめた結果は次のとおりです。
+
+| `@types/node` | `tsconfig.json` の `types` | 結果 |
+|---|---|---|
+| 未インストール | 指定なし | TS2580 |
+| 未インストール | `[]` | TS2591 |
+| インストール済み | `[]` | TS2591 |
+| インストール済み | `["node"]` | エラーなし |
+
+### 直し方
+
+エラー文に書かれている手順をそのまま実行します。
+
+```bash
+npm i --save-dev @types/node
+```
+
+TS2580はこれで消えます。TS2591の場合は、インストールに加えて `tsconfig.json` の `types` に `node` を足します。
+
+```json
+{
+  "compilerOptions": {
+    "types": ["node"]
+  }
+}
+```
+
+`types` を指定すると、列挙したパッケージの型定義だけが読み込まれます。`@types/node` をインストールしていても、`types` に `node` が入っていなければ `process` は見つかりません。`types` に書くのは `@types/` を除いたパッケージ名です。
+
+<Callout type="warning">
+### TypeScript 6.0では types の既定値が変わった
+
+TypeScript 5.9までは、`types` を書かなければ `node_modules/@types` にあるパッケージがすべて読み込まれました。6.0では既定値が `[]` になり、何も読み込まれません。
+
+`@types/node` をインストールし、`types` を書いていない `tsconfig.json` で実行した結果です。5.9.3ではエラーなし、6.0.3では上と同じTS2591が出ました。`"types": ["node"]` を足すと6.0.3でもエラーは消えます。
+
+TypeScriptを6.0に上げた直後にTS2591が出た場合は、これが原因です。変更の内容は[TypeScript 6.0のリリースノート（英語）](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html)の「`types` now defaults to `[]`」に記載があります。
+</Callout>
+
+`require` や `Buffer` でも同じ番号のエラーが出ます。原因と直し方は `process` と同じです。
+
+```text
+n1.ts(1,12): error TS2580: Cannot find name 'require'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+```
+
+なお、`@types/node` を入れて消えるのは型エラーだけです。ブラウザで動くコードで `process` を参照している場合、実行時に `process` が存在するかどうかはビルドツールの設定で決まります。環境変数に型を付ける方法は[実践パターン集](/books/typescript/14-practical-patterns)で扱っています。
+
+## TS2304: Cannot find name 'x'
+
+```typescript
+const user: User = { id: 1, name: 'Alice' };
+console.log(formatDate(new Date()));
+```
+
+```text
+a2304d.ts(1,13): error TS2304: Cannot find name 'User'.
+a2304d.ts(2,13): error TS2552: Cannot find name 'formatDate'. Did you mean 'FormData'?
+```
+
+TS2304は、そのファイルから見える範囲に、その名前の宣言がないときに出ます。型の名前でも、変数や関数の名前でも同じです。原因はほぼ次の3つです。
+
+| 原因 | 直し方 |
+|---|---|
+| `import` を書いていない | `import { User } from './types'` のように足す |
+| 名前を書き間違えている | 宣言側の名前に合わせる |
+| まだ宣言していない | 型や関数を定義する |
+
+2行目の `TS2552` は、似た名前の候補が見つかったときの番号です。`Did you mean 'FormData'?` は候補の提示であり、正しいとは限りません。この例では `formatDate` を `import` していないことが原因で、`FormData` は無関係です。
+
+`import` の書き方は[モジュールと型のインポート/エクスポート](/books/typescript/10-modules)を参照してください。
+
+### 型パラメータを宣言していない
+
+```typescript
+function first(items: T[]): T {
+  return items[0];
+}
+```
+
+```text
+a2304.ts(1,23): error TS2304: Cannot find name 'T'.
+a2304.ts(1,29): error TS2304: Cannot find name 'T'.
+```
+
+`T` という型はどこにも宣言されていません。ジェネリクスの型パラメータは、関数名の直後の `<T>` で宣言してから使います。
+
+```typescript
+function first<T>(items: T[]): T {
+  return items[0];
+}
+```
+
+型パラメータの宣言は[ジェネリクス](/books/typescript/07-generics)で扱っています。
+
+### 同じ「Cannot find name」でも番号が違うもの
+
+`Cannot find name` で始まるエラーは、原因を特定できた場合に別の番号になります。番号から、何が足りないかが分かります。
+
+| コード | 対象の例 | 足りないもの |
+|---|---|---|
+| TS2304 | 自分で付けた名前、`__dirname` | 宣言または `import` |
+| TS2552 | 似た名前が存在する場合 | 宣言または `import`（候補は参考） |
+| TS2580 / TS2591 | `process`、`require`、`Buffer` | `@types/node` |
+| TS2582 | `describe`、`it` | テストランナーの型定義 |
+| TS2584 | `document`、`console` | `tsconfig.json` の `lib` に `dom` |
+
+TS2582とTS2584の出力は次のとおりです。
+
+```text
+n2.test.ts(1,1): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+```
+
+```text
+nd.ts(1,1): error TS2584: Cannot find name 'document'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'.
+```
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="エラー文を確認する" caption="エラー文の後半に、足りないものと実行するコマンドが書かれていることが多い" maxWidth="240px" />
+
+## TS2322: Type 'A' is not assignable to type 'B'
+
+```typescript
+const age: number = '20';
+```
+
+```text
+e2322.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.
+```
+
+TS2322は代入のエラーです。エラー文は <Marker>`Type '値の型' is not assignable to type '代入先の型'`</Marker> の順に並んでいます。左が実際に渡した値、右が受け取る側の型です。変数への代入のほか、`return` する値と戻り値の型が合わないときにも出ます。
+
+上の例は見てすぐ分かりますが、次の形は理由が分かりにくいです。
+
+### 文字列を渡しているのにリテラル型に代入できない
+
+```typescript
+type Status = 'active' | 'inactive';
+
+let label = 'active';
+const current: Status = label;
+```
+
+```text
+a2322.ts(4,7): error TS2322: Type 'string' is not assignable to type 'Status'.
+```
+
+`label` の中身は `'active'` ですが、型は `string` です。`let` で宣言した変数はあとから別の文字列を代入できるため、TypeScriptは型を `'active'` ではなく `string` と推論します。`string` は `'active' | 'inactive'` 以外の文字列も含むので、`Status` には代入できません。
+
+```typescript
+// 方法1: const で宣言する（型は 'active' になる）
+const label = 'active';
+const current: Status = label;
+
+// 方法2: 変数に型注釈を付ける
+let label2: Status = 'active';
+const current2: Status = label2;
+```
+
+リテラル型は[ユニオン型とリテラル型](/books/typescript/04-union-and-literal)で扱っています。
+
+### オブジェクトの代入で出る別の番号
+
+オブジェクトの形が合わない場合は、TS2322ではなく、より具体的な番号が出ます。
+
+```typescript
+type User = { id: number; name: string };
+
+const a: User = { id: 1 };
+const b: User = { id: 1, name: 'Alice', age: 20 };
+```
+
+```text
+obj.ts(3,7): error TS2741: Property 'name' is missing in type '{ id: number; }' but required in type 'User'.
+obj.ts(4,41): error TS2353: Object literal may only specify known properties, and 'age' does not exist in type 'User'.
+```
+
+| コード | 意味 | 直し方 |
+|---|---|---|
+| TS2741 | 必須のプロパティが足りない | プロパティを足す。省略を許すなら型側を `name?: string` にする |
+| TS2353 | 型にないプロパティをオブジェクトリテラルに書いている | プロパティを消すか、型に足す |
+
+## TS2345: Argument of type 'A' is not assignable to parameter of type 'B'
+
+```typescript
+function double(n: number) {
+  return n * 2;
+}
+double('10');
+```
+
+```text
+e2345.ts(4,8): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+```
+
+TS2345は、TS2322の関数呼び出し版です。`Argument of type`（渡した値の型）が `parameter of type`（引数として宣言された型）に合いません。原因の考え方はTS2322と同じです。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`'GET'` を渡しているのに、`string` は渡せないって言われる。なんで？
+</SpeechBubble>
+
+### オブジェクトのプロパティがstringに広がっている
+
+```typescript
+type Method = 'GET' | 'POST';
+function request(url: string, method: Method) {}
+
+const options = { url: '/api/users', method: 'GET' };
+request(options.url, options.method);
+```
+
+```text
+a2345.ts(5,22): error TS2345: Argument of type 'string' is not assignable to parameter of type 'Method'.
+```
+
+`options` は `const` ですが、プロパティはあとから書き換えられます。そのため `options.method` の型は `'GET'` ではなく `string` と推論されます。
+
+```typescript
+// 方法1: as const でプロパティをリテラル型に固定する
+const options = { url: '/api/users', method: 'GET' } as const;
+request(options.url, options.method);
+
+// 方法2: オブジェクトに型注釈を付ける
+const options2: { url: string; method: Method } = { url: '/api/users', method: 'GET' };
+request(options2.url, options2.method);
+```
+
+`as const` は[型アサーションと型ガード](/books/typescript/08-assertion-and-guard)で扱っています。
+
+### undefinedかもしれない値を渡している
+
+```typescript
+function greet(name: string) {}
+
+const names = ['Alice', 'Bob'];
+greet(names.find((n) => n.startsWith('A')));
+```
+
+```text
+a2345b.ts(4,7): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+```
+
+`find` は、条件に合う要素がなければ `undefined` を返します。そのため戻り値の型は `string | undefined` です。2行目の `Type 'undefined' is not assignable to type 'string'` が、合わない部分を示しています。
+
+```typescript
+const found = names.find((n) => n.startsWith('A'));
+
+// 方法1: undefined の場合を除いてから渡す
+if (found !== undefined) {
+  greet(found);
+}
+
+// 方法2: 代わりの値を決める
+greet(found ?? 'guest');
+```
+
+## TS7006: Parameter 'x' implicitly has an 'any' type
+
+```typescript
+function greet(name) {
+  return `Hello, ${name}`;
+}
+```
+
+```text
+a7006.ts(1,16): error TS7006: Parameter 'name' implicitly has an 'any' type.
+```
+
+引数に型注釈がなく、TypeScriptが型を推論できないときに出ます。推論できない引数は `any` になりますが、`tsconfig.json` の `noImplicitAny` が有効だと、それをエラーとして報告します。`noImplicitAny` は `strict: true` に含まれています（[tsconfig.jsonの読み方](/books/typescript/11-tsconfig)）。
+
+直し方は、引数に型注釈を付けることです。
+
+```typescript
+function greet(name: string) {
+  return `Hello, ${name}`;
+}
+```
+
+### 関数を変数に入れてから渡すと推論されない
+
+```typescript
+const onClick = (event) => {
+  console.log(event.target);
+};
+document.addEventListener('click', onClick);
+```
+
+```text
+a7006b.ts(1,18): error TS7006: Parameter 'event' implicitly has an 'any' type.
+```
+
+`[1, 2].map((n) => n * 2)` の `n` には型注釈を書かなくてもエラーになりません。関数を引数の位置に直接書くと、渡す先の型から引数の型が推論されるためです。上の例は関数を先に変数へ代入しているので、その時点では渡す先が分からず、推論できません。
+
+```typescript
+// 方法1: 引数の位置に直接書く（event は推論される）
+document.addEventListener('click', (event) => {
+  console.log(event.target);
+});
+
+// 方法2: 分けて書くなら、型注釈を付ける
+const onClick = (event: MouseEvent) => {
+  console.log(event.target);
+};
+document.addEventListener('click', onClick);
+```
+
+<Callout type="warning">
+### any と書いて消さない
+
+`(name: any)` と書けばエラーは消えますが、暗黙の `any` を明示の `any` に変えただけで、型チェックが効かない状態は変わりません。型が分からない値を受け取るなら `unknown` にして、使う前に絞り込みます。
+</Callout>
+
+## TS18048: 'x' is possibly 'undefined'
+
+```typescript
+type User = { name: string; address?: { city: string } };
+
+function getCity(user: User) {
+  return user.address.city;
+}
+```
+
+```text
+a18048.ts(4,10): error TS18048: 'user.address' is possibly 'undefined'.
+```
+
+`address?` は省略できるプロパティなので、型は `{ city: string } | undefined` です。`undefined` のプロパティを読むと実行時にエラーになるため、TypeScriptはその前で止めます。このチェックは `strictNullChecks`（`strict: true` に含まれる）が有効なときに行われます。
+
+同じ原因で、番号と文が違うものが2つあります。
+
+| コード | エラー文 | 出る場面 |
+|---|---|---|
+| TS18048 | 'x' is possibly 'undefined'. | 変数やプロパティの名前を示せるとき |
+| TS18047 | 'x' is possibly 'null'. | `null` の可能性があるとき |
+| TS2532 | Object is possibly 'undefined'. | 関数の戻り値をそのまま使うなど、名前を示せないとき |
+
+```typescript
+const scores = [80, 95, 60];
+console.log(scores.find((s) => s > 90).toFixed(1));
+
+const el = document.getElementById('app');
+el.textContent = 'x';
+```
+
+```text
+nul.ts(2,13): error TS2532: Object is possibly 'undefined'.
+nul.ts(5,1): error TS18047: 'el' is possibly 'null'.
+```
+
+### 直し方の使い分け
+
+```typescript
+// 方法1: オプショナルチェーン（undefined なら式全体が undefined になる）
+function getCity(user: User) {
+  return user.address?.city;
+}
+
+// 方法2: 代わりの値を決める
+function getCity2(user: User) {
+  return user.address?.city ?? '未登録';
+}
+
+// 方法3: if で undefined の場合を先に処理する
+function getCity3(user: User) {
+  if (!user.address) {
+    return '未登録';
+  }
+  return user.address.city;
+}
+```
+
+| 方法 | 結果の型 | 使う場面 |
+|---|---|---|
+| `?.` | `string \| undefined` | `undefined` のまま呼び出し元に返してよいとき |
+| `?.` と `??` | `string` | 代わりに使う値が決まっているとき |
+| `if` で分岐 | `string` | `undefined` のときに別の処理をしたいとき |
+
+`?.` は戻り値の型に `undefined` が残ります。エラーが呼び出し元に移るだけになる場合は、`??` か `if` で `undefined` を取り除きます。
+
+<Callout type="warning">
+### ! で消すのは最後の手段
+
+`user.address!.city` と書くとエラーは消えます。`!` は「この値は `null` でも `undefined` でもない」とTypeScriptに伝える記法で、実行時の確認は行いません。実際に `undefined` だった場合は、実行時に `TypeError` になります。詳しくは[型アサーションと型ガード](/books/typescript/08-assertion-and-guard)の非nullアサーションの節を参照してください。
+</Callout>
+
+<Figure src="/images/surprise_pc_woman_color.png" alt="実行時エラーに驚く" caption="possibly 'undefined' を ! で消すと、型エラーが実行時エラーに変わる" maxWidth="240px" />
+
+## TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type
+
+```typescript
+const prices = { apple: 100, orange: 80 };
+
+function getPrice(name: string) {
+  return prices[name];
+}
+```
+
+```text
+a7053.ts(4,10): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ apple: number; orange: number; }'.
+  No index signature with a parameter of type 'string' was found on type '{ apple: number; orange: number; }'.
+```
+
+`prices` のキーは `apple` と `orange` の2つだけです。`name` は `string` なので、`'banana'` のような存在しないキーも渡せます。その場合の結果の型をTypeScriptは決められず、`any` になります。`noImplicitAny` が有効だと、これがエラーとして報告されます。
+
+<Marker>直し方は、キーの型を狭めるか、オブジェクトの型を広げるかのどちらかです。</Marker>
+
+```typescript
+// 方法1: 引数の型を、実在するキーだけに狭める
+function getPrice(name: keyof typeof prices) {
+  return prices[name];
+}
+
+// 方法2: 型ガードで、実在するキーかどうかを実行時に確認する
+function isFruit(name: string): name is keyof typeof prices {
+  return name in prices;
+}
+function getPrice2(name: string) {
+  return isFruit(name) ? prices[name] : undefined;
+}
+
+// 方法3: どんな文字列のキーも受け付けるオブジェクトにする
+const prices3: Record<string, number> = { apple: 100, orange: 80 };
+function getPrice3(name: string) {
+  return prices3[name];
+}
+```
+
+| 方法 | 使う場面 |
+|---|---|
+| `keyof typeof` | キーがコード上で決まっているとき |
+| 型ガード | キーがユーザー入力やAPIの応答など、実行時に決まるとき |
+| `Record<string, number>` | キーの種類が事前に決まらないとき |
+
+`keyof typeof prices` は `'apple' | 'orange'` という型になります。方法3では、存在しないキーを渡しても結果の型は `number` のままです。`tsconfig.json` の `noUncheckedIndexedAccess` を有効にすると、`number | undefined` になります。
+
+`keyof` と `Record` は[ユーティリティ型](/books/typescript/09-utility-types)、型ガードは[型アサーションと型ガード](/books/typescript/08-assertion-and-guard)で扱っています。
+
+### Object.keysで回すと出る
+
+```typescript
+for (const key of Object.keys(prices)) {
+  console.log(prices[key]);
+}
+```
+
+```text
+a7053b.ts(3,15): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ apple: number; orange: number; }'.
+  No index signature with a parameter of type 'string' was found on type '{ apple: number; orange: number; }'.
+```
+
+`Object.keys` の戻り値の型は `string[]` です。`('apple' | 'orange')[]` にはなりません。キーと値の両方が必要なら、`Object.entries` を使うと添字アクセスが不要になります。
+
+```typescript
+for (const [key, value] of Object.entries(prices)) {
+  console.log(key, value);
+}
+```
+
+## よくあるハマりどころ
+
+<SpeechBubble character="/images/question_woman_04_color.png" name="学習者">
+エラーが20個出てる。上から全部直さないとダメ？
+</SpeechBubble>
+
+<SpeechBubble character="/images/relief_man_color.png" name="先生" side="right">
+まず1つ目だけ直して、もう一度 `tsc` を実行しよう。型定義が1つ足りないだけで、それを使っている箇所すべてにエラーが出ることがあるよ。
+</SpeechBubble>
+
+- **1つの原因で多数のエラーが出る**: 型の `import` 漏れ（TS2304）や `@types` の不足（TS2591）は、その名前を使っている全箇所にエラーを出します。最初のエラーから直します
+- **字下げされた行を読んでいない**: TS2339・TS2345・TS2769は、2行目以降に具体的な理由が続きます。いちばん深く字下げされた行が、型が合わない箇所を最も具体的に示しています
+- **VS Codeと `tsc` で結果が違う**: 参照している `tsconfig.json` が違う可能性があります。確認の手順は[tsconfig.jsonの読み方](/books/typescript/11-tsconfig)で扱っています
+- **`as` や `!` や `any` で消している**: エラーは消えますが、その箇所の型チェックが無効になります。原因が「型の定義が実態と違う」なのか「値の確認が足りない」なのかを先に切り分けます
+
+## ちゃんと使うためのポイント
+
+- <Marker>エラー文より先に番号を見る。番号が同じなら原因の種類も同じ</Marker>
+- エラー文の `Type 'A' is not assignable to type 'B'` は、Aが渡した値、Bが受け取る側
+- TS2339は、ユニオン型なら絞り込み、DOM要素なら `instanceof` か型引数で直す
+- TS2769は、使いたかった `Overload N of M` の下だけを読む
+- TS2591は `@types/node` のインストールと、`tsconfig.json` の `types` を確認する。TypeScript 6.0以降は `types` の指定が必要
+- TS18048は `?.`・`??`・`if` のどれかで `undefined` の場合を処理する。`!` は実行時の確認をしない
+- TS7053は、キーを `keyof typeof` で狭めるか、オブジェクトを `Record` で広げる
+
+## 参考リンク
+
+- [TypeScript Handbook — Narrowing（英語）](https://www.typescriptlang.org/docs/handbook/2/narrowing.html) — ユニオン型の絞り込みの公式ガイド
+- [TypeScript Handbook — More on Functions（英語）](https://www.typescriptlang.org/docs/handbook/2/functions.html) — オーバーロードと、実装のシグネチャが外から見えないことの説明
+- [TSConfig リファレンス — types（日本語）](https://www.typescriptlang.org/ja/tsconfig/#types) — `types` を指定したときに読み込まれる型定義の説明（5.9までの既定の動作）
+- [TypeScript 6.0 リリースノート（英語）](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) — `types` の既定値が `[]` になった変更
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだTypeScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>

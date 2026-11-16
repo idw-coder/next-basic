@@ -287,6 +287,11 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'tsconfig',
     'implements',
     'abstract',
+    'TS2339',
+    'TS2769',
+    'TS2591',
+    'No overload matches',
+    'possibly',
   ],
 
   mui: [
