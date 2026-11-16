@@ -309,7 +309,8 @@ export async function generateMetadata({
   const title = `${question}｜${label}クイズ`;
 
   // 問題文は title と重複するので、description には解説の冒頭を出す。
-  const explanation = collapseWhitespace(toPlainText(quiz.explanation));
+  // 解説が見出しで始まる問題では、見出しではなく本文から始める。
+  const explanation = collapseWhitespace(toPlainText(quiz.explanation, { omitHeadings: true }));
   const description = truncate(
     explanation ? `${lead}解説: ${explanation}` : `${lead}${question}`,
     DESCRIPTION_MAX_LENGTH,

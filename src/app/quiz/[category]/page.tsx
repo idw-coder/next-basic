@@ -1,6 +1,6 @@
 import { SectionHeading } from '@/components/SectionHeading';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { getBookTheme } from '@/lib/book-theme';
 import { getBookForCategory, getChaptersByBook } from '@/lib/books';
 import { getCategoryTheme } from '@/lib/categoryTheme';
@@ -21,6 +21,7 @@ import {
 import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import CategoryRandomStartCard from './CategoryRandomStartCard';
 import QuizListClient from './QuizListClient';
 import { getCategorySeoContent, type CategorySeoContent } from './categoryContent';
@@ -208,24 +209,11 @@ export default async function CategoryQuizPage({
 
   const category = await getCategory(categorySlug);
 
+  // 存在しないカテゴリは404で返す（表示は not-found.tsx）。
+  // 200で「見つかりません」を返すと、検索エンジンがソフト404として扱う。
+  // DB障害のときは getCategory が例外を投げるので、ここには来ない。
   if (!category) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-2 md:py-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>カテゴリが見つかりません</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button asChild variant="link" className="px-0">
-              <Link href="/" className="inline-flex items-center gap-2">
-                <ArrowLeft className="size-4 shrink-0" />
-                トップページに戻る
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    notFound();
   }
 
   const [{ quizzes, failed: quizzesFailed }, tags] = await Promise.all([

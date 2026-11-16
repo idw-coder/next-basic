@@ -40,12 +40,39 @@ export function parseTiptapDoc(value: string): TiptapNode | null {
   }
 }
 
-/** ノード木から可視テキストだけを連結する。 */
-export function tiptapNodeText(node: TiptapNode | null | undefined): string {
+/** 行内に置かれるノード。これ以外（paragraph・heading・listItem など）はブロックとして扱う */
+const INLINE_NODE_TYPES = new Set(['text', 'hardBreak']);
+
+export interface PlainTextOptions {
+  /**
+   * 見出し（heading）を出力から除く。
+   * meta description のように冒頭の字数が限られる箇所で、
+   * 「正解と要点」のような見出しではなく本文から始めるために使う。
+   */
+  omitHeadings?: boolean;
+}
+
+/**
+ * ノード木から可視テキストだけを連結する。
+ *
+ * ブロック同士は改行で区切る。区切らないと見出しと次の段落が
+ * 「正解と要点正解は…」のように1語として連結される。
+ */
+export function tiptapNodeText(
+  node: TiptapNode | null | undefined,
+  options: PlainTextOptions = {},
+): string {
   if (!node || typeof node !== 'object') return '';
   if (node.type === 'text' && typeof node.text === 'string') return node.text;
-  if (Array.isArray(node.content)) return node.content.map(tiptapNodeText).join('');
-  return '';
+  if (node.type === 'hardBreak') return '\n';
+  if (options.omitHeadings && node.type === 'heading') return '';
+  if (!Array.isArray(node.content)) return '';
+
+  const hasBlockChild = node.content.some(
+    (child) => !INLINE_NODE_TYPES.has(child?.type ?? ''),
+  );
+  const parts = node.content.map((child) => tiptapNodeText(child, options));
+  return hasBlockChild ? parts.filter((part) => part !== '').join('\n') : parts.join('');
 }
 
 /**
@@ -53,10 +80,13 @@ export function tiptapNodeText(node: TiptapNode | null | undefined): string {
  * `<title>`・meta description・JSON-LD・スクリーンリーダー用テキストなど、
  * リッチな構造を持てない箇所で使う。
  */
-export function toPlainText(value: string | undefined | null): string {
+export function toPlainText(
+  value: string | undefined | null,
+  options: PlainTextOptions = {},
+): string {
   if (!value) return '';
   const doc = parseTiptapDoc(value);
-  return doc ? tiptapNodeText(doc) : value;
+  return doc ? tiptapNodeText(doc, options) : value;
 }
 
 /** プレーンテキストからURLを取り除き、残った空行を整理する。 */

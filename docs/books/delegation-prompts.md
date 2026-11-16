@@ -72,6 +72,73 @@ docs/books/guide.md / 章ページ page.tsx / src/app/api/ 配下の既存Route 
 
 ---
 
+## P8: TypeScriptの本に「エラーコード別の原因と直し方」の章を追加
+
+**モデル**: 高（エラーの再現と原因の正確さが要る） / **効果**: 検索流入＋困っている読者への直接の回答 / **工数**: 中
+**根拠**: Search Console（2026-08-11〜11-13）で `ts2591`（2.7位）・`ts2339`（7.3位）・`ts2769`（5.0位）・`no overload matches this call`（6.6位）・`cannot find name process`（40.2位）が合計約30表示でクリック0。TypeScriptの本にはエラーコードを見出しにした章がなく、既存章でのエラーコードの言及は `11-tsconfig.mdx` の TS7006 と TS2322 の2か所だけ。
+
+```
+content/books/typescript に、エラーコード別に原因と直し方を引ける章を1つ追加してほしい。
+
+# 最初に読むもの
+- AGENTS.md（devサーバーとVeliteのルール。npx velite と npm run build は実行しない）
+- docs/books/guide.md（執筆ルール。Figure・SpeechBubbleの使い方、強調記法の注意）
+- content/books/typescript の既存15章（文体・コンポーネントの使い方・扱い済みの範囲を把握する）
+
+# 作るファイル
+- content/books/typescript/common-errors.mdx（ファイル名に連番を付けない）
+- frontmatter: order: 15（既存章のorderは動かさない）。title と description は既存章の形式に合わせる
+- title にはエラーコードを2〜3個含める（例: 「TypeScriptのエラーコード別の原因と直し方 — TS2339・TS2769・TS2591」）
+
+# 扱うエラー（この順で、1エラー＝1つのh2）
+必須（検索で実際に表示されているもの）
+1. TS2339: Property 'x' does not exist on type 'Y'.
+2. TS2769: No overload matches this call.
+3. TS2591: Cannot find name 'process'（@types/node が必要なケース）
+4. TS2304: Cannot find name 'x'.
+追加（頻出のもの。再現できたものだけ載せる）
+5. TS2322: Type 'A' is not assignable to type 'B'.
+6. TS2345: Argument of type 'A' is not assignable to parameter of type 'B'.
+7. TS7006: Parameter 'x' implicitly has an 'any' type.
+8. TS18048 / TS2532: 'x' is possibly 'undefined'. / Object is possibly 'undefined'.
+9. TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type ...
+
+# 各エラーの書き方
+- h2 は「TS2339: Property 'x' does not exist on type 'Y'」のように、コードと英語のエラー文をそのまま入れる
+  （読者はエラー文をコピーして検索するため）
+- 構成は「エラーが出る最小のコード → tscの出力そのまま → 原因 → 直し方（複数あれば使い分け）」
+- 原因が複数あるエラー（TS2339・TS2769）は、原因ごとにh3で分ける
+- 該当する既存章があれば、その章へ内部リンクを張る
+  （絞り込みは 05-narrowing、アサーションは 08-assertion-and-guard、@types は 12-type-definitions、strict は 11-tsconfig）
+- 章の冒頭に、エラーコードと一言の原因を並べた早見表を置く
+
+# 正確さのルール（重要）
+- エラー文とエラーコードを記憶で書かない。スクラッチ用の一時ディレクトリで実際に tsc を実行し、
+  出力をそのまま貼る。使った TypeScript のバージョンを章の冒頭に明記する
+- 再現できなかったエラーは載せない。載せなかったものは作業報告に書く
+- 断定には公式ドキュメントへのリンクを付ける。TypeScript Handbook には日本語版がないので、
+  英語ページへのリンクには「（英語）」と明記する。出典のない判断は「筆者の解釈」と書く
+- 技術の説明に例えを使わない。実際の用語と動作をそのまま書く
+- 外部URLは curl -s -o /dev/null -w "%{http_code}" -L <url> で全件200を確認する
+
+# 書いたあとにやること
+- 14-practical-patterns.mdx の末尾に「次の章」や本の締めの文があるか確認し、
+  新しい章が最後になることと矛盾していれば直す
+- src/app/books/_constants/searchSuggestions.ts に検索サジェストを足す
+  （基準は docs/books/guide.md の「章を追加したら検索サジェストを見直す」）
+- 新しい本の追加ではないので、guide.md の「デプロイ後の作業」1〜6は不要
+- npx tsc --noEmit を通す
+- 表示確認は lsof -nP -iTCP -sTCP:LISTEN | grep node で既存のdevサーバーを探し、
+  立っていればそこへ curl する。立っていなければ AGENTS.md の手順に従う
+- MDXは1ファイルずつ書き込む（devサーバー稼働中に複数MDXを連続で書くと .velite/chapters.json が壊れる）
+- コミットはしない。変更ファイル一覧、再現に使ったTypeScriptのバージョン、載せなかったエラーを報告する
+
+# 添付（リポジトリを自動で読まないツールの場合）
+AGENTS.md / docs/books/guide.md / content/books/typescript/11-tsconfig.mdx（文体の見本）
+```
+
+---
+
 ## ブラウザ操作: JSクイズ解説の強化＋教科書リンク挿入
 
 **モデル**: ブラウザ操作可能なAI（Claude with chrome MCP等） / **効果**: UX大（解説品質）+ SEO（内部リンク） / **工数**: 中（問題数に依存）
