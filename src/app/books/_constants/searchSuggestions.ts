@@ -433,11 +433,11 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'metadata',
     'proxy.ts',
     'middleware',
-    'NextResponse',
     'layout',
     'loading',
     'fetch',
     'revalidate',
+    'prefetch',
     '環境変数',
   ],
 };

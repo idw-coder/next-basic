@@ -1,0 +1,289 @@
+---
+title: 'プリフェッチ（先読み） — Linkのprefetchとrouter.prefetchで画面遷移を速くする'
+description: 'Next.js App Routerのプリフェッチの仕組みを解説します。Linkが何をいつ先読みするのか、静的ルートと動的ルートの違い、prefetch={false}・ホバー時の先読み・router.prefetch()の使い分け、開発環境で動かない理由まで整理します。'
+order: 10.5
+chapterLabel: 'プリフェッチ'
+---
+
+[第4章](/books/next-js/04-routing)で、`<Link>` を使うと「遷移先を先読みする」と紹介しました。この先読みを**プリフェッチ**（prefetch）と呼びます。`<Link>` を書くだけで有効になるため意識せずに使えますが、何をどこまで先読みしているかを知らないと、「動的なページだけ遷移が遅い」「開発中は速くならない」「アクセス解析の数字がおかしい」といった現象の原因がわかりません。
+
+この章では、プリフェッチが何を取得しているのか、どのリンクがどこまで先読みされるのか、そして `prefetch` prop と `router.prefetch()` でどう制御するのかを順に見ていきます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`<Link>` に変えたら遷移が速くなったけど、裏で何が起きてるのかはよくわかってないんだよね。
+</SpeechBubble>
+
+## プリフェッチとは — 遷移先のデータをクリック前に取得しておく
+
+普通のWebサイトでは、リンクをクリックしてから遷移先のHTMLやJavaScriptの取得が始まります。プリフェッチは、この取得を**クリックより前に**済ませておく仕組みです。
+
+Next.jsの公式ドキュメントでは、`<Link>` の動作を次のように説明しています（[Prefetching — Next.js公式](https://nextjs.org/docs/app/guides/prefetching)）。順を追うと次のとおりです。
+
+1. ページに表示された `<Link>` が、**画面内（ビューポート）に入る**
+2. Next.jsがバックグラウンドで、`href` の遷移先に必要なデータを取得する
+3. 取得したデータを、ブラウザのメモリ上の**クライアントキャッシュ**に保存する
+4. ユーザーがリンクをクリックすると、保存済みのデータを使って画面を切り替える
+
+先読みで取得するのは、遷移先のServer Componentの描画結果（**RSC Payload**と呼ばれるデータ）と、遷移先で使うClient ComponentのJavaScriptです。どちらも手元にあるので、クリック後にサーバーの応答を待たずに画面を切り替えられます。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+最初にページを開くときはHTMLも取得するけど、その後の `<Link>` での遷移ではHTMLは要らない。RSC PayloadとJavaScriptだけで画面を組み立てられるからだ。プリフェッチはこの2つを前もって取ってくる処理なんだ。
+</SpeechBubble>
+
+## 開発環境（npm run dev）ではプリフェッチされない
+
+公式ドキュメントには、自動のプリフェッチは**本番環境でのみ動く**と明記されています（[Link — Next.js公式リファレンス](https://nextjs.org/docs/app/api-reference/components/link#prefetch)の「Prefetching is only enabled in production」）。
+
+そのため、`npm run dev` で動かしている間は、`<Link>` を書いても遷移先は先読みされません。プリフェッチの効果を確かめるときは、本番ビルドを作って起動します。
+
+```bash
+npm run build
+npm run start
+```
+
+ブラウザの開発者ツールで「ネットワーク」タブを開いた状態でページを表示すると、リンクが画面内に入ったタイミングで、遷移先のデータを取得するリクエストが発生していることを確認できます。
+
+<Figure src="/images/search_woman_color.png" alt="開発者ツールのネットワークタブで先読みのリクエストを確認するイメージ" maxWidth="140px" />
+
+<Callout type="warning" title="開発中の遷移の速さで判断しない">
+`npm run dev` では先読みが無効なうえ、ページを開くたびにその場でコンパイルが走ります。開発中に遷移が遅く感じても、本番で同じ遅さになるとは限りません。速度の確認は本番ビルドで行いましょう。
+</Callout>
+
+## 静的ルートと動的ルートで、先読みする範囲が違う
+
+`<Link>` が遷移先をどこまで先読みするかは、遷移先のルートが**静的**か**動的**かで変わります。静的・動的の区別は[第7章](/books/next-js/07-data-fetching)で扱った内容です。ビルド時にHTMLを作っておけるページが静的ルート、`cookies()` を読むなどリクエストごとに描画が必要なページが動的ルートです。
+
+公式ドキュメントの表を、`prefetch` を指定しないとき（既定値）についてまとめると次のようになります。
+
+| 遷移先 | 先読みする範囲 | 先読みしたデータを使い回す期間 |
+| ------ | -------------- | ------------------------------ |
+| 静的ルート | ページ全体 | 5分（既定値） |
+| 動的ルート（`loading.tsx` なし） | 先読みしない | ― |
+| 動的ルート（`loading.tsx` あり） | レイアウトから、最も近い `loading.tsx` まで | 既定では使い回さない |
+
+動的ルートでは、ページ本体はクリック後にサーバーで描画されます。`loading.tsx` があれば、レイアウトとローディング表示までは先読みしてあるので、クリック直後にその部分がすぐ表示され、本体は描画が終わり次第差し込まれます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+動的ルートも全部先読みしてくれればいいのに。なんで途中までなの？
+</SpeechBubble>
+
+動的ルートは、リクエストごとにサーバーで描画しないと中身が決まりません。画面内のリンクを全部先読みすると、ユーザーがクリックしないページのためにも、リンクの数だけサーバーで描画処理が走ります。そこで既定では、どのリクエストでも同じになるレイアウトと `loading.tsx` の部分だけを先読みします。
+
+ここから、[前章](/books/next-js/08-loading-and-error)の `loading.tsx` にはもう1つの役割があることがわかります。動的ルートに `loading.tsx` を置かないと、そのルートは先読みされず、クリックしてからサーバーの描画が終わるまで画面が切り替わりません。
+
+<Callout type="info" title="動的ルートへの遷移が遅いときは、まず loading.tsx を確認する">
+リンクをクリックしても何も反応せず、しばらくしてから急に画面が変わる場合は、遷移先が動的ルートで `loading.tsx` がない可能性があります。`loading.tsx` を置くと、少なくともレイアウトとローディング表示はクリック直後に出るようになります。
+</Callout>
+
+## 先読みしたデータの使い回し — クライアントキャッシュ
+
+先読みしたRSC Payloadは、ブラウザのメモリ上にルートのセグメント（URLのフォルダ単位の区切り）ごとに保存されます。これがクライアントキャッシュです。
+
+セグメントごとに保存されているため、`/dashboard/settings` から `/dashboard/analytics` のように同じ親を持つページへ移るときは、親のレイアウトを使い回し、変わった子のページ部分だけを取得します。[第5章](/books/next-js/05-layouts)で扱った「レイアウトは画面遷移しても再レンダリングされない」性質は、この仕組みの上に成り立っています。
+
+使い回す期間は、上の表のとおり静的ルートが5分、動的ルートは既定で0です。この期間は `next.config.ts` の `staleTimes` で変更できます（[staleTimes — Next.js公式リファレンス](https://nextjs.org/docs/app/api-reference/config/next-config-js/staleTimes)）。
+
+```ts
+// next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  experimental: {
+    staleTimes: {
+      dynamic: 30, // 動的ルートの先読み結果を30秒使い回す
+      static: 180, // 静的ルートの先読み結果を180秒使い回す
+    },
+  },
+};
+
+export default nextConfig;
+```
+
+`staleTimes` は `experimental` の中に書く実験的な設定です。動的ルートの値を大きくすると、その秒数の間は古いデータを表示し続けることになるので、表示内容がどれくらい新しくないといけないかを考えて決めます。
+
+## 先読みの順番 — リンクが大量にあってもネットワークを埋めない
+
+1ページに大量のリンクがあると、全部を同時に先読みすればネットワークが詰まります。Next.jsは先読みを小さなキュー（順番待ちの列）で管理していて、公式ドキュメントでは次の順で処理すると説明されています。
+
+1. 画面内にあるリンク
+2. ホバーやタッチなど、ユーザーが操作しようとしているリンク
+3. 新しく画面に入ったリンクが、古いものより優先される
+4. スクロールして画面外に出たリンクは、キューから外される
+
+また、先読みしたデータの使い回し期間が切れていた場合、ユーザーがそのリンクにホバーした時点でもう一度先読みします（[Link — Next.js公式リファレンス](https://nextjs.org/docs/app/api-reference/components/link#prefetch)）。
+
+## prefetch prop で先読みを制御する
+
+`<Link>` の `prefetch` prop には、次の値を渡せます。
+
+| 値 | 動作 |
+| -- | ---- |
+| 指定なし / `"auto"` / `null` | 既定の動作。静的ルートはページ全体、動的ルートは最も近い `loading.tsx` まで先読みする |
+| `true` | 静的・動的を問わず、ルート全体を先読みする |
+| `false` | 画面内に入っても、ホバーしても先読みしない |
+
+### prefetch={false} — 先読みしないリンク
+
+無限スクロールの一覧のように、画面に大量のリンクが次々と表示されるページでは、先読みのリクエストも大量に発生します。このようなリンクは `prefetch={false}` で先読みを止められます。
+
+```tsx
+<Link prefetch={false} href={`/blog/${post.id}`}>
+  {post.title}
+</Link>
+```
+
+ただし、先読みを止めたリンクでは、静的ルートはクリックしてから取得が始まり、動的ルートはサーバーの描画が終わるまで遷移が待たされます。すべてのリンクに付けると `<Link>` の利点がなくなるので、フッターのリンクや大量に並ぶリンクなど、クリックされる見込みが低いものに絞って使います。
+
+### prefetch={true} — 動的ルートも全体を先読みする
+
+`prefetch={true}` を付けると、動的ルートでもルート全体を先読みします。そのリンクが画面内に入るたびにサーバーで描画処理が走るので、ほぼ確実にクリックされるリンク（ログイン後に必ず開くダッシュボードなど）に限るのが無難です。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+迷ったら `prefetch` は書かない。既定の動作で困ったリンクにだけ `false` や `true` を付ける、という順番で考えればいい。
+</SpeechBubble>
+
+## ホバーしたときだけ先読みする
+
+`prefetch={false}` にすると先読みは止まりますが、遷移は遅くなります。その中間として、ユーザーがリンクにマウスを乗せたときだけ先読みする方法が公式ドキュメントで紹介されています。
+
+```tsx
+// src/components/HoverPrefetchLink.tsx
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+
+export function HoverPrefetchLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  const [active, setActive] = useState(false);
+
+  return (
+    <Link
+      href={href}
+      prefetch={active ? null : false}
+      onMouseEnter={() => setActive(true)}
+    >
+      {children}
+    </Link>
+  );
+}
+```
+
+動作を順に追うと次のとおりです。
+
+1. 最初は `active` が `false` なので、`prefetch={false}` になり先読みしない
+2. マウスがリンクに乗ると `onMouseEnter` で `active` が `true` になる
+3. `prefetch={null}`（既定の動作）に切り替わり、その時点で先読みが始まる
+
+`useState` と `onMouseEnter` を使うため、Client Component（`"use client"`）にする必要があります。
+
+## router.prefetch() — コードから先読みする
+
+`<Link>` がない場所や、画面外にあるリンクの遷移先を先読みしたいときは、`useRouter` が返す `router.prefetch()` を呼びます。`useRouter` は[第4章](/books/next-js/04-routing)で `router.push()` と一緒に紹介したフックです。
+
+```tsx
+// src/components/PricingCard.tsx
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+export function PricingCard() {
+  const router = useRouter();
+
+  return (
+    <div onMouseEnter={() => router.prefetch("/pricing")}>
+      <p>プランの比較</p>
+      <Link href="/pricing">料金を見る</Link>
+    </div>
+  );
+}
+```
+
+この例では、リンクそのものではなく、カード全体にマウスが乗った時点で `/pricing` を先読みします。`router.push()` で遷移するボタンの遷移先を前もって読み込んでおく、といった使い方もできます。
+
+## 注意 — 先読みのときにもレイアウトやページの処理が実行される
+
+先読みでは、遷移先のServer Componentをサーバーで実際に描画しています。そのため、レイアウトやページの中に描画以外の処理（副作用）を書いていると、**ユーザーがそのページを開いていなくても、先読みの時点で実行される**ことがあります（[Prefetching — Next.js公式](https://nextjs.org/docs/app/guides/prefetching#triggering-unwanted-side-effects-during-prefetching)）。
+
+```tsx
+// src/app/dashboard/layout.tsx（良くない例）
+import { trackPageView } from "@/lib/analytics";
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  trackPageView(); // 先読みのときにも実行され、閲覧数が実際より多く記録される
+  return <div>{children}</div>;
+}
+```
+
+アクセス解析の記録のように「実際に表示されたとき」に1回だけ実行したい処理は、Client Componentの `useEffect` の中に移します。`useEffect` はブラウザで画面が表示された後に実行されるため、先読みでは動きません。
+
+```tsx
+// src/components/AnalyticsTracker.tsx
+"use client";
+
+import { useEffect } from "react";
+import { trackPageView } from "@/lib/analytics";
+
+export function AnalyticsTracker() {
+  useEffect(() => {
+    trackPageView();
+  }, []);
+
+  return null;
+}
+```
+
+```tsx
+// src/app/dashboard/layout.tsx（修正後）
+import { AnalyticsTracker } from "@/components/AnalyticsTracker";
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <div>
+      <AnalyticsTracker />
+      {children}
+    </div>
+  );
+}
+```
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+[Route Handlersの章](/books/next-js/route-handlers)で「GETでデータを変更しない」って書いてあったのも、これと同じ理由？
+</SpeechBubble>
+
+同じ考え方です。先読みやブラウザ、検索エンジンのクローラは、ユーザーの意図と関係なくページやGETリクエストを取得することがあります。取得されただけでデータが変わる・記録が増える、という作りにしないことが大切です。データの変更は、[Server Actions](/books/next-js/10-server-actions)やPOSTリクエストで行います。
+
+<Callout type="note" title="Partial Prefetching（Next.js 16.4時点の新しい先読み方式）">
+Next.js 16.4のドキュメントには、`next.config.ts` で `cacheComponents: true` と `partialPrefetching: true` を有効にしたときの新しい先読み方式（Partial Prefetching）が載っています。有効にすると、`<Link>` の既定の先読みはページ全体ではなく、ルートごとに共通の部分（App Shell）だけになります。この章で説明したのは、これを有効にしていない場合の動作です。詳しくは[Optimizing prefetching — Next.js公式](https://nextjs.org/docs/app/guides/optimizing-prefetching)を参照してください。
+</Callout>
+
+## まとめ
+
+- <Marker>プリフェッチは、画面内に入った `<Link>` の遷移先データ（RSC PayloadとJavaScript）をクリック前に取得しておく仕組み</Marker>
+- 自動の先読みは本番環境でのみ動く。`npm run dev` では効果を確認できない
+- 静的ルートはページ全体を先読みする。動的ルートは `loading.tsx` までしか先読みせず、`loading.tsx` がなければ先読みしない
+- 先読みしたデータはクライアントキャッシュに保存され、静的ルートは既定で5分使い回される（`staleTimes` で変更可）
+- 先読みを止めるなら `prefetch={false}`、ホバー時だけ先読みするなら `prefetch={active ? null : false}`、コードから先読みするなら `router.prefetch()`
+- 先読みのときにもServer Componentの処理は実行される。閲覧の記録などは `useEffect` に移す
+
+次の章では、検索エンジンとSNSでの見え方を左右する **[メタデータとSEO](/books/next-js/09-metadata-and-seo)** を扱います。`generateMetadata` で、ページごとに `title` やOGP画像を動的に設定する方法を学びます。
+
+## 参考リンク
+
+- [Prefetching — Next.js公式](https://nextjs.org/docs/app/guides/prefetching)
+- [Link（prefetch） — Next.js公式リファレンス](https://nextjs.org/docs/app/api-reference/components/link#prefetch)
+- [useRouter — Next.js公式リファレンス](https://nextjs.org/docs/app/api-reference/functions/use-router)
+- [staleTimes — Next.js公式リファレンス](https://nextjs.org/docs/app/api-reference/config/next-config-js/staleTimes)
+- [Optimizing prefetching — Next.js公式](https://nextjs.org/docs/app/guides/optimizing-prefetching)
+
+<QuizLink
+  href="/quiz/nextjs"
+  title="Next.jsクイズに挑戦する"
+  description="この章で学んだNext.jsの知識を、4択クイズでアウトプットして定着させよう"
+/>

@@ -105,7 +105,7 @@ export default function Nav() {
 | prop | 型 | 説明 |
 | ---- | -- | ---- |
 | `href` | `string`（必須） | 遷移先のパス（`/about` など） |
-| `prefetch` | `boolean` | リンクを画面内に表示した時点で遷移先を先読みするか（既定で有効） |
+| `prefetch` | `"auto"` / `true` / `false` | リンクを画面内に表示した時点で遷移先を先読みするか（既定は `"auto"`。詳しくは[プリフェッチの章](/books/next-js/prefetching)） |
 | `replace` | `boolean` | 履歴を「追加」せず「置き換え」る（戻るボタンの挙動が変わる） |
 | `scroll` | `boolean` | 遷移後にページ先頭へスクロールするか（既定 `true`） |
 
