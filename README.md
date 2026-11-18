@@ -1,4 +1,18 @@
+<p align="center">
+  <img src=".github/assets/weqLogo.png" alt="Web Engineer Quiz" width="240">
+</p>
+
 # ウェブエンジニア問題集
+
+[![Deploy Next.js to Lightsail via GHCR](https://github.com/idw-coder/next-basic/actions/workflows/deploy.yml/badge.svg)](https://github.com/idw-coder/next-basic/actions/workflows/deploy.yml)
+[![Open in Visual Studio Code](https://img.shields.io/static/v1?logo=visualstudiocode&label=&message=Open%20in%20Visual%20Studio%20Code&labelColor=2c2c32&color=007acc&logoColor=007acc)](https://open.vscode.dev/idw-coder/next-basic)
+
+![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS 4](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
+![MySQL 8.4](https://img.shields.io/badge/MySQL-8.4-4479A1?logo=mysql&logoColor=white)
+![Stripe](https://img.shields.io/badge/Stripe-635BFF?logo=stripe&logoColor=white)
 
 ウェブエンジニア向けの無料学習サイト。公開URLは https://study.ntorelabo.com 。
 
