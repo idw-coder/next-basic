@@ -1,0 +1,324 @@
+---
+title: 'AIコードレビューの使い分け — Claude Code・Cursor・Codexを範囲で選ぶ'
+description: 'Claude Codeの/code-reviewと/security-review、CursorのBugbot、Codexの/reviewと@codex reviewを、未コミットの変更・1コミット・ブランチ全体・GitHubのPR・リポジトリ全体という範囲ごとに整理します。ツールごとに違うレビュー指示ファイルと、組み合わせ方も扱います。'
+order: 15.5
+chapterLabel: '第15章 実践'
+---
+
+<Callout type="info" title="この章は2026年11月時点の内容です">
+コマンド名・対応プラン・既定の挙動は、本書の中でも特に早く変わる部分です。この章では、**どの範囲を、どのタイミングで、何に見せるか**という整理を軸にし、各ツールの具体的な操作はその実例として書きます。使う前に、章末の公式ドキュメントで現状を確認してください。
+</Callout>
+
+[AIが書いたコードのレビュー](/books/ai-agent-development/code-review)では、機械のレビューを人間の前に置き、指摘が出なくなるまで回してから人間に渡す、という順序を扱いました。この章はその実践編です。**実際にどのコマンドを、どの範囲に対して打つのか**を、Claude Code・Cursor・Codexの3つで並べます。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`/review` って打てばいいのは知ってるけど、それが何を見てるのかよく分かってない…
+</SpeechBubble>
+
+その疑問がこの章の出発点です。同じ「レビュー」でも、見ている範囲がツールとコマンドごとに違います。範囲を取り違えると、見てほしい変更が対象に入っていないのに「指摘なし」と返ってきます。
+
+## まず範囲で考える
+
+レビューの対象になる範囲は、開発の流れに沿って5つに分けられます。
+
+| 範囲 | 中身 | いつ使うか |
+| --- | --- | --- |
+| 未コミットの変更 | 作業ツリーの編集（ステージ済み・未ステージ） | 書いている途中、コミット前 |
+| 1コミット | 特定のコミットが持ち込んだ差分 | 怪しいコミットだけ見たいとき |
+| ブランチ全体 | ベースブランチからの差分すべて | push前、PRを出す前 |
+| GitHubのPR | リモートのPRの差分 | PRを出したあと、マージ前 |
+| リポジトリ全体 | 差分ではなく、いまあるコード全部 | 定期点検、既存の脆弱性探し |
+
+<MermaidDiagram
+  chart={`
+flowchart LR
+    A["編集中"] -->|commit| B["コミット"]
+    B -->|push| C["ブランチ"]
+    C -->|PR作成| D["GitHubのPR"]
+    D -->|merge| E["リポジトリ"]
+`}
+/>
+
+上の4つは**差分**を見ます。最後の1つだけが**差分ではなく現状**を見ます。この違いは大きく、差分レビューは「今回の変更が何かを壊したか」を、リポジトリ全体の走査は「前からあった問題」を見つけるためのものです。[レビューの章](/books/ai-agent-development/code-review)で扱った「差分の外にある問題」は、差分レビューだけでは原理的に拾いきれません。
+
+<Marker>差分レビューで「指摘なし」は、今回の変更についての話です。リポジトリが安全だという意味ではありません。</Marker>
+
+## 早見表
+
+範囲とツールの組み合わせを先に一覧にします。細部は後の節で扱います。
+
+| 範囲 | Claude Code | Cursor | Codex |
+| --- | --- | --- | --- |
+| 未コミットの変更 | `/code-review`（ブランチと一緒に見る） | `/review-bugbot` に「未コミットだけ」と頼む | `/review` → Review uncommitted changes |
+| 1コミット | `/code-review abc1234^..abc1234` | 範囲を指示して頼む | `/review` → Review a commit |
+| ブランチ全体 | `/code-review`、`/security-review` | `/review-bugbot`、`/review-security` | `/review` → Review against a base branch |
+| GitHubのPR | Code Review（`@claude review`） | Bugbot（`cursor review`） | `@codex review` |
+| リポジトリ全体 | Claude Security プラグイン | Vulnerability Remediation | Codex Security |
+
+<Figure src="/images/planning_suit_man_color.png" alt="計画を立てる人" maxWidth="130px" />
+
+表のうち、**GitHubのPR** と **リポジトリ全体** の行は、どのツールもチームや組織向けの設定・課金が絡みます。個人ですぐ試せるのは、上の3行のローカルでのレビューです。
+
+## Claude Code
+
+### `/code-review` — ローカルで正しさを見る
+
+`/code-review` は、作業中のセッションから打つコマンドです。**正しさに関わるバグ**を探し、結果を会話の中に返します。`/review` は別名です。どのプランでも使え、使用量はセッションのほかの作業と同じく計上されます。
+
+**構文：** `/code-review [low|medium|high|xhigh|max|ultra] [--fix] [--comment] [対象]`
+
+対象を書かないと、**現在のブランチがupstreamより先に進んでいるコミットと、未コミットの変更**をまとめて見ます。upstreamがなければ `main` か直前のコミットと比べます。範囲を変えたいときは、末尾に対象を書きます。
+
+| 見たいもの | 打つもの |
+| --- | --- |
+| 現在のブランチと未コミットの変更 | `/code-review` |
+| 直近15コミット | `/code-review HEAD~15..HEAD` |
+| ブランチ同士の比較 | `/code-review main...my-feature` |
+| 1コミットだけ | `/code-review abc1234^..abc1234` |
+| PR番号 | `/code-review 1234` |
+| ファイルやディレクトリ | `/code-review src/auth` |
+
+フラグとレベルは次のとおりです。
+
+| 引数 | 意味 |
+| --- | --- |
+| `low` 〜 `max` | 見る広さ。`low` は確信度の高い指摘だけ、上げるほど網羅寄り |
+| `ultra` | クラウドで複数エージェントによる深いレビュー（ultrareview）を走らせる |
+| `--fix` | 指摘を作業ツリーに適用する。編集は権限モードに従う |
+| `--comment` | 指摘をGitHubのPRにインラインコメントとして投稿する |
+
+**戻り値：** 指摘の一覧（会話に返る）。ターミナルでは別コンテキストのサブエージェントとしてバックグラウンドで走るので、作業中の会話を圧迫しません。
+
+レベルを省略すると、**前回打ったレベルが再利用されます**。前のセッションで `high` を打っていれば、今回も `high` です。毎回同じ深さだと思い込んでいると、コストと結果の両方がぶれます。
+
+<Callout type="warning">
+`--fix` をバックグラウンドで走らせた場合、その編集はセッションのチェックポイントの外で行われます。`/rewind` では戻りきらないので、**元に戻すときはgitを使います**。`--fix` を付ける前に、作業ツリーをコミットしておくと安全です。
+</Callout>
+
+なお、見た目の整理（既存ヘルパーの再利用・簡素化・効率）だけを見るのは `/simplify` で、こちらはバグを探しません。
+
+### `/security-review` — ブランチの脆弱性を1回見る
+
+**構文：** `/security-review`（引数なし）
+
+現在のブランチと **`origin` の既定ブランチとの差分**を対象に、インジェクション・認証の不備・データの露出といったセキュリティ上のリスクを探します。範囲はブランチ全体に固定で、`/code-review` のように対象を指定する引数はありません。
+
+<Marker>`/security-review` は `origin` リモートを前提にしています。リモートのないリポジトリでは比較の基準が見つからず失敗します。</Marker>
+
+### Claude Security プラグイン — リポジトリ全体を走査する
+
+差分ではなく**リポジトリ全体**を見たいときは、公式マーケットプレイスの Claude Security プラグインを使います。
+
+```text
+/plugin install claude-security@claude-plugins-official
+```
+
+入れると `/claude-security` コマンドが増え、メニューから3つの仕事を選べます。
+
+| メニュー | 範囲 |
+| --- | --- |
+| Scan codebase | リポジトリ全体、または絞った領域（APIの層、認証まわりなど） |
+| 変更のスキャン | ブランチの差分、自分のPR、1コミット |
+| Suggest patches | 報告された指摘ごとにパッチを作る |
+
+全体の走査では、複数のエージェントがアーキテクチャを把握し、脅威モデルを作ってから脆弱性を探します。報告に載るのは、**別のエージェントが独立に検証した指摘だけ**です。結果はリポジトリ内のタイムスタンプ付きディレクトリにMarkdown・JSONL・SARIFで書き出され、そのディレクトリには専用の `.gitignore` が入っているので、うっかりコミットされません。
+
+<Callout type="note">
+変更のスキャンが見るのは**コミット済みの変更だけ**です。作業中の編集を見せたいなら、先にコミットかstashをするか、作業ツリーを読む全体の走査を選びます。パッチは**自動では適用されず**、`git apply` で自分で当てます。
+</Callout>
+
+### GitHubのPR — Code Review と GitHub Actions
+
+PRを自動でレビューさせる方法は2つあります。
+
+| 方法 | 起動のしかた | 動く場所 | 使える人 |
+| --- | --- | --- | --- |
+| Code Review | PRの作成・push、または `@claude review` のコメント | Anthropicの基盤 | Team・Enterpriseプランで、Ownerが有効にした組織 |
+| GitHub Actions | 自分で書いたワークフローのイベント | 自分のCIランナー | APIキーかクラウドの認証情報がある人 |
+
+Code Review は、複数のエージェントが差分と周辺のコードを並列に読み、**検証の段階で誤検知を落としてから**、重大度順にインラインコメントを付けます。いくつか押さえておくべき性質があります。
+
+- **承認もブロックもしません。** マージの判断はチームに残ります。チェックランは失敗として終わりません
+- **リポジトリへのアクセスは読み取りのみ**で、コードをビルドも実行もしません。読んで判断します
+- 指示ファイル `REVIEW.md` は**ベースブランチから読みます**。PR自身の変更で、レビューのルールを書き換えることはできません
+- 深さは Quick・Standard・Deep の3段階で、深いほど高くつきます
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生" side="right">
+ローカルの `/code-review` は誰でも使える。PRの自動レビューは組織の契約と設定が要る。まずは手元から始めればいいよ。
+</SpeechBubble>
+
+## Cursor
+
+### `/review-bugbot` と `/review-security` — push前に手元で見る
+
+Cursor 3.7以降、Web版（cursor.com/agents）、Cursor CLIでは、エージェントに対して次のスキルを打てます。
+
+| スキル | 見るもの |
+| --- | --- |
+| `/review-bugbot` | バグ（PRでBugbotが見るものと同じ） |
+| `/review-security` | セキュリティ上の問題（Security Reviewと同じ） |
+| `/review` | 上のどちらか、または両方 |
+
+既定の範囲は**ブランチの変更**、つまりベースブランチからの差分すべてで、**コミット済みと未コミットの両方**を含みます。範囲を狭めたいときは「未コミットの変更だけ見て」と頼みます。ベースが `main` などの既定ブランチでない場合も、比較先を言葉で指定します。
+
+ここで便利なのが、PR側のBugbotとの重複を避ける仕組みです。`/review-bugbot` はレビューした差分のパッチIDを記録しておき、**同じ差分のPRが開かれると、Bugbotはレビューを省略して「レビュー済み」とコメントします**。手元で見てからPRを出す流れで、同じレビューに二重に払わずに済みます。
+
+<Figure src="/images/pc-work-woman01.png" alt="パソコンで作業する人" maxWidth="140px" />
+
+### Bugbot — PRを自動でレビューする
+
+Bugbotは、GitHub・GitLab・Bitbucket・Azure DevOpsなどのPRを自動でレビューし、説明と修正案付きのコメントを残します。
+
+| 操作 | 方法 |
+| --- | --- |
+| 自動レビュー | 接続したリポジトリのPRが更新されるたびに走る |
+| 手動で起動 | PRに `cursor review` か `bugbot run` とコメントする |
+| 使ったルールを見る | `bugbot run verbose=true` とコメントする |
+| 修正を任せる | Autofix を有効にすると、クラウドのエージェントが修正をpushする |
+
+既定では**前回のレビュー以降の変更だけ**を見ます（Incremental Review）。push のたびにPR全体を見直させたい場合は、この設定を切ります。
+
+<Callout type="warning">
+Bugbotのチェックは、指摘があっても既定では `neutral` で終わります。ブランチ保護でBugbotのチェックを必須にしても、**それだけでは指摘のあるPRのマージを止められません**。止めたいなら、未解決の指摘で `failure` にする設定を有効にします。
+</Callout>
+
+### Security Review と Vulnerability Remediation
+
+セキュリティの側は、PRの前と後で機能が分かれています。
+
+| 機能 | 範囲 | 起動 |
+| --- | --- | --- |
+| Security Review | PRの差分 | PRのイベント（Automationsで設定） |
+| Vulnerability Remediation | マージ済みのリポジトリ全体 | cronによる定期実行 |
+
+Vulnerability Remediation は、見つけた問題を**エクスプロイトのテストを書いて実際に確かめ**、確認できたものだけ修正PRを下書きで開きます。テストで「起こり得ない」と分かった指摘は別のタブに分けられます。修正PRをマージするのは常に人間です。
+
+## Codex
+
+### `/review` と `codex review` — 4つのプリセット
+
+Codex CLIでは、対話中に `/review` と打つとプリセットを選ぶ画面が出ます。
+
+| プリセット | 範囲 |
+| --- | --- |
+| Review against a base branch | ブランチ全体（PRと同じ見方） |
+| Review uncommitted changes | 未コミットの変更 |
+| Review a commit | 1コミット |
+| Custom review instructions | 自分で書いた指示で |
+
+**戻り値：** 優先度付きの指摘。作業ツリーは変更しません。
+
+5つの範囲のうち3つを、プリセットとして明示的に選ばせる設計です。範囲を取り違えにくいのが利点です。同じことを非対話で行うのが `codex review` で、スクリプトやCIから呼べます。
+
+**構文：** `codex review [--uncommitted | --base <branch> | --commit <SHA> | PROMPT]`
+
+| 引数 | 範囲 |
+| --- | --- |
+| `--uncommitted` | ステージ済み・未ステージ・未追跡の変更 |
+| `--base <branch>` | 指定したベースブランチからの差分 |
+| `--commit <SHA>` | そのコミットが持ち込んだ変更 |
+| `PROMPT` | 独自の指示。`-` で標準入力から読む |
+
+この4つは**同時に指定できません**。範囲は1回に1つです。
+
+### GitHubのPR — `@codex review`
+
+GitHubのリポジトリをCodexに接続すると、PRにコメントするだけでレビューを頼めます。
+
+| コメント | 動き |
+| --- | --- |
+| `@codex review` | 通常のコードレビュー |
+| `@codex review for issues in the database migration` | 観点を絞ったレビュー |
+| `@codex security review` | セキュリティに絞った深いレビュー（研究プレビュー） |
+
+GitHub上では、**P0とP1の重大な指摘だけ**を投稿します。細かい指摘でPRが埋まらないようにするための設計です。設定で自動レビューを有効にすれば、コメントなしでも走ります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+3つとも、だいたい同じことができるってこと？
+</SpeechBubble>
+
+範囲の面ではほぼそろっています。違いが大きいのは、**レビューにルールを伝えるファイルの置き場所**です。ここを取り違えると、書いたルールが読まれないまま「ルールどおりレビューされている」と思い込むことになります。
+
+## レビューのルールを書く場所はツールごとに違う
+
+[指示ファイルの章](/books/ai-agent-development/instruction-files)で扱った `AGENTS.md` や `CLAUDE.md` は、レビューのときにもそのまま読まれるとは限りません。
+
+| ツールと機能 | 読むファイル | 注意点 |
+| --- | --- | --- |
+| Claude Code `/code-review` | `CLAUDE.md` | `REVIEW.md` は読まない |
+| Claude Code Review（GitHub） | `REVIEW.md` と `CLAUDE.md` | ベースブランチの版を読む |
+| Cursor Bugbot | `.cursor/BUGBOT.md` | `.cursor/rules/` のルールは**適用されない** |
+| Codex（GitHub） | `AGENTS.md` の `## Code Review Rules` 節 | 変更されたファイルに近い `AGENTS.md` が優先される |
+
+<Figure src="/images/stepup_suit_man_color-1.png" alt="段階を上がる人" maxWidth="130px" />
+
+特に誤解しやすいのがCursorです。エディタの中で効いている `.cursor/rules/` のルールは、**PRのBugbotには届きません**。Bugbotに伝えたいことは `.cursor/BUGBOT.md` に書きます。このファイルは変更されたファイルから上の階層へたどって集められるので、`backend/.cursor/BUGBOT.md` のように置けば、その配下の変更にだけ効きます。
+
+もう1つ共通しているのが、**PRで使うルールはベースブランチから読む**という設計です。Claude Code Review の `REVIEW.md` も、Bugbotの設定ファイル `.cursor/config/bugbot.yaml` も、PRの変更側ではなくマージ先の版を読みます。PRの作者が自分のPRのレビュー基準を緩められない、という安全上の理由です。逆に言えば、**ルールを書き換えたPRでは、新しいルールはまだ効きません**。マージされてから効きます。
+
+<Marker>レビューのルールを書いたら、そのツールが実際に読む場所に置けているかを最初に確かめます。</Marker>
+
+確かめ方もツールによって違います。Bugbotなら `bugbot run verbose=true` で、そのレビューに含めたルールの一覧が出ます。
+
+## 組み合わせ方
+
+3つを全部使う必要はありません。[レビューの章](/books/ai-agent-development/code-review)の「機械を人間の前に置く」順序を、範囲に当てはめると次のようになります。
+
+<MermaidDiagram
+  chart={`
+flowchart TB
+    A["書いている途中"] -->|未コミット| B["ローカルで差分レビュー"]
+    B --> C["push前"]
+    C -->|ブランチ全体| D["正しさ + セキュリティ"]
+    D --> E["PRを作成"]
+    E -->|PR| F["PRの自動レビュー"]
+    F --> G["人間のレビュー"]
+    H["定期実行"] -->|リポジトリ全体| I["脆弱性の走査"]
+`}
+/>
+
+| タイミング | 範囲 | 例 |
+| --- | --- | --- |
+| 書いている途中 | 未コミットの変更 | `codex review --uncommitted`、`/code-review low` |
+| push前 | ブランチ全体 | `/code-review` と `/security-review`、`/review-bugbot` と `/review-security` |
+| PRを出したあと | GitHubのPR | Bugbot、Claude Code Review、`@codex review` のどれか1つ |
+| 週に1回など | リポジトリ全体 | Claude Security、Vulnerability Remediation、Codex Security |
+
+ローカルで見たものをPRでもう一度見せるのは、多くの場合ムダです。Cursorのように重複を自動で省く仕組みがなければ、**PRの自動レビューは1種類に絞り**、ローカルでは別の観点（たとえばセキュリティ）を見る、という分け方が経済的です。
+
+<Figure src="/images/running_man_color-1.png" alt="走る人" maxWidth="130px" />
+
+## よくあるハマりどころ
+
+**範囲を確かめずに「指摘なし」を信じる。** 既定の範囲はツールごとに違います。Claude Codeの `/code-review` はupstreamとの比較、Cursorはベースブランチとの比較、Claude Securityの変更スキャンはコミット済みだけです。見せたかった変更が入っていたかを先に確かめます。
+
+**`.cursor/rules/` に書けばBugbotにも効くと思う。** 効きません。`.cursor/BUGBOT.md` に書きます。
+
+**ルールを変えたPRで、新しいルールの効果を確かめようとする。** PRのレビューはベースブランチのルールを使います。新しいルールが効くのはマージ後です。
+
+**チェックを必須にしたからマージは止まると思う。** BugbotもClaude Code Reviewも、既定では指摘があってもチェックを失敗にしません。マージを止めるには、別の設定か人間の承認が要ります。
+
+**PRへの投稿が誰の名義になるかを見ない。** たとえば ultrareview の結果をPRに投稿すると、**あなたのGitHubアカウントから**投稿されます。[非同期の章](/books/ai-agent-development/async-and-notification)で扱ったのと同じ注意点です。
+
+**指摘を全部直しにいく。** [検証ループの章](/books/ai-agent-development/verification-loop)で扱ったとおり、指摘を探せと言われたレビュー役は何かしら指摘します。正しさと要件に関わるものから直し、それ以外は任意として扱います。
+
+## ちゃんと使うためのポイント
+
+- レビューの範囲は**未コミット・1コミット・ブランチ全体・GitHubのPR・リポジトリ全体**の5つ。最後だけが差分ではなく現状を見る
+- Claude Codeは `/code-review [対象]` で範囲を自由に指定でき、`/security-review` はブランチ全体に固定
+- Cursorの `/review-bugbot`・`/review-security` は既定でブランチ全体。PRのBugbotと**同じ差分なら二重にレビューしない**
+- Codexの `/review` は**4つのプリセット**で範囲を選ばせる。非対話なら `codex review --uncommitted` など
+- レビューのルールの置き場所はツールごとに違う。**Bugbotは `.cursor/rules/` を読まない**
+- PRで使うルールは**ベースブランチの版**。変えたルールが効くのはマージ後
+- PRの自動レビューは1種類に絞り、ローカルでは別の観点を見る
+
+レビューで「通った」ことと、次の変更でも通り続けることは別の問題です。それを継続的に確かめる仕組みは[AIエージェントの評価とリグレッション](/books/ai-agent-development/evaluation)で扱います。
+
+## 参考リンク
+
+- [Review locally with /code-review（Claude Code 公式）](https://code.claude.com/docs/en/code-review-local) — 対象の指定方法、フラグ、レベルの再利用、ultrareviewの範囲
+- [Code Review（Claude Code 公式）](https://code.claude.com/docs/en/code-review) — PRの自動レビュー、レビュー方法の比較表
+- [Scan your codebase for vulnerabilities（Claude Code 公式）](https://code.claude.com/docs/en/claude-security) — Claude Securityプラグインと、ほかのセキュリティ機能との位置づけ
+- [Bugbot（Cursor 公式）](https://cursor.com/docs/bugbot) — PRレビュー、`BUGBOT.md`、手元での `/review-bugbot`
+- [Security Review（Cursor 公式）](https://cursor.com/docs/security-review) — PRのセキュリティレビューと `/review-security`
+- [Review GitHub pull requests with Codex（Codex 公式）](https://developers.openai.com/codex/integrations/github) — `@codex review`、`## Code Review Rules`、Security Review

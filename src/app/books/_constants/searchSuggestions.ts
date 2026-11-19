@@ -27,8 +27,8 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'フック',
     '検証ループ',
     'コードレビュー',
+    'Bugbot',
     'クラウド実行',
-    'トークン',
     'プロンプトキャッシュ',
   ],
   csharp: [
