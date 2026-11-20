@@ -16,6 +16,8 @@
 --   docker exec -i mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" myapp' < 20261120_create_schema_migrations.sql
 --
 -- CREATE TABLE IF NOT EXISTS と INSERT IGNORE なので、2回流してもエラーにならず、行も増えない。
+--
+-- 本番・ローカルとも適用済み（2026-11-20）。
 
 CREATE TABLE IF NOT EXISTS `schema_migrations` (
   `version` varchar(128) NOT NULL,
