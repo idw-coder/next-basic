@@ -3,7 +3,7 @@
 #
 # セットアップスクリプト（環境設定側）ではなくここに置く理由:
 #   セットアップスクリプトはリポジトリがクローンされる前に走り、環境ごとにキャッシュされる。
-#   package-lock.json がまだ無いので npm ci が失敗する。
+#   pnpm-lock.yaml がまだ無いので pnpm install が失敗する。
 #   SessionStart フックは Claude Code 起動後・リポジトリのある状態で走るため、こちらが正しい置き場所。
 #
 # ローカルでは CLAUDE_CODE_REMOTE が true にならないので、何もせず終了する。
@@ -19,7 +19,8 @@ if [ -d node_modules/next ]; then
   exit 0
 fi
 
-npm ci
+# corepack enable はシェルのPATHに書き込むため、権限のない環境でも動く corepack pnpm で直接呼ぶ
+corepack pnpm install --frozen-lockfile
 
 # インストールに失敗してもセッションの開始自体は妨げない
 exit 0

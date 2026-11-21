@@ -32,12 +32,13 @@
 
 ## ローカルで動かす
 
-Node.js 24 を使う（Dockerfile と同じ）。
+Node.js 24 を使う（Dockerfile と同じ）。パッケージマネージャーは pnpm で、バージョンは `package.json` の `packageManager` で固定している。
 
-1. 依存パッケージを入れる
+1. 依存パッケージを入れる。`corepack enable` で、`packageManager` に書いたバージョンの pnpm が使われるようになる
 
    ```bash
-   npm ci
+   corepack enable
+   pnpm install
    ```
 
 2. `.env.example` を `.env.local` にコピーして値を埋める
@@ -51,23 +52,23 @@ Node.js 24 を使う（Dockerfile と同じ）。
 4. devサーバーを起動する
 
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
    http://localhost:3000 を開く。
 
-**devサーバーは1つだけ起動する。** `npm run dev`・`npm run build`・`npx velite` はどれも `.velite/` を書き換えるため、2つ同時に動かすと `.velite/chapters.json` が壊れて全ページが500になる。手順と復旧方法は [AGENTS.md](AGENTS.md) にある。
+**devサーバーは1つだけ起動する。** `pnpm dev`・`pnpm build`・`pnpm exec velite` はどれも `.velite/` を書き換えるため、2つ同時に動かすと `.velite/chapters.json` が壊れて全ページが500になる。手順と復旧方法は [AGENTS.md](AGENTS.md) にある。
 
 ## コマンド
 
-| コマンド                | 内容                                         |
-| ----------------------- | -------------------------------------------- |
-| `npm run dev`           | Velite を実行してから devサーバーを起動する  |
-| `npm run build`         | Velite を実行してから本番ビルドする          |
-| `npm run start`         | ビルド済みのアプリを起動する                 |
-| `npm run lint`          | ESLint                                       |
-| `npm run check:content` | `content/books` のMDXを検査する              |
-| `npx tsc --noEmit`      | 型チェック                                   |
+| コマンド                 | 内容                                        |
+| ------------------------ | ------------------------------------------- |
+| `pnpm dev`               | Velite を実行してから devサーバーを起動する |
+| `pnpm build`             | Velite を実行してから本番ビルドする         |
+| `pnpm start`             | ビルド済みのアプリを起動する                |
+| `pnpm lint`              | ESLint                                      |
+| `pnpm check:content`     | `content/books` のMDXを検査する             |
+| `pnpm exec tsc --noEmit` | 型チェック                                  |
 
 ## ディレクトリ
 

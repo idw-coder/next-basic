@@ -428,7 +428,7 @@ stripe listen --forward-to localhost:3000/next-api/webhook/stripe
 
 ```bash
 # ターミナル 1: Next.js
-cd next-basic && npm run dev
+cd next-basic && pnpm dev
 
 # ターミナル 2: Stripe CLI（手順 4 で起動済み）
 ```

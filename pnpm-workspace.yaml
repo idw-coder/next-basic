@@ -1,0 +1,16 @@
+# pnpmの設定ファイル（モノレポではないので packages は書かない）
+
+# 依存のバージョンを1か所で定義する。package.json からは "catalog:" で参照する
+catalog:
+  sharp: ^0.35.5
+
+# velite@0.3.1 が sharp@^0.34 を要求するが、next と同じ 0.35 系にそろえる。
+# npm時代の package.json の "overrides": { "sharp": "$sharp" } と同じ指定
+overrides:
+  sharp: "catalog:"
+
+# pnpmは依存パッケージのインストール時スクリプトを標準で実行しない。
+# npm時代と同じく実行させるものを true にする
+allowBuilds:
+  esbuild: true # veliteがMDXの変換に使う。postinstallでプラットフォーム別バイナリを検証する
+  unrs-resolver: true # eslint-config-nextのimport解決。postinstallでネイティブバイナリを用意する

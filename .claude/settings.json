@@ -3,6 +3,14 @@
     "deny": [
       "Bash(npx velite)",
       "Bash(npx velite *)",
+      "Bash(pnpm exec velite)",
+      "Bash(pnpm exec velite *)",
+      "Bash(pnpm velite)",
+      "Bash(pnpm velite *)",
+      "Bash(pnpx velite)",
+      "Bash(pnpx velite *)",
+      "Bash(pnx velite)",
+      "Bash(pnx velite *)",
       "Bash(velite)",
       "Bash(velite *)"
     ]

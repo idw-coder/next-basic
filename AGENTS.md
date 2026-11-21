@@ -8,15 +8,15 @@
 
 1. **起動前に必ず既存を確認する。** `lsof -nP -iTCP -sTCP:LISTEN | grep node`
 2. **すでに立っていたら起動しない。** そのポートを `curl` やブラウザツールで見る
-3. **1つも立っていないときに限り、1つだけ起動してよい。** `npm run dev`（またはpreview_startの `next-dev`）。2つ目は絶対に起動しない
+3. **1つも立っていないときに限り、1つだけ起動してよい。** `pnpm dev`（またはpreview_startの `next-dev`）。2つ目は絶対に起動しない
 4. 起動したら、そのセッションの間は使い回す。他セッションが使うので、止めるかどうかは任意
 
-- **`npx velite` を単独で実行しない。** `velite.config.ts` は `clean: true` のため、`.velite/` を消してから作り直す。他セッションのdevサーバーが即座に500になる
-- **`npm run build` も避ける。** 中身は `velite && next build` で、上と同じ破壊が起きる
+- **`pnpm exec velite` を単独で実行しない。** `velite.config.ts` は `clean: true` のため、`.velite/` を消してから作り直す。他セッションのdevサーバーが即座に500になる
+- **`pnpm build` も避ける。** 中身は `velite && next build` で、上と同じ破壊が起きる
 
 理由: Veliteのwatchはロックも一時ファイルも使わず `.velite/chapters.json`（約10MB）を直接 `writeFile` する。2プロセスが同時に書くとJSONが壊れ、`Cannot parse JSON: Extra data` で全ページが500になる。MDXを直しても直らない。
 
-復旧: 余分な `next-server` プロセスを止めてから `npx velite build --clean` を1回（`npx velite` はdenyのまま。人間が実行する）。
+復旧: 余分な `next-server` プロセスを止めてから `pnpm exec velite build --clean` を1回（`pnpm exec velite` はdenyのまま。人間が実行する）。
 
 ## 表示確認のしかた
 
@@ -26,7 +26,7 @@
 
 サーバーなしでできる検証は先に済ませておく。
 
-- `npx tsc --noEmit`
+- `pnpm exec tsc --noEmit`
 - 記事中の外部URLを `curl -s -o /dev/null -w "%{http_code}" -L <url>` で全件200確認
 - 内部リンクの参照先ファイルが実在するかの確認
 

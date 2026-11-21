@@ -8,10 +8,10 @@
 ## 全タスク共通の注意（委任前に必ず伝える）
 
 - **devサーバーを起動させない。** 多重起動すると velite が `.velite/` を同時書き込みし、JSONが壊れて全ページが500になる。表示確認は既に立っているサーバーへ `curl` で行い、立っていなければ確認をスキップさせる
-- **`npx velite` / `npm run build` も実行させない**（`.velite/` を消すため、他セッションのdevサーバーが即座に壊れる）
+- **`pnpm exec velite` / `pnpm build` も実行させない**（`.velite/` を消すため、他セッションのdevサーバーが即座に壊れる）
 - **ブラウザ版ChatGPTなど、リポジトリのファイルを自動で読まないツールに委任するときは `AGENTS.md` を必ず貼る**（Claude Code・Codex・Cursorは自動で読む）
 - **同じ本のコンテンツを複数セッションで同時に編集しない**（書き戻し競合が起きる）
-- 作業後は `npx tsc --noEmit` を通し、変更ファイル一覧を報告させる
+- 作業後は `pnpm exec tsc --noEmit` を通し、変更ファイル一覧を報告させる
 
 ---
 
@@ -34,7 +34,7 @@ Next.js App Router の教科書章ページに動的OG画像を追加してほ�
 # 確認
 - 開発サーバーで /books/{bookSlug}/{chapterSlug}/opengraph-image が表示される
 - 長い章タイトルでもはみ出さない
-- npm run build が通る（ビルド時間の増加も報告）
+- pnpm build が通る（ビルド時間の増加も報告）
 
 # 添付
 docs/books/guide.md / 章ページ page.tsx / src/lib/book-theme.ts / src/app/layout.tsx
@@ -81,7 +81,7 @@ docs/books/guide.md / 章ページ page.tsx / src/app/api/ 配下の既存Route 
 content/books/typescript に、エラーコード別に原因と直し方を引ける章を1つ追加してほしい。
 
 # 最初に読むもの
-- AGENTS.md（devサーバーとVeliteのルール。npx velite と npm run build は実行しない）
+- AGENTS.md（devサーバーとVeliteのルール。pnpm exec velite と pnpm build は実行しない）
 - docs/books/guide.md（執筆ルール。Figure・SpeechBubbleの使い方、強調記法の注意）
 - content/books/typescript の既存15章（文体・コンポーネントの使い方・扱い済みの範囲を把握する）
 
@@ -127,7 +127,7 @@ content/books/typescript に、エラーコード別に原因と直し方を引�
 - src/app/books/_constants/searchSuggestions.ts に検索サジェストを足す
   （基準は docs/books/guide.md の「章を追加したら検索サジェストを見直す」）
 - 新しい本の追加ではないので、guide.md の「デプロイ後の作業」1〜6は不要
-- npx tsc --noEmit を通す
+- pnpm exec tsc --noEmit を通す
 - 表示確認は lsof -nP -iTCP -sTCP:LISTEN | grep node で既存のdevサーバーを探し、
   立っていればそこへ curl する。立っていなければ AGENTS.md の手順に従う
 - MDXは1ファイルずつ書き込む（devサーバー稼働中に複数MDXを連続で書くと .velite/chapters.json が壊れる）
