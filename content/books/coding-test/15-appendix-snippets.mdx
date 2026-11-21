@@ -203,7 +203,7 @@ for (let i = 0; i < nums.length; i++) prefix[i + 1] = prefix[i] + nums[i];
 const rangeSum = (l: number, r: number) => prefix[r + 1] - prefix[l];  // [l, r]両端含む
 ```
 
-## lowerBound（めぐる式） — [第8章](/books/coding-test/08-sort-and-binary-search)
+## lowerBound・upperBound（めぐる式） — [第8章](/books/coding-test/08-sort-and-binary-search)
 
 ```typescript
 // 昇順配列で「x以上が初めて現れる位置」
@@ -216,8 +216,19 @@ function lowerBound(sorted: number[], x: number): number {
   }
   return ok;
 }
+
+// 昇順配列で「xより大きい値が初めて現れる位置」
+function upperBound(sorted: number[], x: number): number {
+  let ng = -1, ok = sorted.length;
+  while (ok - ng > 1) {
+    const mid = Math.floor((ng + ok) / 2);
+    if (sorted[mid] > x) ok = mid;
+    else ng = mid;
+  }
+  return ok;
+}
 // 応用: x以上の個数 = arr.length - lowerBound(arr, x)
-//       ちょうどxの個数 = lowerBound(arr, x + 1) - lowerBound(arr, x)
+//       ちょうどxの個数 = upperBound(arr, x) - lowerBound(arr, x)
 ```
 
 ## 答えで二分探索の骨格 — [第8章](/books/coding-test/08-sort-and-binary-search)
