@@ -345,7 +345,6 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     '尺取り法',
     '累積和',
     'ソート',
-    'バブルソート',
     '二分探索',
     'DFS',
     'BFS',
@@ -357,6 +356,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'ダイクストラ',
     '優先度付きキュー',
     'Union-Find',
+    'セグメント木',
   ],
 
   'github-actions': [
