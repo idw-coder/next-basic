@@ -31,7 +31,7 @@ order: 11
 | <Pick />変更を一部分ずつ選んで上げる           | `git add -p`                               | `-p` = `--patch`。変更のかたまりごとに `y`/`n` で選ぶ                                  |
 | ステージした内容を確認する                     | `git status` / `git diff --staged`         | `--staged` はステージ済みの差分を表示（`--cached` も同じ意味）                         |
 | コミットする                                   | `git commit -m "メッセージ"`               | `-m` = `--message`。省略するとエディタが開く                                           |
-| add と commit をまとめて（追跡中ファイルのみ） | `git commit -am "メッセージ"`              | `-a`（追跡中ファイルの変更を自動でステージ）と `-m` をまとめた形。新規ファイルは対象外 |
+| <Pick />add と commit をまとめて（追跡中ファイルのみ） | `git commit -am "メッセージ"`              | `-a`（追跡中ファイルの変更を自動でステージ）と `-m` をまとめた形。新規ファイルは対象外 |
 | 直前のコミットにメッセージ込みで修正           | `git commit --amend`                       | `--amend` は直前のコミットを作り直す                                                   |
 | <Pick />直前のコミットにメッセージを変えず追加 | `git commit --amend --no-edit`             | `--no-edit` はメッセージ編集を省略する                                                 |
 | 空コミットを作る（CI起動用など）               | `git commit --allow-empty -m "メッセージ"` | `--allow-empty` は変更がなくてもコミットを許可する                                     |
