@@ -153,7 +153,7 @@ export default function TechPage() {
               プロフィール ↗
             </Link>
             <Link
-              href="https://github.com/idw-coder/express-mysql-docker"
+              href="https://github.com/idw-coder/web-engineer-quiz"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"

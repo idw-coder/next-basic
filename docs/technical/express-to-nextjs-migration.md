@@ -29,7 +29,7 @@
 
 ### Express / mailserver 側コード・プロセス
 
-- この `next-basic` リポジトリ内には Express の routes / controllers / entities は含まれていない。
+- このリポジトリ（web-engineer-quiz）には Express の routes / controllers / entities は含まれていない。
 - Express 側を確認する場合は `/Users/tida/dev/personal/express-mysql-docker/backend` を見る。
 - Express 側の移行済みAPIには「Next.jsへ移行済み、Expressはlegacy/fallback用」というコメントを追加済み。
 - 現在の本番リクエスト経路では Express を使っていない。

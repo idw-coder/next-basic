@@ -303,7 +303,7 @@ export default function AboutPage() {
                 YouTube（毎週プログラミング）↗
               </a>
               <a
-                href="https://github.com/idw-coder/express-mysql-docker"
+                href="https://github.com/idw-coder/web-engineer-quiz"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 hover:underline"

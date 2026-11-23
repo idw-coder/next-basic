@@ -387,7 +387,7 @@ pending ──(payment_intent.payment_failed)──> failed
 
 ### 2. Next.js の環境変数を設定
 
-`next-basic/.env.local` に以下を設定:
+`web-engineer-quiz/.env.local` に以下を設定:
 
 ```env
 STRIPE_SECRET_KEY=sk_test_xxxxxxxx        # Stripe Dashboard → Developers → API keys → Secret key
@@ -397,7 +397,7 @@ FRONTEND_URL=http://localhost:3000
 
 ### 3. Price ID と受付フラグを設定
 
-`next-basic/.env.local` に以下を追記:
+`web-engineer-quiz/.env.local` に以下を追記:
 
 ```env
 STRIPE_PRO_MONTHLY_PRICE_ID=price_xxxxxxxx   # 手順 1 の月額 Price ID
@@ -420,7 +420,7 @@ stripe login
 stripe listen --forward-to localhost:3000/next-api/webhook/stripe
 ```
 
-ターミナルに表示される `whsec_xxxxxxxx` を `next-basic/.env.local` の `STRIPE_WEBHOOK_SECRET` に設定する。
+ターミナルに表示される `whsec_xxxxxxxx` を `web-engineer-quiz/.env.local` の `STRIPE_WEBHOOK_SECRET` に設定する。
 
 ### 5. 起動
 
@@ -428,7 +428,7 @@ stripe listen --forward-to localhost:3000/next-api/webhook/stripe
 
 ```bash
 # ターミナル 1: Next.js
-cd next-basic && pnpm dev
+cd web-engineer-quiz && pnpm dev
 
 # ターミナル 2: Stripe CLI（手順 4 で起動済み）
 ```
