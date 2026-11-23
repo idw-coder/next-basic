@@ -4,8 +4,8 @@
 
 # ウェブエンジニア問題集
 
-[![Deploy Next.js to Lightsail via GHCR](https://github.com/idw-coder/next-basic/actions/workflows/deploy.yml/badge.svg)](https://github.com/idw-coder/next-basic/actions/workflows/deploy.yml)
-[![Open in Visual Studio Code](https://img.shields.io/static/v1?logo=visualstudiocode&label=&message=Open%20in%20Visual%20Studio%20Code&labelColor=2c2c32&color=007acc&logoColor=007acc)](https://open.vscode.dev/idw-coder/next-basic)
+[![Deploy Next.js to Lightsail via GHCR](https://github.com/idw-coder/web-engineer-quiz/actions/workflows/deploy.yml/badge.svg)](https://github.com/idw-coder/web-engineer-quiz/actions/workflows/deploy.yml)
+[![Open in Visual Studio Code](https://img.shields.io/static/v1?logo=visualstudiocode&label=&message=Open%20in%20Visual%20Studio%20Code&labelColor=2c2c32&color=007acc&logoColor=007acc)](https://open.vscode.dev/idw-coder/web-engineer-quiz)
 
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
