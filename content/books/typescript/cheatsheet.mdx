@@ -1,0 +1,114 @@
+---
+title: 'TypeScriptの記号・構文チートシート — as・satisfies・!・is・keyofの一覧'
+description: '型注釈・as・as const・satisfies・!・is・asserts・keyof・typeofなど、TypeScriptで型を指定する構文と記号を一覧で整理します。型チェックされるか、結果の型がどうなるかで比べられます。'
+order: 16
+---
+
+この章は、TypeScriptで型を指定する構文と記号を一覧で確認するためのチートシートです。`!` や `as const satisfies` のような記号は検索しにくいので、「この書き方は何をしているのか」「どれを使えばよいのか」をここで引けるようにしています。各構文の詳しい説明は、表の右端の章にあります。
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`as` と `satisfies` と型注釈、どれも「型を付ける」書き方に見えて、どれを使えばいいのか毎回迷います……
+</SpeechBubble>
+
+## 値に型を付ける構文
+
+変数や式に型を付ける書き方です。**型チェックされるか**と、**変数の型が何になるか**が書き方ごとに違います。
+
+```tsx
+type HttpMethod = 'GET' | 'POST';
+type Endpoint = { url: string; method: HttpMethod };
+```
+
+上の型を使った場合の比較です。
+
+| 書き方 | 型チェック | 変数の型 | 詳しい章 |
+|---|---|---|---|
+| `const x: Endpoint = {...}` | される | `Endpoint` | [基本の型](/books/typescript/02-basic-types) |
+| `const x = {...} as Endpoint` | 大きく食い違うときだけ。足りないプロパティは通る | `Endpoint` | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `const x = {...} satisfies Endpoint` | される | 値から推論した型（`method: 'GET'`） | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `const x = {...} as const` | されない（型を指定していない） | `readonly` 付きのリテラル型 | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `const x = {...} as const satisfies Endpoint` | される | `readonly` 付きのリテラル型 | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `const x = value as unknown as Endpoint` | されない | `Endpoint` | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `value!` | されない | `null` と `undefined` を除いた型 | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+
+<Marker>迷ったら、書き換える変数は型注釈、定数は `satisfies`（必要なら `as const satisfies`）。`as` と `!` は、コンパイラには証明できないが値は正しいと確信できるときだけ使う。</Marker>
+
+<Callout type="note">
+### 「型チェックされない」書き方は実行時に壊れうる
+
+`as`・`as unknown as`・`!` は、コンパイラのチェックを止めて開発者の申告を採用します。申告が間違っていてもコンパイルは通り、実行時に `undefined` のプロパティを読んで `TypeError` になります。
+
+</Callout>
+
+## 型を絞り込む構文
+
+`string | null` のようなユニオン型を、条件分岐で狭い型に絞る書き方です。
+
+| 書き方 | 絞り込める型 | 例 | 詳しい章 |
+|---|---|---|---|
+| `typeof x === 'string'` | プリミティブ型 | `string \| number` → `string` | [型の絞り込み](/books/typescript/05-narrowing) |
+| `x instanceof Date` | クラスのインスタンス | `Date \| string` → `Date` | [型の絞り込み](/books/typescript/05-narrowing) |
+| `'kind' in x` | プロパティを持つオブジェクト | `Cat \| Dog` → `Cat` | [型の絞り込み](/books/typescript/05-narrowing) |
+| `x.type === 'success'` | 判別可能なユニオン | `Success \| Failure` → `Success` | [型の絞り込み](/books/typescript/05-narrowing) |
+| `if (x)` / `x != null` | `null`・`undefined` を除く | `string \| null` → `string` | [型の絞り込み](/books/typescript/05-narrowing) |
+| `(x: unknown): x is User` | 戻り値が `true` の分岐で `User` | 自作の型ガード関数 | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `(x: unknown): asserts x is string` | 呼び出しの後ろで `string` | 条件を満たさなければ `throw` する関数 | [型の絞り込み](/books/typescript/05-narrowing) |
+
+`is` と `asserts` は、判定ロジックが正しいかをTypeScriptが確かめません。`x is User` と書いた関数が間違った判定をしても、コンパイルは通ります。
+
+<Figure src="/images/deskwork_check_woman_color.png" alt="一覧を確認する" caption="値に付けるのか、型の位置に書くのか。まずはそこで表を選ぶ" maxWidth="240px" />
+
+## 型の位置で使う記号
+
+`type X = ...` の右辺や、`: ` の後ろなど、型を書く場所で使う記号です。
+
+| 書き方 | 意味 | 例 | 詳しい章 |
+|---|---|---|---|
+| `A \| B` | ユニオン型（AまたはB） | `string \| null` | [ユニオン型とリテラル型](/books/typescript/04-union-and-literal) |
+| `A & B` | 交差型（AとBの両方のプロパティを持つ） | `User & { admin: boolean }` | [型エイリアスとインターフェース](/books/typescript/03-type-alias-and-interface) |
+| `'GET'` | リテラル型（その値だけを許す） | `'GET' \| 'POST'` | [ユニオン型とリテラル型](/books/typescript/04-union-and-literal) |
+| `prop?: T` | 省略できるプロパティ | `{ name?: string }` | [基本の型](/books/typescript/02-basic-types) |
+| `readonly prop: T` | 再代入できないプロパティ | `{ readonly id: number }` | [基本の型](/books/typescript/02-basic-types) |
+| `keyof T` | `T` のキーのユニオン型 | `keyof User` → `'id' \| 'name'` | [ジェネリクス](/books/typescript/07-generics) |
+| `typeof x` | 変数 `x` の型を取り出す | `typeof config` | [実践パターン集](/books/typescript/14-practical-patterns) |
+| `T[K]` | プロパティ `K` の型 | `User['name']` → `string` | [実践パターン集](/books/typescript/14-practical-patterns) |
+| `T[number]` | 配列の要素の型 | `(typeof CATEGORIES)[number]` | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `<T extends U>` | 型引数 `T` を `U` を満たす型に制限する | `<K extends keyof User>` | [ジェネリクス](/books/typescript/07-generics) |
+| `T extends U ? X : Y` | 条件型（`T` が `U` を満たせば `X`、そうでなければ `Y`） | `T extends string ? 'str' : 'other'` | [実践パターン集](/books/typescript/14-practical-patterns) |
+| `` `id-${number}` `` | テンプレートリテラル型 | `'id-1'`、`'id-42'` を許す | [実践パターン集](/books/typescript/14-practical-patterns) |
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生">
+`typeof` は書く場所で意味が変わります。`if (typeof x === 'string')` のように値の位置に書けばJavaScriptの演算子で、文字列を返します。`type C = typeof config` のように型の位置に書けば、TypeScriptが変数の型を取り出します。
+</SpeechBubble>
+
+## 似ていて混同しやすい組み合わせ
+
+| 組み合わせ | 違い | 詳しい章 |
+|---|---|---|
+| `x!.name` と `x?.name` | `!` は型から `null` を消すだけで、実行時に `x` が `null` なら `TypeError`。`?.` は実行時に `x` が `null` なら `undefined` を返す | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `a ?? b` と `a \|\| b` | `??` は `a` が `null`・`undefined` のときだけ `b`。`\|\|` は `0`・`''`・`false` でも `b` | [演算子と式（JavaScript本）](/books/javascript/03-operators-and-expressions) |
+| `x?: T` と `x: T \| undefined` | `x?:` はプロパティ自体を省略できる。`T \| undefined` はプロパティを書く必要がある（値に `undefined` は入れられる） | [関数と型](/books/typescript/06-functions) |
+| `as const` と `as T` | `as const` は型を狭くする方向にだけ働き、安全。`as T` は型チェックを止める | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `satisfies T` と `: T` | どちらも型チェックされる。変数の型が `satisfies` は推論結果、`: T` は `T` | [型アサーションと型ガード](/books/typescript/08-assertion-and-guard) |
+| `any` と `unknown` | `any` は型チェックを止める。`unknown` は絞り込むまでプロパティを読めない | [基本の型](/books/typescript/02-basic-types) |
+
+## ちゃんと使うためのポイント
+
+- 値に型を付ける構文は、「型チェックされるか」と「変数の型が何になるか」の2点で選ぶ
+- <Marker>`as`・`as unknown as`・`!` は型チェックを止める。使う前に、型注釈・`satisfies`・型ガードで書けないかを確認する</Marker>
+- `is` と `asserts` は判定ロジックの正しさを保証しない。判定の中身は自分で確かめる
+- `typeof` は値の位置と型の位置で意味が違う
+
+エラーメッセージから原因を探したいときは、[TypeScriptのエラーコード別リファレンス](/books/typescript/common-errors)を参照してください。
+
+## 参考リンク
+
+- [TypeScript Handbook — Everyday Types（英語）](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html) — 型注釈・ユニオン型・型アサーション・非nullアサーションの公式説明
+- [TypeScript Handbook — Creating Types from Types（英語）](https://www.typescriptlang.org/docs/handbook/2/types-from-types.html) — `keyof`・`typeof`・インデックスアクセス型・条件型・テンプレートリテラル型の公式説明
+- [TypeScript 4.9 リリースノート（英語）](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html) — `satisfies` 演算子が導入されたバージョンの公式解説
+
+<QuizLink
+  href="/quiz/ts-general"
+  title="TypeScriptクイズに挑戦する"
+  description="この章で学んだTypeScriptの知識を、4択クイズでアウトプットして定着させよう"
+/>
