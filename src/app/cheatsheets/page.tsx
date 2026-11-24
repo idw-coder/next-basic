@@ -11,7 +11,7 @@ import { Box, Card, Chip, Typography } from '@mui/material';
 export const metadata: Metadata = {
   title: '技術チートシート一覧｜目的からすぐ引ける早見表',
   description:
-    'HTML文字参照、JavaScript、正規表現、Docker、Git、Vim、Neovim、LazyVim、tmux、WSL、GitHub Actions、Zod、AWS、AIエージェント開発のチートシートをまとめています。構文、コマンド、サービスを目的別に素早く確認できます。',
+    'HTML文字参照、JavaScript、正規表現、TypeScript、Docker、Git、Vim、Neovim、LazyVim、tmux、WSL、GitHub Actions、Zod、AWS、AIエージェント開発のチートシートをまとめています。構文、コマンド、サービスを目的別に素早く確認できます。',
   alternates: { canonical: '/cheatsheets' },
   openGraph: {
     title: '技術チートシート一覧',
@@ -57,6 +57,12 @@ const CHEATSHEET_SHORTCUTS = [
     bookSlug: 'javascript',
     chapterSlug: '08-string-methods',
     anchor: 'よく使うパターン部品',
+  },
+  {
+    label: 'TypeScriptの記号',
+    summary: 'as・satisfies・!・keyof',
+    bookSlug: 'typescript',
+    chapterSlug: 'cheatsheet',
   },
   {
     label: 'Zod',
