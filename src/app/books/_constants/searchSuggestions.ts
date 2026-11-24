@@ -284,6 +284,7 @@ export const BOOK_SEARCH_SUGGESTIONS: Record<string, readonly string[]> = {
     'ジェネリクス',
     '型ガード',
     'Utility Types',
+    'satisfies',
     'tsconfig',
     'implements',
     'abstract',

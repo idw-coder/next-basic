@@ -1,6 +1,6 @@
 ---
-title: '型アサーションと型ガード — as・is・as constの使い分け'
-description: 'asによる型アサーション、ユーザー定義型ガード（is）、非nullアサーション（!）、constアサーション（as const）の使い方と注意点を整理します。'
+title: '型アサーションと型ガード — as・is・as const・satisfiesの使い分け'
+description: 'asによる型アサーション、ユーザー定義型ガード（is）、非nullアサーション（!）、constアサーション（as const）、satisfies演算子の使い方と注意点を整理します。'
 order: 8
 ---
 
@@ -435,6 +435,8 @@ const mockRequest = { url: '/api', headers: { 'content-type': 'json' } } as Requ
 
 ---
 
+<a id="const-assertion"></a>
+
 ## constアサーション（as const）
 
 `as const` は名前こそ「アサーション」ですが、これまでの `as T` とは性格が正反対です。型を偽るのではなく、**推論される型をできるだけ狭く・固定的にする**ための機能で、安全に使えます。
@@ -511,6 +513,130 @@ function setCategory(category: Category) {
 
 </Callout>
 
+## satisfies演算子 — 型チェックしつつ推論結果を残す
+
+`satisfies` はTypeScript 4.9で追加された演算子です。**値が型を満たしているかをチェックしますが、値の型そのものは推論結果のまま残します。** `as` のようにチェックを迂回することも、型注釈のように型を上書きすることもしません。
+
+**構文：** `値 satisfies 型`
+
+<SpeechBubble character="/images/usingcomputer_suit_woman_color.png" name="学習者">
+`as const` でリテラル型は残せるし、型注釈でチェックもできますよね。わざわざ別の演算子が要るんですか？
+</SpeechBubble>
+
+### 型注釈だと推論結果が消える
+
+[constアサーション](#const-assertion)の節の `config` を、型でチェックしたいとします。型注釈を付けると、チェックはされますが、変数の型が注釈の型に置き換わります。
+
+```tsx
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+type Endpoint = { url: string; method: HttpMethod };
+
+const config: Endpoint = { url: '/api/users', method: 'GET' };
+// config.method の型: HttpMethod（'GET' という情報は消える）
+```
+
+`Record<string, T>` のような広い型で注釈すると、問題がはっきり出ます。
+
+```tsx
+type Route = { path: string; auth: boolean };
+
+const routes: Record<string, Route> = {
+  home: { path: '/', auth: false },
+  admin: { path: '/admin', auth: true },
+};
+
+routes.admn.path; // コンパイルは通る。実行時に TypeError
+```
+
+変数の型が `Record<string, Route>` になったので、TypeScriptは `home` と `admin` というキーがあることを覚えていません。どんな文字列キーでも `Route` が返るものとして扱うため、`admn` の打ち間違いを検出できません。
+
+### satisfies なら、チェックと推論の両方が得られる
+
+同じオブジェクトに `satisfies` を付けます。
+
+```tsx
+const routes = {
+  home: { path: '/', auth: false },
+  admin: { path: '/admin', auth: true },
+} satisfies Record<string, Route>;
+
+routes.admin.path; // ✅ string
+routes.admn; // ❌ Property 'admn' does not exist ... Did you mean 'admin'?
+```
+
+`routes` の型は `{ home: { path: string; auth: false }; admin: { path: string; auth: true } }` と推論されます。キーの情報が残るので、打ち間違いはコンパイルエラーになります。値が `Route` の形を満たしていなければ、それもエラーになります。
+
+```tsx
+const config = { url: '/api/users', method: 'GTE' } satisfies Endpoint;
+// ❌ Type '"GTE"' is not assignable to type 'HttpMethod'.
+
+const config2 = { url: '/api/users', method: 'GET', timeout: 3000 } satisfies Endpoint;
+// ❌ Object literal may only specify known properties, and 'timeout' does not exist in type 'Endpoint'.
+
+const config3 = { url: '/api/users', method: 'GET' } satisfies Endpoint;
+request(config3.url, config3.method); // ✅ config3.method の型は 'GET'
+```
+
+<Marker>型注釈は「チェックして、型を注釈の型に置き換える」。satisfies は「チェックだけして、型は推論結果のまま残す」。</Marker>
+
+### as との違い — 足りないプロパティを見逃さない
+
+`as` も型が大きく食い違えば TS2352 を出しますが、**プロパティが足りない値は通してしまいます。** `satisfies` は通しません。
+
+```tsx
+const a = { url: '/api/users' } as Endpoint;
+// コンパイルは通る。a.method は実行時に undefined
+
+const b = { url: '/api/users' } satisfies Endpoint;
+// ❌ TS1360: Type '{ url: string; }' does not satisfy the expected type 'Endpoint'.
+//    Property 'method' is missing in type '{ url: string; }' but required in type 'Endpoint'.
+```
+
+4つの書き方を並べると次のとおりです。
+
+| 書き方 | 型チェック | 変数の型 |
+|---|---|---|
+| `const x: T = 値` | される（余分なプロパティもエラー） | `T` |
+| `const x = 値 as T` | 大きく食い違うときだけエラー。足りないプロパティは通る | `T` |
+| `const x = 値 satisfies T` | される（余分なプロパティもエラー） | 値から推論した型 |
+| `const x = 値 as const satisfies T` | される | `readonly` 付きのリテラル型 |
+
+### as const satisfies — 定数の定義でよく使う組み合わせ
+
+`as const` と `satisfies` は一緒に使えます。値をリテラル型で固定したまま、決めた形を満たしているかをチェックできます。
+
+```tsx
+const CATEGORIES = ['tech', 'design', 'business'] as const;
+type Category = (typeof CATEGORIES)[number];
+
+const CATEGORY_LABELS = {
+  tech: '技術',
+  design: 'デザイン',
+} as const satisfies Record<Category, string>;
+// ❌ Property 'business' is missing in type ... but required in type 'Record<"tech" | "design" | "business", string>'.
+```
+
+`CATEGORIES` に `'business'` を足したのにラベルを書き忘れると、ここでコンパイルエラーになります。`business: 'ビジネス'` を足せばエラーは消え、`CATEGORY_LABELS.design` の型は `'デザイン'` のまま残ります。
+
+書く順番は `as const satisfies T` です。`as const` で型を固定してから、その型をチェックします。
+
+### よくあるハマりどころ — 後から別の値を代入できない
+
+`satisfies` は変数の型を変えないため、推論された型が狭いと、後から別の値を代入できません。
+
+```tsx
+const state = { status: 'idle' } satisfies { status: 'idle' | 'loading' };
+
+state.status = 'loading';
+// ❌ Type '"loading"' is not assignable to type '"idle"'.
+```
+
+`status` の型は `'idle' | 'loading'` ではなく `'idle'` と推論されています。書き換える前提の変数には、型注釈（`const state: { status: 'idle' | 'loading' } = ...`）を使います。
+
+<SpeechBubble character="/images/oksign_man_color.png" name="先生">
+使い分けの目安です。値を後から書き換えるなら型注釈。定数で、書いた値の型を後の処理で使いたいなら `satisfies`。`as` は、ここまでの節で見たとおり最後の手段です。
+</SpeechBubble>
+
 ## 型アサーション vs 型ガード — どちらを使うべきか
 
 | 手法 | 安全性 | 使う場面 |
@@ -529,6 +655,8 @@ function setCategory(category: Category) {
 - `as any` も `as unknown as T` も型安全性を放棄している点は同じ。ただし `any` は後続の式に伝播し、`as unknown as T` はその場で型が確定する
 - <Marker>`ts(2352)` が出たら、`unknown` を挟む前に「1段の `as` で足りないか」「そもそも値の型が間違っていないか」を先に確認する</Marker>
 - `as const` はアサーションではなくリテラル型への固定。安全に使える
+- <Marker>`satisfies` は型チェックだけして、変数の型は推論結果のまま残す。定数は `as const satisfies T` でリテラル型を保ったままチェックできる</Marker>
+- 後から別の値を代入する変数には `satisfies` ではなく型注釈を使う
 - ユーザー定義型ガード（`is`）はAPIレスポンスのバリデーションで特に有用。ただし検査ロジックの正しさは自分で保証する
 - TypeScript 5.5以降、単純な関数の型述語は自動推論される（特定の型へ絞る場合は明示的に `is` を書く）
 
@@ -539,6 +667,7 @@ function setCategory(category: Category) {
 - [TypeScript Handbook — Everyday Types（英語）](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html) — Type Assertions の節に公式の説明がある
 - [TypeScript Handbook — Narrowing（英語）](https://www.typescriptlang.org/docs/handbook/2/narrowing.html) — Using type predicates の節にユーザー定義型ガードの公式説明がある
 - [TypeScript 3.4 リリースノート（英語）](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-4.html) — const assertions が導入されたバージョンの公式解説
+- [TypeScript 4.9 リリースノート（英語）](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html) — The `satisfies` Operator の節に公式の説明がある
 
 <QuizLink
   href="/quiz/ts-general"
